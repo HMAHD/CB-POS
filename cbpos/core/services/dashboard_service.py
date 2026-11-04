@@ -1,10 +1,10 @@
 """Dashboard data service for KPIs, charts, and periodic reports."""
 
 from contextlib import contextmanager
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
-from sqlalchemy import Integer, func
+from sqlalchemy import Integer, extract, func
 from sqlalchemy.orm import joinedload
 
 from cbpos.core.constants.status import ShiftStatus
@@ -154,18 +154,24 @@ class DashboardService:
     # ------------------------------------------------------------------
 
     @staticmethod
+    def _monthly_sales_query(session, year: int):
+        """Build the query for monthly sales aggregation across a year."""
+        year_start = datetime(year, 1, 1)
+        year_end = datetime(year + 1, 1, 1)
+        return (
+            session.query(
+                func.cast(extract("month", Sale.date), Integer).label("month"),
+                func.sum(Sale.total_amount).label("total"),
+            )
+            .filter(Sale.date >= year_start, Sale.date < year_end)
+            .group_by("month")
+        )
+
+    @staticmethod
     def get_monthly_sales(year: int) -> list[dict]:
         """Monthly sales totals for a given year (12 entries)."""
         with _session() as session:
-            rows = (
-                session.query(
-                    func.cast(func.strftime("%m", Sale.date), Integer).label("month"),
-                    func.sum(Sale.total_amount).label("total"),
-                )
-                .filter(func.strftime("%Y", Sale.date) == str(year))
-                .group_by("month")
-                .all()
-            )
+            rows = DashboardService._monthly_sales_query(session, year).all()
 
             month_map = {r.month: _decimal(r.total) for r in rows}
             return [
@@ -218,21 +224,27 @@ class DashboardService:
             return [{"name": r[0], "total": _decimal(r[1])} for r in rows]
 
     @staticmethod
+    def _hourly_sales_query(session, start_date: date, end_date: date):
+        """Build the query for hourly sales distribution within a date range."""
+        start_dt = datetime.combine(start_date, datetime.min.time())
+        end_dt = datetime.combine(end_date + timedelta(days=1), datetime.min.time())
+        return (
+            session.query(
+                func.cast(extract("hour", Sale.date), Integer).label("hour"),
+                func.sum(Sale.total_amount).label("total"),
+            )
+            .filter(
+                Sale.date >= start_dt,
+                Sale.date < end_dt,
+            )
+            .group_by("hour")
+        )
+
+    @staticmethod
     def get_hourly_sales(start_date: date, end_date: date) -> list[dict]:
         """Hourly sales distribution within a date range (hours 6-22)."""
         with _session() as session:
-            rows = (
-                session.query(
-                    func.cast(func.strftime("%H", Sale.date), Integer).label("hour"),
-                    func.sum(Sale.total_amount).label("total"),
-                )
-                .filter(
-                    func.date(Sale.date) >= start_date,
-                    func.date(Sale.date) <= end_date,
-                )
-                .group_by("hour")
-                .all()
-            )
+            rows = DashboardService._hourly_sales_query(session, start_date, end_date).all()
 
             hour_map = {r.hour: _decimal(r.total) for r in rows}
 

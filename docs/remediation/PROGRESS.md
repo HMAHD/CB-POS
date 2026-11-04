@@ -67,7 +67,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #905 | The document sequence is found by string sort, so `{seq}` breaks at 10 and `{… | medium | 2.5 | done | #987 | 6b154a8 · numeric sequence extraction via regex scan; collision retry increments sequence |
 | #906 | A push that fails on every cycle is invisible: pending count is never set, se… | medium | 2.5 | done | #987 | 6b154a8 · pending_changed signal, persistent push error state, distinct terminals count, sync details dialog with retry |
 | #884 | Same cashier on two terminals: both open shifts count each other's sales | medium | 2.6 | in-progress | | |
-| #886 | Dashboard charts fail in PostgreSQL mode (SQLite-only strftime) | medium | 2.6 | in-progress | | |
+| #886 | Dashboard charts fail in PostgreSQL mode (SQLite-only strftime) | medium | 2.6 | in-progress | | fc72a6c · extract(month/hour) and half-open date range replacing strftime |
 | #914 | Network mode has no lock or unique index, so two tills can refund or void the… | low | 2.6 | blocked (Q1) | | |
 
 ### Phase 3A — [spec](phases/phase-03a-money-ledger-refunds.md)

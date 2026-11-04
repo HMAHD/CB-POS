@@ -666,10 +666,14 @@ class TransactionService:
                 if sale.status == "VOID":
                     return False  # Already voided
 
-                # Cannot void a sale that has already been refunded (#914)
+                # Cannot void a refund document (#848)
+                if sale.payment_method == "REFUND" or sale.refund_of_sale_id is not None:
+                    raise ValueError("cannot_void_refund")
+
+                # Cannot void a sale that has already been refunded (#847, #914)
                 already_refunded = session.query(Sale.id).filter(Sale.refund_of_sale_id == sale_id).first() is not None
                 if already_refunded:
-                    return False
+                    raise ValueError("sale_has_refund")
 
                 sale.status = "VOID"
                 if reason_id:
@@ -706,6 +710,8 @@ class TransactionService:
                 )
                 session.add(log)
             return True
+        except ValueError:
+            raise
         except Exception as e:
             logger.error("Void Sale Failed: %s", e)
             return False

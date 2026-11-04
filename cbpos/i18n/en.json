@@ -2981,6 +2981,8 @@
     "cannot_delete_in_use": "Cannot delete because it is still in use.",
     "concurrent_modification": "This record was modified by another user. Please reload and try again.",
     "circular_reference": "A category cannot be its own parent.",
+    "cannot_void_refund": "A refund can't be voided. If it was a mistake, ring the items up as a new sale.",
+    "sale_has_refund": "This sale has a refund, so it can't be voided. Refund the remaining items instead.",
     "payment_amount_zero": "Payment amount must be greater than zero.",
     "customer_not_found": "Customer not found.",
     "insufficient_stock": "Insufficient stock",

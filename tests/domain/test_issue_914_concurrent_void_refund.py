@@ -118,8 +118,8 @@ def test_issue_914_void_sale_refuses_refunded_sale(db_session, test_sale):
         mock_db.return_value.__enter__.return_value = db_session
         mock_db.return_value.__exit__.return_value = False
 
-        success = TransactionService.void_sale(test_sale.id, user_id=test_sale.user_id, reason="Cannot void")
-        assert success is False
+        with pytest.raises(ValueError, match="sale_has_refund"):
+            TransactionService.void_sale(test_sale.id, user_id=test_sale.user_id, reason="Cannot void")
 
     db_session.refresh(test_sale)
     assert test_sale.status != "VOID"

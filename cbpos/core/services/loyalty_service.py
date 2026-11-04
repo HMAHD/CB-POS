@@ -233,6 +233,7 @@ class LoyaltyService:
                 LoyaltyLedgerEntry.customer_id == sale.customer_id,
                 LoyaltyLedgerEntry.reference_id == sale.id,
                 LoyaltyLedgerEntry.entry_type == "REVERSAL",
+                LoyaltyLedgerEntry.points < 0,
             )
             .scalar()
         )

@@ -36,8 +36,9 @@ class ReportService:
             )
 
             # Payment Breakdown
+            # TODO(#844): use method_kind
             payment_breakdown = session.execute(
-                select(SalePayment.payment_method, func.sum(SalePayment.amount))
+                select(SalePayment.payment_method, func.sum(SalePayment.amount))  # TODO(#844): use method_kind
                 .join(Sale)
                 .where(Sale.date >= start_dt, Sale.date <= end_dt)
                 .group_by(SalePayment.payment_method)

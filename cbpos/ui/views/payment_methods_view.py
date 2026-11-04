@@ -30,6 +30,21 @@ logger = logging.getLogger(__name__)
 _PORTABLE = QKeySequence.SequenceFormat.PortableText
 
 
+def _kind_display(kind: str | None) -> str:
+    """Translated display name for a PaymentMethodKind."""
+    mapping = {
+        "CASH": "payment_methods.kind_cash",
+        "CARD": "payment_methods.kind_card",
+        "CREDIT": "payment_methods.kind_credit",
+        "QR": "payment_methods.kind_qr",
+        "CHEQUE": "payment_methods.kind_cheque",
+        "TRANSFER": "payment_methods.kind_transfer",
+        "OTHER": "payment_methods.kind_other",
+    }
+    key = mapping.get(kind or "OTHER", "payment_methods.kind_other")
+    return _t(key)
+
+
 def _shortcut_error_text(err: ShortcutConflictError) -> str:
     """Translated message for a rejected payment method shortcut (#640)."""
     if err.conflict_with is None:
@@ -94,7 +109,9 @@ class _MethodCard(QFrame):
 
         # Tags line: properties as small text
         tags = []
-        if self.method.is_cash:
+        if getattr(self.method, "kind", None):
+            tags.append(_kind_display(self.method.kind))
+        elif self.method.is_cash:
             tags.append(_t("payment_methods.tag_cash"))
         if self.method.open_drawer:
             tags.append(_t("payment_methods.tag_opens_drawer"))
@@ -272,6 +289,7 @@ class PaymentMethodsView(QWidget):
             try:
                 PaymentService.create_method(
                     name=data["name"],
+                    kind=data.get("kind"),
                     is_cash=data["is_cash"],
                     open_drawer=data["open_drawer"],
                     shortcut=data["shortcut"],
@@ -295,6 +313,7 @@ class PaymentMethodsView(QWidget):
                 PaymentService.update_method(
                     method_id=method.id,
                     name=data["name"],
+                    kind=data.get("kind"),
                     is_cash=data["is_cash"],
                     open_drawer=data["open_drawer"],
                     shortcut=data["shortcut"],

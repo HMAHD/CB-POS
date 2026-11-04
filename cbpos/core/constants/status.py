@@ -4,6 +4,7 @@ Centralizes magic strings and values to prevent typos and enable IDE auto-comple
 """
 
 from decimal import Decimal
+from enum import StrEnum
 
 
 class DocumentStatus:
@@ -50,6 +51,23 @@ class MovementType:
     ADJUSTMENT = "ADJUSTMENT"
     RETURN = "RETURN"
     VOID = "VOID"
+
+
+class PaymentMethodKind(StrEnum):
+    """Stable kind category for payment methods (ADR / Phase 3A).
+
+    Authoritative over user-editable display names. Renaming a method
+    preserves its kind.
+    """
+
+    CASH = "CASH"
+    CARD = "CARD"
+    CREDIT = "CREDIT"
+    QR = "QR"
+    CHEQUE = "CHEQUE"
+    TRANSFER = "TRANSFER"
+    OTHER = "OTHER"
+    REFUND_LEGACY = "REFUND_LEGACY"
 
 
 class PaymentMethodType:

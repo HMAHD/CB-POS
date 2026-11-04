@@ -27,6 +27,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from cbpos.core.constants.status import PaymentMethodKind
 from cbpos.core.database import Base
 
 # --- Association Tables ---
@@ -522,8 +523,16 @@ class SalePayment(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     sale_id: Mapped[int] = mapped_column(ForeignKey("sales.id"), index=True)
-    payment_method: Mapped[str] = mapped_column(String(20), nullable=False)  # Cash, Card, Credit
+    payment_method: Mapped[str] = mapped_column(String(20), nullable=False)  # Display snapshot
+    method_kind: Mapped[str] = mapped_column(
+        String(20),
+        default=PaymentMethodKind.OTHER,
+        server_default=PaymentMethodKind.OTHER,
+        nullable=False,
+        index=True,
+    )
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    tendered_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
 
     sale: Mapped["Sale"] = relationship(back_populates="payments")
 
@@ -838,6 +847,14 @@ class PaymentMethod(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    # kind is authoritative; is_cash is kept in sync on save (is_cash = kind == PaymentMethodKind.CASH)
+    kind: Mapped[str] = mapped_column(
+        String(20),
+        default=PaymentMethodKind.OTHER,
+        server_default=PaymentMethodKind.OTHER,
+        nullable=False,
+        index=True,
+    )
     is_cash: Mapped[bool] = mapped_column(Boolean, default=False)
     open_drawer: Mapped[bool] = mapped_column(Boolean, default=False)
     shortcut: Mapped[str | None] = mapped_column(String(10), nullable=True)

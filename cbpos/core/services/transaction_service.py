@@ -19,6 +19,7 @@ from cbpos.core.models import (
     AuditLog,
     CompositeItem,
     Customer,
+    PaymentMethod,
     Product,
     Sale,
     SaleItem,
@@ -470,6 +471,16 @@ class TransactionService:
             if total_paid < total_amount:
                 raise ValueError(f"Insufficient payment. Paid: {total_paid}, Due: {total_amount}")
 
+            # Resolve payment method kinds and validate payment methods exist
+            existing_methods = {m.name.casefold(): m for m in session.query(PaymentMethod).all()}
+            resolved_methods = {}
+            for p in payments:
+                key = (p.get("method") or "").strip().casefold()
+                m_obj = existing_methods.get(key)
+                if not m_obj:
+                    raise ValueError(f"unknown_payment_method: '{p.get('method')}'")
+                resolved_methods[p["method"]] = m_obj
+
             # Pre-fetch composite items for all cart products (avoids N+1 queries later)
             cart_items = cart_service.items
             composite_map = TransactionService._fetch_composite_map(
@@ -502,7 +513,16 @@ class TransactionService:
 
             # 4. Payments, then lines + stock out
             for p in payments:
-                session.add(SalePayment(sale_id=sale.id, payment_method=p["method"], amount=p["amount"]))
+                m_obj = resolved_methods[p["method"]]
+                session.add(
+                    SalePayment(
+                        sale_id=sale.id,
+                        payment_method=p["method"],
+                        method_kind=m_obj.kind,
+                        amount=p["amount"],
+                        tendered_amount=p.get("tendered_amount"),
+                    )
+                )
             TransactionService._write_sale_lines(session, sale, cart_items, composite_map)
 
             # 4b. Loyalty redemption deduction (ADR-0002)

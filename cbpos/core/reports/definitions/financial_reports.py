@@ -324,11 +324,12 @@ class TaxFilingSummaryReport(BaseReport):
             total_tax_liability = vat_liability + sscl_liability
 
             # Payment summary via SQL aggregation
+            # TODO(#844): use method_kind
             from cbpos.core.models import SalePayment
 
             payment_q = _date_filter(
                 session.query(
-                    SalePayment.payment_method,
+                    SalePayment.payment_method,  # TODO(#844): use method_kind
                     func.sum(SalePayment.amount),
                 )
                 .join(Sale, SalePayment.sale_id == Sale.id)

@@ -273,3 +273,41 @@ def test_reversal_never_below_zero_silently(db_session, test_user, customer, pro
 
         # Not silent: logged warning
         assert any("below zero" in record.message.lower() for record in caplog.records)
+
+
+def test_issue_853_failed_sale_leaves_no_redemption_on_cart(db_session, test_user, customer, product):
+    """If a sale with loyalty redemption fails, cart redemption must not be mutated (#853)."""
+    db_session.commit()
+    with Database().get_session() as session:
+        c = session.get(Customer, customer.id)
+        c.loyalty_points = 500
+        session.commit()
+
+    with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user):
+        cart = CartService()
+        cart.set_customer(customer)
+        # Attempt to sell more quantity than in stock to force stock failure
+        cart.add_item(product, qty=Decimal("500.0"))
+        payments = [{"method": "CASH", "amount": Decimal("10000.00")}]
+
+        with pytest.raises(ValueError):
+            TransactionService.process_sale(cart, payments, customer_id=customer.id, loyalty_points_redeemed=100)
+
+        assert cart.loyalty_points_redeemed == 0
+
+
+def test_issue_853_walk_in_cart_has_no_loyalty_discount(product):
+    """A walk-in cart (customer=None) must never apply loyalty discount in get_totals (#853)."""
+    product.price = Decimal("1250.00")
+    cart = CartService()
+    cart.add_item(product, qty=Decimal("1.0"))
+    # Even if loyalty_points_redeemed is set on the cart
+    cart.loyalty_points_redeemed = 100
+    totals = cart.get_totals()
+    assert totals["loyalty_discount"] == Decimal("0.00")
+    assert totals["loyalty_points_redeemed"] == 0
+
+    # Also test set_customer(None) resets loyalty_points_redeemed
+    cart.loyalty_points_redeemed = 100
+    cart.set_customer(None)
+    assert cart.loyalty_points_redeemed == 0

@@ -201,14 +201,16 @@ class TestCartServiceLoyaltyDiscount:
     """Test CartService integration with loyalty redemption discount."""
 
     def test_cart_loyalty_redemption_reduces_final_total(self, db_session: Session):
-        from cbpos.core.models import Product
+        from cbpos.core.models import Customer, Product
         from cbpos.core.services.cart_service import CartService
 
         product = Product(name_en="Test Item", price=Decimal("1000.00"), stock_qty=50.0, barcode="TEST001")
-        db_session.add(product)
+        customer = Customer(name="Loyal Cust", phone="0770001111", loyalty_points=500)
+        db_session.add_all([product, customer])
         db_session.flush()
 
         cart = CartService()
+        cart.set_customer(customer)
         cart.add_item(product, Decimal("1"))
         cart.set_loyalty_redemption(200)
 
@@ -219,14 +221,16 @@ class TestCartServiceLoyaltyDiscount:
         assert totals["final_total"] == Decimal("800.00")
 
     def test_cart_loyalty_discount_combined_with_cart_discount(self, db_session: Session):
-        from cbpos.core.models import Product
+        from cbpos.core.models import Customer, Product
         from cbpos.core.services.cart_service import CartService
 
         product = Product(name_en="Test Item 2", price=Decimal("1000.00"), stock_qty=50.0, barcode="TEST002")
-        db_session.add(product)
+        customer = Customer(name="Loyal Cust 2", phone="0770002222", loyalty_points=500)
+        db_session.add_all([product, customer])
         db_session.flush()
 
         cart = CartService()
+        cart.set_customer(customer)
         cart.add_item(product, Decimal("1"))
         cart.apply_cart_discount("FIXED", Decimal("100.00"))
         cart.set_loyalty_redemption(200)

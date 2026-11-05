@@ -28,10 +28,10 @@ class CartService:
         self.loyalty_points_redeemed = 0
 
     def set_customer(self, customer: Customer | None):
-        """
-        Set the customer for the current cart and recalculate prices.
-        """
+        """Set the customer for the current cart and recalculate prices."""
         self._customer = customer
+        if customer is None:
+            self.loyalty_points_redeemed = 0
         self._recalculate_all_prices()
 
     def get_customer(self) -> Customer | None:
@@ -313,7 +313,7 @@ class CartService:
         with Database().get_session() as session:
             return bool(session.scalar(stmt))
 
-    def get_totals(self) -> dict[str, Any]:
+    def get_totals(self, loyalty_points: int | None = None, has_customer: bool | None = None) -> dict[str, Any]:
         """Return the cart totals."""
         from cbpos.core.services.config_service import ConfigService
         from cbpos.core.services.tax_service import TaxService
@@ -333,12 +333,17 @@ class CartService:
         after_cart_discount = subtotal - cart_discount_amt
 
         # 2b. Apply Loyalty Redemption Discount (ADR-0002)
+        # Loyalty redemption only applies when a customer is attached
+        customer_present = (self._customer is not None) if has_customer is None else has_customer
+        points_to_redeem = self.loyalty_points_redeemed if loyalty_points is None else max(0, int(loyalty_points or 0))
         loyalty_discount_amt = Decimal("0.00")
-        if self.loyalty_points_redeemed > 0:
+        if customer_present and points_to_redeem > 0:
             from cbpos.core.services.loyalty_service import LoyaltyService
 
-            redeem_val = LoyaltyService.calculate_redeem_value(self.loyalty_points_redeemed)
+            redeem_val = LoyaltyService.calculate_redeem_value(points_to_redeem)
             loyalty_discount_amt = min(redeem_val, after_cart_discount)
+        else:
+            points_to_redeem = 0
 
         final_total = after_cart_discount - loyalty_discount_amt
 
@@ -372,7 +377,7 @@ class CartService:
             "subtotal": subtotal.quantize(Precision.MONEY),
             "cart_discount": cart_discount_amt.quantize(Precision.MONEY),
             "loyalty_discount": loyalty_discount_amt.quantize(Precision.MONEY),
-            "loyalty_points_redeemed": self.loyalty_points_redeemed,
+            "loyalty_points_redeemed": points_to_redeem,
             "final_total": final_total.quantize(Precision.MONEY),
             "tax_vat": tax_info["vat"],
             "tax_sscl": tax_info["sscl"],

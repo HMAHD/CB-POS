@@ -1344,12 +1344,6 @@ class SalesView(QWidget):
         discount_action.triggered.connect(self.apply_line_discount)
         menu.addAction(discount_action)
 
-        bill_discount_action = QAction(
-            Icons.get(Icons.PERCENT, icon_color), _t("bill_discount.title") + "\tCtrl+B", self
-        )
-        bill_discount_action.triggered.connect(self.apply_bill_discount)
-        menu.addAction(bill_discount_action)
-
         price_action = QAction(Icons.get(Icons.EDIT, icon_color), _t("cart.context_change_price"), self)
         price_action.triggered.connect(self.change_line_price)
         menu.addAction(price_action)

@@ -272,7 +272,10 @@ class TestTransactionAutoPrint:
 
         ((built_for, commands),) = built
         assert built_for is sale
-        assert queued_jobs(worker) == [("print_receipt", commands), ("kick_drawer", ["CASH"])]
+        assert queued_jobs(worker) == [
+            ("print_receipt", commands),
+            ("kick_drawer", {"manual": False, "method_kinds": ["CASH"]}),
+        ]
         assert any(db_user.username in line for line in texts(queued_jobs(worker)[0][1]))
 
     def test_receipt_dialog_on_leaves_printing_to_the_dialog(self, config_store, db_user, db_product, worker):

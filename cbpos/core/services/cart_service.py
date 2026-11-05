@@ -28,10 +28,10 @@ class CartService:
         self.loyalty_points_redeemed = 0
 
     def set_customer(self, customer: Customer | None):
-        """
-        Set the customer for the current cart and recalculate prices.
-        """
+        """Set the customer for the current cart and recalculate prices."""
         self._customer = customer
+        if customer is None:
+            self.loyalty_points_redeemed = 0
         self._recalculate_all_prices()
 
     def get_customer(self) -> Customer | None:
@@ -71,6 +71,8 @@ class CartService:
             # Captured now, not at totals time: by then nothing guarantees
             # the detached product can still reach its category (#701).
             "tax_exempt": self._resolve_tax_exempt(product),
+            "note": None,
+            "override_approved_by": None,
         }
         self._recalculate_line(new_item)
         self.items.append(new_item)
@@ -162,6 +164,7 @@ class CartService:
             original_price = item["unit_price"]
             item["unit_price"] = Decimal(str(new_price))
             item["is_manual_price"] = True
+            item["override_approved_by"] = getattr(user, "id", user) if user else None
             # Reset discount if price is manually overridden?
             # Strategy: Keep discount, apply on new price.
             self._recalculate_line(item)
@@ -174,6 +177,35 @@ class CartService:
             )
             return True
         return False
+
+    def restore_line_override(self, index: int, new_price: Decimal, approved_by: Any = None) -> bool:
+        """Restore a previously approved price override without re-prompting or logging as a new override."""
+        if 0 <= index < len(self.items):
+            item = self.items[index]
+            item["unit_price"] = Decimal(str(new_price))
+            item["is_manual_price"] = True
+            item["override_approved_by"] = approved_by
+            self._recalculate_line(item)
+            return True
+        return False
+
+    def restore_line_discount(self, index: int, type: str, value: Decimal):
+        """Restore an already approved line discount without re-validating the cap."""
+        if 0 <= index < len(self.items):
+            item = self.items[index]
+            item["discount_type"] = type
+            item["discount_value"] = Decimal(str(value))
+            self._recalculate_line(item)
+
+    def restore_cart_discount(self, type: str, value: Decimal):
+        """Restore an already approved cart discount without re-validating the cap."""
+        self.cart_discount_type = type
+        self.cart_discount_value = Decimal(str(value))
+
+    def set_line_note(self, index: int, note: str | None):
+        """Set or clear a note for a specific line item."""
+        if 0 <= index < len(self.items):
+            self.items[index]["note"] = (note or "").strip() or None
 
     def _validate_discount_cap(
         self, discount_type: str, discount_value: Decimal, reference_amount: Decimal = None
@@ -313,7 +345,7 @@ class CartService:
         with Database().get_session() as session:
             return bool(session.scalar(stmt))
 
-    def get_totals(self) -> dict[str, Any]:
+    def get_totals(self, loyalty_points: int | None = None, has_customer: bool | None = None) -> dict[str, Any]:
         """Return the cart totals."""
         from cbpos.core.services.config_service import ConfigService
         from cbpos.core.services.tax_service import TaxService
@@ -333,12 +365,17 @@ class CartService:
         after_cart_discount = subtotal - cart_discount_amt
 
         # 2b. Apply Loyalty Redemption Discount (ADR-0002)
+        # Loyalty redemption only applies when a customer is attached
+        customer_present = (self._customer is not None) if has_customer is None else has_customer
+        points_to_redeem = self.loyalty_points_redeemed if loyalty_points is None else max(0, int(loyalty_points or 0))
         loyalty_discount_amt = Decimal("0.00")
-        if self.loyalty_points_redeemed > 0:
+        if customer_present and points_to_redeem > 0:
             from cbpos.core.services.loyalty_service import LoyaltyService
 
-            redeem_val = LoyaltyService.calculate_redeem_value(self.loyalty_points_redeemed)
+            redeem_val = LoyaltyService.calculate_redeem_value(points_to_redeem)
             loyalty_discount_amt = min(redeem_val, after_cart_discount)
+        else:
+            points_to_redeem = 0
 
         final_total = after_cart_discount - loyalty_discount_amt
 
@@ -372,7 +409,7 @@ class CartService:
             "subtotal": subtotal.quantize(Precision.MONEY),
             "cart_discount": cart_discount_amt.quantize(Precision.MONEY),
             "loyalty_discount": loyalty_discount_amt.quantize(Precision.MONEY),
-            "loyalty_points_redeemed": self.loyalty_points_redeemed,
+            "loyalty_points_redeemed": points_to_redeem,
             "final_total": final_total.quantize(Precision.MONEY),
             "tax_vat": tax_info["vat"],
             "tax_sscl": tax_info["sscl"],

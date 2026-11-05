@@ -5,6 +5,7 @@ LoyaltyService: domain rules for earning, reversing, and tracking loyalty points
 import json
 import logging
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -66,6 +67,17 @@ class LoyaltyService:
         return (Decimal(points) * point_val).quantize(Decimal("0.01"))
 
     @staticmethod
+    def min_redeem_points() -> int:
+        """Return the minimum number of loyalty points required to redeem."""
+        val = ConfigService.get("loyalty_min_redeem_points")
+        if val is None:
+            val = ConfigService.get("loyalty_minimum_redeem")
+        try:
+            return int(float(val or 0))
+        except (ValueError, TypeError):
+            return 0
+
+    @staticmethod
     def can_redeem_points(
         customer: Customer | int | None,
         points: int,
@@ -110,7 +122,7 @@ class LoyaltyService:
         if points > available_points:
             return False, "insufficient_points"
 
-        min_redeem = int(ConfigService.get("loyalty_minimum_redeem") or 0)
+        min_redeem = LoyaltyService.min_redeem_points()
         if min_redeem > 0 and points < min_redeem:
             return False, "below_minimum"
 
@@ -120,6 +132,34 @@ class LoyaltyService:
             return False, "exceeds_bill"
 
         return True, ""
+
+    @staticmethod
+    def validate_redemption(
+        arg1: Any,
+        arg2: Any = None,
+        bill_total: Decimal = Decimal("999999.00"),
+        session: Session | None = None,
+    ) -> None:
+        """Validate loyalty redemption; raises ValueError if not eligible.
+
+        Accepts either:
+            validate_redemption(points: int)
+            validate_redemption(customer, points: int, bill_total: Decimal = ...)
+        """
+        if isinstance(arg1, int) and (arg2 is None or isinstance(arg2, Customer)):
+            points = arg1
+            customer = arg2
+        else:
+            customer = arg1
+            points = int(arg2 or 0)
+
+        min_redeem = LoyaltyService.min_redeem_points()
+        if min_redeem > 0 and points < min_redeem:
+            raise ValueError("Loyalty redemption failed: below_minimum")
+
+        can_redeem, reason = LoyaltyService.can_redeem_points(customer, points, bill_total, session=session)
+        if not can_redeem:
+            raise ValueError(f"Loyalty redemption failed: {reason}")
 
     @staticmethod
     def record_sale_points(session: Session, sale: Sale) -> LoyaltyLedgerEntry | None:
@@ -254,27 +294,30 @@ class LoyaltyService:
             return None
 
         current_points = customer.loyalty_points or 0
-        new_points = current_points - points_to_reverse
+        removed = min(points_to_reverse, current_points)
 
-        if new_points < 0:
+        if points_to_reverse > current_points:
             logger.warning(
-                "Loyalty reversal: customer %d points would drop below zero (%d - %d = %d); clamped to 0",
+                "Loyalty reversal: customer %d points would drop below zero (%d - %d = %d); removed %d",
                 customer.id,
                 current_points,
                 points_to_reverse,
-                new_points,
+                current_points - points_to_reverse,
+                removed,
             )
-            customer.loyalty_points = 0
+            note = f"{reason.title()} of {sale.document_number} (requested {points_to_reverse}, removed {removed}; {points_to_reverse - removed} already spent)"
         else:
-            customer.loyalty_points = new_points
+            note = f"{reason.title()} of {sale.document_number}"
+
+        customer.loyalty_points = current_points - removed
 
         entry = LoyaltyLedgerEntry(
             customer_id=customer.id,
             entry_type="REVERSAL",
-            points=-points_to_reverse,
+            points=-removed,
             balance_after=customer.loyalty_points,
             reference_id=sale.id,
-            note=f"{reason.title()} of {sale.document_number}",
+            note=note,
         )
         session.add(entry)
         return entry
@@ -290,6 +333,9 @@ class LoyaltyService:
 
         Returns:
             The created LoyaltyLedgerEntry or None if points <= 0 or customer not found.
+
+        Raises:
+            ValueError: If customer balance is insufficient.
         """
         if points <= 0 or not sale.customer_id:
             return None
@@ -299,10 +345,11 @@ class LoyaltyService:
             logger.warning("record_redemption: Customer %d not found", sale.customer_id)
             return None
 
-        customer.loyalty_points = (customer.loyalty_points or 0) - points
-        if customer.loyalty_points < 0:
-            logger.warning("Loyalty redemption: customer %d points would drop below zero; clamped to 0", customer.id)
-            customer.loyalty_points = 0
+        current_points = customer.loyalty_points or 0
+        if points > current_points:
+            raise ValueError("insufficient_points")
+
+        customer.loyalty_points = current_points - points
 
         entry = LoyaltyLedgerEntry(
             customer_id=customer.id,

@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Callable
 from decimal import Decimal
 
 from PyQt6.QtCore import QSize, Qt
@@ -37,13 +38,20 @@ class PaymentDialog(QDialog):
     """Dialog for splitting checkout payment across one or more methods (cash, card, credit, etc.) and confirming
     the sale."""
 
-    def __init__(self, total_amount: Decimal, parent=None, customer=None):
+    def __init__(
+        self,
+        total_amount: Decimal,
+        parent=None,
+        customer=None,
+        on_finish: Callable[["PaymentDialog"], bool] | None = None,
+    ):
         """Initialize the dialog for the given total, load payment methods, and disable the parent's Enter
         shortcuts while this dialog is open."""
         super().__init__(parent)
         self.total_amount = total_amount
         self.customer = customer
         self.customer_id = customer.id if customer else None
+        self._on_finish = on_finish
         self._loyalty_points_redeemed = 0
         self._loyalty_discount_value = Decimal("0.00")
         self.payments = []  # List of {'method': str, 'amount': Decimal}
@@ -521,7 +529,7 @@ class PaymentDialog(QDialog):
                 self.txt_amount.setText(f"{remaining:.2f}")
                 self.add_payment()
                 if self.get_remaining_amount() <= 0:
-                    self.accept()
+                    self._finish_sale()
 
     def _update_loyalty_display(self):
         """Update loyalty card display based on attached customer and points."""
@@ -606,7 +614,13 @@ class PaymentDialog(QDialog):
             )
             return
 
-        min_redeem = int(ConfigService.get("loyalty_minimum_redeem") or 0)
+        from cbpos.core.services.loyalty_service import LoyaltyService
+
+        min_redeem = LoyaltyService.min_redeem_points()
+        if min_redeem > 0 and pts < min_redeem:
+            QMessageBox.warning(self, _t("common.error"), _t("payment.loyalty_err_min_redeem", min=min_redeem))
+            return
+
         max_val_str = format_currency(Decimal(max_points) * point_val)
         points, ok = QInputDialog.getInt(
             self,
@@ -621,10 +635,9 @@ class PaymentDialog(QDialog):
             self.apply_loyalty_redemption(points)
 
     def _show_loyalty_error(self, reason: str, points: int):
-        from cbpos.core.services.config_service import ConfigService
         from cbpos.core.services.loyalty_service import LoyaltyService
 
-        min_redeem = int(ConfigService.get("loyalty_minimum_redeem") or 0)
+        min_redeem = LoyaltyService.min_redeem_points()
         available = (self.customer.loyalty_points or 0) if self.customer else 0
         val_str = format_currency(LoyaltyService.calculate_redeem_value(points))
         tot_str = format_currency(self.total_amount)
@@ -863,9 +876,20 @@ class PaymentDialog(QDialog):
             self.txt_amount.setText(current + ".")
 
     def _finish_sale(self) -> None:
-        """Disable finish button to prevent double-click, then accept."""
+        """Disable finish button to prevent double-click, execute on_finish, then accept on success."""
         self.btn_finish.setEnabled(False)
-        self.accept()
+        if self._on_finish is not None:
+            try:
+                success = self._on_finish(self)
+            except Exception:
+                self.btn_finish.setEnabled(True)
+                raise
+            if success:
+                self.accept()
+            else:
+                self.btn_finish.setEnabled(True)
+        else:
+            self.accept()
 
     @property
     def loyalty_points_redeemed(self) -> int:

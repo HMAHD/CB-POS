@@ -394,6 +394,7 @@ class ConfigService:
                         cls._settings[key] = cls._decode_sensitive(cls._settings[key], key_name=key)
                 changed = cls._migrate_receipt_printer(cls._settings)
                 changed = cls._clear_demo_bank_details(cls._settings) or changed
+                changed = cls._migrate_loyalty_keys(cls._settings) or changed
                 if "setup_completed" not in cls._settings:
                     cls._settings["setup_completed"] = True
                     changed = True
@@ -425,6 +426,7 @@ class ConfigService:
                                 cls._settings[key] = cls._decode_sensitive(cls._settings[key], key_name=key)
                         cls._migrate_receipt_printer(cls._settings)
                         cls._clear_demo_bank_details(cls._settings)
+                        cls._migrate_loyalty_keys(cls._settings)
                         if "setup_completed" not in cls._settings:
                             cls._settings["setup_completed"] = True
                         cls._recovery_reason = "restored_from_backup"
@@ -519,6 +521,22 @@ class ConfigService:
         return changed
 
     @classmethod
+    def _migrate_loyalty_keys(cls, settings: dict[str, Any]) -> bool:
+        """Migrate legacy loyalty setting keys to standard names (#801).
+
+        - 'loyalty_minimum_redeem' or 'min_redeem_points' -> 'loyalty_min_redeem_points'
+        """
+        changed = False
+        legacy_keys = ("loyalty_minimum_redeem", "min_redeem_points")
+        for key in legacy_keys:
+            if key in settings:
+                if "loyalty_min_redeem_points" not in settings:
+                    settings["loyalty_min_redeem_points"] = settings[key]
+                del settings[key]
+                changed = True
+        return changed
+
+    @classmethod
     def save(cls, *, raise_errors: bool = False):
         """Save current settings to file with sensitive values encoded.
 
@@ -578,6 +596,8 @@ class ConfigService:
         """
         if not cls._settings:
             cls.load()
+        if key in ("loyalty_minimum_redeem", "min_redeem_points"):
+            key = "loyalty_min_redeem_points"
         resolved = cls._terminal_key(key)
         return cls._settings.get(resolved, cls.DEFAULTS.get(key))
 
@@ -590,6 +610,8 @@ class ConfigService:
         """
         if not cls._settings:
             cls.load()
+        if key in ("loyalty_minimum_redeem", "min_redeem_points"):
+            key = "loyalty_min_redeem_points"
         store_key = key
         if key in cls._PER_TERMINAL_KEYS:
             db_mode = cls._settings.get("db_mode", "standalone")

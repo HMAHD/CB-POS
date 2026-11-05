@@ -60,9 +60,9 @@ def test_a_sale_whose_commit_fails_prints_nothing_and_opens_no_drawer(db_session
     payments = [{"method": "CASH", "amount": Decimal("200")}]
 
     with patch.object(db_session, "commit", side_effect=RuntimeError("disk full")):
-        sale = TransactionService.process_sale(cart, payments)
+        with pytest.raises(RuntimeError):
+            TransactionService.process_sale(cart, payments)
 
-    assert sale is None
     assert peripherals.events == []
 
 

@@ -28,7 +28,12 @@ TILL_B = "TERM-03"
 @pytest.fixture
 def shop(tmp_path):
     with isolated_settings(
-        str(tmp_path), terminal_id=TILL_A, terminal_mode="terminal", enable_loyalty=True, loyalty_points_ratio=100
+        str(tmp_path),
+        terminal_id=TILL_A,
+        terminal_mode="terminal",
+        enable_loyalty=True,
+        loyalty_points_ratio=100,
+        loyalty_min_redeem_points=0,
     ):
         s = Shop(str(tmp_path))
         s.add_till(TILL_A)

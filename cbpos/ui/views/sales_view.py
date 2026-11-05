@@ -24,6 +24,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from sqlalchemy.exc import OperationalError
 
 from cbpos.config import Config
 from cbpos.core.services.auth_service import AuthService
@@ -1049,15 +1050,17 @@ class SalesView(QWidget):
         if self.side_menu.isVisible():
             self.toggle_side_menu()
 
-        dialog = PaymentDialog(totals["final_total"], self, customer=self.customer)
-        if dialog.exec():
-            payments, dialog_customer_id = dialog.payment_data
+        sale_completed = False
+
+        def _on_payment_finish(dialog_ref: PaymentDialog) -> bool:
+            nonlocal sale_completed
+            payments, dialog_customer_id = dialog_ref.payment_data
             customer_id = dialog_customer_id or (self.customer.id if self.customer else None)
             if dialog_customer_id and (not self.customer or self.customer.id != dialog_customer_id):
                 chosen_customer = self.customer_service.get_customer_by_id(dialog_customer_id)
                 if chosen_customer:
                     self.set_customer(chosen_customer)
-            redeemed_points = dialog.loyalty_points_redeemed
+            redeemed_points = getattr(dialog_ref, "loyalty_points_redeemed", 0)
 
             self._processing = True
             try:
@@ -1077,16 +1080,49 @@ class SalesView(QWidget):
                         self._pending_proforma_id = None
 
                     self._finalize_sale(sale)
+                    sale_completed = True
+                    return True
+                else:
+                    QMessageBox.critical(
+                        dialog_ref,
+                        _t("common.error"),
+                        _t("sales.transaction_failed", reason=_t("errors.unknown_error")),
+                    )
+                    return False
             except ValueError as e:
                 logger.warning("Payment validation failed: %s", e)
-                QMessageBox.warning(self, _t("sales.validation_error"), translate_error(str(e)))
+                QMessageBox.warning(dialog_ref, _t("sales.validation_error"), translate_error(str(e)))
+                return False
+            except OperationalError as e:
+                logger.exception("Database operational error during sale: %s", e)
+                reason = _t("errors.db_connection_lost")
+                QMessageBox.critical(
+                    dialog_ref,
+                    _t("common.error"),
+                    _t("sales.transaction_failed", reason=reason),
+                )
+                return False
             except Exception as e:
                 logger.exception("Transaction processing failed: %s", e)
+                reason = translate_error(str(e))
                 QMessageBox.critical(
-                    self, _t("common.error"), _t("sales.transaction_failed", error=translate_error(str(e)))
+                    dialog_ref,
+                    _t("common.error"),
+                    _t("sales.transaction_failed", reason=reason),
                 )
+                return False
             finally:
                 self._processing = False
+
+        dialog = PaymentDialog(
+            totals["final_total"],
+            self,
+            customer=self.customer,
+            on_finish=_on_payment_finish,
+        )
+        accepted = dialog.exec()
+        if accepted and not sale_completed:
+            _on_payment_finish(dialog)
         self._focus_search()
 
     def hold_bill(self):
@@ -1142,7 +1178,8 @@ class SalesView(QWidget):
             self._focus_search()
             return
 
-        if SuspendedTransactionService.recall_bill(suspended.id, self.cart_service):
+        result = SuspendedTransactionService.recall_bill(suspended.id, self.cart_service)
+        if result:
             # recall_bill() already restored (or cleared) the customer on
             # cart_service itself -- sync this view's own display state
             # (the action panel, self.customer) to match.
@@ -1155,7 +1192,18 @@ class SalesView(QWidget):
             self.order_bar.set_active_bill(suspended.id)
             self.update_cart_display()
             self.order_bar.refresh_tabs()
-            QMessageBox.information(self, _t("orders.recalled_title"), _t("orders.recalled_message", id=suspended.id))
+            notices = getattr(result, "notices", [])
+            if notices:
+                bullet_lines = "\n".join(f"• {n}" for n in notices)
+                QMessageBox.information(
+                    self,
+                    _t("orders.recall_notices_title"),
+                    f"{_t('orders.recalled_message', id=suspended.id)}\n\n{bullet_lines}",
+                )
+            else:
+                QMessageBox.information(
+                    self, _t("orders.recalled_title"), _t("orders.recalled_message", id=suspended.id)
+                )
         else:
             QMessageBox.critical(self, _t("common.error"), _t("orders.recall_error"))
         self._focus_search()
@@ -1512,10 +1560,25 @@ class SalesView(QWidget):
             self.cart_service.clear()
 
         # 2. Recall Target
-        if SuspendedTransactionService.recall_bill(suspended_id, self.cart_service):
+        result = SuspendedTransactionService.recall_bill(suspended_id, self.cart_service)
+        if result:
+            recalled_customer = self.cart_service.get_customer()
+            if recalled_customer:
+                self.set_customer(recalled_customer)
+            else:
+                self.clear_customer()
+
             self.order_bar.set_active_bill(suspended_id)
             self.update_cart_display()
             self.order_bar.refresh_tabs()
+            notices = getattr(result, "notices", [])
+            if notices:
+                bullet_lines = "\n".join(f"• {n}" for n in notices)
+                QMessageBox.information(
+                    self,
+                    _t("orders.recall_notices_title"),
+                    bullet_lines,
+                )
         else:
             QMessageBox.warning(self, _t("common.error"), _t("orders.recall_taken_error"))
             self.order_bar.refresh_tabs()
@@ -1681,13 +1744,30 @@ class SalesView(QWidget):
             sale = TransactionService.process_sale(self.cart_service, payments, customer_id)
             if sale:
                 self._finalize_sale(sale)
+            else:
+                QMessageBox.critical(
+                    self,
+                    _t("common.error"),
+                    _t("sales.transaction_failed", reason=_t("errors.unknown_error")),
+                )
         except ValueError as e:
             logger.warning("Quick cash validation failed: %s", e)
             QMessageBox.warning(self, _t("sales.validation_error"), translate_error(str(e)))
+        except OperationalError as e:
+            logger.exception("Database operational error during quick cash: %s", e)
+            reason = _t("errors.db_connection_lost")
+            QMessageBox.critical(
+                self,
+                _t("common.error"),
+                _t("sales.transaction_failed", reason=reason),
+            )
         except Exception as e:
             logger.exception("Quick cash transaction failed: %s", e)
+            reason = translate_error(str(e))
             QMessageBox.critical(
-                self, _t("common.error"), _t("sales.transaction_failed", error=translate_error(str(e)))
+                self,
+                _t("common.error"),
+                _t("sales.transaction_failed", reason=reason),
             )
         finally:
             self._processing = False

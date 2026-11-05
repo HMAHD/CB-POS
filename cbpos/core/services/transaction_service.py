@@ -107,8 +107,8 @@ class TransactionService:
         except ValueError:
             raise
         except Exception as e:
-            logger.error("Failed to process sale: %s", e)
-            return None
+            logger.exception("Failed to process sale: %s", e)
+            raise
 
     @staticmethod
     def _fetch_composite_map(session: Session, product_ids: list) -> dict:
@@ -543,10 +543,10 @@ class TransactionService:
                 )
                 if not can_redeem:
                     raise ValueError(f"Loyalty redemption failed: {reason}")
-                cart_service.set_loyalty_redemption(loyalty_points_redeemed)
 
             # 1. Validate payment, stock and cashier
-            totals = cart_service.get_totals()
+            has_cust = bool(customer_id or cart_service.get_customer())
+            totals = cart_service.get_totals(loyalty_points=loyalty_points_redeemed, has_customer=has_cust)
             total_amount = totals["final_total"]
 
             # Resolve payment method kinds and validate payment methods exist

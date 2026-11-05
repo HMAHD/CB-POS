@@ -273,3 +273,118 @@ def test_reversal_never_below_zero_silently(db_session, test_user, customer, pro
 
         # Not silent: logged warning
         assert any("below zero" in record.message.lower() for record in caplog.records)
+
+
+def test_issue_853_failed_sale_leaves_no_redemption_on_cart(db_session, test_user, customer, product):
+    """If a sale with loyalty redemption fails, cart redemption must not be mutated (#853)."""
+    db_session.commit()
+    with Database().get_session() as session:
+        c = session.get(Customer, customer.id)
+        c.loyalty_points = 500
+        session.commit()
+
+    with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user):
+        cart = CartService()
+        cart.set_customer(customer)
+        # Attempt to sell more quantity than in stock to force stock failure
+        cart.add_item(product, qty=Decimal("500.0"))
+        payments = [{"method": "CASH", "amount": Decimal("10000.00")}]
+
+        with pytest.raises(ValueError):
+            TransactionService.process_sale(cart, payments, customer_id=customer.id, loyalty_points_redeemed=100)
+
+        assert cart.loyalty_points_redeemed == 0
+
+
+def test_issue_853_walk_in_cart_has_no_loyalty_discount(product):
+    """A walk-in cart (customer=None) must never apply loyalty discount in get_totals (#853)."""
+    product.price = Decimal("1250.00")
+    cart = CartService()
+    cart.add_item(product, qty=Decimal("1.0"))
+    # Even if loyalty_points_redeemed is set on the cart
+    cart.loyalty_points_redeemed = 100
+    totals = cart.get_totals()
+    assert totals["loyalty_discount"] == Decimal("0.00")
+    assert totals["loyalty_points_redeemed"] == 0
+
+    # Also test set_customer(None) resets loyalty_points_redeemed
+    cart.loyalty_points_redeemed = 100
+    cart.set_customer(None)
+    assert cart.loyalty_points_redeemed == 0
+
+
+def test_issue_913_reversal_below_zero_ledger_matches_balance(db_session, test_user, customer, product):
+    """When a reversal would take customer below 0, ledger row matches actual points removed (#913)."""
+    from sqlalchemy import func
+
+    db_session.commit()
+    # Customer starts with opening 500
+    with Database().get_session() as session:
+        c = session.get(Customer, customer.id)
+        c.loyalty_points = 500
+        session.commit()
+
+    with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user):
+        # Sale A: earn 10 points (1000.00 bill with ratio 100)
+        product.price = Decimal("1000.00")
+        cart_a = CartService()
+        cart_a.add_item(product, qty=Decimal("1.0"))
+        sale_a = TransactionService.process_sale(
+            cart_a, [{"method": "CASH", "amount": Decimal("1000.00")}], customer_id=customer.id
+        )
+        assert sale_a.loyalty_points_earned == 10
+
+        db_session.refresh(customer)
+        assert customer.loyalty_points == 510
+
+        # Sale B: redeem 510 points
+        cart_b = CartService()
+        cart_b.set_customer(customer)
+        cart_b.add_item(product, qty=Decimal("1.0"))
+        sale_b = TransactionService.process_sale(
+            cart_b,
+            [{"method": "CASH", "amount": Decimal("490.00")}],
+            customer_id=customer.id,
+            loyalty_points_redeemed=510,
+        )
+        assert sale_b.loyalty_points_redeemed == 510
+
+        db_session.refresh(customer)
+        # Customer has 4 points earned from Sale B (490 / 100 = 4)
+        assert customer.loyalty_points == 4
+
+        # Refund Sale A: would reverse 10 points, but customer only has 4 points left
+        refund_a = TransactionService.process_refund(sale_a.id, "Refund A", test_user.id)
+        assert refund_a is not None
+
+        db_session.refresh(customer)
+        assert customer.loyalty_points == 0
+
+        # Invariant: customer.loyalty_points == opening (500) + sum(ledger entries)
+        ledger_sum = db_session.query(func.sum(LoyaltyLedgerEntry.points)).filter_by(customer_id=customer.id).scalar()
+        assert 500 + ledger_sum == customer.loyalty_points
+
+
+def test_issue_913_redemption_over_balance_raises(db_session, test_user, customer, product):
+    """record_redemption raises ValueError('insufficient_points') if points > customer balance (#913)."""
+    from cbpos.core.models import Sale
+    from cbpos.core.services.loyalty_service import LoyaltyService
+
+    with Database().get_session() as session:
+        c = session.get(Customer, customer.id)
+        c.loyalty_points = 50
+        session.commit()
+
+    with Database().get_session() as session:
+        sale = Sale(
+            document_number="INV-TEST-001",
+            customer_id=customer.id,
+            user_id=test_user.id,
+            payment_method="CASH",
+            total_amount=Decimal("100.00"),
+        )
+        session.add(sale)
+        session.flush()
+
+        with pytest.raises(ValueError, match="insufficient_points"):
+            LoyaltyService.record_redemption(session, sale, 100)

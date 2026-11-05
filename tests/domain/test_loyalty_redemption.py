@@ -201,14 +201,16 @@ class TestCartServiceLoyaltyDiscount:
     """Test CartService integration with loyalty redemption discount."""
 
     def test_cart_loyalty_redemption_reduces_final_total(self, db_session: Session):
-        from cbpos.core.models import Product
+        from cbpos.core.models import Customer, Product
         from cbpos.core.services.cart_service import CartService
 
         product = Product(name_en="Test Item", price=Decimal("1000.00"), stock_qty=50.0, barcode="TEST001")
-        db_session.add(product)
+        customer = Customer(name="Loyal Cust", phone="0770001111", loyalty_points=500)
+        db_session.add_all([product, customer])
         db_session.flush()
 
         cart = CartService()
+        cart.set_customer(customer)
         cart.add_item(product, Decimal("1"))
         cart.set_loyalty_redemption(200)
 
@@ -219,14 +221,16 @@ class TestCartServiceLoyaltyDiscount:
         assert totals["final_total"] == Decimal("800.00")
 
     def test_cart_loyalty_discount_combined_with_cart_discount(self, db_session: Session):
-        from cbpos.core.models import Product
+        from cbpos.core.models import Customer, Product
         from cbpos.core.services.cart_service import CartService
 
         product = Product(name_en="Test Item 2", price=Decimal("1000.00"), stock_qty=50.0, barcode="TEST002")
-        db_session.add(product)
+        customer = Customer(name="Loyal Cust 2", phone="0770002222", loyalty_points=500)
+        db_session.add_all([product, customer])
         db_session.flush()
 
         cart = CartService()
+        cart.set_customer(customer)
         cart.add_item(product, Decimal("1"))
         cart.apply_cart_discount("FIXED", Decimal("100.00"))
         cart.set_loyalty_redemption(200)
@@ -438,3 +442,38 @@ class TestTransactionServiceLoyaltyRedemption:
             db_session.refresh(loyalty_customer)
             # Reversal of 9 earned points (-9) and return of 100 redeemed points (+100) -> 300
             assert loyalty_customer.loyalty_points == 300
+
+
+def test_issue_801_min_redeem_enforced():
+    """Redeeming fewer points than loyalty_min_redeem_points is rejected (#801)."""
+    from cbpos.core.services.loyalty_service import LoyaltyService
+
+    ConfigService.set("enable_loyalty", True)
+    ConfigService.set("loyalty_min_redeem_points", 100)
+    assert LoyaltyService.min_redeem_points() == 100
+
+    with pytest.raises(ValueError, match="below_minimum"):
+        LoyaltyService.validate_redemption(50)
+
+
+def test_issue_801_legacy_key_migrated(tmp_path, monkeypatch):
+    """Legacy loyalty_minimum_redeem and min_redeem_points migrate to loyalty_min_redeem_points (#801)."""
+    import json
+
+    settings_file = tmp_path / "settings.json"
+    legacy_settings = {
+        "loyalty_minimum_redeem": 75,
+        "enable_loyalty": True,
+    }
+    settings_file.write_text(json.dumps(legacy_settings), encoding="utf-8")
+
+    monkeypatch.setattr(ConfigService, "SETTINGS_FILE", str(settings_file))
+    ConfigService.load()
+
+    assert ConfigService.get("loyalty_min_redeem_points") == 75
+    assert ConfigService.get("loyalty_minimum_redeem") == 75
+
+    # Check file was updated and legacy key removed
+    reloaded = json.loads(settings_file.read_text(encoding="utf-8"))
+    assert reloaded.get("loyalty_min_redeem_points") == 75
+    assert "loyalty_minimum_redeem" not in reloaded

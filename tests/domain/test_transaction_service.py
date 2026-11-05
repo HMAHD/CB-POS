@@ -138,11 +138,10 @@ def test_process_sale_rollback_on_error(db_session, test_user, test_product):
 
         with patch(
             "cbpos.core.services.transaction_service.SaleItem",
-            side_effect=Exception("DB Error"),
+            side_effect=RuntimeError("DB Error"),
         ):
-            result = TransactionService.process_sale(cart_service, payments)
-
-            assert result is None
+            with pytest.raises(RuntimeError):
+                TransactionService.process_sale(cart_service, payments)
 
             db_session.refresh(test_product)
             assert test_product.stock_qty == 10.0
@@ -699,3 +698,25 @@ def test_issue_915_process_refund_on_refunded_sale_raises(db_session, test_user,
         # Second refund must raise ValueError, not return False
         with pytest.raises(ValueError):
             TransactionService.process_refund(sale.id, "Return again", test_user.id)
+
+
+def test_issue_892_operational_error_propagates(db_session, test_user, test_product):
+    """Unexpected database error during sale must propagate out of process_sale (#892)."""
+    from sqlalchemy.exc import OperationalError
+
+    test_product.price = Decimal("100.00")
+    test_product.cost = Decimal("50.00")
+    db_session.commit()
+
+    with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user):
+        cart = CartService()
+        cart.add_item(test_product, qty=Decimal("1.0"))
+        payments = [{"method": "Cash", "amount": Decimal("100.00")}]
+
+        with patch.object(
+            TransactionService,
+            "_execute_sale",
+            side_effect=OperationalError("SELECT", {}, Exception("database locked")),
+        ):
+            with pytest.raises(OperationalError):
+                TransactionService.process_sale(cart, payments)

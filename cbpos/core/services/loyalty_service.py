@@ -294,27 +294,30 @@ class LoyaltyService:
             return None
 
         current_points = customer.loyalty_points or 0
-        new_points = current_points - points_to_reverse
+        removed = min(points_to_reverse, current_points)
 
-        if new_points < 0:
+        if points_to_reverse > current_points:
             logger.warning(
-                "Loyalty reversal: customer %d points would drop below zero (%d - %d = %d); clamped to 0",
+                "Loyalty reversal: customer %d points would drop below zero (%d - %d = %d); removed %d",
                 customer.id,
                 current_points,
                 points_to_reverse,
-                new_points,
+                current_points - points_to_reverse,
+                removed,
             )
-            customer.loyalty_points = 0
+            note = f"{reason.title()} of {sale.document_number} (requested {points_to_reverse}, removed {removed}; {points_to_reverse - removed} already spent)"
         else:
-            customer.loyalty_points = new_points
+            note = f"{reason.title()} of {sale.document_number}"
+
+        customer.loyalty_points = current_points - removed
 
         entry = LoyaltyLedgerEntry(
             customer_id=customer.id,
             entry_type="REVERSAL",
-            points=-points_to_reverse,
+            points=-removed,
             balance_after=customer.loyalty_points,
             reference_id=sale.id,
-            note=f"{reason.title()} of {sale.document_number}",
+            note=note,
         )
         session.add(entry)
         return entry
@@ -330,6 +333,9 @@ class LoyaltyService:
 
         Returns:
             The created LoyaltyLedgerEntry or None if points <= 0 or customer not found.
+
+        Raises:
+            ValueError: If customer balance is insufficient.
         """
         if points <= 0 or not sale.customer_id:
             return None
@@ -339,10 +345,11 @@ class LoyaltyService:
             logger.warning("record_redemption: Customer %d not found", sale.customer_id)
             return None
 
-        customer.loyalty_points = (customer.loyalty_points or 0) - points
-        if customer.loyalty_points < 0:
-            logger.warning("Loyalty redemption: customer %d points would drop below zero; clamped to 0", customer.id)
-            customer.loyalty_points = 0
+        current_points = customer.loyalty_points or 0
+        if points > current_points:
+            raise ValueError("insufficient_points")
+
+        customer.loyalty_points = current_points - points
 
         entry = LoyaltyLedgerEntry(
             customer_id=customer.id,

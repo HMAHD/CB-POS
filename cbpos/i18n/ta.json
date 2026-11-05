@@ -197,7 +197,7 @@
     "printer_notice_setup": "பிரிண்டரை செட் பண்ணுங்க",
     "printer_notice_dismiss": "மூடு",
     "validation_error": "தப்பான உள்ளீடு",
-    "transaction_failed": "பரிவர்த்தனை தோல்வி: {error}",
+    "transaction_failed": "விற்பனை சேமிக்கப்படவில்லை. பொருட்களைக் கொடுக்க வேண்டாம். {reason} மீண்டும் முயற்சிக்கவும், அல்லது பில்லை நிறுத்தி வைக்கவும் (F6).",
     "calculator_tooltip": "கணிப்பான் (Ctrl+Alt+C)"
   },
   "cart": {

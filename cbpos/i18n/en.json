@@ -197,7 +197,7 @@
     "printer_notice_setup": "Set Up Printer",
     "printer_notice_dismiss": "Dismiss",
     "validation_error": "Validation Error",
-    "transaction_failed": "Transaction failed: {error}",
+    "transaction_failed": "The sale was NOT saved. Don't hand over the goods. {reason} Try again, or hold the bill (F6).",
     "calculator_tooltip": "Calculator (Ctrl+Alt+C)"
   },
   "cart": {

@@ -197,7 +197,7 @@
     "printer_notice_setup": "ප්‍රින්ටරය සකසන්න",
     "printer_notice_dismiss": "වසන්න",
     "validation_error": "වැරදි ඇතුළත් කිරීමක්",
-    "transaction_failed": "ගනුදෙනුව අසාර්ථකයි: {error}",
+    "transaction_failed": "විකිණීම සටහන් වුණේ නැහැ. බඩු දෙන්න එපා. {reason} නැවත උත්සාහ කරන්න, නැත්නම් බිල රඳවන්න (F6).",
     "calculator_tooltip": "ගණක යන්ත්‍රය (Ctrl+Alt+C)"
   },
   "cart": {

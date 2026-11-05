@@ -107,8 +107,8 @@ class TransactionService:
         except ValueError:
             raise
         except Exception as e:
-            logger.error("Failed to process sale: %s", e)
-            return None
+            logger.exception("Failed to process sale: %s", e)
+            raise
 
     @staticmethod
     def _fetch_composite_map(session: Session, product_ids: list) -> dict:

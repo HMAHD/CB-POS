@@ -328,6 +328,8 @@ class SalesTaxPage(SettingsPage):
         # Loyalty
         from cbpos.core.services.config_service import ConfigService
 
+        ConfigService._migrate_loyalty_keys(settings)
+
         enabled = settings.get("enable_loyalty", ConfigService.DEFAULTS["enable_loyalty"])
         self.chk_enable_loyalty.setChecked(bool(enabled))
 
@@ -342,9 +344,7 @@ class SalesTaxPage(SettingsPage):
             val = settings.get("point_value", ConfigService.DEFAULTS["loyalty_point_value"])
         self.spin_point_value.setValue(float(val))
 
-        min_pts = settings.get("loyalty_min_redeem_points")
-        if min_pts is None:
-            min_pts = settings.get("min_redeem_points", ConfigService.DEFAULTS["loyalty_min_redeem_points"])
+        min_pts = settings.get("loyalty_min_redeem_points", ConfigService.DEFAULTS["loyalty_min_redeem_points"])
         self.spin_min_redeem.setValue(int(min_pts))
 
         show_rec = settings.get("show_loyalty_on_receipt")

@@ -442,3 +442,38 @@ class TestTransactionServiceLoyaltyRedemption:
             db_session.refresh(loyalty_customer)
             # Reversal of 9 earned points (-9) and return of 100 redeemed points (+100) -> 300
             assert loyalty_customer.loyalty_points == 300
+
+
+def test_issue_801_min_redeem_enforced():
+    """Redeeming fewer points than loyalty_min_redeem_points is rejected (#801)."""
+    from cbpos.core.services.loyalty_service import LoyaltyService
+
+    ConfigService.set("enable_loyalty", True)
+    ConfigService.set("loyalty_min_redeem_points", 100)
+    assert LoyaltyService.min_redeem_points() == 100
+
+    with pytest.raises(ValueError, match="below_minimum"):
+        LoyaltyService.validate_redemption(50)
+
+
+def test_issue_801_legacy_key_migrated(tmp_path, monkeypatch):
+    """Legacy loyalty_minimum_redeem and min_redeem_points migrate to loyalty_min_redeem_points (#801)."""
+    import json
+
+    settings_file = tmp_path / "settings.json"
+    legacy_settings = {
+        "loyalty_minimum_redeem": 75,
+        "enable_loyalty": True,
+    }
+    settings_file.write_text(json.dumps(legacy_settings), encoding="utf-8")
+
+    monkeypatch.setattr(ConfigService, "SETTINGS_FILE", str(settings_file))
+    ConfigService.load()
+
+    assert ConfigService.get("loyalty_min_redeem_points") == 75
+    assert ConfigService.get("loyalty_minimum_redeem") == 75
+
+    # Check file was updated and legacy key removed
+    reloaded = json.loads(settings_file.read_text(encoding="utf-8"))
+    assert reloaded.get("loyalty_min_redeem_points") == 75
+    assert "loyalty_minimum_redeem" not in reloaded

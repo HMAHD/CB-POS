@@ -614,7 +614,13 @@ class PaymentDialog(QDialog):
             )
             return
 
-        min_redeem = int(ConfigService.get("loyalty_minimum_redeem") or 0)
+        from cbpos.core.services.loyalty_service import LoyaltyService
+
+        min_redeem = LoyaltyService.min_redeem_points()
+        if min_redeem > 0 and pts < min_redeem:
+            QMessageBox.warning(self, _t("common.error"), _t("payment.loyalty_err_min_redeem", min=min_redeem))
+            return
+
         max_val_str = format_currency(Decimal(max_points) * point_val)
         points, ok = QInputDialog.getInt(
             self,
@@ -629,10 +635,9 @@ class PaymentDialog(QDialog):
             self.apply_loyalty_redemption(points)
 
     def _show_loyalty_error(self, reason: str, points: int):
-        from cbpos.core.services.config_service import ConfigService
         from cbpos.core.services.loyalty_service import LoyaltyService
 
-        min_redeem = int(ConfigService.get("loyalty_minimum_redeem") or 0)
+        min_redeem = LoyaltyService.min_redeem_points()
         available = (self.customer.loyalty_points or 0) if self.customer else 0
         val_str = format_currency(LoyaltyService.calculate_redeem_value(points))
         tot_str = format_currency(self.total_amount)

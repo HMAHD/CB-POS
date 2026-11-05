@@ -5,6 +5,7 @@ LoyaltyService: domain rules for earning, reversing, and tracking loyalty points
 import json
 import logging
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -66,6 +67,17 @@ class LoyaltyService:
         return (Decimal(points) * point_val).quantize(Decimal("0.01"))
 
     @staticmethod
+    def min_redeem_points() -> int:
+        """Return the minimum number of loyalty points required to redeem."""
+        val = ConfigService.get("loyalty_min_redeem_points")
+        if val is None:
+            val = ConfigService.get("loyalty_minimum_redeem")
+        try:
+            return int(float(val or 0))
+        except (ValueError, TypeError):
+            return 0
+
+    @staticmethod
     def can_redeem_points(
         customer: Customer | int | None,
         points: int,
@@ -110,7 +122,7 @@ class LoyaltyService:
         if points > available_points:
             return False, "insufficient_points"
 
-        min_redeem = int(ConfigService.get("loyalty_minimum_redeem") or 0)
+        min_redeem = LoyaltyService.min_redeem_points()
         if min_redeem > 0 and points < min_redeem:
             return False, "below_minimum"
 
@@ -120,6 +132,34 @@ class LoyaltyService:
             return False, "exceeds_bill"
 
         return True, ""
+
+    @staticmethod
+    def validate_redemption(
+        arg1: Any,
+        arg2: Any = None,
+        bill_total: Decimal = Decimal("999999.00"),
+        session: Session | None = None,
+    ) -> None:
+        """Validate loyalty redemption; raises ValueError if not eligible.
+
+        Accepts either:
+            validate_redemption(points: int)
+            validate_redemption(customer, points: int, bill_total: Decimal = ...)
+        """
+        if isinstance(arg1, int) and (arg2 is None or isinstance(arg2, Customer)):
+            points = arg1
+            customer = arg2
+        else:
+            customer = arg1
+            points = int(arg2 or 0)
+
+        min_redeem = LoyaltyService.min_redeem_points()
+        if min_redeem > 0 and points < min_redeem:
+            raise ValueError("Loyalty redemption failed: below_minimum")
+
+        can_redeem, reason = LoyaltyService.can_redeem_points(customer, points, bill_total, session=session)
+        if not can_redeem:
+            raise ValueError(f"Loyalty redemption failed: {reason}")
 
     @staticmethod
     def record_sale_points(session: Session, sale: Sale) -> LoyaltyLedgerEntry | None:

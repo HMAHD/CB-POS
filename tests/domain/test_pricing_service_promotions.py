@@ -217,3 +217,14 @@ class TestCartServiceAppliesPromotionsWhenAddingItems:
 
         assert cart.items[0]["unit_price"] == Decimal("150.00")
         assert cart.items[0]["original_price"] == Decimal("200.00")
+
+
+def test_issue_916_calculate_price_two_dp(db_session):
+    """A percentage promotion quantizes final_price to 2 decimal places using round_money (#916)."""
+    product = _make_product(db_session, price="99.99")
+    _make_promotion(db_session, "PERCENTAGE", "15")
+
+    result = PricingService.calculate_price(product)
+    # 99.99 * 0.85 = 84.9915 -> 84.99
+    assert result["final_price"] == Decimal("84.99")
+    assert result["final_price"].as_tuple().exponent == -2

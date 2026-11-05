@@ -811,3 +811,42 @@ def test_issue_855_composite_service_component_skipped(db_session, test_user):
         db_session.refresh(service_comp)
         assert physical.stock_qty == Decimal("4.0")
         assert service_comp.stock_qty == Decimal("0.0")
+
+
+def test_issue_916_saved_line_reconciles(db_session, test_user):
+    """For a 15% promo on 99.99 x 10, stored unit_price * qty == subtotal in SaleItem (#916)."""
+    from datetime import timedelta
+
+    from cbpos.core.models import Promotion
+
+    product = Product(
+        name_en="Promo Product 99.99",
+        price=Decimal("99.99"),
+        stock_qty=Decimal("50.0"),
+        barcode="PROMO-916",
+    )
+    now = datetime.now()
+    promo = Promotion(
+        name="15% Off",
+        type="PERCENTAGE",
+        value=Decimal("15.0"),
+        is_active=True,
+        start_time=now - timedelta(hours=1),
+        end_time=now + timedelta(hours=1),
+    )
+    db_session.add_all([product, promo])
+    db_session.commit()
+
+    with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user):
+        cart = CartService()
+        cart.add_item(product, qty=Decimal("10.000"))
+
+        # Price is rounded to 84.99, so 10 * 84.99 = 849.90
+        sale = TransactionService.process_sale(cart, [{"method": "Cash", "amount": Decimal("849.90")}])
+        assert sale is not None
+
+        item = db_session.query(SaleItem).filter(SaleItem.sale_id == sale.id).first()
+        assert item is not None
+        assert item.unit_price * item.qty == item.subtotal
+        assert item.unit_price == Decimal("84.99")
+        assert item.subtotal == Decimal("849.90")

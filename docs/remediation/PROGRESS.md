@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 3B · Batch: 3B.1 · Branch: none · PR: none · Last session: 2026-11-05
+- Phase: 3B · Batch: 3B.2 · Branch: none · PR: none · Last session: 2026-11-05
 
 ## Issues
 
@@ -93,11 +93,11 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 | # | Title | Sev | Batch | Status | PR | Notes |
 |---|---|---|---|---|---|---|
-| #801 | Loyalty minimum-redeem setting is ignored (config key mismatch, regression of… | medium | 3B.1 | todo | | |
-| #804 | Recalled held bills lose line discounts, price overrides and notes | medium | 3B.1 | todo | | |
-| #853 | A failed sale leaves the loyalty redemption on the cart, so a later walk-in s… | high | 3B.1 | todo | | |
-| #892 | An unexpected error during checkout fails silently: `process_sale` returns No… | medium | 3B.1 | todo | | |
-| #913 | Loyalty reversal and redemption clamp points at 0 but write the unclamped led… | low | 3B.1 | todo | | |
+| #801 | Loyalty minimum-redeem setting is ignored (config key mismatch, regression of… | medium | 3B.1 | done | #992 | e043fd9, 13e3526 · LoyaltyService.min_redeem_points(), ConfigService migration |
+| #804 | Recalled held bills lose line discounts, price overrides and notes | medium | 3B.1 | done | #992 | 238608c · held bill format v2, restore line overrides/discounts/notes, notice on changed price |
+| #853 | A failed sale leaves the loyalty redemption on the cart, so a later walk-in s… | high | 3B.1 | done | #992 | cfd7d3f · don't mutate live cart redemption, ignore redemption if no customer |
+| #892 | An unexpected error during checkout fails silently: `process_sale` returns No… | medium | 3B.1 | done | #992 | d400b8e · propagate checkout errors with logging, PaymentDialog stays open with entered payments |
+| #913 | Loyalty reversal and redemption clamp points at 0 but write the unclamped led… | low | 3B.1 | done | #992 | a098dcc · remove at most current points, ledger matches actual change per ADR 0001 |
 | #792 | "Email receipt" button crashes: EmailService.send_receipt does not exist | high | 3B.2 | todo | | |
 | #793 | F8 / Ctrl+D "Open cash drawer" does nothing under default settings, and is no… | high | 3B.2 | todo | | |
 | #813 | Expose bill-level discount (% or amount) in the sales screen | medium | 3B.2 | todo | | |
@@ -304,5 +304,5 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 |---|---|---|
 
 ## Handoff
-Phase 3A is fully completed and merged (PR #989 for 3A.1, PR #990 for 3A.2, PR #991 for 3A.3). All 14 issues (#802, #885, #854, #834, #850, #851, #852, #887, #849, #888, #847, #848, #812, #915) are verified closed on GitHub. Starting Phase 3B Batch 3B.1 (#801, #804, #853, #892, #913).
+Phase 3B Batch 3B.1 is fully completed and merged (PR #992). All 5 issues (#892, #853, #801, #913, #804) are verified closed on GitHub. Starting Phase 3B Batch 3B.2 (#855, #916, #891, #890, #793, #792, #813).
 

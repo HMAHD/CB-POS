@@ -166,7 +166,7 @@ class TransactionService:
 
             comps = composite_map.get(product_id, [])
             if not comps:
-                if product.stock_qty < qty_needed:
+                if not getattr(product, "is_service", False) and product.stock_qty < qty_needed:
                     raise ValueError(
                         f"Insufficient stock for '{product.name_en}'. "
                         f"Available: {product.stock_qty}, Required: {qty_needed}"
@@ -177,6 +177,9 @@ class TransactionService:
                 child_product = product_map.get(comp.child_product_id)
                 if not child_product:
                     raise ValueError(f"Component product {comp.child_product_id} missing.")
+
+                if getattr(child_product, "is_service", False):
+                    continue
 
                 required_qty = comp.qty * qty_needed
                 if child_product.stock_qty < required_qty:

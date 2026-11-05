@@ -335,7 +335,19 @@
     "pdf_saved_title": "Saved",
     "pdf_saved_message": "Receipt saved to {path}",
     "pdf_error_title": "Save Failed",
-    "pdf_error_message": "Failed to save receipt PDF: {error}"
+    "pdf_error_message": "Failed to save receipt PDF: {error}",
+    "email_sent": "Receipt sent to {email}.",
+    "email_failed": "Couldn't send the email: {reason}. The sale is saved; you can resend it from Sale History.",
+    "email_not_configured": "Email isn't set up. Set it up in Settings → Email."
+  },
+  "receipt": {
+    "email_sent": "Receipt sent to {email}.",
+    "email_failed": "Couldn't send the email: {reason}. The sale is saved; you can resend it from Sale History.",
+    "email_not_configured": "Email isn't set up. Set it up in Settings → Email."
+  },
+  "email": {
+    "receipt_subject": "Your receipt {doc} from {shop}",
+    "receipt_body": "Thank you for shopping at {shop}. Your receipt {doc} is attached.\n\n— Sent by CB POS · {website}"
   },
   "refund": {
     "title": "Process Refund",

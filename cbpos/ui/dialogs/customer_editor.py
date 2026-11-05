@@ -31,6 +31,7 @@ from cbpos.core.services.price_list_service import (
 from cbpos.core.services.tax_service import TaxService
 from cbpos.core.utils.error_messages import translate_error
 from cbpos.core.utils.formatters import format_datetime
+from cbpos.core.utils.validators import is_valid_email
 from cbpos.i18n import _t
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS, WARNING
@@ -50,7 +51,7 @@ from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 logger = logging.getLogger(__name__)
 
 COMMERCIAL_FIELD_MIN_WIDTH = 220
-_RE_EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
 _RE_PHONE_LK = re.compile(r"^(\+94|0)\d{9}$")
 
 
@@ -717,7 +718,7 @@ class CustomerEditor(QDialog):
 
         # Validate email format if provided
         if data.get("email"):
-            if not _RE_EMAIL.match(data["email"]):
+            if not is_valid_email(data["email"]):
                 QMessageBox.warning(self, _t("common.error"), _t("customer_editor.invalid_email"))
                 return
 

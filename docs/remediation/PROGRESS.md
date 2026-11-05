@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 3B · Batch: 3B.2 · Branch: fix/p3b-b2-pos-rules-operator-controls · PR: none · Last session: 2026-11-05
+- Phase: 4 · Batch: 4.1 · Branch: none · PR: none · Last session: 2026-11-05
 
 ## Issues
 
@@ -98,13 +98,13 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #853 | A failed sale leaves the loyalty redemption on the cart, so a later walk-in s… | high | 3B.1 | done | #992 | cfd7d3f · don't mutate live cart redemption, ignore redemption if no customer |
 | #892 | An unexpected error during checkout fails silently: `process_sale` returns No… | medium | 3B.1 | done | #992 | d400b8e · propagate checkout errors with logging, PaymentDialog stays open with entered payments |
 | #913 | Loyalty reversal and redemption clamp points at 0 but write the unclamped led… | low | 3B.1 | done | #992 | a098dcc · remove at most current points, ledger matches actual change per ADR 0001 |
-| #792 | "Email receipt" button crashes: EmailService.send_receipt does not exist | high | 3B.2 | todo | | |
-| #793 | F8 / Ctrl+D "Open cash drawer" does nothing under default settings, and is no… | high | 3B.2 | todo | | |
-| #813 | Expose bill-level discount (% or amount) in the sales screen | medium | 3B.2 | todo | | |
-| #855 | Service products (is_service) cannot be sold under the default "no negative s… | high | 3B.2 | todo | | |
-| #890 | A barcode scan while any modal dialog is open (e.g. Payment) is routed to the… | medium | 3B.2 | todo | | |
-| #891 | A FIXED line discount survives a quantity reduction and can exceed the max-di… | medium | 3B.2 | todo | | |
-| #916 | A percentage promotion leaves an unrounded unit price, so the stored unit pri… | low | 3B.2 | todo | | |
+| #792 | "Email receipt" button crashes: EmailService.send_receipt does not exist | high | 3B.2 | done | #993 | b97d6dc · implement EmailService.send_receipt background worker with A4 invoice PDF and guard unconfigured SMTP |
+| #793 | F8 / Ctrl+D "Open cash drawer" does nothing under default settings, and is no… | high | 3B.2 | done | #993 | f924581, 537720c · permission-gate manual open with override, audit NO_SALE_DRAWER_OPEN, support manual kick payload and classify payment methods |
+| #813 | Expose bill-level discount (% or amount) in the sales screen | medium | 3B.2 | done | #993 | 9a02216, 537720c · BillDiscountDialog with Ctrl+B shortcut, persist discount on sale, display discount row on cart |
+| #855 | Service products (is_service) cannot be sold under the default "no negative s… | high | 3B.2 | done | #993 | 72e899b · allow service items to sell under no negative stock setting |
+| #890 | A barcode scan while any modal dialog is open (e.g. Payment) is routed to the… | medium | 3B.2 | done | #993 | 0fd40de · ignore barcode scans while modal dialog is open in ScannerFilter and SalesView |
+| #891 | A FIXED line discount survives a quantity reduction and can exceed the max-di… | medium | 3B.2 | done | #993 | 5ff604b · scale fixed discounts on quantity changes and guard discount cap |
+| #916 | A percentage promotion leaves an unrounded unit price, so the stored unit pri… | low | 3B.2 | done | #993 | 6849f39 · quantize final_price with round_money to reconcile stored lines |
 
 ### Phase 4 — [spec](phases/phase-04-inventory-purchasing.md)
 
@@ -304,5 +304,5 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 |---|---|---|
 
 ## Handoff
-Phase 3B Batch 3B.1 is fully completed and merged (PR #992). All 5 issues (#892, #853, #801, #913, #804) are verified closed on GitHub. Starting Phase 3B Batch 3B.2 (#855, #916, #891, #890, #793, #792, #813).
+Phase 3B Batch 3B.2 is fully completed and merged (PR #993, d77b10b). All 7 issues (#855, #916, #891, #890, #793, #792, #813) are verified closed on GitHub and ticked in epics #832 and #922. Phase 3B is now completely finished. Ready to start Phase 4 Batch 4.1 (#794, #861, #862, #863).
 

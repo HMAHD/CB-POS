@@ -28,6 +28,7 @@ class ShortcutsHelpDialog(QDialog):
             ("F8", _t("shortcuts.open_drawer")),
             ("F10", _t("shortcuts.process_payment")),
             ("F12", _t("shortcuts.quick_close")),
+            ("Ctrl+B", _t("shortcuts.bill_discount")),
             ("Ctrl+D", _t("shortcuts.open_drawer")),
             ("PgUp", _t("shortcuts.first_cart_item")),
             ("PgDn", _t("shortcuts.last_cart_item")),

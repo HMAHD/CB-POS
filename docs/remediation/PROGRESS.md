@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 3B · Batch: 3B.2 · Branch: none · PR: none · Last session: 2026-11-05
+- Phase: 3B · Batch: 3B.2 · Branch: fix/p3b-b2-pos-rules-operator-controls · PR: none · Last session: 2026-11-05
 
 ## Issues
 

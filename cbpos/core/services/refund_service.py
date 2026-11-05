@@ -16,7 +16,7 @@ import logging
 import math
 from dataclasses import dataclass
 from datetime import datetime
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
 from typing import Literal
 
 from sqlalchemy import case, func, select
@@ -28,7 +28,6 @@ from cbpos.core.constants.status import (
     MovementType,
     PaymentMethodKind,
     PaymentMethodType,
-    Precision,
     ShiftStatus,
 )
 from cbpos.core.database import Database
@@ -49,18 +48,9 @@ from cbpos.core.services.loyalty_service import LoyaltyService
 from cbpos.core.services.payment_service import classify_method_name
 from cbpos.core.services.transaction_service import TransactionService
 from cbpos.core.utils.formatters import format_currency
+from cbpos.core.utils.money import round_money, round_qty
 
 logger = logging.getLogger(__name__)
-
-
-def round_money(val: Decimal) -> Decimal:
-    """Round money value using approved ROUND_HALF_UP helper."""
-    return Decimal(str(val)).quantize(Precision.MONEY, rounding=ROUND_HALF_UP)
-
-
-def round_qty(val: Decimal) -> Decimal:
-    """Round quantity value using approved 3-decimal precision."""
-    return Decimal(str(val)).quantize(Precision.QUANTITY, rounding=ROUND_HALF_UP)
 
 
 @dataclass

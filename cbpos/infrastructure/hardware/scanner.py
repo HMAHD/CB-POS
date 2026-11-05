@@ -64,7 +64,7 @@ class BarcodeScanner(QObject):
         if event.type() == QEvent.Type.KeyPress and obj.isWidgetType():
             if event.key() in (Qt.Key.Key_Return.value, Qt.Key.Key_Enter.value):
                 barcode = self.buffer.strip()
-                is_scan = self._completes_scan(obj)
+                is_scan = self._completes_scan(obj) and QApplication.activeModalWidget() is None
                 self.buffer = ""
                 if is_scan:
                     self.barcode_scanned.emit(barcode)

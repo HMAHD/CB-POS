@@ -7,8 +7,11 @@ from sqlalchemy import select
 
 from cbpos.core.constants.status import Precision
 from cbpos.core.models import Category, Customer, Product
+from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.logging_service import LoggingService
 from cbpos.core.services.pricing_service import PricingService
+from cbpos.core.utils.money import round_money
+from cbpos.i18n import _t
 
 logger = logging.getLogger(__name__)
 
@@ -47,10 +50,9 @@ class CartService:
             raise ValueError("Quantity must be positive")
 
         # Check if product already in cart
-        for item in self.items:
+        for idx, item in enumerate(self.items):
             if item["product"].id == product.id:
-                item["qty"] += qty
-                self._recalculate_line(item)
+                self.update_quantity(idx, item["qty"] + qty)
                 return
 
         # Calculate price using Pricing Engine
@@ -77,18 +79,39 @@ class CartService:
         self._recalculate_line(new_item)
         self.items.append(new_item)
 
-    def update_quantity(self, index: int, qty: Decimal):
+    def update_quantity(self, index: int, qty: Decimal) -> str | None:
         """Change a line's quantity, keeping any existing discount applied.
 
-        Setting item["qty"]/item["total"] directly (as the UI used to)
-        skipped _recalculate_line(), so a discount already on the line
-        stopped being reflected in the charged total the moment the
-        quantity changed, even though the Disc column kept displaying it.
+        TODO(#893): Quantity reduction should be permission-gated and audited.
         """
-        if 0 <= index < len(self.items):
-            item = self.items[index]
-            item["qty"] = Decimal(str(qty))
-            self._recalculate_line(item)
+        if not (0 <= index < len(self.items)):
+            return None
+
+        item = self.items[index]
+        old_qty = item["qty"]
+        new_qty = Decimal(str(qty))
+        if new_qty <= Decimal("0"):
+            raise ValueError("Quantity must be positive")
+
+        item["qty"] = new_qty
+        notice = None
+
+        if item.get("discount_type") == "FIXED" and old_qty > Decimal("0"):
+            old_discount = item["discount_value"]
+            scaled_discount = round_money(old_discount * new_qty / old_qty)
+            gross_line = new_qty * item["unit_price"]
+
+            try:
+                self._validate_discount_cap("FIXED", scaled_discount, reference_amount=gross_line)
+                item["discount_value"] = scaled_discount
+            except ValueError:
+                item["discount_type"] = "NONE"
+                item["discount_value"] = Decimal("0.00")
+                product_name = getattr(item.get("product"), "name_en", "")
+                notice = _t("cart.discount_removed_qty", name=product_name)
+
+        self._recalculate_line(item)
+        return notice
 
     def remove_item(self, index: int):
         """Remove an item by its index in the list."""
@@ -131,12 +154,24 @@ class CartService:
                     details=f"Applied {type} discount ({value}) to '{item['product'].name_en}'",
                 )
 
-    def apply_cart_discount(self, type: str, value: Decimal):
+    def apply_cart_discount(self, type: str, value: Decimal, user: Any = None):
         """Apply discount to the entire cart."""
-        self._validate_discount_cap(type, value)
+        if user is None:
+            self._validate_discount_cap(type, value)
         self.cart_discount_type = type
         self.cart_discount_value = Decimal(str(value))
-        # No line recalculation needed, just totals
+        if user is not None:
+            LoggingService.log_action(
+                user_id=user.id,
+                action="BILL_DISCOUNT",
+                event_type="TRANSACTION",
+                details=f"Applied bill discount {type} {value}",
+            )
+
+    def remove_cart_discount(self):
+        """Remove any bill-level discount from the cart."""
+        self.cart_discount_type = "NONE"
+        self.cart_discount_value = Decimal("0.00")
 
     def override_price(self, index: int, new_price: Decimal, user: Any) -> bool:
         """
@@ -347,7 +382,6 @@ class CartService:
 
     def get_totals(self, loyalty_points: int | None = None, has_customer: bool | None = None) -> dict[str, Any]:
         """Return the cart totals."""
-        from cbpos.core.services.config_service import ConfigService
         from cbpos.core.services.tax_service import TaxService
 
         # 1. Sum Net Lines
@@ -408,6 +442,8 @@ class CartService:
         return {
             "subtotal": subtotal.quantize(Precision.MONEY),
             "cart_discount": cart_discount_amt.quantize(Precision.MONEY),
+            "cart_discount_type": self.cart_discount_type,
+            "cart_discount_value": self.cart_discount_value,
             "loyalty_discount": loyalty_discount_amt.quantize(Precision.MONEY),
             "loyalty_points_redeemed": points_to_redeem,
             "final_total": final_total.quantize(Precision.MONEY),

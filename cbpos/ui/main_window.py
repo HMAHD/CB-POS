@@ -277,6 +277,12 @@ class MainWindow(QMainWindow):
 
     def on_barcode_scanned(self, barcode):
         """Route a global scanner event to whichever view is currently active."""
+        modal = QApplication.activeModalWidget()
+        if modal is not None:
+            if getattr(modal, "accepts_scans", False) and hasattr(modal, "process_barcode_external"):
+                modal.process_barcode_external(barcode)
+            return
+
         # Pass to current view
         current = self.stack.currentWidget()
         if hasattr(current, "process_barcode_external"):

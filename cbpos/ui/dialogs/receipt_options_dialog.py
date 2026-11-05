@@ -22,6 +22,7 @@ from cbpos.core.services.receipt_builder import ReceiptBuilder
 from cbpos.core.services.theme_service import ThemeService
 from cbpos.core.utils.error_messages import translate_error
 from cbpos.core.utils.formatters import format_currency
+from cbpos.core.utils.validators import is_valid_email
 from cbpos.i18n import _t
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.ui.dialogs.receipt_preview_dialog import ReceiptPreviewDialog
@@ -158,6 +159,13 @@ class ReceiptOptionsDialog(QDialog):
         self.btn_save_pdf.setText("  " + _t("receipt_options.btn_save_pdf"))
         self.btn_close.setText(_t("receipt_options.btn_close"))
 
+        configured = EmailService.is_configured()
+        self.btn_email.setEnabled(configured)
+        if not configured:
+            self.btn_email.setToolTip(_t("receipt.email_not_configured"))
+        else:
+            self.btn_email.setToolTip("")
+
     def show_preview(self) -> None:
         """Show what will actually print, built from the real completed sale."""
         try:
@@ -231,6 +239,9 @@ class ReceiptOptionsDialog(QDialog):
 
     def email_receipt(self) -> None:
         """Prompt for an email address (pre-filled from the customer, if any) and send the receipt."""
+        if not EmailService.is_configured():
+            return
+
         default_email = ""
         try:
             if self.sale.customer and self.sale.customer.email:
@@ -242,18 +253,34 @@ class ReceiptOptionsDialog(QDialog):
             self, _t("receipt_options.email_title"), _t("receipt_options.email_prompt"), text=default_email
         )
 
-        if ok and email:
-            self.worker = EmailService.send_receipt(email, self.sale.document_number)
-            self.worker.finished.connect(self.on_email_finished)
-            QMessageBox.information(self, _t("receipt_options.sending_title"), _t("receipt_options.sending_message"))
+        if not ok:
+            return
+
+        email = email.strip()
+        if not is_valid_email(email):
+            QMessageBox.warning(self, _t("common.error"), _t("customer_editor.invalid_email"))
+            return
+
+        self._last_email = email
+        self.btn_email.setEnabled(False)
+        self.worker = EmailService.send_receipt(self.sale, email)
+        self.worker.finished.connect(self.on_email_finished)
 
     def on_email_finished(self, success: bool, message: str) -> None:
-        """Show an error message if the background email send failed."""
-        if not success:
+        """Show status message when the background email send finishes."""
+        self.btn_email.setEnabled(EmailService.is_configured())
+        if success:
+            email = getattr(self, "_last_email", "")
+            QMessageBox.information(
+                self,
+                _t("receipt_options.title"),
+                _t("receipt.email_sent", email=email),
+            )
+        else:
             QMessageBox.warning(
                 self,
                 _t("receipt_options.email_failed_title"),
-                _t("receipt_options.email_failed_message", error=message),
+                _t("receipt.email_failed", reason=translate_error(message)),
             )
 
     def save_as_pdf(self) -> None:

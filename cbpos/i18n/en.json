@@ -171,7 +171,9 @@
     "a4_invoice_failed": "The tax invoice for {document} didn't print: {error}"
   },
   "pos": {
-    "no_cash_method": "There's no active cash payment type. Turn one on in Settings → Payment Methods."
+    "no_cash_method": "There's no active cash payment type. Turn one on in Settings → Payment Methods.",
+    "drawer_opened": "Drawer opened (recorded).",
+    "drawer_not_configured": "No cash drawer is set up. Set it up in Settings → Hardware."
   },
   "sales": {
     "search_placeholder_all": "Scan or type product... (Enter)",
@@ -225,8 +227,18 @@
     "change_price_prompt": "Enter new price:",
     "discount_limit_title": "Discount Limit",
     "discount_limit_message": "{value}% exceeds the allowed discount limit.",
+    "discount_removed_qty": "Discount on {name} was removed because the quantity changed. Apply it again if needed.",
     "removed_undo": "Removed: {product} — Ctrl+Z to undo",
-    "item_count": "Items: {count}"
+    "item_count": "Items: {count}",
+    "bill_discount_row": "Bill discount"
+  },
+  "bill_discount": {
+    "title": "Bill discount",
+    "percent": "%",
+    "amount": "Amount",
+    "preview": "Bill {before} → {after} (−{discount})",
+    "remove": "Remove discount",
+    "over_cap": "This is more than the {cap}% you can give. A manager must approve it."
   },
   "orders": {
     "label": "ORDERS:",
@@ -332,7 +344,19 @@
     "pdf_saved_title": "Saved",
     "pdf_saved_message": "Receipt saved to {path}",
     "pdf_error_title": "Save Failed",
-    "pdf_error_message": "Failed to save receipt PDF: {error}"
+    "pdf_error_message": "Failed to save receipt PDF: {error}",
+    "email_sent": "Receipt sent to {email}.",
+    "email_failed": "Couldn't send the email: {reason}. The sale is saved; you can resend it from Sale History.",
+    "email_not_configured": "Email isn't set up. Set it up in Settings → Email."
+  },
+  "receipt": {
+    "email_sent": "Receipt sent to {email}.",
+    "email_failed": "Couldn't send the email: {reason}. The sale is saved; you can resend it from Sale History.",
+    "email_not_configured": "Email isn't set up. Set it up in Settings → Email."
+  },
+  "email": {
+    "receipt_subject": "Your receipt {doc} from {shop}",
+    "receipt_body": "Thank you for shopping at {shop}. Your receipt {doc} is attached.\n\n— Sent by CB POS · {website}"
   },
   "refund": {
     "title": "Process Refund",
@@ -2634,6 +2658,7 @@
     "recall_bill": "Recall suspended bill",
     "open_drawer": "Open cash drawer",
     "quick_close": "Quick close (cash)",
+    "bill_discount": "Bill discount",
     "first_cart_item": "Select first cart item",
     "last_cart_item": "Select last cart item",
     "add_product": "Add product from search",

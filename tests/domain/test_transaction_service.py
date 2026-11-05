@@ -720,3 +720,147 @@ def test_issue_892_operational_error_propagates(db_session, test_user, test_prod
         ):
             with pytest.raises(OperationalError):
                 TransactionService.process_sale(cart, payments)
+
+
+def test_issue_855_service_item_sells_with_zero_stock(db_session, test_user):
+    """A service product with stock 0 sells when allow_negative_stock=False, and stock stays 0 with no movements (#855)."""
+    from cbpos.core.services.config_service import ConfigService
+
+    service = Product(
+        name_en="Labor Repair",
+        price=Decimal("1500.00"),
+        stock_qty=Decimal("0.0"),
+        barcode="SRV-855",
+        is_service=True,
+    )
+    db_session.add(service)
+    db_session.commit()
+
+    with (
+        patch.object(
+            ConfigService,
+            "get",
+            side_effect=lambda k, d=None: False if k == "allow_negative_stock" else ConfigService.get_all().get(k, d),
+        ),
+        patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user),
+    ):
+        cart = CartService()
+        cart.add_item(service, qty=Decimal("1.0"))
+        payments = [{"method": "Cash", "amount": Decimal("1500.00")}]
+
+        sale = TransactionService.process_sale(cart, payments)
+        assert sale is not None
+
+        db_session.refresh(service)
+        assert service.stock_qty == Decimal("0.0")
+
+        movements = db_session.query(StockMovement).filter(StockMovement.product_id == service.id).all()
+        assert len(movements) == 0
+
+
+def test_issue_855_composite_service_component_skipped(db_session, test_user):
+    """Composite with a service component (stock 0) and physical component (stock 5) sells when allow_negative_stock=False (#855)."""
+    from cbpos.core.models import CompositeItem
+    from cbpos.core.services.config_service import ConfigService
+
+    physical = Product(
+        name_en="Screen Part",
+        price=Decimal("1000.00"),
+        stock_qty=Decimal("5.0"),
+        barcode="PRT-855",
+        is_service=False,
+    )
+    service_comp = Product(
+        name_en="Screen Install Labor",
+        price=Decimal("500.00"),
+        stock_qty=Decimal("0.0"),
+        barcode="SRV-COMP-855",
+        is_service=True,
+    )
+    package = Product(
+        name_en="Screen Replacement Package",
+        price=Decimal("1500.00"),
+        stock_qty=Decimal("0.0"),
+        barcode="PKG-855",
+        is_service=False,
+    )
+    db_session.add_all([physical, service_comp, package])
+    db_session.flush()
+
+    c1 = CompositeItem(parent_product_id=package.id, child_product_id=physical.id, qty=Decimal("1.0"))
+    c2 = CompositeItem(parent_product_id=package.id, child_product_id=service_comp.id, qty=Decimal("1.0"))
+    db_session.add_all([c1, c2])
+    db_session.commit()
+
+    with (
+        patch.object(
+            ConfigService,
+            "get",
+            side_effect=lambda k, d=None: False if k == "allow_negative_stock" else ConfigService.get_all().get(k, d),
+        ),
+        patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user),
+    ):
+        cart = CartService()
+        cart.add_item(package, qty=Decimal("1.0"))
+        payments = [{"method": "Cash", "amount": Decimal("1500.00")}]
+
+        sale = TransactionService.process_sale(cart, payments)
+        assert sale is not None
+
+        db_session.refresh(physical)
+        db_session.refresh(service_comp)
+        assert physical.stock_qty == Decimal("4.0")
+        assert service_comp.stock_qty == Decimal("0.0")
+
+
+def test_issue_916_saved_line_reconciles(db_session, test_user):
+    """For a 15% promo on 99.99 x 10, stored unit_price * qty == subtotal in SaleItem (#916)."""
+    from datetime import timedelta
+
+    from cbpos.core.models import Promotion
+
+    product = Product(
+        name_en="Promo Product 99.99",
+        price=Decimal("99.99"),
+        stock_qty=Decimal("50.0"),
+        barcode="PROMO-916",
+    )
+    now = datetime.now()
+    promo = Promotion(
+        name="15% Off",
+        type="PERCENTAGE",
+        value=Decimal("15.0"),
+        is_active=True,
+        start_time=now - timedelta(hours=1),
+        end_time=now + timedelta(hours=1),
+    )
+    db_session.add_all([product, promo])
+    db_session.commit()
+
+    with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user):
+        cart = CartService()
+        cart.add_item(product, qty=Decimal("10.000"))
+
+        # Price is rounded to 84.99, so 10 * 84.99 = 849.90
+        sale = TransactionService.process_sale(cart, [{"method": "Cash", "amount": Decimal("849.90")}])
+        assert sale is not None
+
+        item = db_session.query(SaleItem).filter(SaleItem.sale_id == sale.id).first()
+        assert item is not None
+        assert item.unit_price * item.qty == item.subtotal
+
+
+def test_issue_813_sale_stores_bill_discount(db_session, test_user, test_product):
+    """When a sale completes with a cart/bill discount, additional_discount_* are stored on Sale (#813)."""
+    with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user):
+        cart = CartService()
+        cart.add_item(test_product, qty=Decimal("2.000"))  # 2 * 100 = 200
+        cart.apply_cart_discount("PERCENTAGE", Decimal("10.00"))  # 10% off -> total 180
+
+        sale = TransactionService.process_sale(cart, [{"method": "Cash", "amount": Decimal("180.00")}])
+        assert sale is not None
+
+        db_sale = db_session.query(Sale).filter(Sale.id == sale.id).first()
+        assert db_sale.additional_discount_type == "PERCENTAGE"
+        assert db_sale.additional_discount_value == Decimal("10.00")
+        assert db_sale.total_amount == Decimal("180.00")

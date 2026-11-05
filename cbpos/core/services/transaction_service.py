@@ -166,7 +166,7 @@ class TransactionService:
 
             comps = composite_map.get(product_id, [])
             if not comps:
-                if product.stock_qty < qty_needed:
+                if not getattr(product, "is_service", False) and product.stock_qty < qty_needed:
                     raise ValueError(
                         f"Insufficient stock for '{product.name_en}'. "
                         f"Available: {product.stock_qty}, Required: {qty_needed}"
@@ -177,6 +177,9 @@ class TransactionService:
                 child_product = product_map.get(comp.child_product_id)
                 if not child_product:
                     raise ValueError(f"Component product {comp.child_product_id} missing.")
+
+                if getattr(child_product, "is_service", False):
+                    continue
 
                 required_qty = comp.qty * qty_needed
                 if child_product.stock_qty < required_qty:
@@ -392,6 +395,8 @@ class TransactionService:
             tax_vat=totals["tax_vat"],
             tax_sscl=totals["tax_sscl"],
             net_revenue=totals["net_revenue"],
+            additional_discount_type=totals.get("cart_discount_type", "NONE"),
+            additional_discount_value=totals.get("cart_discount_value", Decimal("0.00")),
             payment_method=payments[0]["method"] if len(payments) == 1 else "SPLIT",
             loyalty_points_redeemed=totals.get("loyalty_points_redeemed", 0),
             loyalty_points_value=totals.get("loyalty_discount", Decimal("0.00")),

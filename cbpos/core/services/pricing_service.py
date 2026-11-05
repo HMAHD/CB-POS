@@ -13,6 +13,7 @@ from cbpos.core.database import Database
 from cbpos.core.models import Customer, PriceListItem, Product, Promotion
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.price_list_service import live_price_list_condition
+from cbpos.core.utils.money import round_money
 
 
 class PricingService:
@@ -122,9 +123,9 @@ class PricingService:
                 temp_price = promo_base_price
                 if promo.type == "PERCENTAGE":
                     discount = (promo_base_price * promo.value) / Decimal("100")
-                    temp_price = promo_base_price - discount
+                    temp_price = round_money(promo_base_price - discount)
                 elif promo.type == "FIXED_AMOUNT":
-                    temp_price = promo_base_price - Decimal(str(promo.value))
+                    temp_price = round_money(promo_base_price - Decimal(str(promo.value)))
 
                 # Ensure we don't go negative
                 if temp_price < 0:
@@ -162,7 +163,7 @@ class PricingService:
                 final_price, applied_rule = candidates[0]
 
         return {
-            "final_price": final_price,
-            "original_price": original_price,
+            "final_price": round_money(final_price),
+            "original_price": round_money(original_price),
             "applied_rule": applied_rule,
         }

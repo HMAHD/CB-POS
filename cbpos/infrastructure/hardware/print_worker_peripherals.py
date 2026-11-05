@@ -45,7 +45,10 @@ class PrintWorkerPeripherals:
                 PrinterService.print_transaction(event.sale)
             except Exception as e:
                 logger.error("Auto-print of %s failed: %s", event.sale.document_number, e)
-        PrintWorker.instance().add_job("kick_drawer", list(event.payment_methods))
+        from cbpos.core.services.payment_service import classify_method_name
+
+        method_kinds = [classify_method_name(m) for m in event.payment_methods]
+        PrintWorker.instance().add_job("kick_drawer", {"manual": False, "method_kinds": method_kinds})
 
     def refund_completed(self, event: RefundCompleted) -> None:
         """Auto-print the refund voucher, if there is one.

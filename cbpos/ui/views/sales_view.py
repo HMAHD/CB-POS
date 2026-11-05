@@ -600,6 +600,10 @@ class SalesView(QWidget):
         self.shortcut_ctrl_d = QShortcut(QKeySequence("Ctrl+D"), self)
         self.shortcut_ctrl_d.activated.connect(self.open_cash_drawer)
 
+        # Ctrl+B — Bill discount (#813)
+        self.shortcut_ctrl_b = QShortcut(QKeySequence("Ctrl+B"), self)
+        self.shortcut_ctrl_b.activated.connect(self.apply_bill_discount)
+
         # Page Up — Select first item in cart
         self.shortcut_pgup = QShortcut(QKeySequence(Qt.Key.Key_PageUp), self)
         self.shortcut_pgup.activated.connect(self.select_first_cart_item)
@@ -925,7 +929,12 @@ class SalesView(QWidget):
 
         self.total_label.setText(format_currency(final_total))
         self.lbl_subtotal.setText(_t("cart.subtotal", amount=format_currency(subtotal)))
-        self.lbl_discount.setText(_t("cart.discount", amount=format_currency(cart_discount)))
+        if cart_discount > 0:
+            self.lbl_discount.setVisible(True)
+            self.lbl_discount.setText(f"{_t('cart.bill_discount_row')}: -{format_currency(cart_discount)}")
+        else:
+            self.lbl_discount.setVisible(False)
+            self.lbl_discount.setText("")
 
         # Hide tax labels entirely when VAT is off
         if not vat_active:
@@ -1394,8 +1403,10 @@ class SalesView(QWidget):
             item = self.cart_service.items[row]
             dialog = QuantityDialog(item["product"], parent=self, initial_qty=item["qty"])
             if dialog.exec():
-                self.cart_service.update_quantity(row, dialog.get_quantity())
+                notice = self.cart_service.update_quantity(row, dialog.get_quantity())
                 self.update_cart_display()
+                if notice:
+                    self._show_status_message(notice)
         self._focus_search()
 
     def apply_line_discount(self):
@@ -1425,6 +1436,73 @@ class SalesView(QWidget):
                 )
                 self._focus_search()
                 return
+            self.update_cart_display()
+        self._focus_search()
+
+    def apply_bill_discount(self) -> None:
+        """Apply a whole-bill discount (% or amount) to the cart (#813)."""
+        if not self.cart_service.items:
+            self._show_status_message(_t("cart.empty_cart"))
+            return
+
+        from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.services.config_service import ConfigService
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.ui.dialogs.bill_discount_dialog import BillDiscountDialog
+
+        authorized_user = check_permission_with_override(Permissions.SALES_DISCOUNT, self)
+        if not authorized_user:
+            return
+
+        totals = self.cart_service.get_totals()
+        subtotal = totals["subtotal"]
+        max_pct = Decimal(str(ConfigService.get("max_discount_percent") or 0))
+
+        dialog = BillDiscountDialog(
+            parent=self,
+            current_subtotal=subtotal,
+            current_type=self.cart_service.cart_discount_type,
+            current_value=self.cart_service.cart_discount_value,
+            max_discount_pct=max_pct,
+        )
+
+        if dialog.exec():
+            disc_type, disc_val = dialog.get_data()
+            if disc_type == "NONE":
+                self.cart_service.remove_cart_discount()
+                self.update_cart_display()
+                self._focus_search()
+                return
+
+            # Check if discount exceeds cap
+            is_over_cap = False
+            if max_pct > Decimal("0"):
+                if disc_type == "PERCENTAGE" and disc_val > max_pct:
+                    is_over_cap = True
+                elif disc_type == "FIXED" and subtotal > Decimal("0"):
+                    if (disc_val / subtotal) * Decimal("100") > max_pct:
+                        is_over_cap = True
+
+            if is_over_cap:
+                override_user = check_permission_with_override(Permissions.SALES_DISCOUNT, self)
+                if not override_user:
+                    self._focus_search()
+                    return
+                authorized_user = override_user
+
+            if is_over_cap:
+                self.cart_service.restore_cart_discount(disc_type, disc_val)
+                from cbpos.core.services.logging_service import LoggingService
+
+                LoggingService.log_action(
+                    user_id=authorized_user.id,
+                    action="BILL_DISCOUNT",
+                    event_type="TRANSACTION",
+                    details=f"Applied bill discount {disc_type} {disc_val} (override)",
+                )
+            else:
+                self.cart_service.apply_cart_discount(disc_type, disc_val, user=authorized_user)
+
             self.update_cart_display()
         self._focus_search()
 
@@ -1676,12 +1754,27 @@ class SalesView(QWidget):
             self._focus_search()
 
     def open_cash_drawer(self) -> None:
-        """Open the cash drawer via PrintWorker (F8 / Ctrl+D)."""
-        from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+        """Open the cash drawer via PrintWorker (F8 / Ctrl+D) with permission and audit (#793)."""
+        from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.services.auth_service import AuthService
+        from cbpos.core.services.cash_drawer_service import CashDrawerService
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.infrastructure.hardware.escpos_driver import receipt_printer_configured
 
-        # error_occurred is already connected to _on_print_error once, for
-        # the view's lifetime, in __init__ -- no per-call connect needed.
-        PrintWorker.instance().add_job("kick_drawer")
+        authorized_user = check_permission_with_override(Permissions.CASH_OPEN_DRAWER, self)
+        if not authorized_user:
+            return
+
+        current_user = AuthService.get_current_user()
+        user_id = current_user.id if current_user else authorized_user.id
+        approved_by_id = authorized_user.id if authorized_user.id != user_id else None
+
+        CashDrawerService.record_manual_open(user_id=user_id, approved_by_id=approved_by_id)
+
+        if not receipt_printer_configured():
+            self._show_status_message(_t("pos.drawer_not_configured"))
+        else:
+            self._show_status_message(_t("pos.drawer_opened"))
 
     def _on_print_error(self, message: str) -> None:
         """Show printer error to user with context.
@@ -1791,3 +1884,9 @@ class SalesView(QWidget):
         dialog = ShortcutsHelpDialog(self)
         dialog.exec()
         self._focus_search()
+
+    def _show_status_message(self, message: str, timeout_ms: int = 4000) -> None:
+        """Show a temporary status message in the main window status bar."""
+        win = self.window()
+        if win is not None and hasattr(win, "statusBar") and win.statusBar():
+            win.statusBar().showMessage(message, timeout_ms)

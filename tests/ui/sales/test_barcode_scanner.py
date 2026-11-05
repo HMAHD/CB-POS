@@ -158,3 +158,25 @@ class TestBarcodeScannerVsEnterShortcut:
 
         assert fired == [1]
         assert scans == []
+
+    def test_issue_890_scan_with_modal_open_not_emitted(self, scanner_and_field):
+        """With a modal dialog open and a focused QPushButton (no shortcut), scan burst emits nothing (#890)."""
+        _scanner, _field, scans, _returns = scanner_and_field
+        dialog = QDialog()
+        dialog.setModal(True)
+        button = QPushButton("OK", dialog)
+        clicks: list[int] = []
+        button.clicked.connect(lambda: clicks.append(1))
+        dialog.show()
+        dialog.activateWindow()
+        QTest.qWaitForWindowActive(dialog)
+        button.setFocus()
+        try:
+            QTest.keyClicks(button, "4791234567890")
+            QTest.keyClick(button, Qt.Key.Key_Return)
+        finally:
+            dialog.hide()
+            dialog.deleteLater()
+
+        assert scans == []
+        assert clicks == [1]

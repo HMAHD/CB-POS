@@ -260,7 +260,8 @@ class TestUpdateQuantity:
 
         item = cart.items[0]
         assert item["subtotal"] == Decimal("400.00")
-        assert item["total"] == Decimal("350.00")  # same Rs.50 fixed discount
+        assert item["discount_value"] == Decimal("100.00")
+        assert item["total"] == Decimal("300.00")  # scaled fixed discount
 
     def test_changing_quantity_on_a_plain_line(self, mock_pricing):
         cart = CartService()
@@ -272,6 +273,41 @@ class TestUpdateQuantity:
         item = cart.items[0]
         assert item["qty"] == Decimal("5")
         assert item["total"] == Decimal("500.00")
+
+    def test_issue_891_fixed_discount_scales_with_qty(self, mock_pricing):
+        """10 x 10 with FIXED 15, qty -> 1 scales discount to 1.50 (15%) (#891)."""
+        cart = CartService()
+        product = _make_product(price="10.00")
+        cart.add_item(product, qty=Decimal("10"))
+        cart.apply_line_discount(0, "FIXED", Decimal("15.00"))
+        assert cart.items[0]["discount_value"] == Decimal("15.00")
+        assert cart.items[0]["total"] == Decimal("85.00")
+
+        cart.update_quantity(0, Decimal("1"))
+
+        item = cart.items[0]
+        assert item["qty"] == Decimal("1")
+        assert item["discount_value"] == Decimal("1.50")
+        assert item["subtotal"] == Decimal("10.00")
+        assert item["total"] == Decimal("8.50")
+
+    def test_issue_891_cap_never_exceeded_after_qty_change(self, mock_pricing):
+        """If a fixed discount would exceed the max discount cap after qty change, drop it and return notice (#891)."""
+        cart = CartService()
+        product = _make_product(price="10.00")
+        cart.add_item(product, qty=Decimal("10"))
+        # Force a discount above cap (e.g. manager override)
+        item = cart.items[0]
+        item["discount_type"] = "FIXED"
+        item["discount_value"] = Decimal("60.00")  # 60% > default 50% cap
+
+        with patch("cbpos.core.services.config_service.ConfigService.get", return_value=50):
+            notice = cart.update_quantity(0, Decimal("1"))
+            assert item["discount_type"] == "NONE"
+            assert item["discount_value"] == Decimal("0.00")
+            assert item["total"] == Decimal("10.00")
+            assert notice is not None
+            assert "removed" in notice.lower()
 
     def test_invalid_index_does_nothing(self, mock_pricing):
         cart = CartService()

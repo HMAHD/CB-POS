@@ -83,6 +83,33 @@ class TestChangeLineQuantityUsesStyledDialog:
 
         assert view.cart_service.items[0]["qty"] == Decimal("2")
 
+    def test_discount_dropped_shows_status_message(self, view):
+        view.cart_service.add_item(_make_product(price="10.00"), qty=Decimal("10"))
+        item = view.cart_service.items[0]
+        item["discount_type"] = "FIXED"
+        item["discount_value"] = Decimal("60.00")
+        view.update_cart_display()
+        view.cart_table.setCurrentCell(0, 0)
+
+        fake_dialog = MagicMock()
+        fake_dialog.exec.return_value = 1
+        fake_dialog.get_quantity.return_value = Decimal("1")
+        fake_dialog_cls = MagicMock(return_value=fake_dialog)
+
+        status_mock = MagicMock()
+        view._show_status_message = status_mock
+
+        with pytest.MonkeyPatch.context() as mp:
+            from cbpos.core.services.config_service import ConfigService
+
+            mp.setattr(sales_view_module, "QuantityDialog", fake_dialog_cls)
+            mp.setattr(ConfigService, "get", lambda k, d=None: 50 if k == "max_discount_percent" else d)
+            view.change_line_quantity()
+
+        assert view.cart_service.items[0]["discount_type"] == "NONE"
+        status_mock.assert_called_once()
+        assert "Test Product" in status_mock.call_args[0][0]
+
 
 class TestChangeLinePriceUsesStyledDialog:
     def test_confirming_the_dialog_overrides_the_price(self, view, monkeypatch):

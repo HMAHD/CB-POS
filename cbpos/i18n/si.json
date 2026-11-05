@@ -225,6 +225,7 @@
     "change_price_prompt": "අලුත් මිල දාන්න:",
     "discount_limit_title": "වට්ටම් සීමාව",
     "discount_limit_message": "{value}% ඉඩ දුන් වට්ටම් සීමාවට වඩා වැඩියි.",
+    "discount_removed_qty": "ප්‍රමාණය වෙනස් වූ නිසා {name} සඳහා තිබූ වට්ටම ඉවත් විය. අවශ්‍ය නම් නැවත යොදන්න.",
     "removed_undo": "අයින් කළා: {product} — නැවත ගන්න Ctrl+Z",
     "item_count": "අයිතම: {count}"
   },

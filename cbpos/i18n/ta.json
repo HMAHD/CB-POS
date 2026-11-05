@@ -225,6 +225,7 @@
     "change_price_prompt": "புதிய விலையைப் போடுங்க:",
     "discount_limit_title": "தள்ளுபடி வரம்பு",
     "discount_limit_message": "{value}% அனுமதிக்கப்பட்ட தள்ளுபடி வரம்பை தாண்டுது.",
+    "discount_removed_qty": "அளவு மாறியதால் {name} மீதான தள்ளுபடி நீக்கப்பட்டது. தேவைப்பட்டால் மீண்டும் சேர்க்கவும்.",
     "removed_undo": "நீக்கிட்டோம்: {product} — திரும்பி வர Ctrl+Z",
     "item_count": "பொருட்கள்: {count}"
   },

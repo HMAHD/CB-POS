@@ -1394,8 +1394,10 @@ class SalesView(QWidget):
             item = self.cart_service.items[row]
             dialog = QuantityDialog(item["product"], parent=self, initial_qty=item["qty"])
             if dialog.exec():
-                self.cart_service.update_quantity(row, dialog.get_quantity())
+                notice = self.cart_service.update_quantity(row, dialog.get_quantity())
                 self.update_cart_display()
+                if notice:
+                    self._show_status_message(notice)
         self._focus_search()
 
     def apply_line_discount(self):
@@ -1791,3 +1793,9 @@ class SalesView(QWidget):
         dialog = ShortcutsHelpDialog(self)
         dialog.exec()
         self._focus_search()
+
+    def _show_status_message(self, message: str, timeout_ms: int = 4000) -> None:
+        """Show a temporary status message in the main window status bar."""
+        win = self.window()
+        if win is not None and hasattr(win, "statusBar") and win.statusBar():
+            win.statusBar().showMessage(message, timeout_ms)

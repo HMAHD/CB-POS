@@ -9,6 +9,8 @@ from cbpos.core.constants.status import Precision
 from cbpos.core.models import Category, Customer, Product
 from cbpos.core.services.logging_service import LoggingService
 from cbpos.core.services.pricing_service import PricingService
+from cbpos.core.utils.money import round_money
+from cbpos.i18n import _t
 
 logger = logging.getLogger(__name__)
 
@@ -47,10 +49,9 @@ class CartService:
             raise ValueError("Quantity must be positive")
 
         # Check if product already in cart
-        for item in self.items:
+        for idx, item in enumerate(self.items):
             if item["product"].id == product.id:
-                item["qty"] += qty
-                self._recalculate_line(item)
+                self.update_quantity(idx, item["qty"] + qty)
                 return
 
         # Calculate price using Pricing Engine
@@ -77,18 +78,39 @@ class CartService:
         self._recalculate_line(new_item)
         self.items.append(new_item)
 
-    def update_quantity(self, index: int, qty: Decimal):
+    def update_quantity(self, index: int, qty: Decimal) -> str | None:
         """Change a line's quantity, keeping any existing discount applied.
 
-        Setting item["qty"]/item["total"] directly (as the UI used to)
-        skipped _recalculate_line(), so a discount already on the line
-        stopped being reflected in the charged total the moment the
-        quantity changed, even though the Disc column kept displaying it.
+        TODO(#893): Quantity reduction should be permission-gated and audited.
         """
-        if 0 <= index < len(self.items):
-            item = self.items[index]
-            item["qty"] = Decimal(str(qty))
-            self._recalculate_line(item)
+        if not (0 <= index < len(self.items)):
+            return None
+
+        item = self.items[index]
+        old_qty = item["qty"]
+        new_qty = Decimal(str(qty))
+        if new_qty <= Decimal("0"):
+            raise ValueError("Quantity must be positive")
+
+        item["qty"] = new_qty
+        notice = None
+
+        if item.get("discount_type") == "FIXED" and old_qty > Decimal("0"):
+            old_discount = item["discount_value"]
+            scaled_discount = round_money(old_discount * new_qty / old_qty)
+            gross_line = new_qty * item["unit_price"]
+
+            try:
+                self._validate_discount_cap("FIXED", scaled_discount, reference_amount=gross_line)
+                item["discount_value"] = scaled_discount
+            except ValueError:
+                item["discount_type"] = "NONE"
+                item["discount_value"] = Decimal("0.00")
+                product_name = getattr(item.get("product"), "name_en", "")
+                notice = _t("cart.discount_removed_qty", name=product_name)
+
+        self._recalculate_line(item)
+        return notice
 
     def remove_item(self, index: int):
         """Remove an item by its index in the list."""

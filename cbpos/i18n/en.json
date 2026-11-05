@@ -225,6 +225,7 @@
     "change_price_prompt": "Enter new price:",
     "discount_limit_title": "Discount Limit",
     "discount_limit_message": "{value}% exceeds the allowed discount limit.",
+    "discount_removed_qty": "Discount on {name} was removed because the quantity changed. Apply it again if needed.",
     "removed_undo": "Removed: {product} — Ctrl+Z to undo",
     "item_count": "Items: {count}"
   },

@@ -1678,12 +1678,27 @@ class SalesView(QWidget):
             self._focus_search()
 
     def open_cash_drawer(self) -> None:
-        """Open the cash drawer via PrintWorker (F8 / Ctrl+D)."""
-        from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+        """Open the cash drawer via PrintWorker (F8 / Ctrl+D) with permission and audit (#793)."""
+        from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.services.auth_service import AuthService
+        from cbpos.core.services.cash_drawer_service import CashDrawerService
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.infrastructure.hardware.escpos_driver import receipt_printer_configured
 
-        # error_occurred is already connected to _on_print_error once, for
-        # the view's lifetime, in __init__ -- no per-call connect needed.
-        PrintWorker.instance().add_job("kick_drawer")
+        authorized_user = check_permission_with_override(Permissions.CASH_OPEN_DRAWER, self)
+        if not authorized_user:
+            return
+
+        current_user = AuthService.get_current_user()
+        user_id = current_user.id if current_user else authorized_user.id
+        approved_by_id = authorized_user.id if authorized_user.id != user_id else None
+
+        CashDrawerService.record_manual_open(user_id=user_id, approved_by_id=approved_by_id)
+
+        if not receipt_printer_configured():
+            self._show_status_message(_t("pos.drawer_not_configured"))
+        else:
+            self._show_status_message(_t("pos.drawer_opened"))
 
     def _on_print_error(self, message: str) -> None:
         """Show printer error to user with context.

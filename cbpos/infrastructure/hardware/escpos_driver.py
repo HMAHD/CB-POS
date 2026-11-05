@@ -458,16 +458,29 @@ class PrintWorker(QThread):
 
     @staticmethod
     def _drawer_wanted(data: Any) -> bool:
-        """Honour ``drawer_on_cash_only``: kick only if a CASH payment is in *data*."""
+        """Honour ``drawer_on_cash_only``: kick only if manual or a CASH payment is in *data*."""
+        if isinstance(data, dict):
+            if data.get("manual", False):
+                return True
+            method_kinds = [str(k).upper() for k in data.get("method_kinds", [])]
+        elif isinstance(data, (list, tuple, set)):
+            from cbpos.core.services.payment_service import classify_method_name
+
+            method_kinds = [classify_method_name(str(m)).upper() for m in data]
+        else:
+            method_kinds = []
+
         if not ConfigService.get("drawer_on_cash_only"):
             return True
-        if not data:
+
+        if "CASH" in method_kinds:
+            return True
+
+        if not method_kinds:
             logger.info("Drawer skipped — no payment methods provided (drawer_on_cash_only=True)")
-            return False
-        if not any(isinstance(m, str) and m.strip().upper() == "CASH" for m in data):
+        else:
             logger.info("Drawer skipped — no cash payment (drawer_on_cash_only=True)")
-            return False
-        return True
+        return False
 
     def run(self) -> None:
         """Process queued jobs until stopped.

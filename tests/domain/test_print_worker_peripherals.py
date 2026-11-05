@@ -88,7 +88,7 @@ def test_with_the_receipt_dialog_on_the_dialog_prints_but_the_drawer_still_opens
 
     PrintWorkerPeripherals().sale_completed(_sold("CASH"))
 
-    assert worker.jobs == [("kick_drawer", ["CASH"])]
+    assert worker.jobs == [("kick_drawer", {"manual": False, "method_kinds": ["CASH"]})]
 
 
 def test_with_auto_print_off_only_the_drawer_opens(settings, worker):
@@ -103,7 +103,7 @@ def test_the_drawer_kick_carries_every_payment_method_for_drawer_on_cash_only(se
     """The worker keeps the drawer shut for a sale with no cash when drawer_on_cash_only is on."""
     PrintWorkerPeripherals().sale_completed(_sold("CARD", "BANK"))
 
-    assert worker.jobs[-1] == ("kick_drawer", ["CARD", "BANK"])
+    assert worker.jobs[-1] == ("kick_drawer", {"manual": False, "method_kinds": ["CARD", "OTHER"]})
 
 
 def test_a_receipt_that_fails_to_build_still_opens_the_drawer(settings, worker, caplog):
@@ -113,7 +113,7 @@ def test_a_receipt_that_fails_to_build_still_opens_the_drawer(settings, worker, 
     ):
         PrintWorkerPeripherals().sale_completed(_sold("CASH"))
 
-    assert worker.jobs == [("kick_drawer", ["CASH"])]
+    assert worker.jobs == [("kick_drawer", {"manual": False, "method_kinds": ["CASH"]})]
     assert "bad logo" in caplog.text
 
 

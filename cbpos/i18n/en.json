@@ -171,7 +171,9 @@
     "a4_invoice_failed": "The tax invoice for {document} didn't print: {error}"
   },
   "pos": {
-    "no_cash_method": "There's no active cash payment type. Turn one on in Settings → Payment Methods."
+    "no_cash_method": "There's no active cash payment type. Turn one on in Settings → Payment Methods.",
+    "drawer_opened": "Drawer opened (recorded).",
+    "drawer_not_configured": "No cash drawer is set up. Set it up in Settings → Hardware."
   },
   "sales": {
     "search_placeholder_all": "Scan or type product... (Enter)",

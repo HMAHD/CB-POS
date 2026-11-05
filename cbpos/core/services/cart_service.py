@@ -7,6 +7,7 @@ from sqlalchemy import select
 
 from cbpos.core.constants.status import Precision
 from cbpos.core.models import Category, Customer, Product
+from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.logging_service import LoggingService
 from cbpos.core.services.pricing_service import PricingService
 from cbpos.core.utils.money import round_money
@@ -153,12 +154,24 @@ class CartService:
                     details=f"Applied {type} discount ({value}) to '{item['product'].name_en}'",
                 )
 
-    def apply_cart_discount(self, type: str, value: Decimal):
+    def apply_cart_discount(self, type: str, value: Decimal, user: Any = None):
         """Apply discount to the entire cart."""
-        self._validate_discount_cap(type, value)
+        if user is None:
+            self._validate_discount_cap(type, value)
         self.cart_discount_type = type
         self.cart_discount_value = Decimal(str(value))
-        # No line recalculation needed, just totals
+        if user is not None:
+            LoggingService.log_action(
+                user_id=user.id,
+                action="BILL_DISCOUNT",
+                event_type="TRANSACTION",
+                details=f"Applied bill discount {type} {value}",
+            )
+
+    def remove_cart_discount(self):
+        """Remove any bill-level discount from the cart."""
+        self.cart_discount_type = "NONE"
+        self.cart_discount_value = Decimal("0.00")
 
     def override_price(self, index: int, new_price: Decimal, user: Any) -> bool:
         """
@@ -369,7 +382,6 @@ class CartService:
 
     def get_totals(self, loyalty_points: int | None = None, has_customer: bool | None = None) -> dict[str, Any]:
         """Return the cart totals."""
-        from cbpos.core.services.config_service import ConfigService
         from cbpos.core.services.tax_service import TaxService
 
         # 1. Sum Net Lines
@@ -430,6 +442,8 @@ class CartService:
         return {
             "subtotal": subtotal.quantize(Precision.MONEY),
             "cart_discount": cart_discount_amt.quantize(Precision.MONEY),
+            "cart_discount_type": self.cart_discount_type,
+            "cart_discount_value": self.cart_discount_value,
             "loyalty_discount": loyalty_discount_amt.quantize(Precision.MONEY),
             "loyalty_points_redeemed": points_to_redeem,
             "final_total": final_total.quantize(Precision.MONEY),

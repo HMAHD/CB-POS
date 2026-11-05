@@ -229,7 +229,16 @@
     "discount_limit_message": "{value}% exceeds the allowed discount limit.",
     "discount_removed_qty": "Discount on {name} was removed because the quantity changed. Apply it again if needed.",
     "removed_undo": "Removed: {product} — Ctrl+Z to undo",
-    "item_count": "Items: {count}"
+    "item_count": "Items: {count}",
+    "bill_discount_row": "Bill discount"
+  },
+  "bill_discount": {
+    "title": "Bill discount",
+    "percent": "%",
+    "amount": "Amount",
+    "preview": "Bill {before} → {after} (−{discount})",
+    "remove": "Remove discount",
+    "over_cap": "This is more than the {cap}% you can give. A manager must approve it."
   },
   "orders": {
     "label": "ORDERS:",
@@ -2649,6 +2658,7 @@
     "recall_bill": "Recall suspended bill",
     "open_drawer": "Open cash drawer",
     "quick_close": "Quick close (cash)",
+    "bill_discount": "Bill discount",
     "first_cart_item": "Select first cart item",
     "last_cart_item": "Select last cart item",
     "add_product": "Add product from search",

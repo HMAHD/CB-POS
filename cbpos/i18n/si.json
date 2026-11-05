@@ -229,7 +229,16 @@
     "discount_limit_message": "{value}% ඉඩ දුන් වට්ටම් සීමාවට වඩා වැඩියි.",
     "discount_removed_qty": "ප්‍රමාණය වෙනස් වූ නිසා {name} සඳහා තිබූ වට්ටම ඉවත් විය. අවශ්‍ය නම් නැවත යොදන්න.",
     "removed_undo": "අයින් කළා: {product} — නැවත ගන්න Ctrl+Z",
-    "item_count": "අයිතම: {count}"
+    "item_count": "අයිතම: {count}",
+    "bill_discount_row": "බිල්පත් වට්ටම"
+  },
+  "bill_discount": {
+    "title": "බිල්පත් වට්ටම",
+    "percent": "%",
+    "amount": "මුදල",
+    "preview": "බිල {before} → {after} (−{discount})",
+    "remove": "වට්ටම ඉවත් කරන්න",
+    "over_cap": "මෙය ඔබට දිය හැකි {cap}% ට වඩා වැඩිය. කළමනාකරුවෙකු අනුමත කළ යුතුය."
   },
   "orders": {
     "label": "ඇණවුම්",
@@ -2614,6 +2623,7 @@
     "recall_bill": "තියාගත් බිල එක ආපහු ගන්න",
     "open_drawer": "කෑෂ් දොරව්ව අරින්න",
     "quick_close": "ඉක්මන් ගෙවීම (කෑෂ්)",
+    "bill_discount": "බිල්පත් වට්ටම",
     "first_cart_item": "කාට් එකේ පළමු අයිතමය තෝරන්න",
     "last_cart_item": "කාට් එකේ අන්තිම අයිතමය තෝරන්න",
     "add_product": "සෙවීමෙන් අයිතමයක් එකතු කරන්න",

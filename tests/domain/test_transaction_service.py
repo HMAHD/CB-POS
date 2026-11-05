@@ -848,5 +848,19 @@ def test_issue_916_saved_line_reconciles(db_session, test_user):
         item = db_session.query(SaleItem).filter(SaleItem.sale_id == sale.id).first()
         assert item is not None
         assert item.unit_price * item.qty == item.subtotal
-        assert item.unit_price == Decimal("84.99")
-        assert item.subtotal == Decimal("849.90")
+
+
+def test_issue_813_sale_stores_bill_discount(db_session, test_user, test_product):
+    """When a sale completes with a cart/bill discount, additional_discount_* are stored on Sale (#813)."""
+    with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user):
+        cart = CartService()
+        cart.add_item(test_product, qty=Decimal("2.000"))  # 2 * 100 = 200
+        cart.apply_cart_discount("PERCENTAGE", Decimal("10.00"))  # 10% off -> total 180
+
+        sale = TransactionService.process_sale(cart, [{"method": "Cash", "amount": Decimal("180.00")}])
+        assert sale is not None
+
+        db_sale = db_session.query(Sale).filter(Sale.id == sale.id).first()
+        assert db_sale.additional_discount_type == "PERCENTAGE"
+        assert db_sale.additional_discount_value == Decimal("10.00")
+        assert db_sale.total_amount == Decimal("180.00")

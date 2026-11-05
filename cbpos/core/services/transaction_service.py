@@ -395,6 +395,8 @@ class TransactionService:
             tax_vat=totals["tax_vat"],
             tax_sscl=totals["tax_sscl"],
             net_revenue=totals["net_revenue"],
+            additional_discount_type=totals.get("cart_discount_type", "NONE"),
+            additional_discount_value=totals.get("cart_discount_value", Decimal("0.00")),
             payment_method=payments[0]["method"] if len(payments) == 1 else "SPLIT",
             loyalty_points_redeemed=totals.get("loyalty_points_redeemed", 0),
             loyalty_points_value=totals.get("loyalty_discount", Decimal("0.00")),

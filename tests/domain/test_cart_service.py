@@ -522,3 +522,49 @@ class TestCartPriceOverride:
 
         # 150 with 10% off = 135
         assert cart.items[0]["total"] == Decimal("135.00")
+
+    def test_issue_813_bill_discount_percent_and_amount_totals_and_tax(self, mock_pricing):
+        """Bill discount supports both PERCENTAGE and FIXED (amount), calculating proper totals and taxes."""
+        cart = CartService()
+        cart.add_item(_make_product(price="1000.00"), Decimal("2"))  # 2000.00
+
+        # 10% bill discount
+        cart.apply_cart_discount("PERCENTAGE", Decimal("10.00"))
+        totals = cart.get_totals()
+        assert totals["subtotal"] == Decimal("2000.00")
+        assert totals["cart_discount"] == Decimal("200.00")
+        assert totals["final_total"] == Decimal("1800.00")
+        assert totals["cart_discount_type"] == "PERCENTAGE"
+        assert totals["cart_discount_value"] == Decimal("10.00")
+
+        # Fixed amount bill discount Rs 300
+        cart.apply_cart_discount("FIXED", Decimal("300.00"))
+        totals = cart.get_totals()
+        assert totals["subtotal"] == Decimal("2000.00")
+        assert totals["cart_discount"] == Decimal("300.00")
+        assert totals["final_total"] == Decimal("1700.00")
+        assert totals["cart_discount_type"] == "FIXED"
+        assert totals["cart_discount_value"] == Decimal("300.00")
+
+    def test_issue_813_bill_discount_over_cap_requires_override(self, mock_pricing):
+        """Bill discount exceeding max_discount_percent raises PermissionError; logs BILL_DISCOUNT when user passed."""
+        cart = CartService()
+        cart.add_item(_make_product(price="1000.00"), Decimal("1"))  # 1000.00
+
+        with patch("cbpos.core.services.cart_service.ConfigService.get", return_value="15"):
+            # 20% exceeds 15% cap
+            with pytest.raises(ValueError):
+                cart.apply_cart_discount("PERCENTAGE", Decimal("20.00"))
+
+            # 10% is within cap and succeeds
+            user = MagicMock(id=42)
+            with patch("cbpos.core.services.cart_service.LoggingService.log_action") as mock_audit:
+                cart.apply_cart_discount("PERCENTAGE", Decimal("10.00"), user=user)
+                assert cart.cart_discount_type == "PERCENTAGE"
+                assert cart.cart_discount_value == Decimal("10.00")
+                mock_audit.assert_called_once_with(
+                    user_id=42,
+                    action="BILL_DISCOUNT",
+                    event_type="TRANSACTION",
+                    details="Applied bill discount PERCENTAGE 10.00",
+                )

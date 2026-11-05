@@ -600,6 +600,10 @@ class SalesView(QWidget):
         self.shortcut_ctrl_d = QShortcut(QKeySequence("Ctrl+D"), self)
         self.shortcut_ctrl_d.activated.connect(self.open_cash_drawer)
 
+        # Ctrl+B — Bill discount (#813)
+        self.shortcut_ctrl_b = QShortcut(QKeySequence("Ctrl+B"), self)
+        self.shortcut_ctrl_b.activated.connect(self.apply_bill_discount)
+
         # Page Up — Select first item in cart
         self.shortcut_pgup = QShortcut(QKeySequence(Qt.Key.Key_PageUp), self)
         self.shortcut_pgup.activated.connect(self.select_first_cart_item)
@@ -925,7 +929,12 @@ class SalesView(QWidget):
 
         self.total_label.setText(format_currency(final_total))
         self.lbl_subtotal.setText(_t("cart.subtotal", amount=format_currency(subtotal)))
-        self.lbl_discount.setText(_t("cart.discount", amount=format_currency(cart_discount)))
+        if cart_discount > 0:
+            self.lbl_discount.setVisible(True)
+            self.lbl_discount.setText(f"{_t('cart.bill_discount_row')}: -{format_currency(cart_discount)}")
+        else:
+            self.lbl_discount.setVisible(False)
+            self.lbl_discount.setText("")
 
         # Hide tax labels entirely when VAT is off
         if not vat_active:
@@ -1335,6 +1344,12 @@ class SalesView(QWidget):
         discount_action.triggered.connect(self.apply_line_discount)
         menu.addAction(discount_action)
 
+        bill_discount_action = QAction(
+            Icons.get(Icons.PERCENT, icon_color), _t("bill_discount.title") + "\tCtrl+B", self
+        )
+        bill_discount_action.triggered.connect(self.apply_bill_discount)
+        menu.addAction(bill_discount_action)
+
         price_action = QAction(Icons.get(Icons.EDIT, icon_color), _t("cart.context_change_price"), self)
         price_action.triggered.connect(self.change_line_price)
         menu.addAction(price_action)
@@ -1427,6 +1442,73 @@ class SalesView(QWidget):
                 )
                 self._focus_search()
                 return
+            self.update_cart_display()
+        self._focus_search()
+
+    def apply_bill_discount(self) -> None:
+        """Apply a whole-bill discount (% or amount) to the cart (#813)."""
+        if not self.cart_service.items:
+            self._show_status_message(_t("cart.empty_cart"))
+            return
+
+        from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.services.config_service import ConfigService
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.ui.dialogs.bill_discount_dialog import BillDiscountDialog
+
+        authorized_user = check_permission_with_override(Permissions.SALES_DISCOUNT, self)
+        if not authorized_user:
+            return
+
+        totals = self.cart_service.get_totals()
+        subtotal = totals["subtotal"]
+        max_pct = Decimal(str(ConfigService.get("max_discount_percent") or 0))
+
+        dialog = BillDiscountDialog(
+            parent=self,
+            current_subtotal=subtotal,
+            current_type=self.cart_service.cart_discount_type,
+            current_value=self.cart_service.cart_discount_value,
+            max_discount_pct=max_pct,
+        )
+
+        if dialog.exec():
+            disc_type, disc_val = dialog.get_data()
+            if disc_type == "NONE":
+                self.cart_service.remove_cart_discount()
+                self.update_cart_display()
+                self._focus_search()
+                return
+
+            # Check if discount exceeds cap
+            is_over_cap = False
+            if max_pct > Decimal("0"):
+                if disc_type == "PERCENTAGE" and disc_val > max_pct:
+                    is_over_cap = True
+                elif disc_type == "FIXED" and subtotal > Decimal("0"):
+                    if (disc_val / subtotal) * Decimal("100") > max_pct:
+                        is_over_cap = True
+
+            if is_over_cap:
+                override_user = check_permission_with_override(Permissions.SALES_DISCOUNT, self)
+                if not override_user:
+                    self._focus_search()
+                    return
+                authorized_user = override_user
+
+            if is_over_cap:
+                self.cart_service.restore_cart_discount(disc_type, disc_val)
+                from cbpos.core.services.logging_service import LoggingService
+
+                LoggingService.log_action(
+                    user_id=authorized_user.id,
+                    action="BILL_DISCOUNT",
+                    event_type="TRANSACTION",
+                    details=f"Applied bill discount {disc_type} {disc_val} (override)",
+                )
+            else:
+                self.cart_service.apply_cart_discount(disc_type, disc_val, user=authorized_user)
+
             self.update_cart_display()
         self._focus_search()
 

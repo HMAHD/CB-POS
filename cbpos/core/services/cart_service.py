@@ -71,6 +71,8 @@ class CartService:
             # Captured now, not at totals time: by then nothing guarantees
             # the detached product can still reach its category (#701).
             "tax_exempt": self._resolve_tax_exempt(product),
+            "note": None,
+            "override_approved_by": None,
         }
         self._recalculate_line(new_item)
         self.items.append(new_item)
@@ -162,6 +164,7 @@ class CartService:
             original_price = item["unit_price"]
             item["unit_price"] = Decimal(str(new_price))
             item["is_manual_price"] = True
+            item["override_approved_by"] = getattr(user, "id", user) if user else None
             # Reset discount if price is manually overridden?
             # Strategy: Keep discount, apply on new price.
             self._recalculate_line(item)
@@ -174,6 +177,35 @@ class CartService:
             )
             return True
         return False
+
+    def restore_line_override(self, index: int, new_price: Decimal, approved_by: Any = None) -> bool:
+        """Restore a previously approved price override without re-prompting or logging as a new override."""
+        if 0 <= index < len(self.items):
+            item = self.items[index]
+            item["unit_price"] = Decimal(str(new_price))
+            item["is_manual_price"] = True
+            item["override_approved_by"] = approved_by
+            self._recalculate_line(item)
+            return True
+        return False
+
+    def restore_line_discount(self, index: int, type: str, value: Decimal):
+        """Restore an already approved line discount without re-validating the cap."""
+        if 0 <= index < len(self.items):
+            item = self.items[index]
+            item["discount_type"] = type
+            item["discount_value"] = Decimal(str(value))
+            self._recalculate_line(item)
+
+    def restore_cart_discount(self, type: str, value: Decimal):
+        """Restore an already approved cart discount without re-validating the cap."""
+        self.cart_discount_type = type
+        self.cart_discount_value = Decimal(str(value))
+
+    def set_line_note(self, index: int, note: str | None):
+        """Set or clear a note for a specific line item."""
+        if 0 <= index < len(self.items):
+            self.items[index]["note"] = (note or "").strip() or None
 
     def _validate_discount_cap(
         self, discount_type: str, discount_value: Decimal, reference_amount: Decimal = None

@@ -1178,7 +1178,8 @@ class SalesView(QWidget):
             self._focus_search()
             return
 
-        if SuspendedTransactionService.recall_bill(suspended.id, self.cart_service):
+        result = SuspendedTransactionService.recall_bill(suspended.id, self.cart_service)
+        if result:
             # recall_bill() already restored (or cleared) the customer on
             # cart_service itself -- sync this view's own display state
             # (the action panel, self.customer) to match.
@@ -1191,7 +1192,18 @@ class SalesView(QWidget):
             self.order_bar.set_active_bill(suspended.id)
             self.update_cart_display()
             self.order_bar.refresh_tabs()
-            QMessageBox.information(self, _t("orders.recalled_title"), _t("orders.recalled_message", id=suspended.id))
+            notices = getattr(result, "notices", [])
+            if notices:
+                bullet_lines = "\n".join(f"• {n}" for n in notices)
+                QMessageBox.information(
+                    self,
+                    _t("orders.recall_notices_title"),
+                    f"{_t('orders.recalled_message', id=suspended.id)}\n\n{bullet_lines}",
+                )
+            else:
+                QMessageBox.information(
+                    self, _t("orders.recalled_title"), _t("orders.recalled_message", id=suspended.id)
+                )
         else:
             QMessageBox.critical(self, _t("common.error"), _t("orders.recall_error"))
         self._focus_search()
@@ -1548,10 +1560,25 @@ class SalesView(QWidget):
             self.cart_service.clear()
 
         # 2. Recall Target
-        if SuspendedTransactionService.recall_bill(suspended_id, self.cart_service):
+        result = SuspendedTransactionService.recall_bill(suspended_id, self.cart_service)
+        if result:
+            recalled_customer = self.cart_service.get_customer()
+            if recalled_customer:
+                self.set_customer(recalled_customer)
+            else:
+                self.clear_customer()
+
             self.order_bar.set_active_bill(suspended_id)
             self.update_cart_display()
             self.order_bar.refresh_tabs()
+            notices = getattr(result, "notices", [])
+            if notices:
+                bullet_lines = "\n".join(f"• {n}" for n in notices)
+                QMessageBox.information(
+                    self,
+                    _t("orders.recall_notices_title"),
+                    bullet_lines,
+                )
         else:
             QMessageBox.warning(self, _t("common.error"), _t("orders.recall_taken_error"))
             self.order_bar.refresh_tabs()

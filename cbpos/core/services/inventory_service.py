@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import select
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.orm.exc import StaleDataError
 
 from cbpos.core.constants.permissions import Permissions
@@ -70,61 +70,80 @@ class InventoryService:
                 session.expunge(product)
             return product
 
-    def create_product(self, data: dict[str, Any], user_id: int | None = None) -> Product:
+    def create_product(
+        self,
+        data: dict[str, Any],
+        user_id: int | None = None,
+        session: Session | None = None,
+    ) -> Product:
         """Create a new product with optional composite items and opening stock (#862)."""
         require_catalog_writable()
-        with self.db.get_session() as session:
-            # Extract composite items data if present
-            components_data = data.pop("components", [])
+        if session is not None:
+            return self._create_product_in_session(session, data, user_id, auto_commit=False)
+        with self.db.get_session() as s:
+            return self._create_product_in_session(s, data, user_id, auto_commit=True)
 
-            # Extract opening stock if present (#862)
-            opening_stock = Decimal(str(data.pop("stock_qty", 0) or 0))
+    def _create_product_in_session(
+        self,
+        session: Session,
+        data: dict[str, Any],
+        user_id: int | None,
+        auto_commit: bool,
+    ) -> Product:
+        # Extract composite items data if present
+        components_data = data.pop("components", [])
 
-            # "Auto-Generate Barcodes" (Settings -> System, #641): a new
-            # product saved without a barcode gets one. The real number is
-            # built from the id, so hold a unique placeholder until flush.
-            generate_barcode = not data.get("barcode") and ConfigService.get("auto_generate_barcodes")
-            if generate_barcode:
-                data["barcode"] = f"PENDING-{uuid.uuid4().hex}"
+        # Extract opening stock if present (#862)
+        opening_stock = Decimal(str(data.pop("stock_qty", 0) or 0))
 
-            # Opening stock is initialized to 0 on model, then recorded via StockService
-            data["stock_qty"] = Decimal("0")
-            product = Product(**data)
-            session.add(product)
-            session.flush()  # Generate ID
+        # "Auto-Generate Barcodes" (Settings -> System, #641): a new
+        # product saved without a barcode gets one. The real number is
+        # built from the id, so hold a unique placeholder until flush.
+        generate_barcode = not data.get("barcode") and ConfigService.get("auto_generate_barcodes")
+        if generate_barcode:
+            data["barcode"] = f"PENDING-{uuid.uuid4().hex}"
 
-            if generate_barcode:
-                product.barcode = self._in_store_barcode(session, product.id)
-                session.flush()
+        # Opening stock is initialized to 0 on model, then recorded via StockService
+        data["stock_qty"] = Decimal("0")
+        product = Product(**data)
+        session.add(product)
+        session.flush()  # Generate ID
 
-            # Record opening stock movement if provided on non-service item
-            if opening_stock > 0 and not product.is_service:
-                uid = user_id
-                if uid is None:
-                    from cbpos.core.services.auth_service import AuthService
+        if generate_barcode:
+            product.barcode = self._in_store_barcode(session, product.id)
+            session.flush()
 
-                    curr = AuthService.get_current_user()
-                    uid = curr.id if curr else 1
+        # Record opening stock movement if provided on non-service item
+        if opening_stock > 0 and not product.is_service:
+            uid = user_id
+            if uid is None:
+                from cbpos.core.services.auth_service import AuthService
 
-                StockService.record_movement(
-                    product_id=product.id,
-                    qty_change=opening_stock,
-                    movement_type=MovementType.OPENING,
-                    user_id=uid,
-                    session=session,
-                )
+                curr = AuthService.get_current_user()
+                uid = curr.id if curr else 1
 
-            # Handle composite items
-            for comp_data in components_data:
-                child_id = comp_data.get("child_product_id")
-                qty = comp_data.get("qty")
-                if child_id and qty:
-                    composite = CompositeItem(parent_product_id=product.id, child_product_id=child_id, qty=qty)
-                    session.add(composite)
+            StockService.record_movement(
+                product_id=product.id,
+                qty_change=opening_stock,
+                movement_type=MovementType.OPENING,
+                user_id=uid,
+                session=session,
+            )
 
+        # Handle composite items
+        for comp_data in components_data:
+            child_id = comp_data.get("child_product_id")
+            qty = comp_data.get("qty")
+            if child_id and qty:
+                composite = CompositeItem(parent_product_id=product.id, child_product_id=child_id, qty=qty)
+                session.add(composite)
+
+        if auto_commit:
             session.commit()
             session.refresh(product)
-            return product
+        else:
+            session.flush()
+        return product
 
     def update_product(
         self, product_id: int, data: dict[str, Any], expected_version: int | None = None

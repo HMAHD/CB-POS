@@ -2918,6 +2918,24 @@
     "split_confirm": "These items come from {count} suppliers. Create {count} purchase orders?",
     "purchase_orders_created": "Created {count} Purchase Orders ({doc_numbers}).\nNavigating to Purchase view..."
   },
+  "import": {
+    "map_title": "Check the columns",
+    "ignore": "(ignore)",
+    "duplicate_column": "Two columns are set to {field}. Choose one.",
+    "import_n": "Import {count} products",
+    "error_unreadable": "Couldn't read this file. Save it as CSV from Excel and try again.",
+    "error_empty": "The file has no rows.",
+    "field_barcode": "Barcode",
+    "field_name_en": "Name (English)",
+    "field_name_si": "Name (Sinhala)",
+    "field_name_ta": "Name (Tamil)",
+    "field_price": "Selling Price",
+    "field_cost": "Cost",
+    "field_stock_qty": "Stock Quantity",
+    "field_category": "Category",
+    "field_unit": "Unit",
+    "field_reorder_point": "Reorder Point"
+  },
   "stock_take": {
     "tab_new_count": "New Count",
     "tab_history": "History",

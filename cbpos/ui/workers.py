@@ -121,26 +121,26 @@ class CsvImportWorker(QThread):
     error = pyqtSignal(str)
     progress = pyqtSignal(int, int)  # (current_row, total_rows)
 
-    def __init__(self, import_service: object, file_path: str) -> None:
+    def __init__(
+        self,
+        import_service: object,
+        file_path: str,
+        mapping: dict[str, str] | None = None,
+    ) -> None:
         """Set up the import job; QThread.finished deletes it once run() returns."""
         super().__init__()
         self.finished.connect(self.deleteLater)
         self.import_service = import_service
         self.file_path = file_path
+        self.mapping = mapping
 
     def run(self) -> None:
-        """Count CSV rows for progress reporting, then import products, emitting progress/result/error."""
+        """Import products, emitting progress/result/error."""
         try:
-            # Count rows with a lightweight line count (skip header)
-            try:
-                with open(self.file_path, encoding="utf-8-sig") as f:
-                    total = max(0, sum(1 for _ in f) - 1)
-            except Exception:
-                total = 0
-
             results: dict[str, int] = self.import_service.import_products_from_csv_with_progress(
                 self.file_path,
-                progress_callback=lambda current: self.progress.emit(current, total),
+                progress_callback=lambda current: self.progress.emit(current, 0),
+                mapping=self.mapping,
             )
 
             self.result.emit(results)

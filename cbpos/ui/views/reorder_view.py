@@ -124,10 +124,10 @@ class ReorderView(QWidget, Activatable):
 
     def load_reorder_items(self):
         """Load products where stock_qty <= reorder_point."""
-        products = StockService.get_reorder_list()
+        rows = StockService.get_reorder_rows()
 
         with batch_table_update(self.table):
-            self.table.setRowCount(len(products))
+            self.table.setRowCount(len(rows))
 
             # Hoist LEGB locals
             table = self.table
@@ -142,51 +142,50 @@ class ReorderView(QWidget, Activatable):
             bold_font = QFont()
             bold_font.setBold(True)
 
-            for row, product in enumerate(products):
+            for row, row_data in enumerate(rows):
                 # Product Name
-                name_item = TableItem(product.name_en)
-                if product.stock_qty <= 0:
+                name_item = TableItem(row_data.name_en)
+                if row_data.stock_qty <= 0:
                     # Out of stock - Bold Red
                     name_item.setFont(bold_font)
                     name_item.setForeground(color_danger)
-                name_item.setData(user_role, product.id)
+                name_item.setData(user_role, row_data.product_id)
                 set_item(row, 0, name_item)
 
                 # Barcode
-                set_item(row, 1, TableItem(product.barcode))
+                set_item(row, 1, TableItem(row_data.barcode))
 
                 # Current Stock
-                stock_item = TableItem(f"{product.stock_qty:.3f}")
+                stock_item = TableItem(f"{row_data.stock_qty:.3f}")
                 stock_item.setTextAlignment(num_align)
-                if product.stock_qty <= 0:
+                if row_data.stock_qty <= 0:
                     stock_item.setForeground(color_danger)
                 set_item(row, 2, stock_item)
 
                 # Reorder Point
-                reorder_item = TableItem(f"{product.reorder_point:.3f}")
+                reorder_item = TableItem(f"{row_data.reorder_point:.3f}")
                 reorder_item.setTextAlignment(num_align)
                 set_item(row, 3, reorder_item)
 
                 # Preferred Qty
-                preferred_item = TableItem(f"{product.preferred_qty:.3f}")
+                preferred_item = TableItem(f"{row_data.preferred_qty:.3f}")
                 preferred_item.setTextAlignment(num_align)
                 set_item(row, 4, preferred_item)
 
-                # Supplier (first one if exists)
-                has_supplier = bool(product.suppliers)
-                supplier_name = product.suppliers[0].company_name if has_supplier else no_supplier_str
+                # Supplier (resolved by StockService)
+                has_supplier = row_data.supplier_id is not None
+                supplier_name = row_data.supplier_name if has_supplier else no_supplier_str
                 supplier_item = TableItem(supplier_name)
-                supplier_item.setData(user_role_plus_1, product.suppliers[0].id if has_supplier else None)
+                supplier_item.setData(user_role_plus_1, row_data.supplier_id)
                 set_item(row, 5, supplier_item)
 
     def create_purchase_order(self):
         """
-        Create a real Purchase Order (#486) from selected items, then
+        Create a real Purchase Order (#486, #864) from selected items, then
         navigate to PurchaseView with the GRN pre-filled from it.
 
-        All selected rows must share the same (non-empty) supplier, since a
-        Purchase Order is placed with one supplier -- this mirrors the
-        existing one-supplier-per-GRN constraint on the New GRN tab.
+        Supports multi-supplier selection by offering to split into one PO per
+        supplier. Rows with no supplier are excluded with an actionable hint.
         """
         selected_rows = {item.row() for item in self.table.selectedItems()}
 
@@ -199,8 +198,9 @@ class ReorderView(QWidget, Activatable):
             return
 
         # Collect items with calculated order quantities from table data
-        po_items = []
-        supplier_ids = set()
+        by_supplier: dict[int, list[dict]] = {}
+        no_supplier_items: list[dict] = []
+
         for row in sorted(selected_rows):
             product_id = self.table.item(row, 0).data(Qt.ItemDataRole.UserRole)
             product_name = self.table.item(row, 0).text()
@@ -208,48 +208,92 @@ class ReorderView(QWidget, Activatable):
             current_stock = Decimal(self.table.item(row, 2).text())
             preferred_qty = Decimal(self.table.item(row, 4).text())
             supplier_id = self.table.item(row, 5).data(Qt.ItemDataRole.UserRole + 1)
-            supplier_ids.add(supplier_id)
 
             order_qty = max(preferred_qty - current_stock, Decimal("0"))
+            po_item = {
+                "product_id": product_id,
+                "product_name": product_name,
+                "barcode": barcode,
+                "current_stock": current_stock,
+                "order_qty": order_qty,
+            }
 
-            po_items.append(
-                {
-                    "product_id": product_id,
-                    "product_name": product_name,
-                    "barcode": barcode,
-                    "current_stock": current_stock,
-                    "order_qty": order_qty,
-                }
-            )
+            if supplier_id is None:
+                no_supplier_items.append(po_item)
+            else:
+                by_supplier.setdefault(supplier_id, []).append(po_item)
 
-        if supplier_ids != {next(iter(supplier_ids))} or None in supplier_ids:
+        if not by_supplier:
+            hint = _t("reorder.no_supplier_hint")
+            if no_supplier_items:
+                names = "\n• " + "\n• ".join(i["product_name"] for i in no_supplier_items)
+                msg = f"{hint}\n{names}"
+            else:
+                msg = hint
             QMessageBox.warning(
                 self,
-                _t("reorder.mixed_supplier_title"),
-                _t("reorder.mixed_supplier_msg"),
+                _t("reorder.purchase_order"),
+                msg,
             )
             return
 
-        supplier_id = next(iter(supplier_ids))
-        order = PurchaseOrderService.create_purchase_order(
-            supplier_id=supplier_id,
-            user_id=self.user.id,
-            items=[
-                {
-                    "product_id": item["product_id"],
-                    "qty_ordered": item["order_qty"] if item["order_qty"] > 0 else Decimal("1.000"),
-                }
-                for item in po_items
-            ],
-        )
+        if len(by_supplier) > 1:
+            confirm_msg = _t("reorder.split_confirm", count=len(by_supplier))
+            if no_supplier_items:
+                names = "\n• " + "\n• ".join(i["product_name"] for i in no_supplier_items)
+                confirm_msg = f"{confirm_msg}\n\n{_t('reorder.no_supplier_hint')}\n{names}"
+            reply = QMessageBox.question(
+                self,
+                _t("reorder.purchase_order"),
+                confirm_msg,
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.Yes,
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return
+        elif no_supplier_items:
+            names = "\n• " + "\n• ".join(i["product_name"] for i in no_supplier_items)
+            QMessageBox.information(
+                self,
+                _t("reorder.purchase_order"),
+                f"{_t('reorder.no_supplier_hint')}\n{names}",
+            )
 
-        # Emit signal to navigate to Purchase View with items and the order id
-        self.navigate_to_purchase.emit(po_items, order.id)
-        QMessageBox.information(
-            self,
-            _t("reorder.purchase_order"),
-            _t("reorder.purchase_order_created", count=len(po_items), doc_number=order.document_number),
-        )
+        created_orders = []
+        for s_id, items in by_supplier.items():
+            order = PurchaseOrderService.create_purchase_order(
+                supplier_id=s_id,
+                user_id=self.user.id,
+                items=[
+                    {
+                        "product_id": item["product_id"],
+                        "qty_ordered": item["order_qty"] if item["order_qty"] > 0 else Decimal("1.000"),
+                    }
+                    for item in items
+                ],
+            )
+            created_orders.append((items, order))
+
+        if not created_orders:
+            return
+
+        # Emit signal to navigate to Purchase View with items and the first order id
+        first_items, first_order = created_orders[0]
+        self.navigate_to_purchase.emit(first_items, first_order.id)
+
+        if len(created_orders) == 1:
+            QMessageBox.information(
+                self,
+                _t("reorder.purchase_order"),
+                _t("reorder.purchase_order_created", count=len(first_items), doc_number=first_order.document_number),
+            )
+        else:
+            doc_numbers = ", ".join(o.document_number for _, o in created_orders)
+            QMessageBox.information(
+                self,
+                _t("reorder.purchase_order"),
+                _t("reorder.purchase_orders_created", count=len(created_orders), doc_numbers=doc_numbers),
+            )
 
     def on_activated(self) -> None:
         """Reload when this view is shown again, so the user never sees stale data."""

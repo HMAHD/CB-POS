@@ -2913,7 +2913,28 @@
     "mixed_supplier_title": "සැපයුම්කරුවන් මිශ්‍රව ඇත",
     "mixed_supplier_msg": "මිලදී ගැනීමේ ඇණවුමක් සෑදීමට එකම සැපයුම්කරුගේ අයිතම පමණක් තෝරන්න",
     "purchase_order": "මිලදී ගැනීමේ ඇණවුම",
-    "purchase_order_created": "{doc_number} — අයිතම {count}ක් සමඟ මිලදී ගැනීමේ ඇණවුම සාදන ලදී"
+    "purchase_order_created": "{doc_number} — අයිතම {count}ක් සමඟ මිලදී ගැනීමේ ඇණවුම සාදන ලදී",
+    "no_supplier_hint": "මෙම භාණ්ඩ ඇණවුම් කිරීමට සැපයුම්කරුවෙකු තෝරන්න (තොග → භාණ්ඩ සංස්කරණය → සැපයුම්කරු).",
+    "split_confirm": "මෙම භාණ්ඩ සැපයුම්කරුවන් {count} දෙනෙකුගෙන් පැමිණේ. මිලදී ගැනීමේ ඇණවුම් {count}ක් සාදන්නද?",
+    "purchase_orders_created": "මිලදී ගැනීමේ ඇණවුම් {count}ක් සාදන ලදී ({doc_numbers}).\nමිලදී ගැනීම් පිටුවට යමින්..."
+  },
+  "import": {
+    "map_title": "තීරු පරීක්ෂා කරන්න",
+    "ignore": "(නොසලකා හරින්න)",
+    "duplicate_column": "තීරු දෙකක් {field} ලෙස සකසා ඇත. එකක් තෝරන්න.",
+    "import_n": "භාණ්ඩ {count}ක් ඇතුළත් කරන්න",
+    "error_unreadable": "මෙම ගොනුව කියවිය නොහැක. Excel වෙතින් CSV ලෙස සුරකින්න.",
+    "error_empty": "ගොනුවේ කිසිදු පේළියක් නැත.",
+    "field_barcode": "බාර්කෝඩ්",
+    "field_name_en": "නම (ඉංග්‍රීසි)",
+    "field_name_si": "නම (සිංහල)",
+    "field_name_ta": "නම (දෙමළ)",
+    "field_price": "විකුණුම් මිල",
+    "field_cost": "පිරිවැය",
+    "field_stock_qty": "තොග ප්‍රමාණය",
+    "field_category": "කාණ්ඩය",
+    "field_unit": "ඒකකය",
+    "field_reorder_point": "නැවත ඇණවුම් මට්ටම"
   },
   "stock_take": {
     "tab_new_count": "නව ගණන් කිරීම",

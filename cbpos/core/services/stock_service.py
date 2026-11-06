@@ -1,4 +1,5 @@
 import logging
+from dataclasses import dataclass
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -20,6 +21,25 @@ _VALID_MOVEMENT_TYPES = frozenset(
         MovementType.OPENING,
     }
 )
+
+
+@dataclass(frozen=True)
+class ReorderRow:
+    """Row representing a product needing reordering with its resolved supplier."""
+
+    product_id: int
+    name_en: str
+    barcode: str
+    stock_qty: Decimal
+    reorder_point: Decimal
+    preferred_qty: Decimal
+    supplier_id: int | None
+    supplier_name: str | None
+
+    @property
+    def id(self) -> int:
+        """Return the product ID."""
+        return self.product_id
 
 
 class StockService:
@@ -155,6 +175,44 @@ class StockService:
             return results
 
     @staticmethod
+    def get_reorder_rows() -> list[ReorderRow]:
+        """Get list of products that need reordering with resolved suppliers.
+
+        Supplier is resolved as default_supplier or the first associated supplier.
+        """
+        db = Database()
+        with db.get_session() as session:
+            stmt = (
+                select(Product)
+                .where(
+                    Product.is_active.is_(True),
+                    Product.is_service.is_(False),
+                    Product.stock_qty <= Product.reorder_point,
+                )
+                .options(
+                    joinedload(Product.default_supplier),
+                    joinedload(Product.suppliers),
+                )
+            )
+            products = list(session.scalars(stmt).unique().all())
+            rows: list[ReorderRow] = []
+            for p in products:
+                supplier = p.default_supplier or (p.suppliers[0] if p.suppliers else None)
+                rows.append(
+                    ReorderRow(
+                        product_id=p.id,
+                        name_en=p.name_en,
+                        barcode=p.barcode,
+                        stock_qty=Decimal(str(p.stock_qty)),
+                        reorder_point=Decimal(str(p.reorder_point)),
+                        preferred_qty=Decimal(str(p.preferred_qty)),
+                        supplier_id=supplier.id if supplier else None,
+                        supplier_name=supplier.company_name if supplier else None,
+                    )
+                )
+            return rows
+
+    @staticmethod
     def get_reorder_list() -> list[Product]:
         """Get list of products that need reordering."""
         db = Database()
@@ -166,7 +224,10 @@ class StockService:
                     Product.is_service.is_(False),
                     Product.stock_qty <= Product.reorder_point,
                 )
-                .options(joinedload(Product.suppliers))
+                .options(
+                    joinedload(Product.default_supplier),
+                    joinedload(Product.suppliers),
+                )
             )
             products = list(session.scalars(stmt).unique().all())
             for p in products:

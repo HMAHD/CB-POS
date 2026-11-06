@@ -82,3 +82,32 @@ class TestGetReorderList:
 
         results = StockService.get_reorder_list()
         assert product.id not in [p.id for p in results]
+
+    def test_issue_864_default_supplier_used_in_reorder(self, db_session):
+        global _counter
+        _counter += 1
+        supplier = Supplier(company_name=f"Default Supplier {_counter}")
+        db_session.add(supplier)
+        db_session.flush()
+
+        # Product with only default_supplier_id (no entries in product.suppliers M2M)
+        product = Product(
+            name_en=f"DefaultSuppliedProduct_{_counter}",
+            price=10.0,
+            stock_qty=1.0,
+            reorder_point=5.0,
+            preferred_qty=15.0,
+            barcode=f"DSP{_counter:04d}",
+            is_active=True,
+            is_service=False,
+            default_supplier_id=supplier.id,
+        )
+        db_session.add(product)
+        db_session.commit()
+
+        rows = StockService.get_reorder_rows()
+        matching = [r for r in rows if r.product_id == product.id]
+        assert len(matching) == 1
+        row = matching[0]
+        assert row.supplier_id == supplier.id
+        assert row.supplier_name == supplier.company_name

@@ -135,3 +135,87 @@ def test_issue_888_adjust_balance_dialog_negative_debt_store_credit(db_session):
         assert "Store credit" in dlg.lbl_preview.text()
     finally:
         dlg.deleteLater()
+
+
+def test_issue_794_dialog_calls_service_with_user(db_session, monkeypatch):
+    """#794: StockAdjustmentDialog validates input, checks permission, and calls adjust_stock."""
+    from unittest.mock import MagicMock
+
+    from cbpos.core.models import Product, User
+    from cbpos.ui.dialogs.stock_adjustment_dialog import StockAdjustmentDialog
+
+    product = Product(
+        barcode="BC_ADJ_794",
+        name_en="Adjustable Item",
+        price=Decimal("250.00"),
+        stock_qty=Decimal("20"),
+        is_weighted=False,
+    )
+    db_session.add(product)
+    db_session.flush()
+
+    mock_service = MagicMock()
+    mock_user = User(id=42, username="manager_user")
+
+    monkeypatch.setattr(
+        "cbpos.ui.dialogs.stock_adjustment_dialog.check_permission_with_override",
+        lambda perm, parent: mock_user,
+    )
+
+    dlg = StockAdjustmentDialog(product, inventory_service=mock_service)
+    try:
+        # Default mode is remove, qty 1
+        assert dlg.radio_remove.isChecked()
+        dlg.qty_spin.setValue(3)
+        dlg.cmb_reason.setCurrentIndex(dlg.cmb_reason.findData("DAMAGED"))
+        dlg.txt_note.setText("Dropped on floor")
+
+        dlg.save_adjustment()
+
+        mock_service.adjust_stock.assert_called_once_with(
+            product_id=product.id,
+            qty_change=Decimal("-3"),
+            reason="DAMAGED",
+            user_id=42,
+            note="Dropped on floor",
+        )
+    finally:
+        dlg.deleteLater()
+
+
+def test_issue_794_inventory_view_adjust_stock_action(db_session, monkeypatch):
+    """#794: InventoryView has adjust_btn and open_stock_adjustment opens StockAdjustmentDialog."""
+    from cbpos.core.models import Product
+    from cbpos.ui.dialogs.stock_adjustment_dialog import StockAdjustmentDialog
+    from cbpos.ui.views.inventory_view import InventoryView
+
+    product = Product(
+        barcode="BC_VIEW_794",
+        name_en="View Adjustable Item",
+        price=Decimal("150.00"),
+        stock_qty=Decimal("15"),
+    )
+    db_session.add(product)
+    db_session.flush()
+
+    view = InventoryView()
+    try:
+        assert hasattr(view, "adjust_btn")
+        assert view.adjust_btn.text() != ""
+
+        # Select the product row in view table
+        row_to_select = 0
+        for r, p in enumerate(view.model.products):
+            if p.id == product.id:
+                row_to_select = r
+                break
+        view.table.selectRow(row_to_select)
+
+        opened = []
+        monkeypatch.setattr(StockAdjustmentDialog, "exec", lambda self: opened.append(self) or 1)
+
+        view.open_stock_adjustment()
+        assert len(opened) == 1
+        assert opened[0].product.id == product.id
+    finally:
+        view.deleteLater()

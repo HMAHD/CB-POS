@@ -1,9 +1,10 @@
 from PyQt6.QtCore import QAbstractTableModel, QModelIndex, Qt
-from PyQt6.QtGui import QBrush, QColor
+from PyQt6.QtGui import QBrush, QColor, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLineEdit,
+    QMessageBox,
     QPushButton,
     QStackedWidget,
     QTableView,
@@ -17,6 +18,7 @@ from cbpos.core.utils.terminal_guard import catalog_is_read_only
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.components.activation import Activatable
 from cbpos.ui.dialogs.product_editor import ProductEditor
+from cbpos.ui.dialogs.stock_adjustment_dialog import StockAdjustmentDialog
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
 from cbpos.ui.widgets.pagination_widget import PaginationWidget
@@ -134,6 +136,10 @@ class InventoryView(QWidget, Activatable):
         self.add_btn.setProperty("class", "primary")
         self.add_btn.clicked.connect(self.open_add_dialog)
 
+        self.adjust_btn = QPushButton()
+        self.adjust_btn.setObjectName("BtnAdjustStock")
+        self.adjust_btn.clicked.connect(self.open_stock_adjustment)
+
         self.import_btn = QPushButton()
         self.import_btn.clicked.connect(self.import_csv)
 
@@ -148,6 +154,7 @@ class InventoryView(QWidget, Activatable):
 
         top_bar.addWidget(self.search_input)
         top_bar.addWidget(self.add_btn)
+        top_bar.addWidget(self.adjust_btn)
         top_bar.addWidget(self.import_btn)
         top_bar.addWidget(self.cat_btn)
         top_bar.addWidget(self.unit_btn)
@@ -174,6 +181,10 @@ class InventoryView(QWidget, Activatable):
         )
         self.table.doubleClicked.connect(self.open_edit_dialog)
 
+        # Keyboard shortcuts
+        self.shortcut_adjust = QShortcut(QKeySequence("Ctrl+J"), self)
+        self.shortcut_adjust.activated.connect(self.open_stock_adjustment)
+
         # Context Menu
         self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self.open_context_menu)
@@ -197,11 +208,13 @@ class InventoryView(QWidget, Activatable):
         """Update action buttons and tooltip based on terminal catalog read-only state."""
         is_ro = self.read_only_banner.refresh_visibility()
         self.add_btn.setEnabled(not is_ro)
+        self.adjust_btn.setEnabled(not is_ro)
         self.import_btn.setEnabled(not is_ro)
         self.cat_btn.setEnabled(not is_ro)
         self.unit_btn.setEnabled(not is_ro)
         tip = _t("catalog.read_only_tooltip") if is_ro else ""
         self.add_btn.setToolTip(tip)
+        self.adjust_btn.setToolTip(tip)
         self.import_btn.setToolTip(tip)
         self.cat_btn.setToolTip(tip)
         self.unit_btn.setToolTip(tip)
@@ -212,6 +225,7 @@ class InventoryView(QWidget, Activatable):
         self._update_read_only_state()
         self.search_input.setPlaceholderText(_t("inventory.search_placeholder"))
         self.add_btn.setText(_t("inventory.btn_add_product"))
+        self.adjust_btn.setText(_t("inventory.btn_adjust_stock"))
         self.import_btn.setText(_t("inventory.btn_import_csv"))
         self.cat_btn.setText(_t("inventory.btn_manage_categories"))
         self.unit_btn.setText(_t("inventory.btn_units"))
@@ -323,7 +337,7 @@ class InventoryView(QWidget, Activatable):
         dialog.exec()
 
     def open_context_menu(self, position):
-        """Show the right-click context menu with a stock history action."""
+        """Show the right-click context menu with stock adjustment and history actions."""
         from PyQt6.QtWidgets import QMenu
 
         from cbpos.ui.dialogs.stock_history_dialog import StockHistoryDialog
@@ -333,14 +347,44 @@ class InventoryView(QWidget, Activatable):
             return
 
         menu = QMenu()
+        adjust_action = menu.addAction(_t("inventory.context_adjust_stock"))
         history_action = menu.addAction(_t("inventory.context_stock_history"))
 
         action = menu.exec(self.table.viewport().mapToGlobal(position))
 
-        if action == history_action:
+        if action == adjust_action:
+            self._open_adjustment_for_row(index.row())
+        elif action == history_action:
             product = self.model.products[index.row()]
             dialog = StockHistoryDialog(product, parent=self)
             dialog.exec()
+
+    def open_stock_adjustment(self):
+        """Open stock adjustment dialog for the currently selected product row."""
+        if catalog_is_read_only():
+            return
+
+        indexes = self.table.selectionModel().selectedRows()
+        if not indexes:
+            return
+        self._open_adjustment_for_row(indexes[0].row())
+
+    def _open_adjustment_for_row(self, row: int):
+        """Open stock adjustment dialog for product at `row`."""
+        if catalog_is_read_only():
+            return
+
+        if row < 0 or row >= len(self.model.products):
+            return
+
+        product = self.model.products[row]
+        if getattr(product, "is_service", False):
+            QMessageBox.information(self, _t("common.notice"), _t("inventory.service_item_no_stock"))
+            return
+
+        dialog = StockAdjustmentDialog(product, inventory_service=self.inventory_service, parent=self)
+        if dialog.exec():
+            self.load_data()
 
     def import_csv(self) -> None:
         """Open the CSV import dialog and reload products afterward."""

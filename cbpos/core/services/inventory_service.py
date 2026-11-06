@@ -4,12 +4,17 @@ from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.exc import StaleDataError
 
+from cbpos.core.constants.permissions import Permissions
+from cbpos.core.constants.status import MovementType
 from cbpos.core.database import Database
-from cbpos.core.models import AuditLog, CompositeItem, InventoryLog, Product
+from cbpos.core.models import AuditLog, CompositeItem, InventoryLog, Product, Role, StockMovement, User
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.logging_service import LoggingService, diff_changes
+from cbpos.core.services.permission_service import PermissionService
+from cbpos.core.services.stock_service import StockService
 from cbpos.core.utils.terminal_guard import require_catalog_writable
 
 logger = logging.getLogger(__name__)
@@ -137,35 +142,86 @@ class InventoryService:
             stmt = select(Product).where(Product.is_active.is_(True), Product.stock_qty <= Product.reorder_level)
             return list(session.scalars(stmt).all())
 
-    def adjust_stock(self, product_id: int, qty_change: Decimal, reason: str, user_id: int) -> bool:
-        """Adjust stock quantity and record in audit log."""
+    def adjust_stock(
+        self,
+        product_id: int,
+        qty_change: Decimal,
+        reason: str,
+        user_id: int,
+        note: str | None = None,
+    ) -> StockMovement:
+        """Adjust stock quantity via StockService and record in InventoryLog & AuditLog (#794).
+
+        Args:
+            product_id: The product to adjust.
+            qty_change: Signed quantity delta (+/-). Must not be zero.
+            reason: Reason code (DAMAGED, EXPIRED, THEFT, FOUND, CORRECTION, OTHER).
+            user_id: ID of the user performing the adjustment.
+            note: Optional note (mandatory when reason is OTHER).
+
+        Returns:
+            The created StockMovement.
+
+        Raises:
+            PermissionError: If user lacks inventory.stock_adjust permission.
+            ValueError: On invalid quantity, service item, or missing note for OTHER.
+        """
+        if isinstance(user_id, str) and (note is None or isinstance(note, int)):
+            note, user_id = user_id, note
+
+        if qty_change == 0 or qty_change == Decimal("0"):
+            raise ValueError("Quantity change cannot be zero")
+
+        clean_reason = str(reason).strip()
+        clean_note = (note or "").strip()
+        if clean_reason.upper() == "OTHER" and not clean_note:
+            raise ValueError("A note is required when reason is 'OTHER'")
+
         with self.db.get_session() as session:
+            # 1. Check user permission
+            user = session.get(User, user_id, options=[joinedload(User.role).joinedload(Role.permissions)])
+            if not user or not PermissionService.user_has_permission(user, Permissions.INVENTORY_STOCK_ADJUST):
+                raise PermissionError("Permission denied: inventory.stock_adjust required")
+
+            # 2. Check product
             product = session.get(Product, product_id)
             if not product:
-                return False
+                raise ValueError(f"Product {product_id} not found")
 
-            old_qty = product.stock_qty
-            new_qty = old_qty + qty_change
-            product.stock_qty = new_qty
+            if product.is_service:
+                raise ValueError("Cannot adjust stock for service products")
 
-            # Log to InventoryLog
+            # 3. Record movement via StockService (updates product.stock_qty and enforces negative stock)
+            movement = StockService.record_movement(
+                product_id=product.id,
+                qty_change=qty_change,
+                movement_type=MovementType.ADJUSTMENT,
+                user_id=user_id,
+                session=session,
+            )
+
+            # 4. Record InventoryLog
+            log_reason = f"{clean_reason}: {clean_note}" if clean_note else clean_reason
             inv_log = InventoryLog(
                 product_id=product.id,
                 qty_change=qty_change,
-                new_qty=new_qty,
-                reason=reason,
+                new_qty=product.stock_qty,
+                reason=log_reason,
                 user_id=user_id,
             )
             session.add(inv_log)
 
-            # Log to AuditLog (as requested)
+            # 5. Record AuditLog
+            audit_details = (
+                f"Product {product.name_en} ({product.barcode}) stock adjusted by {qty_change}. "
+                f"Reason: {clean_reason}{f' - {clean_note}' if clean_note else ''}. "
+                f"New stock: {product.stock_qty}"
+            )
             audit_log = AuditLog(
                 user_id=user_id,
                 action="STOCK_ADJUSTMENT",
                 event_type="INVENTORY",
-                details=(
-                    f"Product {product.name_en} ({product.barcode}) stock adjusted by {qty_change}. Reason: {reason}"
-                ),
+                details=audit_details,
             )
             session.add(audit_log)
 
@@ -174,7 +230,8 @@ class InventoryService:
             except StaleDataError:
                 session.rollback()
                 raise ValueError("This product's stock was modified by another user. Please reload and try again.")
-            return True
+
+            return movement
 
     def get_composite_items(self, product_id: int) -> list[dict[str, Any]]:
         """Get composite (bundle) child items for a product."""

@@ -628,6 +628,25 @@
     "success_title": "வெற்றி",
     "success_message": "{customer}-க்கு {amount} பணம் பதிவு செய்தாச்சு."
   },
+  "stock_adjust": {
+    "title": "இருப்பு சரிசெய்தல் — {name}",
+    "in_stock": "தற்போது இருப்பில்: {qty}",
+    "remove": "குறைக்கவும்",
+    "add": "சேர்க்கவும்",
+    "quantity": "அளவு",
+    "reason": "காரணம்",
+    "note": "குறிப்பு",
+    "will_be": "புதிய இருப்பு: {qty}",
+    "save": "சரிசெய்தலைச் சேமி",
+    "reason_damaged": "சேதமடைந்தது",
+    "reason_expired": "காலாவதியானது",
+    "reason_theft": "காணாமல் போனது / திருடப்பட்டது",
+    "reason_found": "கிடைத்தது / கூடுதல்",
+    "reason_correction": "எண்ணிக்கை திருத்தம்",
+    "reason_other": "மற்றவை (குறிப்பு எழுதவும்)",
+    "note_required": "தயவுசெய்து 'மற்றவை' என்பதற்கு குறிப்பு எழுதவும்.",
+    "negative_blocked": "இது இருப்பை பூஜ்ஜியத்திற்குக் கீழே கொண்டு செல்லும், இதற்கு Settings இல் அனுமதியில்லை."
+  },
   "stock_adjustment": {
     "title": "இருப்பு சரிசெய்தல்: {product_name}",
     "current_stock": "இப்ப இருக்கிற சரக்கு:",
@@ -796,7 +815,10 @@
     "btn_print_labels": "லேபிள் பிரிண்ட் பண்ணுங்க",
     "search_placeholder": "பெயர், பார்கோடு அல்லது வகையில் தேடுங்கள்...",
     "empty_state": "நீங்க தேடுனதுக்கு பொருத்தமான பொருள் இல்ல",
-    "context_stock_history": "சரக்கு வரலாற்றைப் பாருங்க"
+    "context_stock_history": "சரக்கு வரலாற்றைப் பாருங்க",
+    "btn_adjust_stock": "இருப்பு சரிசெய்தல்",
+    "context_adjust_stock": "இருப்பு சரிசெய்தல்\tCtrl+J",
+    "service_item_no_stock": "சேவை பொருட்களுக்கு இருப்பு இல்லை."
   },
   "credit_book": {
     "title": "வாடிக்கையாளர்கள்",

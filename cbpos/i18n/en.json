@@ -628,6 +628,25 @@
     "success_title": "Payment Recorded",
     "success_message": "Payment of {amount} recorded for {customer}."
   },
+  "stock_adjust": {
+    "title": "Adjust stock — {name}",
+    "in_stock": "In stock now: {qty}",
+    "remove": "Remove",
+    "add": "Add",
+    "quantity": "Quantity",
+    "reason": "Reason",
+    "note": "Note",
+    "will_be": "Stock will be: {qty}",
+    "save": "Save adjustment",
+    "reason_damaged": "Damaged",
+    "reason_expired": "Expired",
+    "reason_theft": "Lost or stolen",
+    "reason_found": "Found / extra",
+    "reason_correction": "Count correction",
+    "reason_other": "Other (write a note)",
+    "note_required": "Please write a note for 'Other'.",
+    "negative_blocked": "This would make stock below zero, which isn't allowed in Settings."
+  },
   "stock_adjustment": {
     "title": "Adjust Stock: {product_name}",
     "current_stock": "Current Stock:",
@@ -831,7 +850,10 @@
     "btn_print_labels": "Print Labels",
     "search_placeholder": "Search by Barcode or Name...",
     "empty_state": "No products match your search",
-    "context_stock_history": "View Stock History"
+    "context_stock_history": "View Stock History",
+    "btn_adjust_stock": "Adjust Stock",
+    "context_adjust_stock": "Adjust stock\tCtrl+J",
+    "service_item_no_stock": "Service items do not have inventory stock."
   },
   "credit_book": {
     "title": "Customers",

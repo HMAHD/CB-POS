@@ -185,10 +185,10 @@ class TestStockCountItemModelExpectedWhenCounted:
         item = StockCountItem(product=product, expected_qty=Decimal("10.000"), counted_qty=Decimal("10.000"))
         model = StockCountItemModel([item])
         index = model.index(0, 2)
-        text = model.data(index, Qt.ItemDataRole.DisplayRole)
-        assert "10" in text
-        assert "counted" in text.lower()
+        assert model.data(index, Qt.ItemDataRole.DisplayRole) == "10"
         assert model.data(index, Qt.ItemDataRole.ForegroundRole) is not None
+        assert "10" in model.data(index, Qt.ItemDataRole.ToolTipRole)
+        assert "counted" in model.data(index, Qt.ItemDataRole.ToolTipRole).lower()
         assert model.data(index, Qt.ItemDataRole.DecorationRole) is None
 
     def test_expected_shows_info_icon_and_tooltip_when_stock_changed_since_count(self):

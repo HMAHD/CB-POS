@@ -131,8 +131,6 @@ class StockCountItemModel(QAbstractTableModel):
             if col == 1:
                 return item.product.display_name if item.product else _t("stock_take.unknown_product")
             if col == 2:
-                if item.counted_qty is not None:
-                    return _t("stock_take.system_when_counted", expected=_format_count(item.expected_qty, item.product))
                 return _format_count(item.expected_qty, item.product)
             if col == 3:
                 return _format_count(item.counted_qty, item.product)

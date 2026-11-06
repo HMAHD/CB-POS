@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 4 · Batch: 4.3 · Branch: none · PR: none · Last session: 2026-11-06
+- Phase: 4 · Batch: 4.4 · Branch: none · PR: none · Last session: 2026-11-06
 
 ## Issues
 
@@ -118,10 +118,10 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #865 | CSV import maps columns by substring, so "Selling Price,Cost Price" imports t… | high | 4.2 | done | #995 | 6a10f9e · canonical alias mapping, reject duplicates, CsvImportDialog 2-step wizard with preview table |
 | #900 | CSV import silently imports nothing for files outside the user's home folder … | medium | 4.2 | done | #995 | 009bd7f · support non-home file paths (USB/external), cp1252 auto-fallback, atomic batch rollback on failure |
 | #901 | CSV import accepts negative prices, costs and stock | medium | 4.2 | done | #995 | afbd59a · shared ProductValidator for price/cost/stock, record OPENING stock movements on product creation |
-| #895 | GRN "Date" field is ignored, so back-dated supplier invoices land in the wron… | medium | 4.3 | in-progress | | 5378a44 · pass date_received to GrnRequest, clamp date_input max to today, reject future dates |
-| #899 | AVCO gives an inflated or wrong cost when a GRN arrives against negative stock | medium | 4.3 | in-progress | | Negative stock AVCO distortion. Repro failed with: AssertionError: assert Decimal('140.00') == Decimal('120.00') |
-| #902 | New GRN grid is fully editable and unvalidated (product ID, negative qty or c… | medium | 4.3 | in-progress | | a78b995 · GrnNumericDelegate for qty/cost, non-editable ID/Name/Total columns, itemChanged recalculation, remove-line action |
-| #919 | Failed GRN commit leaves an orphan DRAFT purchase (and burns a GRN number) | low | 4.3 | in-progress | | c9abaef · atomic PurchaseService.receive_goods with GrnRequest, validate before service, rollback on failure |
+| #895 | GRN "Date" field is ignored, so back-dated supplier invoices land in the wron… | medium | 4.3 | done | #996 | 5378a44 · pass date_received to GrnRequest, clamp date_input max to today, reject future dates |
+| #899 | AVCO gives an inflated or wrong cost when a GRN arrives against negative stock | medium | 4.3 | done | #996 | 88dfc73 · Invariant 2: if old_qty <= 0 then unit_cost, else round_money weighted average |
+| #902 | New GRN grid is fully editable and unvalidated (product ID, negative qty or c… | medium | 4.3 | done | #996 | a78b995 · GrnNumericDelegate for qty/cost, non-editable ID/Name/Total columns, itemChanged recalculation, remove-line action |
+| #919 | Failed GRN commit leaves an orphan DRAFT purchase (and burns a GRN number) | low | 4.3 | done | #996 | c9abaef · atomic PurchaseService.receive_goods with GrnRequest, validate before service, rollback on failure |
 | #920 | Supplier payable adjustment clamps the balance to 0 but writes the full amoun… | low | 4.4 | todo | | |
 | #921 | Categories nested under a subcategory disappear from the Category Manager | low | 4.4 | todo | | |
 
@@ -304,5 +304,5 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 |---|---|---|
 
 ## Handoff
-Phase 4 Batch 4.2 is fully completed and merged (PR #995, 49a242d). All 4 issues (#864, #865, #900, #901) are verified closed on GitHub and ticked in epic #922. Ready to start Phase 4 Batch 4.3 (#895, #899, #902, #919).
+Phase 4 Batch 4.3 is fully completed and merged (PR #996, 8a9e495). All 4 issues (#919, #902, #895, #899) are verified closed on GitHub and ticked in epic #922. Ready to start Phase 4 Batch 4.4 (#920, #921).
 

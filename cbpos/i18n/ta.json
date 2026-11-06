@@ -2923,6 +2923,8 @@
     "col_barcode": "பார்கோடு",
     "col_product": "பொருள்",
     "col_expected": "எதிர்பார்த்தது",
+    "system_when_counted": "அமைப்பு: {expected} (எண்ணப்பட்ட போது)",
+    "changed_since_count": "இது எண்ணப்பட்ட பிறகு {n} விற்கப்பட்டது அல்லது பெறப்பட்டது — CB POS அவற்றைச் சேர்க்கும்.",
     "col_counted": "எண்ணியது",
     "col_variance": "வித்தியாசம்",
     "col_value": "மதிப்பு",

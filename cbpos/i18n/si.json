@@ -2930,6 +2930,8 @@
     "col_barcode": "බාර්කෝඩ්",
     "col_product": "අයිතමය",
     "col_expected": "අපේක්ෂිත",
+    "system_when_counted": "පද්ධතිය: {expected} (ගණන් කළ විට)",
+    "changed_since_count": "මෙය ගණන් කළ පසු {n} විකුණා හෝ ලැබී ඇත — CB POS ඒවා ඇතුළත් කරයි.",
     "col_counted": "ගණන් කළා",
     "col_variance": "වෙනස",
     "col_value": "වටිනාකම",

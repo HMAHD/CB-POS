@@ -131,6 +131,8 @@ class StockCountItemModel(QAbstractTableModel):
             if col == 1:
                 return item.product.display_name if item.product else _t("stock_take.unknown_product")
             if col == 2:
+                if item.counted_qty is not None:
+                    return _t("stock_take.system_when_counted", expected=_format_count(item.expected_qty, item.product))
                 return _format_count(item.expected_qty, item.product)
             if col == 3:
                 return _format_count(item.counted_qty, item.product)
@@ -140,12 +142,27 @@ class StockCountItemModel(QAbstractTableModel):
                 return format_signed(item.variance_value, format_currency) if item.variance_value is not None else ""
 
         elif role == Qt.ItemDataRole.ForegroundRole:
+            if col == 2 and item.counted_qty is not None:
+                return status_color(NEUTRAL)
             if col in (4, 5) and item.variance_qty is not None:
                 return status_color(_variance_meaning(item.variance_qty))
 
         elif role == Qt.ItemDataRole.TextAlignmentRole:
             if col >= self.FIRST_NUMERIC_COL:
                 return NUMERIC_ALIGNMENT
+
+        elif role == Qt.ItemDataRole.DecorationRole:
+            if col == 2 and item.counted_qty is not None and item.product:
+                if item.product.stock_qty != item.expected_qty:
+                    return Icons.get(Icons.INFO, color=status_color(INFO).name())
+
+        elif role == Qt.ItemDataRole.ToolTipRole:
+            if col == 2 and item.counted_qty is not None and item.product:
+                diff = abs(item.product.stock_qty - item.expected_qty)
+                if diff != 0:
+                    n_str = format_quantity(diff, _count_decimals(item.product))
+                    return _t("stock_take.changed_since_count", n=n_str)
+                return _t("stock_take.system_when_counted", expected=_format_count(item.expected_qty, item.product))
 
         elif role == Qt.ItemDataRole.EditRole:
             if col == self.COL_COUNTED:
@@ -167,11 +184,11 @@ class StockCountItemModel(QAbstractTableModel):
             return False
 
         try:
-            StockCountService.update_count(item.id, counted)
-            item.counted_qty = counted
-            item.variance_qty = (counted - item.expected_qty).quantize(Precision.QUANTITY)
-            if item.product:
-                item.variance_value = (item.variance_qty * item.product.cost).quantize(Precision.MONEY)
+            updated = StockCountService.update_count(item.id, counted)
+            item.expected_qty = updated.expected_qty
+            item.counted_qty = updated.counted_qty
+            item.variance_qty = updated.variance_qty
+            item.variance_value = updated.variance_value
             self.dataChanged.emit(
                 self.index(index.row(), 0),
                 self.index(index.row(), self.columnCount() - 1),

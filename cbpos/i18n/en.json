@@ -2930,6 +2930,8 @@
     "col_barcode": "Barcode",
     "col_product": "Product",
     "col_expected": "Expected",
+    "system_when_counted": "System: {expected} (when counted)",
+    "changed_since_count": "{n} sold or received after this was counted — CB POS will include them.",
     "col_counted": "Counted",
     "col_variance": "Variance",
     "col_value": "Value",

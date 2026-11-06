@@ -304,6 +304,10 @@
   "supplier": {
     "credit_balance": "Supplier owes you {amount}"
   },
+  "category": {
+    "parent_hint": "Categories can have one level of sub-categories.",
+    "has_children_locked": "Categories with sub-categories must remain top-level."
+  },
   "discount": {
     "title": "Apply Discount",
     "type_percentage": "Percentage (%)",
@@ -3108,6 +3112,7 @@
     "cannot_delete_in_use": "Cannot delete because it is still in use.",
     "concurrent_modification": "This record was modified by another user. Please reload and try again.",
     "circular_reference": "A category cannot be its own parent.",
+    "category_too_deep": "Categories can only be nested one level deep.",
     "cannot_void_refund": "A refund can't be voided. If it was a mistake, ring the items up as a new sale.",
     "sale_has_refund": "This sale has a refund, so it can't be voided. Refund the remaining items instead.",
     "payment_amount_zero": "Payment amount must be greater than zero.",

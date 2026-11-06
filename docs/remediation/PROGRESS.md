@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 4 · Batch: 4.2 · Branch: none · PR: none · Last session: 2026-11-06
+- Phase: 4 · Batch: 4.3 · Branch: none · PR: none · Last session: 2026-11-06
 
 ## Issues
 
@@ -114,10 +114,10 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #861 | Stock take applies a stale delta, so sales or GRNs made between "Load Product… | high | 4.1 | done | #994 | bcade1e, 2c95ce8 · snapshot expected_qty on first count, enforce_non_negative=False on approve, secondary count info/tooltip |
 | #862 | Saving the product editor silently overwrites current stock and cost with sta… | high | 4.1 | done | #994 | 6625cf7 · read-only stock/cost for existing products, set_cost with permission/audit, StaleProductError optimistic lock |
 | #863 | Inventory screen shows and searches only the first 1,000 products | high | 4.1 | done | #994 | dfc6560 · InventoryService.list_products server-side paging & trilingual search, 300ms debounce, batch_table_update |
-| #864 | Reorder → Purchase Order is unusable on any real (non-demo) database: supplie… | high | 4.2 | todo | | |
-| #865 | CSV import maps columns by substring, so "Selling Price,Cost Price" imports t… | high | 4.2 | todo | | |
-| #900 | CSV import silently imports nothing for files outside the user's home folder … | medium | 4.2 | todo | | |
-| #901 | CSV import accepts negative prices, costs and stock | medium | 4.2 | todo | | |
+| #864 | Reorder → Purchase Order is unusable on any real (non-demo) database: supplie… | high | 4.2 | done | #995 | 894654f · resolve default_supplier or suppliers[0], split into POs per supplier with dialog prompt, hint unassigned items |
+| #865 | CSV import maps columns by substring, so "Selling Price,Cost Price" imports t… | high | 4.2 | done | #995 | 6a10f9e · canonical alias mapping, reject duplicates, CsvImportDialog 2-step wizard with preview table |
+| #900 | CSV import silently imports nothing for files outside the user's home folder … | medium | 4.2 | done | #995 | 009bd7f · support non-home file paths (USB/external), cp1252 auto-fallback, atomic batch rollback on failure |
+| #901 | CSV import accepts negative prices, costs and stock | medium | 4.2 | done | #995 | afbd59a · shared ProductValidator for price/cost/stock, record OPENING stock movements on product creation |
 | #895 | GRN "Date" field is ignored, so back-dated supplier invoices land in the wron… | medium | 4.3 | todo | | |
 | #899 | AVCO gives an inflated or wrong cost when a GRN arrives against negative stock | medium | 4.3 | todo | | |
 | #902 | New GRN grid is fully editable and unvalidated (product ID, negative qty or c… | medium | 4.3 | todo | | |
@@ -304,5 +304,5 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 |---|---|---|
 
 ## Handoff
-Phase 4 Batch 4.1 is fully completed and merged (PR #994, 0865271). All 4 issues (#794, #862, #861, #863) are verified closed on GitHub and ticked in epics #832 and #922. Ready to start Phase 4 Batch 4.2 (#864, #865, #900, #901).
+Phase 4 Batch 4.2 is fully completed and merged (PR #995, 49a242d). All 4 issues (#864, #865, #900, #901) are verified closed on GitHub and ticked in epic #922. Ready to start Phase 4 Batch 4.3 (#895, #899, #902, #919).
 

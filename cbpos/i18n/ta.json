@@ -301,6 +301,9 @@
   "credit": {
     "store_credit": "ஸ்டோர் கிரெடிட்: {amount}"
   },
+  "supplier": {
+    "credit_balance": "வழங்குநர் உங்களுக்கு {amount} செலுத்த வேண்டும்"
+  },
   "discount": {
     "title": "தள்ளுபடி",
     "type_percentage": "சதவீதம் (%)",

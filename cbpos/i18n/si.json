@@ -301,6 +301,9 @@
   "credit": {
     "store_credit": "වෙළඳසැල් ණය: {amount}"
   },
+  "supplier": {
+    "credit_balance": "සැපයුම්කරු ඔබට {amount} ක් ගෙවිය යුතුය"
+  },
   "discount": {
     "title": "වට්ටම යොදන්න",
     "type_percentage": "ප්‍රතිශතය (%)",

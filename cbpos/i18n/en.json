@@ -301,6 +301,9 @@
   "credit": {
     "store_credit": "Store credit: {amount}"
   },
+  "supplier": {
+    "credit_balance": "Supplier owes you {amount}"
+  },
   "discount": {
     "title": "Apply Discount",
     "type_percentage": "Percentage (%)",

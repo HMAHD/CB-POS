@@ -897,6 +897,11 @@
     "kpi_last_payment": "கடைசி கட்டணம்",
     "btn_view_all": "அனைத்தையும் பார்"
   },
+  "grn": {
+    "qty_positive": "அளவு 0 ஐ விட அதிகமாக இருக்க வேண்டும்.",
+    "cost_not_negative": "அடக்கம் எதிர்மறையாக இருக்க முடியாது.",
+    "future_date": "GRN திகதி எதிர்கால திகதியாக இருக்க முடியாது."
+  },
   "purchase": {
     "tab_suppliers": "வழங்குநர்கள்",
     "tab_new_grn": "புது GRN",
@@ -978,6 +983,8 @@
     "error_no_items": "GRN-ல பொருள் இல்ல",
     "error_no_user": "பயனர் லாக்இன் ஆகல.",
     "error_invalid_vat": "VAT தொகை சரியான எண் இல்லை.",
+    "error_invalid_line": "ஒன்று அல்லது அதற்கு மேற்பட்ட பொருட்களின் அளவு அல்லது அடக்கம் தவறானது.",
+    "remove_line": "வரியை நீக்கு",
     "grn_committed_msg": "GRN {doc_number} வெற்றிகரமா கமிட் ஆச்சு!",
     "payables_empty_state": "வழங்குநர்கள் கிடைக்கல",
     "grn_history_empty_state": "தேர்ந்தெடுத்த ஃபில்டர்களுக்கு GRN கிடைக்கல",

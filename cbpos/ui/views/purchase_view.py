@@ -4,8 +4,8 @@ import logging
 from datetime import datetime
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
-from PyQt6.QtCore import QAbstractTableModel, QDate, QStringListModel, Qt
-from PyQt6.QtGui import QColor, QKeySequence, QShortcut, QStandardItem, QStandardItemModel
+from PyQt6.QtCore import QAbstractTableModel, QDate, QRegularExpression, QStringListModel, Qt
+from PyQt6.QtGui import QColor, QKeySequence, QRegularExpressionValidator, QShortcut, QStandardItem, QStandardItemModel
 from PyQt6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QSizePolicy,
     QStackedWidget,
+    QStyledItemDelegate,
     QTableView,
     QTableWidget,
     QTableWidgetItem,
@@ -32,7 +33,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.purchase_order_service import PurchaseOrderService
-from cbpos.core.services.purchase_service import PurchaseService
+from cbpos.core.services.purchase_service import GrnLine, GrnRequest, PurchaseService
 from cbpos.core.services.supplier_payable_service import SupplierPayableService
 from cbpos.core.services.supplier_service import SupplierService
 from cbpos.core.utils.error_messages import translate_error
@@ -226,6 +227,41 @@ class PurchaseHistoryModel(QAbstractTableModel):
         return None
 
 
+class GrnNumericDelegate(QStyledItemDelegate):
+    """Validator delegate for Qty (col 2) and Unit Cost (col 3) in GRN grid (#902)."""
+
+    def __init__(self, parent: QWidget | None = None):
+        super().__init__(parent)
+        self._qty_regex = QRegularExpression(r"^\d{1,6}(\.\d{1,3})?$")
+        self._cost_regex = QRegularExpression(r"^\d{1,8}(\.\d{1,2})?$")
+
+    def createEditor(self, parent: QWidget, option, index) -> QLineEdit:
+        """Create numeric validator editor for quantity or unit cost cell."""
+        editor = QLineEdit(parent)
+        col = index.column()
+        if col == 2:
+            editor.setValidator(QRegularExpressionValidator(self._qty_regex, editor))
+            editor.setToolTip(_t("grn.qty_positive"))
+        elif col == 3:
+            editor.setValidator(QRegularExpressionValidator(self._cost_regex, editor))
+            editor.setToolTip(_t("grn.cost_not_negative"))
+        return editor
+
+    def setModelData(self, editor: QLineEdit, model, index) -> None:
+        """Commit validated numeric value back to table model."""
+        text = editor.text().strip()
+        col = index.column()
+        try:
+            val = Decimal(text)
+            if col == 2 and val <= Decimal("0"):
+                return  # Refuse non-positive qty
+            if col == 3 and val < Decimal("0"):
+                return  # Refuse negative cost
+        except (InvalidOperation, ValueError):
+            return
+        super().setModelData(editor, model, index)
+
+
 class PurchaseView(QWidget, Activatable):
     """Purchases view with Suppliers, New GRN, GRN History, and Payables tabs."""
 
@@ -341,6 +377,8 @@ class PurchaseView(QWidget, Activatable):
         self.supplier_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.invoice_input = QLineEdit()
         self.date_input = QDateEdit(QDate.currentDate())
+        self.date_input.setCalendarPopup(True)
+        self.date_input.setMaximumDate(QDate.currentDate())
 
         self.lbl_grn_supplier = QLabel()
         self.lbl_grn_ref = QLabel()
@@ -381,7 +419,13 @@ class PurchaseView(QWidget, Activatable):
 
         self.lbl_add_product = QLabel()
         search_layout.addWidget(self.lbl_add_product)
-        search_layout.addWidget(self.product_search)
+        search_layout.addWidget(self.product_search, 1)
+
+        self.btn_remove_line = QPushButton()
+        self.btn_remove_line.setObjectName("BtnRemoveGrnLine")
+        self.btn_remove_line.setIcon(Icons.get(Icons.DELETE))
+        self.btn_remove_line.clicked.connect(self.remove_selected_grn_row)
+        search_layout.addWidget(self.btn_remove_line)
         layout.addLayout(search_layout)
 
         # Items Grid
@@ -399,6 +443,14 @@ class PurchaseView(QWidget, Activatable):
                 4: QHeaderView.ResizeMode.ResizeToContents,
             },
         )
+        self.grn_numeric_delegate = GrnNumericDelegate(self.grn_table)
+        self.grn_table.setItemDelegateForColumn(2, self.grn_numeric_delegate)
+        self.grn_table.setItemDelegateForColumn(3, self.grn_numeric_delegate)
+
+        self.shortcut_delete_line = QShortcut(QKeySequence(Qt.Key.Key_Delete), self.grn_table)
+        self.shortcut_delete_line.activated.connect(self.remove_selected_grn_row)
+
+        self.grn_model.itemChanged.connect(self._on_grn_item_changed)
         layout.addWidget(self.grn_table)
 
         self.empty_grn_label = EmptyStateWidget(Icons.INVENTORY, self.grn_table.viewport())
@@ -555,6 +607,8 @@ class PurchaseView(QWidget, Activatable):
         self.lbl_grn_input_vat.setText(_t("purchase.grn_input_vat_label"))
         self.input_vat_field.setToolTip(_t("purchase.input_vat_tooltip"))
         self.product_search.setPlaceholderText(_t("purchase.product_search_placeholder"))
+        self.btn_remove_line.setText(_t("purchase.remove_line"))
+        self.btn_remove_line.setToolTip(_t("purchase.remove_line"))
         self.grn_model.setHorizontalHeaderLabels(
             [
                 _t("purchase.grn_header_id"),
@@ -804,17 +858,86 @@ class PurchaseView(QWidget, Activatable):
 
         row = self.grn_model.rowCount()
         self.grn_model.insertRow(row)
-        self.grn_model.setItem(row, 0, QStandardItem(str(product.id)))
-        self.grn_model.setItem(row, 1, QStandardItem(product.name_en))
+
+        id_item = QStandardItem(str(product.id))
+        id_item.setFlags(id_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+        self.grn_model.setItem(row, 0, id_item)
+
+        name_item = QStandardItem(product.name_en)
+        name_item.setFlags(name_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+        self.grn_model.setItem(row, 1, name_item)
+
         qty_item = QStandardItem(str(qty))
         qty_item.setTextAlignment(NUMERIC_ALIGNMENT)
         self.grn_model.setItem(row, 2, qty_item)
+
         cost_item = QStandardItem(str(cost))
         cost_item.setTextAlignment(NUMERIC_ALIGNMENT)
         self.grn_model.setItem(row, 3, cost_item)
-        tot_item = QStandardItem(str(qty * cost))
+
+        tot_item = QStandardItem(format(qty * cost, ".2f"))
+        tot_item.setFlags(tot_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
         tot_item.setTextAlignment(NUMERIC_ALIGNMENT)
         self.grn_model.setItem(row, 4, tot_item)
+
+    def _on_grn_item_changed(self, item: QStandardItem) -> None:
+        """Recalculate line total and footer total when quantity or cost is edited (#902)."""
+        col = item.column()
+        if col in (2, 3):
+            row = item.row()
+            try:
+                qty_item = self.grn_model.item(row, 2)
+                cost_item = self.grn_model.item(row, 3)
+                if qty_item and cost_item:
+                    qty = Decimal(qty_item.text().strip() or "0")
+                    cost = Decimal(cost_item.text().strip() or "0")
+                    tot_item = self.grn_model.item(row, 4)
+                    if tot_item:
+                        self.grn_model.blockSignals(True)
+                        try:
+                            tot_item.setText(format(qty * cost, ".2f"))
+                        finally:
+                            self.grn_model.blockSignals(False)
+            except (InvalidOperation, ValueError):
+                pass
+            self.update_total()
+
+    def remove_selected_grn_row(self) -> None:
+        """Remove the selected row(s) from the GRN table (#902)."""
+        selection_model = self.grn_table.selectionModel()
+        selected_rows = selection_model.selectedRows() if selection_model else []
+        if not selected_rows:
+            curr = self.grn_table.currentIndex()
+            if curr.isValid() and curr.row() >= 0:
+                row = curr.row()
+                self.grn_model.removeRow(row)
+                if row < len(self.grn_items):
+                    self.grn_items.pop(row)
+                self.update_total()
+            return
+
+        for idx in sorted(selected_rows, key=lambda i: i.row(), reverse=True):
+            r = idx.row()
+            self.grn_model.removeRow(r)
+            if r < len(self.grn_items):
+                self.grn_items.pop(r)
+        self.update_total()
+
+    def update_total(self):
+        """Recalculate and display running total cost from the model, the single source of truth (#902)."""
+        total = Decimal("0.00")
+        for i in range(self.grn_model.rowCount()):
+            try:
+                qty_item = self.grn_model.item(i, 2)
+                cost_item = self.grn_model.item(i, 3)
+                if qty_item and cost_item:
+                    qty = Decimal(qty_item.text().strip() or "0")
+                    cost = Decimal(cost_item.text().strip() or "0")
+                    total += qty * cost
+            except (InvalidOperation, ValueError, AttributeError):
+                pass
+        total_str = format(total, ".2f")
+        self.total_label.setText(f"{_t('purchase.total_cost_label')}: {total_str}")
 
     def prefill_grn_items(self, items: list[dict], purchase_order_id: int | None = None) -> None:
         """Switch to the New GRN tab and pre-fill it from Reorder's selected items.
@@ -880,12 +1003,6 @@ class PurchaseView(QWidget, Activatable):
 
         self.update_total()
 
-    def update_total(self):
-        """Recalculate and display the running total cost of the GRN line items."""
-        total = sum(item["qty"] * item["cost"] for item in self.grn_items)
-        total_str = format(total, ".2f")
-        self.total_label.setText(f"{_t('purchase.total_cost_label')}: {total_str}")
-
     def set_user(self, user):
         """Store the logged-in user for use when committing a GRN."""
         self.user = user
@@ -911,16 +1028,42 @@ class PurchaseView(QWidget, Activatable):
             QMessageBox.warning(self, _t("common.error"), _t("purchase.error_no_user"))
             return
 
+        # Validate VAT input before initiating any transaction
+        vat_text = self.input_vat_field.text().strip()
+        try:
+            input_vat = Decimal(vat_text) if vat_text else Decimal("0.00")
+            if input_vat < Decimal("0.00"):
+                raise InvalidOperation()
+        except InvalidOperation:
+            QMessageBox.warning(self, _t("common.error"), _t("purchase.error_invalid_vat"))
+            return
+
+        # Validate date
+        date_received = datetime.combine(self.date_input.date().toPyDate(), datetime.now().time())
+        if date_received.date() > datetime.now().date():
+            QMessageBox.warning(self, _t("common.error"), _t("grn.future_date"))
+            return
+
         try:
             # 1. Prepare Items
             items_data = []
+            grn_lines = []
             for i in range(self.grn_model.rowCount()):
                 # Read from table in case user edited
                 prod_id = int(self.grn_model.item(i, 0).text())
-                qty = Decimal(self.grn_model.item(i, 2).text())
-                cost = Decimal(self.grn_model.item(i, 3).text())
+                qty_str = self.grn_model.item(i, 2).text().strip()
+                cost_str = self.grn_model.item(i, 3).text().strip()
+                try:
+                    qty = Decimal(qty_str)
+                    cost = Decimal(cost_str)
+                    if qty <= Decimal("0") or cost < Decimal("0"):
+                        raise InvalidOperation()
+                except InvalidOperation:
+                    QMessageBox.warning(self, _t("common.error"), _t("purchase.error_invalid_line"))
+                    return
 
                 items_data.append({"product_id": prod_id, "qty": qty, "cost": cost})
+                grn_lines.append(GrnLine(product_id=prod_id, qty=qty, unit_cost=cost))
 
             # 2. Flag PO-vs-received discrepancies before committing anything (#486, #719)
             if self.current_purchase_order_id:
@@ -938,22 +1081,17 @@ class PurchaseView(QWidget, Activatable):
                     if reply != QMessageBox.StandardButton.Yes:
                         return
 
-            # 3. Create Draft
-            purchase = PurchaseService.create_purchase(
+            # 3. Receive Goods (atomic single transaction, #919)
+            req = GrnRequest(
                 supplier_id=supplier_id,
-                reference_external=ref_no,
+                date_received=date_received,
+                supplier_invoice_no=ref_no,
+                input_vat=input_vat,
+                lines=grn_lines,
                 user_id=self.user.id,
                 purchase_order_id=self.current_purchase_order_id,
             )
-
-            # 4. Commit
-            vat_text = self.input_vat_field.text().strip()
-            try:
-                input_vat = Decimal(vat_text) if vat_text else Decimal("0.00")
-            except InvalidOperation:
-                QMessageBox.warning(self, _t("common.error"), _t("purchase.error_invalid_vat"))
-                return
-            PurchaseService.commit_purchase(purchase.id, items_data, input_vat=input_vat)
+            purchase = PurchaseService.receive_goods(req)
 
             QMessageBox.information(
                 self,
@@ -965,6 +1103,7 @@ class PurchaseView(QWidget, Activatable):
             self.grn_model.removeRows(0, self.grn_model.rowCount())
             self.grn_items = []
             self.invoice_input.clear()
+            self.date_input.setDate(QDate.currentDate())
             self.input_vat_field.clear()
             self.current_purchase_order_id = None
             self.update_total()

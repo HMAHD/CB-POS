@@ -897,6 +897,11 @@
     "kpi_last_payment": "අන්තිම ගෙවීම",
     "btn_view_all": "සියල්ල බලන්න"
   },
+  "grn": {
+    "qty_positive": "ප්‍රමාණය 0 ට වඩා වැඩි විය යුතුය.",
+    "cost_not_negative": "පිරිවැය ඍණ විය නොහැක.",
+    "future_date": "GRN දිනය අනාගත දිනයක් විය නොහැක."
+  },
   "purchase": {
     "tab_suppliers": "සැපයුම්කරුවෝ",
     "tab_new_grn": "අලුත් GRN එකක්",
@@ -978,6 +983,8 @@
     "error_no_items": "GRN එකේ අයිතම නැහැ",
     "error_no_user": "පරිශීලකයා ලොග් වෙලා නැහැ.",
     "error_invalid_vat": "VAT මුදල වලංගු අංකයක් නොවේ.",
+    "error_invalid_line": "එක් හෝ කිහිපයක ප්‍රමාණය හෝ පිරිවැය වලංගු නොවේ.",
+    "remove_line": "පේළිය ඉවත් කරන්න",
     "grn_committed_msg": "GRN {doc_number} සාර්ථකව කමිට් උනා!",
     "payables_empty_state": "සැපයුම්කරුවෝ හම්බ වුනේ නැහැ",
     "grn_history_empty_state": "තෝරපු ෆිල්ටර් වලට GRN හම්බ වුනේ නැහැ",

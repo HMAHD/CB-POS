@@ -932,6 +932,11 @@
     "kpi_last_payment": "LAST PAYMENT",
     "btn_view_all": "View All Time"
   },
+  "grn": {
+    "qty_positive": "Quantity must be more than 0.",
+    "cost_not_negative": "Cost can't be negative.",
+    "future_date": "The GRN date can't be in the future."
+  },
   "purchase": {
     "tab_suppliers": "Suppliers",
     "tab_new_grn": "New GRN",
@@ -1013,6 +1018,8 @@
     "error_no_items": "No items in GRN",
     "error_no_user": "User not logged in.",
     "error_invalid_vat": "VAT amount is not a valid number.",
+    "error_invalid_line": "Invalid quantity or cost on one or more items.",
+    "remove_line": "Remove line",
     "grn_committed_msg": "GRN {doc_number} Committed Successfully!",
     "payables_empty_state": "No suppliers found",
     "grn_history_empty_state": "No GRNs found for the selected filters",

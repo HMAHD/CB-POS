@@ -81,14 +81,16 @@ class SupplierPaymentDialog(QDialog):
         # Load supplier summary
         summary = SupplierPayableService.get_supplier_summary(self.supplier_id)
         if summary:
-            self.lbl_outstanding.setText(
-                _t("supplier_payment.outstanding", amount=format_currency(summary["current_payable"]))
-            )
+            bal = summary["current_payable"]
+            if bal < 0:
+                self.lbl_outstanding.setText(_t("supplier.credit_balance", amount=format_currency(abs(bal))))
+            else:
+                self.lbl_outstanding.setText(_t("supplier_payment.outstanding", amount=format_currency(bal)))
             terms = summary["payment_terms"]
             self.lbl_terms.setText(
                 _t("supplier_payment.terms", days=str(terms)) if terms > 0 else _t("supplier_payment.terms_na")
             )
-            self._current_payable = summary["current_payable"]
+            self._current_payable = bal
         else:
             self._current_payable = Decimal("0.00")
 

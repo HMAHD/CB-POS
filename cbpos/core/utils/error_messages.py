@@ -17,6 +17,7 @@ _ERROR_MAP = [
     ("Cannot delete", "errors.cannot_delete_in_use"),
     ("was modified by another user", "errors.concurrent_modification"),
     ("cannot be its own parent", "errors.circular_reference"),
+    ("category_too_deep", "errors.category_too_deep"),
     ("sale_has_refund", "errors.sale_has_refund"),
     ("cannot_void_refund", "errors.cannot_void_refund"),
     ("Payment amount must be greater than zero", "errors.payment_amount_zero"),

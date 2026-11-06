@@ -1411,17 +1411,20 @@ class PurchaseView(QWidget, Activatable):
                 set_item(row, 1, TableItem(supplier.company_name))
                 set_item(row, 2, TableItem(supplier.phone or ""))
 
-                payable = getattr(supplier, "current_payable", Decimal("0.00"))
-                payable_item = TableItem(f"{payable:.2f}")
-                payable_item.setTextAlignment(align_right_vc)
-
+                payable = getattr(supplier, "current_payable", Decimal("0.00")) or Decimal("0.00")
                 terms = getattr(supplier, "payment_terms", 0) or 0
-                if payable == 0:
+                if payable < 0:
+                    payable_item = TableItem(_t("supplier.credit_balance", amount=format_currency(abs(payable))))
                     payable_item.setForeground(status_success)
-                elif terms > 0:
-                    payable_item.setForeground(status_warning)
                 else:
-                    payable_item.setForeground(status_danger)
+                    payable_item = TableItem(f"{payable:.2f}")
+                    if payable == 0:
+                        payable_item.setForeground(status_success)
+                    elif terms > 0:
+                        payable_item.setForeground(status_warning)
+                    else:
+                        payable_item.setForeground(status_danger)
+                payable_item.setTextAlignment(align_right_vc)
 
                 set_item(row, 3, payable_item)
 
@@ -1465,9 +1468,11 @@ class PurchaseView(QWidget, Activatable):
 
         summary = SupplierPayableService.get_supplier_summary(supplier.id)
         if summary:
-            self.lbl_pay_balance.setText(
-                _t("purchase.payable_label") + " " + format_currency(summary["current_payable"])
-            )
+            bal = summary["current_payable"]
+            if bal < 0:
+                self.lbl_pay_balance.setText(_t("supplier.credit_balance", amount=format_currency(abs(bal))))
+            else:
+                self.lbl_pay_balance.setText(_t("purchase.payable_label") + " " + format_currency(bal))
             if summary["last_payment_date"]:
                 rel_pay = format_relative_time(summary["last_payment_date"])
                 exact_pay = format_date(summary["last_payment_date"])

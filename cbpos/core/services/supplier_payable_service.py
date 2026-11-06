@@ -161,8 +161,6 @@ class SupplierPayableService:
                 raise ValueError("Supplier not found.")
 
             supplier.current_payable += amount
-            if supplier.current_payable < 0:
-                supplier.current_payable = Decimal("0.00")
 
             entry = SupplierLedgerEntry(
                 supplier_id=supplier_id,

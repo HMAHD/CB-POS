@@ -101,7 +101,13 @@ class CategoryManagerDialog(QDialog):
         form_layout.addRow(_t("category_manager.name_label"), self.txt_name)
 
         self.combo_parent = QComboBox()
+        self.combo_parent.setToolTip(_t("category.parent_hint"))
         form_layout.addRow(_t("category_manager.parent_label"), self.combo_parent)
+
+        self.lbl_parent_hint = QLabel(_t("category.parent_hint"))
+        self.lbl_parent_hint.setProperty("class", "muted")
+        self.lbl_parent_hint.setWordWrap(True)
+        form_layout.addRow("", self.lbl_parent_hint)
 
         # Color picker row
         color_row = QHBoxLayout()
@@ -179,18 +185,14 @@ class CategoryManagerDialog(QDialog):
         return item
 
     def _populate_parent_combo(self, exclude_id: int = None) -> None:
-        """Populate parent combo with all categories, excluding self and descendants."""
+        """Populate parent combo with top-level categories only (#921)."""
         self.combo_parent.clear()
         self.combo_parent.addItem(_t("category_manager.none_top_level"), None)
 
-        all_cats = CategoryService.get_all()
+        top_cats = CategoryService.get_top_level()
 
-        excluded_ids: set = set()
-        if exclude_id:
-            excluded_ids = {exclude_id} | CategoryService.get_descendant_ids(exclude_id)
-
-        for c in all_cats:
-            if c.id not in excluded_ids:
+        for c in top_cats:
+            if c.id != exclude_id:
                 self.combo_parent.addItem(_color_icon(c.color or "#FFFFFF"), c.name, c.id)
 
     # ── Selection ──
@@ -214,11 +216,19 @@ class CategoryManagerDialog(QDialog):
         self.selected_color = cat.color or "#00BCEB"
         self._update_color_preview()
 
-        # Rebuild parent combo excluding self + descendants
+        # Rebuild parent combo excluding self
         self._populate_parent_combo(exclude_id=cat_id)
         idx = self.combo_parent.findData(cat.parent_id)
         if idx >= 0:
             self.combo_parent.setCurrentIndex(idx)
+
+        has_subcategories = bool(CategoryService.get_descendant_ids(cat_id))
+        if has_subcategories:
+            self.combo_parent.setEnabled(False)
+            self.combo_parent.setToolTip(_t("category.has_children_locked"))
+        else:
+            self.combo_parent.setEnabled(True)
+            self.combo_parent.setToolTip(_t("category.parent_hint"))
 
         self.btn_save.setText(_t("category_manager.update"))
 
@@ -322,5 +332,7 @@ class CategoryManagerDialog(QDialog):
         self.btn_save.setText(_t("category_manager.save_new"))
         self.btn_delete.setEnabled(False)
         self.tree.clearSelection()
+        self.combo_parent.setEnabled(True)
+        self.combo_parent.setToolTip(_t("category.parent_hint"))
         self._populate_parent_combo()
         self.txt_name.setFocus()

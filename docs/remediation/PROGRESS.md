@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 4 · Batch: 4.4 · Branch: none · PR: none · Last session: 2026-11-06
+- Phase: 4 · Batch: 4.4 · Branch: fix/p4-b4-supplier-category · PR: none · Last session: 2026-11-06
 
 ## Issues
 
@@ -122,8 +122,8 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #899 | AVCO gives an inflated or wrong cost when a GRN arrives against negative stock | medium | 4.3 | done | #996 | 88dfc73 · Invariant 2: if old_qty <= 0 then unit_cost, else round_money weighted average |
 | #902 | New GRN grid is fully editable and unvalidated (product ID, negative qty or c… | medium | 4.3 | done | #996 | a78b995 · GrnNumericDelegate for qty/cost, non-editable ID/Name/Total columns, itemChanged recalculation, remove-line action |
 | #919 | Failed GRN commit leaves an orphan DRAFT purchase (and burns a GRN number) | low | 4.3 | done | #996 | c9abaef · atomic PurchaseService.receive_goods with GrnRequest, validate before service, rollback on failure |
-| #920 | Supplier payable adjustment clamps the balance to 0 but writes the full amoun… | low | 4.4 | todo | | |
-| #921 | Categories nested under a subcategory disappear from the Category Manager | low | 4.4 | todo | | |
+| #920 | Supplier payable adjustment clamps the balance to 0 but writes the full amoun… | low | 4.4 | in-progress | | remove 0-floor clamp on adjustments, display negative payable as supplier.credit_balance in UI |
+| #921 | Categories nested under a subcategory disappear from the Category Manager | low | 4.4 | in-progress | | parent combo top-level only, reject category_too_deep, migration reparents grandchildren |
 
 ### Phase 5 — [spec](phases/phase-05-permissions-security.md)
 

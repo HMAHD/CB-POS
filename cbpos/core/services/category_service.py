@@ -69,6 +69,21 @@ class CategoryService:
             return category
 
     @staticmethod
+    def get_top_level() -> list[Category]:
+        """Get all top-level categories (parent_id is None).
+
+        Returns:
+            List of categories sorted by name.
+        """
+        db = Database()
+        with db.get_session() as session:
+            stmt = select(Category).where(Category.parent_id.is_(None)).order_by(Category.name)
+            results = list(session.execute(stmt).scalars().all())
+            for cat in results:
+                session.expunge(cat)
+            return results
+
+    @staticmethod
     def get_top_level_with_subcategories() -> list[Category]:
         """Get root categories with subcategories eagerly loaded, ordered by name.
 
@@ -229,6 +244,13 @@ class CategoryService:
             if existing:
                 raise ValueError(f"Category '{name}' already exists.")
 
+            if parent_id is not None:
+                parent = session.get(Category, parent_id)
+                if not parent:
+                    raise ValueError(f"Parent category ID {parent_id} not found.")
+                if parent.parent_id is not None:
+                    raise ValueError("category_too_deep")
+
             category = Category(
                 name=name,
                 parent_id=parent_id,
@@ -278,6 +300,17 @@ class CategoryService:
                 category.color = color
 
             if parent_id is not ...:
+                if parent_id is not None:
+                    if parent_id == category_id:
+                        raise ValueError("cannot be its own parent")
+                    parent = session.get(Category, parent_id)
+                    if not parent:
+                        raise ValueError(f"Parent category ID {parent_id} not found.")
+                    if parent.parent_id is not None:
+                        raise ValueError("category_too_deep")
+                    has_children = session.query(Category).filter(Category.parent_id == category_id).first() is not None
+                    if has_children:
+                        raise ValueError("category_too_deep")
                 category.parent_id = parent_id
 
             session.flush()

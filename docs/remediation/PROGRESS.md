@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 4 · Batch: 4.4 · Branch: fix/p4-b4-supplier-category · PR: none · Last session: 2026-11-06
+- Phase: 5 · Batch: 5.1 · Branch: none · PR: none · Last session: 2026-11-06
 
 ## Issues
 
@@ -122,8 +122,8 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #899 | AVCO gives an inflated or wrong cost when a GRN arrives against negative stock | medium | 4.3 | done | #996 | 88dfc73 · Invariant 2: if old_qty <= 0 then unit_cost, else round_money weighted average |
 | #902 | New GRN grid is fully editable and unvalidated (product ID, negative qty or c… | medium | 4.3 | done | #996 | a78b995 · GrnNumericDelegate for qty/cost, non-editable ID/Name/Total columns, itemChanged recalculation, remove-line action |
 | #919 | Failed GRN commit leaves an orphan DRAFT purchase (and burns a GRN number) | low | 4.3 | done | #996 | c9abaef · atomic PurchaseService.receive_goods with GrnRequest, validate before service, rollback on failure |
-| #920 | Supplier payable adjustment clamps the balance to 0 but writes the full amoun… | low | 4.4 | in-progress | | remove 0-floor clamp on adjustments, display negative payable as supplier.credit_balance in UI |
-| #921 | Categories nested under a subcategory disappear from the Category Manager | low | 4.4 | in-progress | | parent combo top-level only, reject category_too_deep, migration reparents grandchildren |
+| #920 | Supplier payable adjustment clamps the balance to 0 but writes the full amoun… | low | 4.4 | done | #997 | c59fe3a · remove 0-floor clamp on adjustments, display negative payable as supplier.credit_balance in UI |
+| #921 | Categories nested under a subcategory disappear from the Category Manager | low | 4.4 | done | #997 | ca25103, 00b60da · parent combo top-level only, reject category_too_deep, migration reparents grandchildren, exit gate test |
 
 ### Phase 5 — [spec](phases/phase-05-permissions-security.md)
 
@@ -304,5 +304,5 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 |---|---|---|
 
 ## Handoff
-Phase 4 Batch 4.3 is fully completed and merged (PR #996, 8a9e495). All 4 issues (#919, #902, #895, #899) are verified closed on GitHub and ticked in epic #922. Ready to start Phase 4 Batch 4.4 (#920, #921).
+Phase 4 (Inventory & Purchasing) is fully completed and merged (Batch 4.4 PR #997, 8971b68). All 14 issues (#794, #861, #862, #863, #864, #865, #900, #901, #895, #899, #902, #919, #920, #921) are verified closed on GitHub and ticked in epic #922. The Phase 4 exit gate stock invariants test (`tests/domain/test_stock_invariants.py`) is passing. Ready to start Phase 5 (Permissions & Security) with Batch 5.1 (#858, #880, #889, #893).
 

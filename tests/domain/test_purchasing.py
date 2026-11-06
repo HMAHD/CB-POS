@@ -1,94 +1,171 @@
+from datetime import datetime
 from decimal import Decimal
 
-# Add project root to python path
-from cbpos.core.database import Database
-from cbpos.core.models import Product, StockMovement, User
-from cbpos.core.services.purchase_service import PurchaseService
-from cbpos.core.services.supplier_service import SupplierService
+import pytest
+
+from cbpos.core.models import Permission, Product, Purchase, Role, StockMovement, Supplier, SupplierLedgerEntry, User
+from cbpos.core.services.purchase_service import GrnLine, GrnRequest, PurchaseService
+
+_counter = 0
 
 
-def test_purchasing():
-    print("Testing Purchasing Module...")
-
-    db = Database()
-    with db.get_session() as session:
-        # 1. Setup Data
-        # Get Admin User
-        admin = session.query(User).filter_by(username="admin").first()
-        if not admin:
-            print("Admin user not found. Seeding required.")
-            return
-
-        # Create Supplier
-        supplier = SupplierService.create_supplier(
-            company_name="Test Supplier Ltd",
-            contact_person="Mr. Test",
-            phone="0779998888",
-        )
-        print(f"Created Supplier: {supplier.company_name}")
-
-        # Get Product (Cream Cracker)
-        product = session.query(Product).filter(Product.barcode == "47920240").first()
-        if not product:
-            print("Product not found.")
-            return
-
-        initial_qty = product.stock_qty
-        initial_cost = product.cost
-        print(f"Product: {product.name_en}")
-        print(f"Initial Stock: {initial_qty}, Cost: {initial_cost}")
-
-        # 2. Create GRN (Draft)
-        purchase = PurchaseService.create_purchase(
-            supplier_id=supplier.id,
-            reference_external="INV-TEST-001",
-            user_id=admin.id,
-        )
-        print(f"Created Draft GRN: {purchase.document_number}")
-
-        # 3. Commit GRN
-        # Receive 100 units at 600.00 (Higher than initial 500.00)
-        new_qty = Decimal("100.000")
-        new_cost = Decimal("600.00")
-
-        items_data = [{"product_id": product.id, "qty": new_qty, "cost": new_cost}]
-
-        PurchaseService.commit_purchase(purchase.id, items_data)
-        print("Committed GRN.")
-
-        # 4. Verify Results
-        # Re-fetch product
-        session.refresh(product)
-
-        final_qty = product.stock_qty
-        final_cost = product.cost
-
-        print(f"Final Stock: {final_qty}")
-        print(f"Final Cost: {final_cost}")
-
-        # Verify Stock Increase
-        assert final_qty == initial_qty + new_qty
-
-        # Verify AVCO
-        # Old Value = 100 * 500 = 50000
-        # New Value = 100 * 600 = 60000
-        # Total Value = 110000
-        # Total Qty = 200
-        # Avg Cost = 110000 / 200 = 550.00
-        expected_cost = ((initial_qty * initial_cost) + (new_qty * new_cost)) / (initial_qty + new_qty)
-        print(f"Expected Cost: {expected_cost}")
-
-        # Allow small rounding diff
-        assert abs(final_cost - expected_cost) < Decimal("0.01")
-
-        # Verify Stock Movement
-        movement = session.query(StockMovement).filter_by(document_id=purchase.id).first()
-        assert movement is not None
-        assert movement.qty_change == new_qty
-        print("Stock Movement Verified.")
-
-    print("Purchasing Tests Passed!")
+@pytest.fixture
+def test_user(db_session):
+    global _counter
+    _counter += 1
+    permission = Permission(code=f"purch_test_perm_{_counter}")
+    role = Role(name=f"PurchTestRole_{_counter}", permissions=[permission])
+    user = User(username=f"purch_test_user_{_counter}", pin_hash="hash", role=role)
+    db_session.add_all([permission, role, user])
+    db_session.flush()
+    return user
 
 
-if __name__ == "__main__":
-    test_purchasing()
+@pytest.fixture
+def test_supplier(db_session):
+    global _counter
+    _counter += 1
+    supplier = Supplier(company_name=f"Purch Test Supplier {_counter}", current_payable=Decimal("0.00"))
+    db_session.add(supplier)
+    db_session.flush()
+    return supplier
+
+
+@pytest.fixture
+def test_product(db_session):
+    global _counter
+    _counter += 1
+    product = Product(
+        name_en=f"PurchTestProduct_{_counter}",
+        barcode=f"PUR{_counter:04d}",
+        price=Decimal("100.00"),
+        cost=Decimal("500.00"),
+        stock_qty=Decimal("100.000"),
+    )
+    db_session.add(product)
+    db_session.flush()
+    return product
+
+
+def test_purchasing_legacy_flow(db_session, test_user, test_supplier, test_product):
+    initial_qty = test_product.stock_qty
+    initial_cost = test_product.cost
+
+    # 1. Create GRN (Draft)
+    purchase = PurchaseService.create_purchase(
+        supplier_id=test_supplier.id,
+        reference_external="INV-TEST-001",
+        user_id=test_user.id,
+    )
+    assert purchase.document_number is not None
+
+    # 2. Commit GRN
+    new_qty = Decimal("100.000")
+    new_cost = Decimal("600.00")
+    items_data = [{"product_id": test_product.id, "qty": new_qty, "cost": new_cost}]
+
+    PurchaseService.commit_purchase(purchase.id, items_data)
+
+    db_session.refresh(test_product)
+    assert test_product.stock_qty == initial_qty + new_qty
+
+    expected_cost = ((initial_qty * initial_cost) + (new_qty * new_cost)) / (initial_qty + new_qty)
+    assert abs(test_product.cost - expected_cost) < Decimal("0.01")
+
+    movement = db_session.query(StockMovement).filter_by(document_id=purchase.id).first()
+    assert movement is not None
+    assert movement.qty_change == new_qty
+
+
+def test_issue_919_failure_midway_rolls_back_all(db_session, test_user, test_supplier, test_product, monkeypatch):
+    initial_qty = test_product.stock_qty
+    initial_cost = test_product.cost
+    initial_payable = test_supplier.current_payable
+
+    # Commit setup data so rollback inside receive_goods rolls back only the GRN
+    db_session.commit()
+
+    # Patch SupplierPayableService.record_purchase_in_session to simulate an error midway
+    def _mock_record_error(*args, **kwargs):
+        raise RuntimeError("Injected database failure in ledger recording")
+
+    monkeypatch.setattr(
+        "cbpos.core.services.purchase_service.SupplierPayableService.record_purchase_in_session",
+        _mock_record_error,
+    )
+
+    req = GrnRequest(
+        supplier_id=test_supplier.id,
+        date_received=datetime.now(),
+        supplier_invoice_no="INV-FAIL-001",
+        input_vat=Decimal("0.00"),
+        lines=[GrnLine(product_id=test_product.id, qty=Decimal("5.000"), unit_cost=Decimal("75.00"))],
+        user_id=test_user.id,
+    )
+
+    with pytest.raises(RuntimeError, match="Injected database failure"):
+        PurchaseService.receive_goods(req)
+
+    db_session.expire_all()
+    assert db_session.query(Purchase).count() == 0
+    assert db_session.query(StockMovement).count() == 0
+    assert db_session.query(SupplierLedgerEntry).count() == 0
+
+    reloaded_product = db_session.get(Product, test_product.id)
+    assert reloaded_product.stock_qty == initial_qty
+    assert reloaded_product.cost == initial_cost
+
+    reloaded_supplier = db_session.get(Supplier, test_supplier.id)
+    assert reloaded_supplier.current_payable == initial_payable
+
+
+def test_issue_919_receive_goods_invalid_vat(db_session, test_user, test_supplier, test_product):
+    req = GrnRequest(
+        supplier_id=test_supplier.id,
+        date_received=datetime.now(),
+        supplier_invoice_no="INV-BAD-VAT",
+        input_vat=Decimal("-15.00"),
+        lines=[GrnLine(product_id=test_product.id, qty=Decimal("5.000"), unit_cost=Decimal("50.00"))],
+        user_id=test_user.id,
+    )
+
+    with pytest.raises(ValueError, match="grn_invalid_vat"):
+        PurchaseService.receive_goods(req)
+
+    db_session.expire_all()
+    assert db_session.query(Purchase).count() == 0
+
+
+def test_issue_919_receive_goods_success(db_session, test_user, test_supplier, test_product):
+    initial_qty = test_product.stock_qty
+
+    req = GrnRequest(
+        supplier_id=test_supplier.id,
+        date_received=datetime.now(),
+        supplier_invoice_no="INV-OK-001",
+        input_vat=Decimal("25.00"),
+        lines=[GrnLine(product_id=test_product.id, qty=Decimal("10.000"), unit_cost=Decimal("600.00"))],
+        user_id=test_user.id,
+    )
+
+    purchase = PurchaseService.receive_goods(req)
+    assert purchase.status == "COMPLETED"
+    assert purchase.document_number.startswith("GRN-")
+    assert purchase.total_cost == Decimal("6000.00")
+    assert purchase.input_vat == Decimal("25.00")
+
+    db_session.expire_all()
+    reloaded_prod = db_session.get(Product, test_product.id)
+    assert reloaded_prod.stock_qty == initial_qty + Decimal("10.000")
+
+    movement = db_session.query(StockMovement).filter_by(document_id=purchase.id).first()
+    assert movement is not None
+    assert movement.qty_change == Decimal("10.000")
+
+    reloaded_sup = db_session.get(Supplier, test_supplier.id)
+    assert reloaded_sup.current_payable == Decimal("6000.00")
+
+    ledger = db_session.query(SupplierLedgerEntry).filter_by(reference_id=purchase.id).first()
+    assert ledger is not None
+    assert ledger.amount == Decimal("6000.00")
+    assert ledger.entry_type == "PURCHASE"

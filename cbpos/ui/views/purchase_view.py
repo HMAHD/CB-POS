@@ -32,7 +32,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.purchase_order_service import PurchaseOrderService
-from cbpos.core.services.purchase_service import PurchaseService
+from cbpos.core.services.purchase_service import GrnLine, GrnRequest, PurchaseService
 from cbpos.core.services.supplier_payable_service import SupplierPayableService
 from cbpos.core.services.supplier_service import SupplierService
 from cbpos.core.utils.error_messages import translate_error
@@ -911,16 +911,42 @@ class PurchaseView(QWidget, Activatable):
             QMessageBox.warning(self, _t("common.error"), _t("purchase.error_no_user"))
             return
 
+        # Validate VAT input before initiating any transaction
+        vat_text = self.input_vat_field.text().strip()
+        try:
+            input_vat = Decimal(vat_text) if vat_text else Decimal("0.00")
+            if input_vat < Decimal("0.00"):
+                raise InvalidOperation()
+        except InvalidOperation:
+            QMessageBox.warning(self, _t("common.error"), _t("purchase.error_invalid_vat"))
+            return
+
+        # Validate date
+        date_received = datetime.combine(self.date_input.date().toPyDate(), datetime.now().time())
+        if date_received.date() > datetime.now().date():
+            QMessageBox.warning(self, _t("common.error"), _t("grn.future_date"))
+            return
+
         try:
             # 1. Prepare Items
             items_data = []
+            grn_lines = []
             for i in range(self.grn_model.rowCount()):
                 # Read from table in case user edited
                 prod_id = int(self.grn_model.item(i, 0).text())
-                qty = Decimal(self.grn_model.item(i, 2).text())
-                cost = Decimal(self.grn_model.item(i, 3).text())
+                qty_str = self.grn_model.item(i, 2).text().strip()
+                cost_str = self.grn_model.item(i, 3).text().strip()
+                try:
+                    qty = Decimal(qty_str)
+                    cost = Decimal(cost_str)
+                    if qty <= Decimal("0") or cost < Decimal("0"):
+                        raise InvalidOperation()
+                except InvalidOperation:
+                    QMessageBox.warning(self, _t("common.error"), _t("purchase.error_invalid_line"))
+                    return
 
                 items_data.append({"product_id": prod_id, "qty": qty, "cost": cost})
+                grn_lines.append(GrnLine(product_id=prod_id, qty=qty, unit_cost=cost))
 
             # 2. Flag PO-vs-received discrepancies before committing anything (#486, #719)
             if self.current_purchase_order_id:
@@ -938,22 +964,17 @@ class PurchaseView(QWidget, Activatable):
                     if reply != QMessageBox.StandardButton.Yes:
                         return
 
-            # 3. Create Draft
-            purchase = PurchaseService.create_purchase(
+            # 3. Receive Goods (atomic single transaction, #919)
+            req = GrnRequest(
                 supplier_id=supplier_id,
-                reference_external=ref_no,
+                date_received=date_received,
+                supplier_invoice_no=ref_no,
+                input_vat=input_vat,
+                lines=grn_lines,
                 user_id=self.user.id,
                 purchase_order_id=self.current_purchase_order_id,
             )
-
-            # 4. Commit
-            vat_text = self.input_vat_field.text().strip()
-            try:
-                input_vat = Decimal(vat_text) if vat_text else Decimal("0.00")
-            except InvalidOperation:
-                QMessageBox.warning(self, _t("common.error"), _t("purchase.error_invalid_vat"))
-                return
-            PurchaseService.commit_purchase(purchase.id, items_data, input_vat=input_vat)
+            purchase = PurchaseService.receive_goods(req)
 
             QMessageBox.information(
                 self,

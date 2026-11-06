@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
@@ -9,13 +10,171 @@ from cbpos.core.constants.status import Precision
 from cbpos.core.database import Database
 from cbpos.core.models import AuditLog, Product, Purchase, PurchaseItem, PurchaseOrder, StockMovement, Supplier
 from cbpos.core.services.document_service import DocumentService
+from cbpos.core.services.stock_service import StockService
 from cbpos.core.services.supplier_payable_service import SupplierPayableService
+from cbpos.core.utils.money import round_money
+
+
+@dataclass
+class GrnLine:
+    """One product line received in a GRN."""
+
+    product_id: int
+    qty: Decimal
+    unit_cost: Decimal
+
+
+@dataclass
+class GrnRequest:
+    """Payload for committing a GRN in a single atomic transaction."""
+
+    supplier_id: int
+    date_received: datetime
+    supplier_invoice_no: str
+    input_vat: Decimal
+    lines: list[GrnLine]
+    user_id: int
+    purchase_order_id: int | None = None
 
 
 class PurchaseService:
     """
     Service for managing purchases and stock reception (GRN).
     """
+
+    @staticmethod
+    def receive_goods(request: GrnRequest) -> Purchase:
+        """Receive goods (GRN) in a single atomic transaction.
+
+        Validates all inputs, allocates the document number inside the session,
+        inserts header and lines, records stock movements and AVCO, updates
+        supplier payable and ledger, and writes an audit log row.
+
+        On any error, rolls back everything so no partial state or orphan
+        document remains.
+        """
+        if not request.lines:
+            raise ValueError("grn_no_items")
+        if request.input_vat < Decimal("0.00"):
+            raise ValueError("grn_invalid_vat")
+        if request.date_received.date() > datetime.now().date():
+            raise ValueError("grn_future_date")
+
+        for line in request.lines:
+            if line.qty <= Decimal("0"):
+                raise ValueError(f"grn_invalid_qty: {line.qty}")
+            if line.unit_cost < Decimal("0.00"):
+                raise ValueError(f"grn_invalid_cost: {line.unit_cost}")
+
+        db = Database()
+        with db.get_session() as session:
+            supplier = session.get(Supplier, request.supplier_id)
+            if not supplier:
+                raise ValueError(f"Supplier {request.supplier_id} not found")
+
+            order = None
+            order_items_by_product = {}
+            if request.purchase_order_id:
+                order = session.get(PurchaseOrder, request.purchase_order_id)
+                if order:
+                    order_items_by_product = {item.product_id: item for item in order.items}
+
+            # Generate number inside caller session so rollback avoids gap in numbering
+            doc_number = DocumentService.generate_number("PURCHASE", session=session)
+
+            purchase = Purchase(
+                document_number=doc_number,
+                type="purchase",
+                date=request.date_received,
+                user_id=request.user_id,
+                status="COMPLETED",
+                reference_external=request.supplier_invoice_no,
+                supplier_id=request.supplier_id,
+                total_cost=Decimal("0.00"),
+                input_vat=request.input_vat,
+                purchase_order_id=request.purchase_order_id,
+            )
+            session.add(purchase)
+            session.flush()
+
+            total_purchase_cost = Decimal("0.00")
+
+            for line in request.lines:
+                product = session.get(Product, line.product_id)
+                if not product:
+                    raise ValueError(f"Product {line.product_id} not found")
+
+                order_item = order_items_by_product.get(line.product_id)
+                if order_item:
+                    order_item.qty_received += line.qty
+
+                purchase_item = PurchaseItem(
+                    purchase_id=purchase.id,
+                    product_id=line.product_id,
+                    qty_received=line.qty,
+                    unit_cost=line.unit_cost,
+                    purchase_order_item_id=order_item.id if order_item else None,
+                )
+                session.add(purchase_item)
+
+                total_purchase_cost += line.qty * line.unit_cost
+
+                # Record stock movement and compute AVCO
+                old_qty = product.stock_qty
+                old_cost = product.cost if product.cost is not None else Decimal("0.00")
+
+                StockService.record_movement(
+                    product_id=line.product_id,
+                    qty_change=line.qty,
+                    movement_type="PURCHASE",
+                    user_id=request.user_id,
+                    document_id=purchase.id,
+                    session=session,
+                )
+
+                # Invariant 2: if old_qty <= 0, new_cost = unit_cost; else weighted average
+                if old_qty <= Decimal("0"):
+                    new_cost = line.unit_cost
+                else:
+                    new_cost = round_money((old_qty * old_cost + line.qty * line.unit_cost) / (old_qty + line.qty))
+                product.cost = new_cost
+
+            purchase.total_cost = total_purchase_cost
+
+            if order:
+                order.status = (
+                    "RECEIVED"
+                    if all(item.qty_received >= item.qty_ordered for item in order.items)
+                    else "PARTIALLY_RECEIVED"
+                )
+
+            # Update supplier payable and ledger
+            supplier.current_payable += total_purchase_cost
+            SupplierPayableService.record_purchase_in_session(
+                session,
+                supplier.id,
+                purchase.id,
+                total_purchase_cost,
+                purchase.document_number,
+                supplier.current_payable,
+                purchase.user_id,
+            )
+
+            # Audit log
+            log = AuditLog(
+                user_id=purchase.user_id,
+                action="COMMIT_PURCHASE",
+                event_type="PURCHASE",
+                details=(
+                    f"Committed GRN {purchase.document_number} "
+                    f"({len(request.lines)} item(s), total cost {total_purchase_cost:.2f})."
+                ),
+            )
+            session.add(log)
+
+            session.commit()
+            session.refresh(purchase)
+            return purchase
 
     @staticmethod
     def create_purchase(

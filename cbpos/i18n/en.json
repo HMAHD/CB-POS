@@ -2913,7 +2913,10 @@
     "mixed_supplier_title": "Mixed Suppliers",
     "mixed_supplier_msg": "Select items from a single supplier to create a Purchase Order.",
     "purchase_order": "Purchase Order",
-    "purchase_order_created": "Created Purchase Order {doc_number} with {count} items.\nNavigating to Purchase view..."
+    "purchase_order_created": "Created Purchase Order {doc_number} with {count} items.\nNavigating to Purchase view...",
+    "no_supplier_hint": "Set a supplier on these products (Inventory → Edit product → Supplier) to order them.",
+    "split_confirm": "These items come from {count} suppliers. Create {count} purchase orders?",
+    "purchase_orders_created": "Created {count} Purchase Orders ({doc_numbers}).\nNavigating to Purchase view..."
   },
   "stock_take": {
     "tab_new_count": "New Count",

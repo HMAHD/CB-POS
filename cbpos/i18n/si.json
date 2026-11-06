@@ -2913,7 +2913,10 @@
     "mixed_supplier_title": "සැපයුම්කරුවන් මිශ්‍රව ඇත",
     "mixed_supplier_msg": "මිලදී ගැනීමේ ඇණවුමක් සෑදීමට එකම සැපයුම්කරුගේ අයිතම පමණක් තෝරන්න",
     "purchase_order": "මිලදී ගැනීමේ ඇණවුම",
-    "purchase_order_created": "{doc_number} — අයිතම {count}ක් සමඟ මිලදී ගැනීමේ ඇණවුම සාදන ලදී"
+    "purchase_order_created": "{doc_number} — අයිතම {count}ක් සමඟ මිලදී ගැනීමේ ඇණවුම සාදන ලදී",
+    "no_supplier_hint": "මෙම භාණ්ඩ ඇණවුම් කිරීමට සැපයුම්කරුවෙකු තෝරන්න (තොග → භාණ්ඩ සංස්කරණය → සැපයුම්කරු).",
+    "split_confirm": "මෙම භාණ්ඩ සැපයුම්කරුවන් {count} දෙනෙකුගෙන් පැමිණේ. මිලදී ගැනීමේ ඇණවුම් {count}ක් සාදන්නද?",
+    "purchase_orders_created": "මිලදී ගැනීමේ ඇණවුම් {count}ක් සාදන ලදී ({doc_numbers}).\nමිලදී ගැනීම් පිටුවට යමින්..."
   },
   "stock_take": {
     "tab_new_count": "නව ගණන් කිරීම",

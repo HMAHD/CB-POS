@@ -32,6 +32,7 @@ from cbpos.core.services.inventory_service import InventoryService
 from cbpos.core.services.supplier_service import SupplierService
 from cbpos.core.utils.error_messages import translate_error
 from cbpos.core.utils.formatters import get_currency_symbol
+from cbpos.core.utils.validators import ProductValidator
 from cbpos.i18n import _t
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.utils.layout_helpers import protect_vertical_sizing
@@ -683,10 +684,26 @@ class ProductEditor(QDialog):
             self.barcode_input.setFocus()
             return
 
-        if data["price"] <= 0:
+        # #901: Shared validation via ProductValidator
+        price_err = ProductValidator.validate_price(data["price"])
+        if price_err:
             QMessageBox.warning(self, _t("common.validation_error"), _t("product_editor.price_required"))
             self.tabs.setCurrentIndex(0)
             self.price_input.setFocus()
+            return
+
+        cost_err = ProductValidator.validate_cost(data.get("cost"))
+        if cost_err:
+            QMessageBox.warning(self, _t("common.validation_error"), cost_err)
+            self.tabs.setCurrentIndex(0)
+            self.cost_input.setFocus()
+            return
+
+        stock_err = ProductValidator.validate_stock(data.get("stock_qty"))
+        if stock_err:
+            QMessageBox.warning(self, _t("common.validation_error"), stock_err)
+            self.tabs.setCurrentIndex(1)
+            self.stock_input.setFocus()
             return
 
         components = []

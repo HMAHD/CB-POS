@@ -167,3 +167,54 @@ class TestImportServiceEncodingAndPaths:
         db_session.expire_all()
         p1 = db_session.query(Product).filter_by(barcode="9003001").first()
         assert p1 is None
+
+
+class TestImportServiceValidation:
+    def test_issue_901_negative_price_row_failed_not_created(self, db_session, test_user, tmp_path: Path):
+        csv_file = tmp_path / "negative_price.csv"
+        csv_file.write_text(
+            "Barcode,Name,Price,Cost,Stock\n"
+            "9010001,Negative Price Item,-50.00,20.00,10\n"
+            "9010002,Zero Price Item,0.00,20.00,10\n"
+            "9010003,Negative Cost Item,50.00,-10.00,10\n"
+            "9010004,Negative Stock Item,50.00,20.00,-5\n"
+            "9010005,Valid Item,50.00,20.00,10\n",
+            encoding="utf-8",
+        )
+
+        service = ImportService()
+        result = service.import_products_from_csv(str(csv_file))
+
+        assert result["success"] == 1
+        assert result["failed"] == 4
+        assert len(result["errors"]) >= 4
+
+        # Verify only valid product was created
+        assert db_session.query(Product).filter_by(barcode="9010001").first() is None
+        assert db_session.query(Product).filter_by(barcode="9010002").first() is None
+        assert db_session.query(Product).filter_by(barcode="9010003").first() is None
+        assert db_session.query(Product).filter_by(barcode="9010004").first() is None
+        assert db_session.query(Product).filter_by(barcode="9010005").first() is not None
+
+    def test_issue_901_import_opening_stock_writes_movement(self, db_session, test_user, tmp_path: Path):
+        csv_file = tmp_path / "opening_stock.csv"
+        csv_file.write_text(
+            "Barcode,Name,Price,Cost,Stock\n9010010,Stock Item,150.00,80.00,25.500\n",
+            encoding="utf-8",
+        )
+
+        service = ImportService()
+        result = service.import_products_from_csv(str(csv_file))
+
+        assert result["success"] == 1
+        product = db_session.query(Product).filter_by(barcode="9010010").first()
+        assert product is not None
+        assert product.stock_qty == Decimal("25.500")
+
+        # Must have created an OPENING StockMovement
+        from cbpos.core.constants.status import MovementType
+        from cbpos.core.models import StockMovement
+
+        movement = db_session.query(StockMovement).filter_by(product_id=product.id, type=MovementType.OPENING).first()
+        assert movement is not None
+        assert movement.qty_change == Decimal("25.500")

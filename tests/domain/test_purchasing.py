@@ -136,6 +136,28 @@ def test_issue_919_receive_goods_invalid_vat(db_session, test_user, test_supplie
     assert db_session.query(Purchase).count() == 0
 
 
+def test_issue_902_service_rejects_nonpositive_qty_negative_cost(db_session, test_user, test_supplier, test_product):
+    purchase = PurchaseService.create_purchase(test_supplier.id, "INV-902-1", test_user.id)
+
+    # Qty = 0 rejected
+    with pytest.raises(ValueError):
+        PurchaseService.commit_purchase(
+            purchase.id, [{"product_id": test_product.id, "qty": Decimal("0"), "cost": Decimal("10.00")}]
+        )
+
+    # Qty < 0 rejected
+    with pytest.raises(ValueError):
+        PurchaseService.commit_purchase(
+            purchase.id, [{"product_id": test_product.id, "qty": Decimal("-5.000"), "cost": Decimal("10.00")}]
+        )
+
+    # Cost < 0 rejected
+    with pytest.raises(ValueError):
+        PurchaseService.commit_purchase(
+            purchase.id, [{"product_id": test_product.id, "qty": Decimal("5.000"), "cost": Decimal("-10.00")}]
+        )
+
+
 def test_issue_919_receive_goods_success(db_session, test_user, test_supplier, test_product):
     initial_qty = test_product.stock_qty
 

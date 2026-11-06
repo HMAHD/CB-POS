@@ -257,6 +257,11 @@ class PurchaseService:
                 qty_received = Decimal(str(item_data["qty"]))
                 unit_cost = Decimal(str(item_data["cost"]))
 
+                if qty_received <= Decimal("0"):
+                    raise ValueError(f"grn_invalid_qty: {qty_received}")
+                if unit_cost < Decimal("0.00"):
+                    raise ValueError(f"grn_invalid_cost: {unit_cost}")
+
                 order_item = order_items_by_product.get(product_id)
                 if order_item:
                     order_item.qty_received += qty_received

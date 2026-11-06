@@ -377,6 +377,8 @@ class PurchaseView(QWidget, Activatable):
         self.supplier_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.invoice_input = QLineEdit()
         self.date_input = QDateEdit(QDate.currentDate())
+        self.date_input.setCalendarPopup(True)
+        self.date_input.setMaximumDate(QDate.currentDate())
 
         self.lbl_grn_supplier = QLabel()
         self.lbl_grn_ref = QLabel()
@@ -1101,6 +1103,7 @@ class PurchaseView(QWidget, Activatable):
             self.grn_model.removeRows(0, self.grn_model.rowCount())
             self.grn_items = []
             self.invoice_input.clear()
+            self.date_input.setDate(QDate.currentDate())
             self.input_vat_field.clear()
             self.current_purchase_order_id = None
             self.update_total()

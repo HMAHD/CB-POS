@@ -1,9 +1,10 @@
+from datetime import datetime
 from decimal import Decimal
 
 import pytest
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QDate, Qt
 
-from cbpos.core.models import Permission, Product, Purchase, Role, Supplier, User
+from cbpos.core.models import Permission, Product, Purchase, Role, StockMovement, Supplier, User
 from cbpos.ui.views.purchase_view import PurchaseView
 
 pytestmark = pytest.mark.usefixtures("qapp")
@@ -109,3 +110,35 @@ def test_issue_902_remove_line_action(test_user, test_product):
     view.remove_selected_grn_row()
     assert view.grn_model.rowCount() == 0
     assert "0.00" in view.total_label.text()
+
+
+def test_issue_895_back_dated_grn_stores_date(db_session, test_user, test_supplier, test_product, monkeypatch):
+    view = PurchaseView()
+    view.set_user(test_user)
+    view.supplier_combo.addItem(test_supplier.company_name, test_supplier.id)
+    view.supplier_combo.setCurrentIndex(view.supplier_combo.findData(test_supplier.id))
+    view.invoice_input.setText("INV-895-PAST")
+    view._add_grn_row(test_product, Decimal("5"), Decimal("50.00"))
+
+    # Set date to 5 days ago
+    past_date = QDate.currentDate().addDays(-5)
+    view.date_input.setDate(past_date)
+
+    monkeypatch.setattr("cbpos.ui.views.purchase_view.QMessageBox.information", lambda *a, **k: None)
+
+    view.commit_grn()
+
+    db_session.expire_all()
+    purchase = db_session.query(Purchase).filter_by(reference_external="INV-895-PAST").first()
+    assert purchase is not None
+    assert purchase.date.date() == past_date.toPyDate()
+
+    # StockMovement timestamp remains today/now
+    movement = db_session.query(StockMovement).filter_by(document_id=purchase.id).first()
+    assert movement is not None
+    assert movement.timestamp.date() == datetime.now().date()
+
+
+def test_issue_895_max_date_is_today():
+    view = PurchaseView()
+    assert view.date_input.maximumDate() == QDate.currentDate()

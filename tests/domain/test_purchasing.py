@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -191,3 +191,35 @@ def test_issue_919_receive_goods_success(db_session, test_user, test_supplier, t
     assert ledger is not None
     assert ledger.amount == Decimal("6000.00")
     assert ledger.entry_type == "PURCHASE"
+
+
+def test_issue_895_receive_goods_back_dated(db_session, test_user, test_supplier, test_product):
+    past_datetime = datetime.now() - timedelta(days=7)
+    req = GrnRequest(
+        supplier_id=test_supplier.id,
+        date_received=past_datetime,
+        supplier_invoice_no="INV-895-DOMAIN",
+        input_vat=Decimal("0.00"),
+        lines=[GrnLine(product_id=test_product.id, qty=Decimal("10.000"), unit_cost=Decimal("50.00"))],
+        user_id=test_user.id,
+    )
+    purchase = PurchaseService.receive_goods(req)
+    assert purchase.date == past_datetime
+
+    movement = db_session.query(StockMovement).filter_by(document_id=purchase.id).first()
+    assert movement is not None
+    assert movement.timestamp.date() == datetime.now().date()
+
+
+def test_issue_895_future_date_rejected(db_session, test_user, test_supplier, test_product):
+    future_datetime = datetime.now() + timedelta(days=2)
+    req = GrnRequest(
+        supplier_id=test_supplier.id,
+        date_received=future_datetime,
+        supplier_invoice_no="INV-895-FUTURE",
+        input_vat=Decimal("0.00"),
+        lines=[GrnLine(product_id=test_product.id, qty=Decimal("10.000"), unit_cost=Decimal("50.00"))],
+        user_id=test_user.id,
+    )
+    with pytest.raises(ValueError, match="grn_future_date"):
+        PurchaseService.receive_goods(req)

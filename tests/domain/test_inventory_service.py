@@ -314,3 +314,122 @@ class TestProductEditorConcurrencyAndCost:
 
         with pytest.raises(PermissionError, match=r"inventory\.set_cost"):
             service.set_cost(product.id, Decimal("60.00"), user_id=cashier.id)
+
+
+class TestInventoryServiceListProductsIssue863:
+    def test_issue_863_product_1400_reachable_by_page_and_search(self, db_session):
+        """#863: 1,500 products seeded via bulk insert; product #1,400 reachable by page and search."""
+        service = InventoryService()
+        suffix = _next_suffix()
+
+        # Bulk insert 1,500 products
+        products_data = [
+            {
+                "barcode": f"BLK-{suffix}-{i:04d}",
+                "name_en": f"Bulk Item {suffix} {i:04d}",
+                "price": Decimal("100.00"),
+                "cost": Decimal("50.00"),
+                "stock_qty": Decimal("10.000"),
+                "is_active": True,
+                "is_service": False,
+            }
+            for i in range(1, 1501)
+        ]
+        db_session.bulk_insert_mappings(Product, products_data)
+        db_session.commit()
+
+        # Check total count and page 13 (indices 1300..1399 contains product #1400)
+        items, total_count = service.list_products(page=13, page_size=100)
+        assert total_count >= 1500
+        assert len(items) == 100
+        barcodes = [p.barcode for p in items]
+        assert f"BLK-{suffix}-1400" in barcodes
+
+        # Search directly for product #1400
+        search_items, search_count = service.list_products(query=f"BLK-{suffix}-1400")
+        assert search_count == 1
+        assert len(search_items) == 1
+        assert search_items[0].barcode == f"BLK-{suffix}-1400"
+
+    def test_issue_863_search_matches_sinhala_name(self, db_session):
+        """#863: list_products matches Sinhala and Tamil names in addition to English and barcode."""
+        service = InventoryService()
+        suffix = _next_suffix()
+
+        product = Product(
+            barcode=f"TRI-{suffix}",
+            name_en=f"Red Rice {suffix}",
+            name_si="රතු කැකුළු සහල්",
+            name_ta="சிவப்பு அரிசி",
+            price=Decimal("220.00"),
+            cost=Decimal("180.00"),
+            stock_qty=Decimal("50.000"),
+            is_active=True,
+        )
+        db_session.add(product)
+        db_session.commit()
+
+        # Match Sinhala
+        items_si, count_si = service.list_products(query="කැකුළු")
+        assert count_si >= 1
+        assert any(p.barcode == f"TRI-{suffix}" for p in items_si)
+
+        # Match Tamil
+        items_ta, count_ta = service.list_products(query="சிவப்பு")
+        assert count_ta >= 1
+        assert any(p.barcode == f"TRI-{suffix}" for p in items_ta)
+
+    def test_issue_863_count_matches_filter(self, db_session):
+        """#863: list_products total_count accurately reflects active, category, and low stock filters."""
+        from cbpos.core.models import Category
+
+        service = InventoryService()
+        suffix = _next_suffix()
+
+        cat = Category(name=f"Cat863_{suffix}")
+        db_session.add(cat)
+        db_session.flush()
+
+        p_low = Product(
+            barcode=f"LOW-{suffix}",
+            name_en=f"Low Stock {suffix}",
+            price=Decimal("50.00"),
+            cost=Decimal("20.00"),
+            stock_qty=Decimal("2.000"),
+            reorder_point=Decimal("5.000"),
+            category_id=cat.id,
+            is_active=True,
+        )
+        p_norm = Product(
+            barcode=f"NORM-{suffix}",
+            name_en=f"Normal Stock {suffix}",
+            price=Decimal("50.00"),
+            cost=Decimal("20.00"),
+            stock_qty=Decimal("20.000"),
+            reorder_point=Decimal("5.000"),
+            category_id=cat.id,
+            is_active=True,
+        )
+        p_inactive = Product(
+            barcode=f"INACT-{suffix}",
+            name_en=f"Inactive Item {suffix}",
+            price=Decimal("50.00"),
+            cost=Decimal("20.00"),
+            stock_qty=Decimal("0.000"),
+            category_id=cat.id,
+            is_active=False,
+        )
+        db_session.add_all([p_low, p_norm, p_inactive])
+        db_session.commit()
+
+        # Category filter for active products
+        items_cat, count_cat = service.list_products(filters={"category_id": cat.id, "is_active": True})
+        assert count_cat == 2
+        assert len(items_cat) == 2
+
+        # Low stock filter within this category
+        items_low, count_low = service.list_products(
+            filters={"category_id": cat.id, "is_active": True, "low_stock": True}
+        )
+        assert count_low == 1
+        assert items_low[0].barcode == f"LOW-{suffix}"

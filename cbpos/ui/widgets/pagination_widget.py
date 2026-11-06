@@ -77,10 +77,18 @@ class PaginationWidget(QWidget):
     # Public API
     # ------------------------------------------------------------------
 
-    def set_total(self, total: int) -> None:
-        """Update the total item count and reset to page 0."""
+    def set_total(self, total: int, reset_page: bool = True) -> None:
+        """Update the total item count, optionally resetting to page 0."""
         self._total_items = total
-        self._current_page = 0
+        if reset_page or self._total_items == 0:
+            self._current_page = 0
+        elif self._current_page >= self.total_pages:
+            self._current_page = max(0, self.total_pages - 1)
+        self._update_controls()
+
+    def set_info_formatter(self, formatter) -> None:
+        """Set a custom formatter callable `formatter(start, end, total) -> str`."""
+        self._info_formatter = formatter
         self._update_controls()
 
     def get_page_slice(self, items: list) -> list:
@@ -152,7 +160,10 @@ class PaginationWidget(QWidget):
         self.setVisible(self.total_pages > 1)
         start = self.start_index + 1
         end = self.end_index
-        self._info_label.setText(_t("common.showing_range", start=start, end=end, total=total))
+        if getattr(self, "_info_formatter", None) is not None:
+            self._info_label.setText(self._info_formatter(start, end, total))
+        else:
+            self._info_label.setText(_t("common.showing_range", start=start, end=end, total=total))
         self._page_label.setText(_t("common.page_of", page=self._current_page + 1, total=self.total_pages))
         self._btn_prev.setText(_t("common.previous"))
         self._btn_next.setText(_t("common.next"))

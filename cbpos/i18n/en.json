@@ -858,6 +858,8 @@
     "btn_print_labels": "Print Labels",
     "search_placeholder": "Search by Barcode or Name...",
     "empty_state": "No products match your search",
+    "page_info": "{first}–{last} of {total}",
+    "no_match": "No products match \"{query}\". Check the spelling, or search by barcode.",
     "context_stock_history": "View Stock History",
     "btn_adjust_stock": "Adjust Stock",
     "context_adjust_stock": "Adjust stock\tCtrl+J",

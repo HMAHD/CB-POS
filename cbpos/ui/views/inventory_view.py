@@ -1,4 +1,4 @@
-from PyQt6.QtCore import QAbstractTableModel, QModelIndex, Qt
+from PyQt6.QtCore import QAbstractTableModel, QModelIndex, Qt, QTimer
 from PyQt6.QtGui import QBrush, QColor, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QHBoxLayout,
@@ -21,9 +21,10 @@ from cbpos.ui.dialogs.product_editor import ProductEditor
 from cbpos.ui.dialogs.stock_adjustment_dialog import StockAdjustmentDialog
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
+from cbpos.ui.widgets.loading_overlay import LoadingOverlay
 from cbpos.ui.widgets.pagination_widget import PaginationWidget
 from cbpos.ui.widgets.read_only_banner import ReadOnlyBanner
-from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, configure_table_columns
+from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, batch_table_update, configure_table_columns
 
 
 class InventoryModel(QAbstractTableModel):
@@ -112,7 +113,9 @@ class InventoryView(QWidget, Activatable):
         super().__init__()
         self.inventory_service = InventoryService()
         self.import_service = ImportService()
+        self.all_products: list = []
         self._filtered_products: list = []
+        self._search_query: str = ""
         self.init_ui()
         self.load_data()
 
@@ -130,7 +133,12 @@ class InventoryView(QWidget, Activatable):
         top_bar = QHBoxLayout()
 
         self.search_input = QLineEdit()
-        self.search_input.textChanged.connect(self.filter_data)
+        self._search_timer = QTimer(self)
+        self._search_timer.setSingleShot(True)
+        self._search_timer.setInterval(300)
+        self._search_timer.timeout.connect(self._do_debounced_search)
+        self.search_input.textChanged.connect(self._on_search_text_changed)
+        self.search_input.returnPressed.connect(self._do_immediate_search)
 
         self.add_btn = QPushButton()
         self.add_btn.setProperty("class", "primary")
@@ -200,9 +208,14 @@ class InventoryView(QWidget, Activatable):
         layout.addWidget(self.table_stack)
 
         # Pagination
-        self.pagination = PaginationWidget()
+        self.pagination = PaginationWidget(page_size=100)
+        self.pagination.set_info_formatter(
+            lambda first, last, total: _t("inventory.page_info", first=first, last=last, total=total)
+        )
         self.pagination.page_changed.connect(self._on_page_changed)
         layout.addWidget(self.pagination)
+
+        self.loading_overlay = LoadingOverlay(self.table)
 
     def _update_read_only_state(self) -> None:
         """Update action buttons and tooltip based on terminal catalog read-only state."""
@@ -242,40 +255,59 @@ class InventoryView(QWidget, Activatable):
             ]
         )
 
-    def _update_empty_state(self) -> None:
-        """Show empty state label when model has no rows."""
-        if self.model.rowCount() == 0:
-            self.table_stack.setCurrentIndex(1)
-        else:
-            self.table_stack.setCurrentIndex(0)
+    def _on_search_text_changed(self, text: str) -> None:
+        self._search_query = text
+        self._search_timer.start(300)
+
+    def _do_immediate_search(self) -> None:
+        self._search_timer.stop()
+        self._do_debounced_search()
+
+    def _do_debounced_search(self) -> None:
+        self._load_page(page=0)
 
     def load_data(self):
         """Load all products and display the current page."""
-        self.all_products = self.inventory_service.get_all_products()
-        self._filtered_products = self.all_products
-        self._apply_pagination()
+        self._load_page(page=self.pagination.current_page)
 
-    def filter_data(self, text):
-        """Filter products by barcode or name, or show all if text is empty."""
-        if not text:
-            self._filtered_products = self.all_products
+    def filter_data(self, text: str):
+        """Filter products by barcode or name with server-side search."""
+        self._search_query = text
+        self._load_page(page=0)
+
+    def _load_page(self, page: int = 0) -> None:
+        """Fetch the requested page of products from the service."""
+        query = (self._search_query or "").strip()
+        self.loading_overlay.show_loading()
+        try:
+            items, total_count = self.inventory_service.list_products(
+                query=query if query else None,
+                page=page,
+                page_size=self.pagination.page_size,
+            )
+            self.all_products = items
+            self._filtered_products = items
+            with batch_table_update(self.table):
+                self.model.update_data(items)
+            self.pagination.set_total(total_count, reset_page=(page == 0))
+            self._update_empty_state(total_count=total_count, query=query)
+        finally:
+            self.loading_overlay.hide_loading()
+
+    def _on_page_changed(self, page: int) -> None:
+        self._load_page(page=page)
+
+    def _update_empty_state(self, total_count: int | None = None, query: str = "") -> None:
+        """Show empty state label when model has no rows."""
+        count = self.model.rowCount() if total_count is None else total_count
+        if count == 0:
+            if query:
+                self.empty_label.setText(_t("inventory.no_match", query=query))
+            else:
+                self.empty_label.setText(_t("inventory.empty_state"))
+            self.table_stack.setCurrentIndex(1)
         else:
-            text = text.lower()
-            self._filtered_products = [
-                p for p in self.all_products if text in p.barcode.lower() or text in p.name_en.lower()
-            ]
-        self._apply_pagination()
-
-    def _apply_pagination(self) -> None:
-        self.pagination.set_total(len(self._filtered_products))
-        page_items = self.pagination.get_page_slice(self._filtered_products)
-        self.model.update_data(page_items)
-        self._update_empty_state()
-
-    def _on_page_changed(self, _page: int) -> None:
-        page_items = self.pagination.get_page_slice(self._filtered_products)
-        self.model.update_data(page_items)
-        self._update_empty_state()
+            self.table_stack.setCurrentIndex(0)
 
     def open_add_dialog(self):
         """Open the product editor to create a new product, if permitted."""

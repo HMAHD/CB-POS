@@ -823,6 +823,8 @@
     "btn_print_labels": "ලේබල් ප්‍රින්ට් කරන්න",
     "search_placeholder": "නම, බාර්කෝඩය හෝ ප්‍රවර්ගයෙන් සොයන්න...",
     "empty_state": "සොයපු දේට ගැලපෙන අයිතම නැහැ",
+    "page_info": "{total} න් {first}–{last}",
+    "no_match": "\"{query}\" සඳහා ගැලපෙන භාණ්ඩ නැත. අක්ෂර වින්‍යාසය පරීක්ෂා කරන්න, නැතහොත් බාර්කෝඩ් මඟින් සොයන්න.",
     "context_stock_history": "තොග ඉතිහාසය බලන්න",
     "btn_adjust_stock": "තොග සකස් කිරීම",
     "context_adjust_stock": "තොග සකස් කිරීම\tCtrl+J",

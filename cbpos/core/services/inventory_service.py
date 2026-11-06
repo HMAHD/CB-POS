@@ -1,5 +1,6 @@
 import logging
 import uuid
+from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
 
@@ -22,6 +23,15 @@ logger = logging.getLogger(__name__)
 
 class StaleProductError(ValueError):
     """Raised when an update is attempted against a stale product snapshot (#862)."""
+
+
+@dataclass
+class ProductFilter:
+    """Filter criteria for product catalog listing (#863)."""
+
+    category_id: int | None = None
+    is_active: bool | None = True
+    low_stock: bool | None = None
 
 
 class InventoryService:
@@ -344,3 +354,67 @@ class InventoryService:
         with self.db.get_session() as session:
             stmt = select(Product).where(Product.barcode == barcode)
             return session.scalars(stmt).first()
+
+    def list_products(
+        self,
+        query: str | None = None,
+        filters: ProductFilter | dict | None = None,
+        page: int = 0,
+        page_size: int = 100,
+    ) -> tuple[list[Product], int]:
+        """List products with server-side search, filtering, and pagination (#863).
+
+        Args:
+            query: Optional search term matching barcode, English, Sinhala, or Tamil name.
+            filters: Optional ProductFilter or dict (category_id, is_active, low_stock).
+            page: 0-based page number.
+            page_size: Number of items per page.
+
+        Returns:
+            tuple[list[Product], int]: (page of detached products, total matching count).
+        """
+        from sqlalchemy import and_, func
+
+        from cbpos.core.services.product_service import build_product_search_filter
+
+        conditions = []
+        if query and query.strip():
+            conditions.append(build_product_search_filter(query.strip()))
+
+        if isinstance(filters, dict):
+            category_id = filters.get("category_id")
+            is_active = filters.get("is_active", True)
+            low_stock = filters.get("low_stock")
+        elif isinstance(filters, ProductFilter):
+            category_id = filters.category_id
+            is_active = filters.is_active
+            low_stock = filters.low_stock
+        else:
+            category_id = None
+            is_active = True
+            low_stock = None
+
+        if is_active is not None:
+            conditions.append(Product.is_active.is_(is_active))
+        if category_id is not None:
+            conditions.append(Product.category_id == category_id)
+        if low_stock:
+            conditions.append(Product.stock_qty <= Product.reorder_point)
+
+        page_num = max(0, page)
+        offset = page_num * page_size
+
+        with self.db.get_session() as session:
+            count_stmt = select(func.count()).select_from(Product)
+            if conditions:
+                count_stmt = count_stmt.where(and_(*conditions))
+            total_count = session.scalar(count_stmt) or 0
+
+            data_stmt = select(Product).options(joinedload(Product.category), joinedload(Product.unit))
+            if conditions:
+                data_stmt = data_stmt.where(and_(*conditions))
+            data_stmt = data_stmt.order_by(Product.name_en, Product.id).offset(offset).limit(page_size)
+            items = list(session.scalars(data_stmt).unique().all())
+            for item in items:
+                session.expunge(item)
+            return items, total_count

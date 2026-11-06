@@ -117,3 +117,55 @@ class TestPriceFieldDataRoundTrip:
 
         assert dialog.comp_table.rowCount() == 1
         assert dialog.comp_table.item(0, 2).text() == "2.50"
+
+
+class TestProductEditorIssue862UI:
+    def test_issue_862_editor_shows_read_only_stock_and_cost_for_existing_product(self, db_session):
+        product = Product(
+            barcode="PE-ISSUE-862",
+            name_en="Read Only Fields Product",
+            price=Decimal("150.00"),
+            cost=Decimal("90.00"),
+            stock_qty=Decimal("25.000"),
+        )
+        db_session.add(product)
+        db_session.flush()
+
+        dialog = ProductEditor(product=product)
+
+        assert dialog.cost_input.isReadOnly() is True
+        assert dialog.stock_input.isReadOnly() is True
+        assert hasattr(dialog, "btn_set_cost")
+        assert hasattr(dialog, "btn_adjust_stock")
+        assert dialog.stock_input.text() == "25.000"
+        assert dialog.cost_input.text() == "90.00"
+
+    def test_issue_862_stale_product_save_shows_warning(self, db_session, monkeypatch):
+        product = Product(
+            barcode="PE-ISSUE-862-STALE",
+            name_en="Concurrent Product",
+            price=Decimal("200.00"),
+            cost=Decimal("100.00"),
+            stock_qty=Decimal("10.000"),
+        )
+        db_session.add(product)
+        db_session.commit()
+
+        dialog = ProductEditor(product=product)
+
+        # Advance version in DB to make the dialog's snapshot stale
+        with dialog.inventory_service.db.get_session() as s2:
+            p2 = s2.get(Product, product.id)
+            p2.price = Decimal("250.00")
+            s2.commit()
+
+        warnings = []
+        monkeypatch.setattr("cbpos.ui.dialogs.product_editor.QMessageBox.warning", lambda *args: warnings.append(args))
+        accepted = []
+        monkeypatch.setattr(dialog, "accept", lambda: accepted.append(True))
+
+        dialog.name_en_input.setText("Updated Concurrently")
+        dialog.save_product()
+
+        assert len(warnings) == 1
+        assert len(accepted) == 0

@@ -20,6 +20,10 @@ from cbpos.core.utils.terminal_guard import require_catalog_writable
 logger = logging.getLogger(__name__)
 
 
+class StaleProductError(ValueError):
+    """Raised when an update is attempted against a stale product snapshot (#862)."""
+
+
 class InventoryService:
     """Manages product records, composite (bundle) items, and stock-level adjustments."""
 
@@ -48,12 +52,23 @@ class InventoryService:
                 return candidate
             n += 1
 
-    def create_product(self, data: dict[str, Any]) -> Product:
-        """Create a new product with optional composite items."""
+    def get_product(self, product_id: int) -> Product | None:
+        """Get product by ID from fresh database session (#862)."""
+        with self.db.get_session() as session:
+            product = session.get(Product, product_id)
+            if product:
+                session.expunge(product)
+            return product
+
+    def create_product(self, data: dict[str, Any], user_id: int | None = None) -> Product:
+        """Create a new product with optional composite items and opening stock (#862)."""
         require_catalog_writable()
         with self.db.get_session() as session:
             # Extract composite items data if present
             components_data = data.pop("components", [])
+
+            # Extract opening stock if present (#862)
+            opening_stock = Decimal(str(data.pop("stock_qty", 0) or 0))
 
             # "Auto-Generate Barcodes" (Settings -> System, #641): a new
             # product saved without a barcode gets one. The real number is
@@ -62,6 +77,8 @@ class InventoryService:
             if generate_barcode:
                 data["barcode"] = f"PENDING-{uuid.uuid4().hex}"
 
+            # Opening stock is initialized to 0 on model, then recorded via StockService
+            data["stock_qty"] = Decimal("0")
             product = Product(**data)
             session.add(product)
             session.flush()  # Generate ID
@@ -69,6 +86,23 @@ class InventoryService:
             if generate_barcode:
                 product.barcode = self._in_store_barcode(session, product.id)
                 session.flush()
+
+            # Record opening stock movement if provided on non-service item
+            if opening_stock > 0 and not product.is_service:
+                uid = user_id
+                if uid is None:
+                    from cbpos.core.services.auth_service import AuthService
+
+                    curr = AuthService.get_current_user()
+                    uid = curr.id if curr else 1
+
+                StockService.record_movement(
+                    product_id=product.id,
+                    qty_change=opening_stock,
+                    movement_type=MovementType.OPENING,
+                    user_id=uid,
+                    session=session,
+                )
 
             # Handle composite items
             for comp_data in components_data:
@@ -82,13 +116,23 @@ class InventoryService:
             session.refresh(product)
             return product
 
-    def update_product(self, product_id: int, data: dict[str, Any]) -> Product | None:
-        """Update an existing product; a selling price change goes to the Activity Log (#642)."""
+    def update_product(
+        self, product_id: int, data: dict[str, Any], expected_version: int | None = None
+    ) -> Product | None:
+        """Update an existing product; rejects stale updates and ignores stock/cost (#862)."""
         require_catalog_writable()
+
+        # #862: Stock and cost must never be overwritten via product editor
+        data.pop("stock_qty", None)
+        data.pop("cost", None)
+
         with self.db.get_session() as session:
             product = session.get(Product, product_id)
             if not product:
                 return None
+
+            if expected_version is not None and product.version_id != expected_version:
+                raise StaleProductError("This product was modified by another user. Please reload and try again.")
 
             if data.get("price") is not None:
                 price_change = diff_changes({"price": product.price}, {"price": Decimal(str(data["price"]))})
@@ -120,7 +164,36 @@ class InventoryService:
                 session.commit()
             except StaleDataError:
                 session.rollback()
-                raise ValueError("This product was modified by another user. Please reload and try again.")
+                raise StaleProductError("This product was modified by another user. Please reload and try again.")
+            session.refresh(product)
+            return product
+
+    def set_cost(self, product_id: int, new_cost: Decimal, user_id: int) -> Product:
+        """Manually override a product's cost (requires inventory.set_cost permission) (#862)."""
+        require_catalog_writable()
+        if new_cost < Decimal("0"):
+            raise ValueError("Cost cannot be negative")
+
+        with self.db.get_session() as session:
+            user = session.get(User, user_id, options=[joinedload(User.role).joinedload(Role.permissions)])
+            if not user or not PermissionService.user_has_permission(user, Permissions.INVENTORY_SET_COST):
+                raise PermissionError("Permission denied: inventory.set_cost required")
+
+            product = session.get(Product, product_id)
+            if not product:
+                raise ValueError(f"Product {product_id} not found")
+
+            old_cost = product.cost
+            product.cost = new_cost
+
+            audit_log = AuditLog(
+                user_id=user_id,
+                action="COST_OVERRIDE",
+                event_type="INVENTORY",
+                details=f"Product {product.name_en} ({product.barcode}) cost overridden from {old_cost} to {new_cost}",
+            )
+            session.add(audit_log)
+            session.commit()
             session.refresh(product)
             return product
 

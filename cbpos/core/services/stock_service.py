@@ -17,6 +17,7 @@ _VALID_MOVEMENT_TYPES = frozenset(
         MovementType.ADJUSTMENT,
         MovementType.RETURN,
         MovementType.VOID,
+        MovementType.OPENING,
     }
 )
 

@@ -177,3 +177,140 @@ class TestAdjustStock:
                 user_id=test_user.id,
                 note="",
             )
+
+
+class TestProductEditorConcurrencyAndCost:
+    def test_issue_862_stale_snapshot_does_not_overwrite_stock_cost(self, db_session):
+        """#862: update_product with stale version raises StaleProductError without overwriting stock/cost."""
+        from cbpos.core.services.inventory_service import StaleProductError
+
+        service = InventoryService()
+        suffix = _next_suffix()
+        product = Product(
+            barcode=f"STALE_{suffix}",
+            name_en="Original Name",
+            price=Decimal("100.00"),
+            cost=Decimal("40.00"),
+            stock_qty=Decimal("50"),
+        )
+        db_session.add(product)
+        db_session.commit()
+
+        initial_version = product.version_id
+
+        # In another session, simulate sales/GRN updating stock, cost and version_id
+        with service.db.get_session() as s2:
+            p2 = s2.get(Product, product.id)
+            p2.stock_qty = Decimal("40")
+            p2.cost = Decimal("70")
+            p2.price = Decimal("120.00")
+            s2.commit()
+
+        # Stale update with initial_version must raise StaleProductError
+        with pytest.raises(StaleProductError):
+            service.update_product(
+                product_id=product.id,
+                data={"name_en": "Stale Attempted Name", "stock_qty": Decimal("999"), "cost": Decimal("999")},
+                expected_version=initial_version,
+            )
+
+        # Verify stock, cost, and name were not overwritten
+        db_session.expire_all()
+        refreshed = db_session.get(Product, product.id)
+        assert refreshed.name_en == "Original Name"
+        assert refreshed.stock_qty == Decimal("40")
+        assert refreshed.cost == Decimal("70")
+
+    def test_issue_862_update_ignores_stock_and_cost_keys(self, db_session):
+        """#862: update_product ignores stock_qty and cost keys even when version matches."""
+        service = InventoryService()
+        suffix = _next_suffix()
+        product = Product(
+            barcode=f"IGN_{suffix}",
+            name_en="Untouched Item",
+            price=Decimal("50.00"),
+            cost=Decimal("30.00"),
+            stock_qty=Decimal("25"),
+        )
+        db_session.add(product)
+        db_session.commit()
+
+        current_version = product.version_id
+
+        service.update_product(
+            product_id=product.id,
+            data={
+                "name_en": "Updated Name",
+                "stock_qty": Decimal("999"),
+                "cost": Decimal("888"),
+            },
+            expected_version=current_version,
+        )
+
+        db_session.expire_all()
+        refreshed = db_session.get(Product, product.id)
+        assert refreshed.name_en == "Updated Name"
+        assert refreshed.stock_qty == Decimal("25")
+        assert refreshed.cost == Decimal("30.00")
+
+    def test_issue_862_new_product_opening_stock_writes_movement(self, db_session, test_user):
+        """#862: create_product with opening stock records StockMovement(type=OPENING)."""
+        service = InventoryService()
+        suffix = _next_suffix()
+
+        prod = service.create_product(
+            {
+                "barcode": f"NEW_OP_{suffix}",
+                "name_en": f"New Product {suffix}",
+                "price": Decimal("200.00"),
+                "cost": Decimal("120.00"),
+                "stock_qty": Decimal("15"),
+            },
+            user_id=test_user.id,
+        )
+
+        assert prod.stock_qty == Decimal("15")
+
+        movement = (
+            db_session.query(StockMovement).filter_by(product_id=prod.id, type=MovementType.OPENING).one_or_none()
+        )
+        assert movement is not None
+        assert movement.qty_change == Decimal("15")
+        assert movement.balance_after == Decimal("15")
+        assert movement.user_id == test_user.id
+
+    def test_issue_862_set_cost_requires_permission_and_audits(self, db_session, test_user):
+        """#862: set_cost updates cost, checks inventory.set_cost permission, and writes AuditLog."""
+        service = InventoryService()
+        suffix = _next_suffix()
+
+        product = Product(
+            barcode=f"COST_{suffix}",
+            name_en="Cost Override Item",
+            price=Decimal("100.00"),
+            cost=Decimal("40.00"),
+            stock_qty=Decimal("10"),
+        )
+        db_session.add(product)
+        db_session.commit()
+
+        # Admin user has permission and successfully updates cost
+        updated = service.set_cost(product.id, Decimal("55.00"), user_id=test_user.id)
+        assert updated.cost == Decimal("55.00")
+
+        audit_log = db_session.query(AuditLog).filter_by(action="COST_OVERRIDE").order_by(AuditLog.id.desc()).first()
+        assert audit_log is not None
+        assert audit_log.user_id == test_user.id
+        assert "40" in audit_log.details
+        assert "55" in audit_log.details
+
+        # Cashier user without permission is rejected
+        cashier_role = Role(name=f"Cashier_{suffix}", access_level=1)
+        db_session.add(cashier_role)
+        db_session.flush()
+        cashier = User(username=f"cashier_{suffix}", pin_hash="hash", role_id=cashier_role.id)
+        db_session.add(cashier)
+        db_session.flush()
+
+        with pytest.raises(PermissionError, match=r"inventory\.set_cost"):
+            service.set_cost(product.id, Decimal("60.00"), user_id=cashier.id)

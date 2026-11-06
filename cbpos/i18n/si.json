@@ -502,6 +502,10 @@
     "view_details": "විස්තර බලන්න",
     "clear_customer": "පාරිභෝගිකයා ඉවත් කරන්න"
   },
+  "product": {
+    "cost_avco_tooltip": "පිරිවැය මිලදී ගැනීම් වලින් ස්වයංක්‍රීයව ගණනය කෙරේ (සාමාන්‍ය පිරිවැය).",
+    "modified_elsewhere": "ඔබ සංස්කරණය කරන අතරතුර වෙනත් අයෙකු මෙම අයිතමය වෙනස් කර ඇත. නවතම විස්තර බැලීමට මෙය වසා නැවත විවෘත කරන්න."
+  },
   "product_editor": {
     "title_edit": "භාණ්ඩය සංස්කරණය",
     "title_add": "නව භාණ්ඩය",
@@ -516,6 +520,10 @@
     "category": "කාණ්ඩය:",
     "selling_price": "විකුණුම් මිල*:",
     "cost_price": "මිලදී ගත් මිල:",
+    "btn_adjust": "සකසන්න…",
+    "btn_set_cost": "පිරිවැය සකසන්න…",
+    "dialog_set_cost_title": "පිරිවැය අතින් සකසන්න",
+    "dialog_set_cost_prompt": "{name} සඳහා නව පිරිවැය ඇතුළත් කරන්න:",
     "name_en_placeholder": "ඉංග්‍රීසි නම (අවශ්‍යයි)",
     "name_si_placeholder": "අවශ්‍ය නැහැ",
     "name_ta_placeholder": "අවශ්‍ය නැහැ",
@@ -2415,6 +2423,7 @@
       "inventory.edit": "අයිතම එකතු කිරීම සහ වෙනස් කිරීම",
       "inventory.delete": "අයිතම මැකීම",
       "inventory.stock_adjust": "තොග සකස් කිරීම",
+      "inventory.set_cost": "නිෂ්පාදන පිරිවැය අතින් සකසන්න",
       "reports.view_sales": "විකුණුම් වාර්තා බැලීම",
       "reports.view_profit": "ලාභ වාර්තා බැලීම",
       "reports.export": "වාර්තා සහ දත්ත අපනයනය කිරීම",
@@ -2457,6 +2466,7 @@
       "user_logout": "ලොග් අවුට් උනා",
       "session_timeout": "වැඩ නොකළ නිසා ලොග් අවුට් උනා",
       "stock_adjustment": "තොග සකස් කළා",
+      "cost_override": "පිරිවැය වෙනස් කළා",
       "void_sale": "විකුණුම අවලංගු කළා",
       "void_bill": "බිල අවලංගු කළා",
       "refund": "මුදල් ආපසු ගෙව්වා",

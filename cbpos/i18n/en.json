@@ -502,6 +502,10 @@
     "view_details": "View Details",
     "clear_customer": "Clear Customer"
   },
+  "product": {
+    "cost_avco_tooltip": "Cost is worked out automatically from your purchases (average cost).",
+    "modified_elsewhere": "Someone else changed this product while you were editing. Close and open it again to see the latest details."
+  },
   "product_editor": {
     "title_edit": "Edit Product",
     "title_add": "Add New Product",
@@ -516,6 +520,10 @@
     "category": "Category:",
     "selling_price": "Selling Price*:",
     "cost_price": "Cost Price:",
+    "btn_adjust": "Adjust…",
+    "btn_set_cost": "Set cost…",
+    "dialog_set_cost_title": "Set Cost Manually",
+    "dialog_set_cost_prompt": "Enter new cost for {name}:",
     "name_en_placeholder": "Product name in English (required)",
     "name_si_placeholder": "Optional",
     "name_ta_placeholder": "Optional",
@@ -2450,6 +2458,7 @@
       "inventory.edit": "Add and edit products",
       "inventory.delete": "Delete products",
       "inventory.stock_adjust": "Adjust stock",
+      "inventory.set_cost": "Set product cost manually",
       "reports.view_sales": "View sales reports",
       "reports.view_profit": "View profit reports",
       "reports.export": "Export reports and data",
@@ -2492,6 +2501,7 @@
       "user_logout": "Signed out",
       "session_timeout": "Signed out (inactive)",
       "stock_adjustment": "Stock adjusted",
+      "cost_override": "Cost overridden",
       "void_sale": "Sale voided",
       "void_bill": "Bill voided",
       "refund": "Refund given",

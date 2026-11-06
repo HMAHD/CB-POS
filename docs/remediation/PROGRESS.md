@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 4 · Batch: 4.1 · Branch: none · PR: none · Last session: 2026-11-05
+- Phase: 4 · Batch: 4.2 · Branch: none · PR: none · Last session: 2026-11-06
 
 ## Issues
 
@@ -110,10 +110,10 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 | # | Title | Sev | Batch | Status | PR | Notes |
 |---|---|---|---|---|---|---|
-| #794 | Ad-hoc stock adjustment is unreachable and broken; product-editor stock edits… | high | 4.1 | todo | | |
-| #861 | Stock take applies a stale delta, so sales or GRNs made between "Load Product… | high | 4.1 | todo | | |
-| #862 | Saving the product editor silently overwrites current stock and cost with sta… | high | 4.1 | todo | | |
-| #863 | Inventory screen shows and searches only the first 1,000 products | high | 4.1 | todo | | |
+| #794 | Ad-hoc stock adjustment is unreachable and broken; product-editor stock edits… | high | 4.1 | done | #994 | 1d0ce36 · InventoryService.adjust_stock, StockAdjustmentDialog with make_dialog_footer, Ctrl+J and context menu in InventoryView |
+| #861 | Stock take applies a stale delta, so sales or GRNs made between "Load Product… | high | 4.1 | done | #994 | bcade1e, 2c95ce8 · snapshot expected_qty on first count, enforce_non_negative=False on approve, secondary count info/tooltip |
+| #862 | Saving the product editor silently overwrites current stock and cost with sta… | high | 4.1 | done | #994 | 6625cf7 · read-only stock/cost for existing products, set_cost with permission/audit, StaleProductError optimistic lock |
+| #863 | Inventory screen shows and searches only the first 1,000 products | high | 4.1 | done | #994 | dfc6560 · InventoryService.list_products server-side paging & trilingual search, 300ms debounce, batch_table_update |
 | #864 | Reorder → Purchase Order is unusable on any real (non-demo) database: supplie… | high | 4.2 | todo | | |
 | #865 | CSV import maps columns by substring, so "Selling Price,Cost Price" imports t… | high | 4.2 | todo | | |
 | #900 | CSV import silently imports nothing for files outside the user's home folder … | medium | 4.2 | todo | | |
@@ -304,5 +304,5 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 |---|---|---|
 
 ## Handoff
-Phase 3B Batch 3B.2 is fully completed and merged (PR #993, d77b10b). All 7 issues (#855, #916, #891, #890, #793, #792, #813) are verified closed on GitHub and ticked in epics #832 and #922. Phase 3B is now completely finished. Ready to start Phase 4 Batch 4.1 (#794, #861, #862, #863).
+Phase 4 Batch 4.1 is fully completed and merged (PR #994, 0865271). All 4 issues (#794, #862, #861, #863) are verified closed on GitHub and ticked in epics #832 and #922. Ready to start Phase 4 Batch 4.2 (#864, #865, #900, #901).
 

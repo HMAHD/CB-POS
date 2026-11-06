@@ -502,6 +502,10 @@
     "view_details": "View Details",
     "clear_customer": "Clear Customer"
   },
+  "product": {
+    "cost_avco_tooltip": "Cost is worked out automatically from your purchases (average cost).",
+    "modified_elsewhere": "Someone else changed this product while you were editing. Close and open it again to see the latest details."
+  },
   "product_editor": {
     "title_edit": "Edit Product",
     "title_add": "Add New Product",
@@ -516,6 +520,10 @@
     "category": "Category:",
     "selling_price": "Selling Price*:",
     "cost_price": "Cost Price:",
+    "btn_adjust": "Adjust…",
+    "btn_set_cost": "Set cost…",
+    "dialog_set_cost_title": "Set Cost Manually",
+    "dialog_set_cost_prompt": "Enter new cost for {name}:",
     "name_en_placeholder": "Product name in English (required)",
     "name_si_placeholder": "Optional",
     "name_ta_placeholder": "Optional",
@@ -627,6 +635,25 @@
     "select_customer_error": "Please select a customer first.",
     "success_title": "Payment Recorded",
     "success_message": "Payment of {amount} recorded for {customer}."
+  },
+  "stock_adjust": {
+    "title": "Adjust stock — {name}",
+    "in_stock": "In stock now: {qty}",
+    "remove": "Remove",
+    "add": "Add",
+    "quantity": "Quantity",
+    "reason": "Reason",
+    "note": "Note",
+    "will_be": "Stock will be: {qty}",
+    "save": "Save adjustment",
+    "reason_damaged": "Damaged",
+    "reason_expired": "Expired",
+    "reason_theft": "Lost or stolen",
+    "reason_found": "Found / extra",
+    "reason_correction": "Count correction",
+    "reason_other": "Other (write a note)",
+    "note_required": "Please write a note for 'Other'.",
+    "negative_blocked": "This would make stock below zero, which isn't allowed in Settings."
   },
   "stock_adjustment": {
     "title": "Adjust Stock: {product_name}",
@@ -831,7 +858,12 @@
     "btn_print_labels": "Print Labels",
     "search_placeholder": "Search by Barcode or Name...",
     "empty_state": "No products match your search",
-    "context_stock_history": "View Stock History"
+    "page_info": "{first}–{last} of {total}",
+    "no_match": "No products match \"{query}\". Check the spelling, or search by barcode.",
+    "context_stock_history": "View Stock History",
+    "btn_adjust_stock": "Adjust Stock",
+    "context_adjust_stock": "Adjust stock\tCtrl+J",
+    "service_item_no_stock": "Service items do not have inventory stock."
   },
   "credit_book": {
     "title": "Customers",
@@ -2428,6 +2460,7 @@
       "inventory.edit": "Add and edit products",
       "inventory.delete": "Delete products",
       "inventory.stock_adjust": "Adjust stock",
+      "inventory.set_cost": "Set product cost manually",
       "reports.view_sales": "View sales reports",
       "reports.view_profit": "View profit reports",
       "reports.export": "Export reports and data",
@@ -2470,6 +2503,7 @@
       "user_logout": "Signed out",
       "session_timeout": "Signed out (inactive)",
       "stock_adjustment": "Stock adjusted",
+      "cost_override": "Cost overridden",
       "void_sale": "Sale voided",
       "void_bill": "Bill voided",
       "refund": "Refund given",
@@ -2898,6 +2932,8 @@
     "col_barcode": "Barcode",
     "col_product": "Product",
     "col_expected": "Expected",
+    "system_when_counted": "System: {expected} (when counted)",
+    "changed_since_count": "{n} sold or received after this was counted — CB POS will include them.",
     "col_counted": "Counted",
     "col_variance": "Variance",
     "col_value": "Value",

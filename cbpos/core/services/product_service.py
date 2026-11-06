@@ -14,6 +14,17 @@ from cbpos.core.utils.formatters import escape_like
 logger = logging.getLogger(__name__)
 
 
+def build_product_search_filter(query: str):
+    """Build the shared WHERE clause matching barcode, English, Sinhala, and Tamil names (#863)."""
+    pattern = f"%{escape_like(query.strip())}%"
+    return or_(
+        Product.barcode.like(pattern),
+        func.lower(Product.name_en).like(func.lower(pattern)),
+        func.lower(Product.name_si).like(func.lower(pattern)),
+        func.lower(Product.name_ta).like(func.lower(pattern)),
+    )
+
+
 class ProductService:
     """Enhanced product search with multiple search modes."""
 
@@ -69,16 +80,10 @@ class ProductService:
                 )
 
             else:  # SEARCH_MODE_ALL (default)
-                pattern = f"%{escape_like(query)}%"
                 stmt = (
                     select(Product)
                     .where(
-                        or_(
-                            Product.barcode.like(pattern),
-                            func.lower(Product.name_en).like(func.lower(pattern)),
-                            func.lower(Product.name_si).like(func.lower(pattern)),
-                            func.lower(Product.name_ta).like(func.lower(pattern)),
-                        ),
+                        build_product_search_filter(query),
                         Product.is_active,
                     )
                     .limit(limit)

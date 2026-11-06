@@ -1,9 +1,10 @@
-from PyQt6.QtCore import QAbstractTableModel, QModelIndex, Qt
-from PyQt6.QtGui import QBrush, QColor
+from PyQt6.QtCore import QAbstractTableModel, QModelIndex, Qt, QTimer
+from PyQt6.QtGui import QBrush, QColor, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLineEdit,
+    QMessageBox,
     QPushButton,
     QStackedWidget,
     QTableView,
@@ -17,11 +18,13 @@ from cbpos.core.utils.terminal_guard import catalog_is_read_only
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.components.activation import Activatable
 from cbpos.ui.dialogs.product_editor import ProductEditor
+from cbpos.ui.dialogs.stock_adjustment_dialog import StockAdjustmentDialog
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
+from cbpos.ui.widgets.loading_overlay import LoadingOverlay
 from cbpos.ui.widgets.pagination_widget import PaginationWidget
 from cbpos.ui.widgets.read_only_banner import ReadOnlyBanner
-from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, configure_table_columns
+from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, batch_table_update, configure_table_columns
 
 
 class InventoryModel(QAbstractTableModel):
@@ -110,7 +113,9 @@ class InventoryView(QWidget, Activatable):
         super().__init__()
         self.inventory_service = InventoryService()
         self.import_service = ImportService()
+        self.all_products: list = []
         self._filtered_products: list = []
+        self._search_query: str = ""
         self.init_ui()
         self.load_data()
 
@@ -128,11 +133,20 @@ class InventoryView(QWidget, Activatable):
         top_bar = QHBoxLayout()
 
         self.search_input = QLineEdit()
-        self.search_input.textChanged.connect(self.filter_data)
+        self._search_timer = QTimer(self)
+        self._search_timer.setSingleShot(True)
+        self._search_timer.setInterval(300)
+        self._search_timer.timeout.connect(self._do_debounced_search)
+        self.search_input.textChanged.connect(self._on_search_text_changed)
+        self.search_input.returnPressed.connect(self._do_immediate_search)
 
         self.add_btn = QPushButton()
         self.add_btn.setProperty("class", "primary")
         self.add_btn.clicked.connect(self.open_add_dialog)
+
+        self.adjust_btn = QPushButton()
+        self.adjust_btn.setObjectName("BtnAdjustStock")
+        self.adjust_btn.clicked.connect(self.open_stock_adjustment)
 
         self.import_btn = QPushButton()
         self.import_btn.clicked.connect(self.import_csv)
@@ -148,6 +162,7 @@ class InventoryView(QWidget, Activatable):
 
         top_bar.addWidget(self.search_input)
         top_bar.addWidget(self.add_btn)
+        top_bar.addWidget(self.adjust_btn)
         top_bar.addWidget(self.import_btn)
         top_bar.addWidget(self.cat_btn)
         top_bar.addWidget(self.unit_btn)
@@ -174,6 +189,10 @@ class InventoryView(QWidget, Activatable):
         )
         self.table.doubleClicked.connect(self.open_edit_dialog)
 
+        # Keyboard shortcuts
+        self.shortcut_adjust = QShortcut(QKeySequence("Ctrl+J"), self)
+        self.shortcut_adjust.activated.connect(self.open_stock_adjustment)
+
         # Context Menu
         self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self.open_context_menu)
@@ -189,19 +208,26 @@ class InventoryView(QWidget, Activatable):
         layout.addWidget(self.table_stack)
 
         # Pagination
-        self.pagination = PaginationWidget()
+        self.pagination = PaginationWidget(page_size=100)
+        self.pagination.set_info_formatter(
+            lambda first, last, total: _t("inventory.page_info", first=first, last=last, total=total)
+        )
         self.pagination.page_changed.connect(self._on_page_changed)
         layout.addWidget(self.pagination)
+
+        self.loading_overlay = LoadingOverlay(self.table)
 
     def _update_read_only_state(self) -> None:
         """Update action buttons and tooltip based on terminal catalog read-only state."""
         is_ro = self.read_only_banner.refresh_visibility()
         self.add_btn.setEnabled(not is_ro)
+        self.adjust_btn.setEnabled(not is_ro)
         self.import_btn.setEnabled(not is_ro)
         self.cat_btn.setEnabled(not is_ro)
         self.unit_btn.setEnabled(not is_ro)
         tip = _t("catalog.read_only_tooltip") if is_ro else ""
         self.add_btn.setToolTip(tip)
+        self.adjust_btn.setToolTip(tip)
         self.import_btn.setToolTip(tip)
         self.cat_btn.setToolTip(tip)
         self.unit_btn.setToolTip(tip)
@@ -212,6 +238,7 @@ class InventoryView(QWidget, Activatable):
         self._update_read_only_state()
         self.search_input.setPlaceholderText(_t("inventory.search_placeholder"))
         self.add_btn.setText(_t("inventory.btn_add_product"))
+        self.adjust_btn.setText(_t("inventory.btn_adjust_stock"))
         self.import_btn.setText(_t("inventory.btn_import_csv"))
         self.cat_btn.setText(_t("inventory.btn_manage_categories"))
         self.unit_btn.setText(_t("inventory.btn_units"))
@@ -228,40 +255,59 @@ class InventoryView(QWidget, Activatable):
             ]
         )
 
-    def _update_empty_state(self) -> None:
-        """Show empty state label when model has no rows."""
-        if self.model.rowCount() == 0:
-            self.table_stack.setCurrentIndex(1)
-        else:
-            self.table_stack.setCurrentIndex(0)
+    def _on_search_text_changed(self, text: str) -> None:
+        self._search_query = text
+        self._search_timer.start(300)
+
+    def _do_immediate_search(self) -> None:
+        self._search_timer.stop()
+        self._do_debounced_search()
+
+    def _do_debounced_search(self) -> None:
+        self._load_page(page=0)
 
     def load_data(self):
         """Load all products and display the current page."""
-        self.all_products = self.inventory_service.get_all_products()
-        self._filtered_products = self.all_products
-        self._apply_pagination()
+        self._load_page(page=self.pagination.current_page)
 
-    def filter_data(self, text):
-        """Filter products by barcode or name, or show all if text is empty."""
-        if not text:
-            self._filtered_products = self.all_products
+    def filter_data(self, text: str):
+        """Filter products by barcode or name with server-side search."""
+        self._search_query = text
+        self._load_page(page=0)
+
+    def _load_page(self, page: int = 0) -> None:
+        """Fetch the requested page of products from the service."""
+        query = (self._search_query or "").strip()
+        self.loading_overlay.show_loading()
+        try:
+            items, total_count = self.inventory_service.list_products(
+                query=query if query else None,
+                page=page,
+                page_size=self.pagination.page_size,
+            )
+            self.all_products = items
+            self._filtered_products = items
+            with batch_table_update(self.table):
+                self.model.update_data(items)
+            self.pagination.set_total(total_count, reset_page=(page == 0))
+            self._update_empty_state(total_count=total_count, query=query)
+        finally:
+            self.loading_overlay.hide_loading()
+
+    def _on_page_changed(self, page: int) -> None:
+        self._load_page(page=page)
+
+    def _update_empty_state(self, total_count: int | None = None, query: str = "") -> None:
+        """Show empty state label when model has no rows."""
+        count = self.model.rowCount() if total_count is None else total_count
+        if count == 0:
+            if query:
+                self.empty_label.setText(_t("inventory.no_match", query=query))
+            else:
+                self.empty_label.setText(_t("inventory.empty_state"))
+            self.table_stack.setCurrentIndex(1)
         else:
-            text = text.lower()
-            self._filtered_products = [
-                p for p in self.all_products if text in p.barcode.lower() or text in p.name_en.lower()
-            ]
-        self._apply_pagination()
-
-    def _apply_pagination(self) -> None:
-        self.pagination.set_total(len(self._filtered_products))
-        page_items = self.pagination.get_page_slice(self._filtered_products)
-        self.model.update_data(page_items)
-        self._update_empty_state()
-
-    def _on_page_changed(self, _page: int) -> None:
-        page_items = self.pagination.get_page_slice(self._filtered_products)
-        self.model.update_data(page_items)
-        self._update_empty_state()
+            self.table_stack.setCurrentIndex(0)
 
     def open_add_dialog(self):
         """Open the product editor to create a new product, if permitted."""
@@ -323,7 +369,7 @@ class InventoryView(QWidget, Activatable):
         dialog.exec()
 
     def open_context_menu(self, position):
-        """Show the right-click context menu with a stock history action."""
+        """Show the right-click context menu with stock adjustment and history actions."""
         from PyQt6.QtWidgets import QMenu
 
         from cbpos.ui.dialogs.stock_history_dialog import StockHistoryDialog
@@ -333,14 +379,44 @@ class InventoryView(QWidget, Activatable):
             return
 
         menu = QMenu()
+        adjust_action = menu.addAction(_t("inventory.context_adjust_stock"))
         history_action = menu.addAction(_t("inventory.context_stock_history"))
 
         action = menu.exec(self.table.viewport().mapToGlobal(position))
 
-        if action == history_action:
+        if action == adjust_action:
+            self._open_adjustment_for_row(index.row())
+        elif action == history_action:
             product = self.model.products[index.row()]
             dialog = StockHistoryDialog(product, parent=self)
             dialog.exec()
+
+    def open_stock_adjustment(self):
+        """Open stock adjustment dialog for the currently selected product row."""
+        if catalog_is_read_only():
+            return
+
+        indexes = self.table.selectionModel().selectedRows()
+        if not indexes:
+            return
+        self._open_adjustment_for_row(indexes[0].row())
+
+    def _open_adjustment_for_row(self, row: int):
+        """Open stock adjustment dialog for product at `row`."""
+        if catalog_is_read_only():
+            return
+
+        if row < 0 or row >= len(self.model.products):
+            return
+
+        product = self.model.products[row]
+        if getattr(product, "is_service", False):
+            QMessageBox.information(self, _t("common.notice"), _t("inventory.service_item_no_stock"))
+            return
+
+        dialog = StockAdjustmentDialog(product, inventory_service=self.inventory_service, parent=self)
+        if dialog.exec():
+            self.load_data()
 
     def import_csv(self) -> None:
         """Open the CSV import dialog and reload products afterward."""

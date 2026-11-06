@@ -502,6 +502,10 @@
     "view_details": "විස්තර බලන්න",
     "clear_customer": "පාරිභෝගිකයා ඉවත් කරන්න"
   },
+  "product": {
+    "cost_avco_tooltip": "පිරිවැය මිලදී ගැනීම් වලින් ස්වයංක්‍රීයව ගණනය කෙරේ (සාමාන්‍ය පිරිවැය).",
+    "modified_elsewhere": "ඔබ සංස්කරණය කරන අතරතුර වෙනත් අයෙකු මෙම අයිතමය වෙනස් කර ඇත. නවතම විස්තර බැලීමට මෙය වසා නැවත විවෘත කරන්න."
+  },
   "product_editor": {
     "title_edit": "භාණ්ඩය සංස්කරණය",
     "title_add": "නව භාණ්ඩය",
@@ -516,6 +520,10 @@
     "category": "කාණ්ඩය:",
     "selling_price": "විකුණුම් මිල*:",
     "cost_price": "මිලදී ගත් මිල:",
+    "btn_adjust": "සකසන්න…",
+    "btn_set_cost": "පිරිවැය සකසන්න…",
+    "dialog_set_cost_title": "පිරිවැය අතින් සකසන්න",
+    "dialog_set_cost_prompt": "{name} සඳහා නව පිරිවැය ඇතුළත් කරන්න:",
     "name_en_placeholder": "ඉංග්‍රීසි නම (අවශ්‍යයි)",
     "name_si_placeholder": "අවශ්‍ය නැහැ",
     "name_ta_placeholder": "අවශ්‍ය නැහැ",
@@ -627,6 +635,25 @@
     "select_customer_error": "මුලින්ම පාරිභෝගිකයෙක් තෝරන්න.",
     "success_title": "සාර්ථකයි",
     "success_message": "{customer} ට {amount} ගෙවීමක් වාර්තා කළා."
+  },
+  "stock_adjust": {
+    "title": "තොග සකස් කිරීම — {name}",
+    "in_stock": "දැනට තොගයේ ඇත: {qty}",
+    "remove": "අඩු කරන්න",
+    "add": "එකතු කරන්න",
+    "quantity": "ප්‍රමාණය",
+    "reason": "හේතුව",
+    "note": "සටහන",
+    "will_be": "නව තොගය: {qty}",
+    "save": "සකස් කිරීම සුරකින්න",
+    "reason_damaged": "හානි වූ",
+    "reason_expired": "කල් ඉකුත් වූ",
+    "reason_theft": "නැති වූ හෝ සොරකම් කළ",
+    "reason_found": "හමු වූ / අතිරික්ත",
+    "reason_correction": "ගණන් කිරීමේ නිවැරදි කිරීම",
+    "reason_other": "වෙනත් (සටහනක් ලියන්න)",
+    "note_required": "කරුණාකර 'වෙනත්' සඳහා සටහනක් ලියන්න.",
+    "negative_blocked": "මෙයින් තොගය බිංදුවට වඩා අඩුවේ, එය Settings වල ඉඩ දී නැත."
   },
   "stock_adjustment": {
     "title": "තොග සකසීම: {product_name}",
@@ -796,7 +823,12 @@
     "btn_print_labels": "ලේබල් ප්‍රින්ට් කරන්න",
     "search_placeholder": "නම, බාර්කෝඩය හෝ ප්‍රවර්ගයෙන් සොයන්න...",
     "empty_state": "සොයපු දේට ගැලපෙන අයිතම නැහැ",
-    "context_stock_history": "තොග ඉතිහාසය බලන්න"
+    "page_info": "{total} න් {first}–{last}",
+    "no_match": "\"{query}\" සඳහා ගැලපෙන භාණ්ඩ නැත. අක්ෂර වින්‍යාසය පරීක්ෂා කරන්න, නැතහොත් බාර්කෝඩ් මඟින් සොයන්න.",
+    "context_stock_history": "තොග ඉතිහාසය බලන්න",
+    "btn_adjust_stock": "තොග සකස් කිරීම",
+    "context_adjust_stock": "තොග සකස් කිරීම\tCtrl+J",
+    "service_item_no_stock": "සේවා භාණ්ඩ සඳහා තොග ගණන් කිරීමක් නැත."
   },
   "credit_book": {
     "title": "පාරිභෝගිකයන්",
@@ -2393,6 +2425,7 @@
       "inventory.edit": "අයිතම එකතු කිරීම සහ වෙනස් කිරීම",
       "inventory.delete": "අයිතම මැකීම",
       "inventory.stock_adjust": "තොග සකස් කිරීම",
+      "inventory.set_cost": "නිෂ්පාදන පිරිවැය අතින් සකසන්න",
       "reports.view_sales": "විකුණුම් වාර්තා බැලීම",
       "reports.view_profit": "ලාභ වාර්තා බැලීම",
       "reports.export": "වාර්තා සහ දත්ත අපනයනය කිරීම",
@@ -2435,6 +2468,7 @@
       "user_logout": "ලොග් අවුට් උනා",
       "session_timeout": "වැඩ නොකළ නිසා ලොග් අවුට් උනා",
       "stock_adjustment": "තොග සකස් කළා",
+      "cost_override": "පිරිවැය වෙනස් කළා",
       "void_sale": "විකුණුම අවලංගු කළා",
       "void_bill": "බිල අවලංගු කළා",
       "refund": "මුදල් ආපසු ගෙව්වා",
@@ -2898,6 +2932,8 @@
     "col_barcode": "බාර්කෝඩ්",
     "col_product": "අයිතමය",
     "col_expected": "අපේක්ෂිත",
+    "system_when_counted": "පද්ධතිය: {expected} (ගණන් කළ විට)",
+    "changed_since_count": "මෙය ගණන් කළ පසු {n} විකුණා හෝ ලැබී ඇත — CB POS ඒවා ඇතුළත් කරයි.",
     "col_counted": "ගණන් කළා",
     "col_variance": "වෙනස",
     "col_value": "වටිනාකම",

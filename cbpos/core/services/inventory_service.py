@@ -1,18 +1,37 @@
 import logging
 import uuid
+from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.exc import StaleDataError
 
+from cbpos.core.constants.permissions import Permissions
+from cbpos.core.constants.status import MovementType
 from cbpos.core.database import Database
-from cbpos.core.models import AuditLog, CompositeItem, InventoryLog, Product
+from cbpos.core.models import AuditLog, CompositeItem, InventoryLog, Product, Role, StockMovement, User
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.logging_service import LoggingService, diff_changes
+from cbpos.core.services.permission_service import PermissionService
+from cbpos.core.services.stock_service import StockService
 from cbpos.core.utils.terminal_guard import require_catalog_writable
 
 logger = logging.getLogger(__name__)
+
+
+class StaleProductError(ValueError):
+    """Raised when an update is attempted against a stale product snapshot (#862)."""
+
+
+@dataclass
+class ProductFilter:
+    """Filter criteria for product catalog listing (#863)."""
+
+    category_id: int | None = None
+    is_active: bool | None = True
+    low_stock: bool | None = None
 
 
 class InventoryService:
@@ -43,12 +62,23 @@ class InventoryService:
                 return candidate
             n += 1
 
-    def create_product(self, data: dict[str, Any]) -> Product:
-        """Create a new product with optional composite items."""
+    def get_product(self, product_id: int) -> Product | None:
+        """Get product by ID from fresh database session (#862)."""
+        with self.db.get_session() as session:
+            product = session.get(Product, product_id)
+            if product:
+                session.expunge(product)
+            return product
+
+    def create_product(self, data: dict[str, Any], user_id: int | None = None) -> Product:
+        """Create a new product with optional composite items and opening stock (#862)."""
         require_catalog_writable()
         with self.db.get_session() as session:
             # Extract composite items data if present
             components_data = data.pop("components", [])
+
+            # Extract opening stock if present (#862)
+            opening_stock = Decimal(str(data.pop("stock_qty", 0) or 0))
 
             # "Auto-Generate Barcodes" (Settings -> System, #641): a new
             # product saved without a barcode gets one. The real number is
@@ -57,6 +87,8 @@ class InventoryService:
             if generate_barcode:
                 data["barcode"] = f"PENDING-{uuid.uuid4().hex}"
 
+            # Opening stock is initialized to 0 on model, then recorded via StockService
+            data["stock_qty"] = Decimal("0")
             product = Product(**data)
             session.add(product)
             session.flush()  # Generate ID
@@ -64,6 +96,23 @@ class InventoryService:
             if generate_barcode:
                 product.barcode = self._in_store_barcode(session, product.id)
                 session.flush()
+
+            # Record opening stock movement if provided on non-service item
+            if opening_stock > 0 and not product.is_service:
+                uid = user_id
+                if uid is None:
+                    from cbpos.core.services.auth_service import AuthService
+
+                    curr = AuthService.get_current_user()
+                    uid = curr.id if curr else 1
+
+                StockService.record_movement(
+                    product_id=product.id,
+                    qty_change=opening_stock,
+                    movement_type=MovementType.OPENING,
+                    user_id=uid,
+                    session=session,
+                )
 
             # Handle composite items
             for comp_data in components_data:
@@ -77,13 +126,23 @@ class InventoryService:
             session.refresh(product)
             return product
 
-    def update_product(self, product_id: int, data: dict[str, Any]) -> Product | None:
-        """Update an existing product; a selling price change goes to the Activity Log (#642)."""
+    def update_product(
+        self, product_id: int, data: dict[str, Any], expected_version: int | None = None
+    ) -> Product | None:
+        """Update an existing product; rejects stale updates and ignores stock/cost (#862)."""
         require_catalog_writable()
+
+        # #862: Stock and cost must never be overwritten via product editor
+        data.pop("stock_qty", None)
+        data.pop("cost", None)
+
         with self.db.get_session() as session:
             product = session.get(Product, product_id)
             if not product:
                 return None
+
+            if expected_version is not None and product.version_id != expected_version:
+                raise StaleProductError("This product was modified by another user. Please reload and try again.")
 
             if data.get("price") is not None:
                 price_change = diff_changes({"price": product.price}, {"price": Decimal(str(data["price"]))})
@@ -115,7 +174,36 @@ class InventoryService:
                 session.commit()
             except StaleDataError:
                 session.rollback()
-                raise ValueError("This product was modified by another user. Please reload and try again.")
+                raise StaleProductError("This product was modified by another user. Please reload and try again.")
+            session.refresh(product)
+            return product
+
+    def set_cost(self, product_id: int, new_cost: Decimal, user_id: int) -> Product:
+        """Manually override a product's cost (requires inventory.set_cost permission) (#862)."""
+        require_catalog_writable()
+        if new_cost < Decimal("0"):
+            raise ValueError("Cost cannot be negative")
+
+        with self.db.get_session() as session:
+            user = session.get(User, user_id, options=[joinedload(User.role).joinedload(Role.permissions)])
+            if not user or not PermissionService.user_has_permission(user, Permissions.INVENTORY_SET_COST):
+                raise PermissionError("Permission denied: inventory.set_cost required")
+
+            product = session.get(Product, product_id)
+            if not product:
+                raise ValueError(f"Product {product_id} not found")
+
+            old_cost = product.cost
+            product.cost = new_cost
+
+            audit_log = AuditLog(
+                user_id=user_id,
+                action="COST_OVERRIDE",
+                event_type="INVENTORY",
+                details=f"Product {product.name_en} ({product.barcode}) cost overridden from {old_cost} to {new_cost}",
+            )
+            session.add(audit_log)
+            session.commit()
             session.refresh(product)
             return product
 
@@ -137,35 +225,86 @@ class InventoryService:
             stmt = select(Product).where(Product.is_active.is_(True), Product.stock_qty <= Product.reorder_level)
             return list(session.scalars(stmt).all())
 
-    def adjust_stock(self, product_id: int, qty_change: Decimal, reason: str, user_id: int) -> bool:
-        """Adjust stock quantity and record in audit log."""
+    def adjust_stock(
+        self,
+        product_id: int,
+        qty_change: Decimal,
+        reason: str,
+        user_id: int,
+        note: str | None = None,
+    ) -> StockMovement:
+        """Adjust stock quantity via StockService and record in InventoryLog & AuditLog (#794).
+
+        Args:
+            product_id: The product to adjust.
+            qty_change: Signed quantity delta (+/-). Must not be zero.
+            reason: Reason code (DAMAGED, EXPIRED, THEFT, FOUND, CORRECTION, OTHER).
+            user_id: ID of the user performing the adjustment.
+            note: Optional note (mandatory when reason is OTHER).
+
+        Returns:
+            The created StockMovement.
+
+        Raises:
+            PermissionError: If user lacks inventory.stock_adjust permission.
+            ValueError: On invalid quantity, service item, or missing note for OTHER.
+        """
+        if isinstance(user_id, str) and (note is None or isinstance(note, int)):
+            note, user_id = user_id, note
+
+        if qty_change == 0 or qty_change == Decimal("0"):
+            raise ValueError("Quantity change cannot be zero")
+
+        clean_reason = str(reason).strip()
+        clean_note = (note or "").strip()
+        if clean_reason.upper() == "OTHER" and not clean_note:
+            raise ValueError("A note is required when reason is 'OTHER'")
+
         with self.db.get_session() as session:
+            # 1. Check user permission
+            user = session.get(User, user_id, options=[joinedload(User.role).joinedload(Role.permissions)])
+            if not user or not PermissionService.user_has_permission(user, Permissions.INVENTORY_STOCK_ADJUST):
+                raise PermissionError("Permission denied: inventory.stock_adjust required")
+
+            # 2. Check product
             product = session.get(Product, product_id)
             if not product:
-                return False
+                raise ValueError(f"Product {product_id} not found")
 
-            old_qty = product.stock_qty
-            new_qty = old_qty + qty_change
-            product.stock_qty = new_qty
+            if product.is_service:
+                raise ValueError("Cannot adjust stock for service products")
 
-            # Log to InventoryLog
+            # 3. Record movement via StockService (updates product.stock_qty and enforces negative stock)
+            movement = StockService.record_movement(
+                product_id=product.id,
+                qty_change=qty_change,
+                movement_type=MovementType.ADJUSTMENT,
+                user_id=user_id,
+                session=session,
+            )
+
+            # 4. Record InventoryLog
+            log_reason = f"{clean_reason}: {clean_note}" if clean_note else clean_reason
             inv_log = InventoryLog(
                 product_id=product.id,
                 qty_change=qty_change,
-                new_qty=new_qty,
-                reason=reason,
+                new_qty=product.stock_qty,
+                reason=log_reason,
                 user_id=user_id,
             )
             session.add(inv_log)
 
-            # Log to AuditLog (as requested)
+            # 5. Record AuditLog
+            audit_details = (
+                f"Product {product.name_en} ({product.barcode}) stock adjusted by {qty_change}. "
+                f"Reason: {clean_reason}{f' - {clean_note}' if clean_note else ''}. "
+                f"New stock: {product.stock_qty}"
+            )
             audit_log = AuditLog(
                 user_id=user_id,
                 action="STOCK_ADJUSTMENT",
                 event_type="INVENTORY",
-                details=(
-                    f"Product {product.name_en} ({product.barcode}) stock adjusted by {qty_change}. Reason: {reason}"
-                ),
+                details=audit_details,
             )
             session.add(audit_log)
 
@@ -174,7 +313,8 @@ class InventoryService:
             except StaleDataError:
                 session.rollback()
                 raise ValueError("This product's stock was modified by another user. Please reload and try again.")
-            return True
+
+            return movement
 
     def get_composite_items(self, product_id: int) -> list[dict[str, Any]]:
         """Get composite (bundle) child items for a product."""
@@ -214,3 +354,67 @@ class InventoryService:
         with self.db.get_session() as session:
             stmt = select(Product).where(Product.barcode == barcode)
             return session.scalars(stmt).first()
+
+    def list_products(
+        self,
+        query: str | None = None,
+        filters: ProductFilter | dict | None = None,
+        page: int = 0,
+        page_size: int = 100,
+    ) -> tuple[list[Product], int]:
+        """List products with server-side search, filtering, and pagination (#863).
+
+        Args:
+            query: Optional search term matching barcode, English, Sinhala, or Tamil name.
+            filters: Optional ProductFilter or dict (category_id, is_active, low_stock).
+            page: 0-based page number.
+            page_size: Number of items per page.
+
+        Returns:
+            tuple[list[Product], int]: (page of detached products, total matching count).
+        """
+        from sqlalchemy import and_, func
+
+        from cbpos.core.services.product_service import build_product_search_filter
+
+        conditions = []
+        if query and query.strip():
+            conditions.append(build_product_search_filter(query.strip()))
+
+        if isinstance(filters, dict):
+            category_id = filters.get("category_id")
+            is_active = filters.get("is_active", True)
+            low_stock = filters.get("low_stock")
+        elif isinstance(filters, ProductFilter):
+            category_id = filters.category_id
+            is_active = filters.is_active
+            low_stock = filters.low_stock
+        else:
+            category_id = None
+            is_active = True
+            low_stock = None
+
+        if is_active is not None:
+            conditions.append(Product.is_active.is_(is_active))
+        if category_id is not None:
+            conditions.append(Product.category_id == category_id)
+        if low_stock:
+            conditions.append(Product.stock_qty <= Product.reorder_point)
+
+        page_num = max(0, page)
+        offset = page_num * page_size
+
+        with self.db.get_session() as session:
+            count_stmt = select(func.count()).select_from(Product)
+            if conditions:
+                count_stmt = count_stmt.where(and_(*conditions))
+            total_count = session.scalar(count_stmt) or 0
+
+            data_stmt = select(Product).options(joinedload(Product.category), joinedload(Product.unit))
+            if conditions:
+                data_stmt = data_stmt.where(and_(*conditions))
+            data_stmt = data_stmt.order_by(Product.name_en, Product.id).offset(offset).limit(page_size)
+            items = list(session.scalars(data_stmt).unique().all())
+            for item in items:
+                session.expunge(item)
+            return items, total_count

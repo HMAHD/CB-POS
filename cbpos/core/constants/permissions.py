@@ -23,6 +23,7 @@ class Permissions:
     INVENTORY_EDIT = "inventory.edit"
     INVENTORY_DELETE = "inventory.delete"
     INVENTORY_STOCK_ADJUST = "inventory.stock_adjust"
+    INVENTORY_SET_COST = "inventory.set_cost"
 
     # Reports
     REPORTS_VIEW_SALES = "reports.view_sales"
@@ -98,6 +99,7 @@ class Permissions:
                 cls.INVENTORY_EDIT,
                 cls.INVENTORY_DELETE,
                 cls.INVENTORY_STOCK_ADJUST,
+                cls.INVENTORY_SET_COST,
             ],
             "Reports": [cls.REPORTS_VIEW_SALES, cls.REPORTS_VIEW_PROFIT, cls.REPORTS_EXPORT],
             "Documents": [

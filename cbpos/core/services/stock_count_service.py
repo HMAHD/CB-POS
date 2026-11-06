@@ -206,11 +206,20 @@ class StockCountService:
             if not item:
                 raise ValueError("Stock count item not found.")
 
+            stock_count = session.get(StockCount, item.stock_count_id)
+            if stock_count and stock_count.status != DocumentStatus.DRAFT:
+                raise ValueError("Stock count is not in DRAFT status.")
+
+            product = session.get(Product, item.product_id)
+
+            # #861: Snapshot expected_qty when the line is first counted
+            if item.counted_qty is None and product:
+                item.expected_qty = product.stock_qty
+
             item.counted_qty = counted_qty.quantize(Precision.QUANTITY)
             item.variance_qty = (item.counted_qty - item.expected_qty).quantize(Precision.QUANTITY)
 
             # Calculate variance value using product cost
-            product = session.get(Product, item.product_id)
             if product:
                 item.variance_value = (item.variance_qty * product.cost).quantize(Precision.MONEY)
             else:
@@ -251,17 +260,25 @@ class StockCountService:
             if not stock_count or stock_count.status != DocumentStatus.DRAFT:
                 raise ValueError("Stock count not found or not in DRAFT status.")
 
+            product = session.get(Product, item.product_id)
+
+            # #861: Snapshot expected_qty when the line is first counted
+            if item.counted_qty is None and product:
+                item.expected_qty = product.stock_qty
+
             session.execute(
                 update(StockCountItem)
                 .where(StockCountItem.id == item_id)
-                .values(counted_qty=func.coalesce(StockCountItem.counted_qty, 0) + by)
+                .values(
+                    counted_qty=func.coalesce(StockCountItem.counted_qty, 0) + by,
+                    expected_qty=item.expected_qty,
+                )
                 .execution_options(synchronize_session=False)
             )
             session.refresh(item)
             item.counted_qty = Decimal(item.counted_qty).quantize(Precision.QUANTITY)
             item.variance_qty = (item.counted_qty - item.expected_qty).quantize(Precision.QUANTITY)
 
-            product = session.get(Product, item.product_id)
             if product:
                 item.variance_value = (item.variance_qty * product.cost).quantize(Precision.MONEY)
             else:
@@ -381,6 +398,7 @@ class StockCountService:
                         user_id=user_id,
                         document_id=stock_count.id,
                         session=session,
+                        enforce_non_negative=False,
                     )
 
             stock_count.total_variance_value = StockCountService.variance_totals(stock_count.items).discrepancy

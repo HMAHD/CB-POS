@@ -60,8 +60,14 @@ class ProductEditor(QDialog):
     def __init__(self, product: Product = None, parent=None):
         """Initialize the dialog, pre-filling fields when editing an existing product."""
         super().__init__(parent)
-        self.product = product
         self.inventory_service = InventoryService()
+        if product and getattr(product, "id", None):
+            fresh_product = self.inventory_service.get_product(product.id)
+            self.product = fresh_product or product
+        else:
+            self.product = product
+        self.loaded_version = getattr(self.product, "version_id", None) if self.product else None
+
         self.setWindowTitle(_t("product_editor.title_edit") if product else _t("product_editor.title_add"))
         self.setMinimumWidth(700)
         self.setMinimumHeight(520)
@@ -157,13 +163,25 @@ class ProductEditor(QDialog):
         self.cost_input.setPlaceholderText(f"{get_currency_symbol()} 0.00")
         self.cost_input.setValidator(QDoubleValidator(0.0, 1000000.0, 2, self))
 
+        cost_layout = QHBoxLayout()
+        cost_layout.setSpacing(6)
+        cost_layout.addWidget(self.cost_input)
+
+        if self.product:
+            self.cost_input.setReadOnly(True)
+            self.cost_input.setToolTip(_t("product.cost_avco_tooltip"))
+            self.btn_set_cost = QPushButton(_t("product_editor.btn_set_cost"))
+            self.btn_set_cost.setObjectName("BtnSetCost")
+            self.btn_set_cost.clicked.connect(self._open_set_cost)
+            cost_layout.addWidget(self.btn_set_cost)
+
         layout.addRow(_t("product_editor.name_en"), self.name_en_input)
         layout.addRow(_t("product_editor.name_si"), self.name_si_input)
         layout.addRow(_t("product_editor.name_ta"), self.name_ta_input)
         layout.addRow(_t("product_editor.barcode"), self.barcode_input)
         layout.addRow(_t("product_editor.category"), self.category_combo)
         layout.addRow(_t("product_editor.selling_price"), self.price_input)
-        layout.addRow(_t("product_editor.cost_price"), self.cost_input)
+        layout.addRow(_t("product_editor.cost_price"), cost_layout)
 
     def setup_inventory_tab(self):
         """Build the Inventory tab: stock levels, supplier/unit selection, and weighted/service item toggles."""
@@ -212,7 +230,19 @@ class ProductEditor(QDialog):
         lbl_stock = QLabel(_t("product_editor.stock_qty"))
         lbl_stock.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         col_stock.addWidget(lbl_stock)
-        col_stock.addWidget(self.stock_input)
+
+        stock_box = QHBoxLayout()
+        stock_box.setSpacing(6)
+        stock_box.addWidget(self.stock_input)
+
+        if self.product:
+            self.stock_input.setReadOnly(True)
+            self.btn_adjust_stock = QPushButton(_t("product_editor.btn_adjust"))
+            self.btn_adjust_stock.setObjectName("BtnAdjustStock")
+            self.btn_adjust_stock.clicked.connect(self._open_stock_adjustment)
+            stock_box.addWidget(self.btn_adjust_stock)
+
+        col_stock.addLayout(stock_box)
         stock_layout.addLayout(col_stock, 1)
 
         # Column 2: Reorder Point
@@ -542,13 +572,17 @@ class ProductEditor(QDialog):
 
         _q = Decimal("0.001")
         self.stock_input.setText(
-            "" if self.product.stock_qty is None else format(self.product.stock_qty.quantize(_q), "f")
+            "" if self.product.stock_qty is None else format(Decimal(str(self.product.stock_qty)).quantize(_q), "f")
         )
         self.reorder_input.setText(
-            "" if self.product.reorder_point is None else format(self.product.reorder_point.quantize(_q), "f")
+            ""
+            if self.product.reorder_point is None
+            else format(Decimal(str(self.product.reorder_point)).quantize(_q), "f")
         )
         self.preferred_qty_input.setText(
-            "" if self.product.preferred_qty is None else format(self.product.preferred_qty.quantize(_q), "f")
+            ""
+            if self.product.preferred_qty is None
+            else format(Decimal(str(self.product.preferred_qty)).quantize(_q), "f")
         )
         self.weighted_check.setChecked(self.product.is_weighted)
         self.service_check.setChecked(self.product.is_service)
@@ -665,7 +699,20 @@ class ProductEditor(QDialog):
 
         try:
             if self.product:
-                self.inventory_service.update_product(self.product.id, data)
+                from cbpos.core.services.inventory_service import StaleProductError
+
+                # Drop stock_qty and cost for updates to prevent overwriting (#862)
+                data.pop("stock_qty", None)
+                data.pop("cost", None)
+                try:
+                    self.inventory_service.update_product(self.product.id, data, expected_version=self.loaded_version)
+                except StaleProductError:
+                    QMessageBox.warning(
+                        self,
+                        _t("common.warning"),
+                        _t("product.modified_elsewhere"),
+                    )
+                    return
             else:
                 if data["barcode"] and self.inventory_service.get_product_by_barcode(data["barcode"]):
                     QMessageBox.warning(
@@ -680,3 +727,55 @@ class ProductEditor(QDialog):
             self.accept()
         except Exception as e:
             QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))
+
+    def _open_stock_adjustment(self):
+        """Open StockAdjustmentDialog for this product and update stock display on success (#862)."""
+        from cbpos.ui.dialogs.stock_adjustment_dialog import StockAdjustmentDialog
+
+        dlg = StockAdjustmentDialog(self.product, inventory_service=self.inventory_service, parent=self)
+        if dlg.exec():
+            fresh = self.inventory_service.get_product(self.product.id)
+            if fresh:
+                self.product = fresh
+                self.loaded_version = fresh.version_id
+                _q = Decimal("0.001")
+                self.stock_input.setText(
+                    ""
+                    if self.product.stock_qty is None
+                    else format(Decimal(str(self.product.stock_qty)).quantize(_q), "f")
+                )
+
+    def _open_set_cost(self):
+        """Prompt to override cost manually with permission check (#862)."""
+        from decimal import ROUND_HALF_UP, Decimal
+
+        from PyQt6.QtWidgets import QInputDialog
+
+        from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+
+        user = check_permission_with_override(Permissions.INVENTORY_SET_COST, self)
+        if not user:
+            return
+
+        current_val = float(self.product.cost or 0)
+        new_val, ok = QInputDialog.getDouble(
+            self,
+            _t("product_editor.dialog_set_cost_title"),
+            _t("product_editor.dialog_set_cost_prompt", name=self.product.name_en),
+            value=current_val,
+            min=0.0,
+            max=1000000.0,
+            decimals=2,
+        )
+        if ok:
+            try:
+                new_cost_dec = Decimal(f"{new_val:.2f}")
+                updated = self.inventory_service.set_cost(self.product.id, new_cost_dec, user.id)
+                self.product = updated
+                self.loaded_version = updated.version_id
+                self.cost_input.setText(
+                    format(Decimal(str(self.product.cost)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP), "f")
+                )
+            except Exception as e:
+                QMessageBox.critical(self, _t("common.error"), str(e))

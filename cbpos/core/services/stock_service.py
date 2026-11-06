@@ -17,6 +17,7 @@ _VALID_MOVEMENT_TYPES = frozenset(
         MovementType.ADJUSTMENT,
         MovementType.RETURN,
         MovementType.VOID,
+        MovementType.OPENING,
     }
 )
 
@@ -33,6 +34,7 @@ class StockService:
         user_id: int,
         document_id: int | None = None,
         session: Session | None = None,
+        enforce_non_negative: bool = True,
     ) -> StockMovement | None:
         """
         Record a stock movement and update product quantity.
@@ -54,6 +56,7 @@ class StockService:
                 user_id,
                 document_id,
                 commit=False,
+                enforce_non_negative=enforce_non_negative,
             )
 
         db = Database()
@@ -66,6 +69,7 @@ class StockService:
                 user_id,
                 document_id,
                 commit=True,
+                enforce_non_negative=enforce_non_negative,
             )
 
     @staticmethod
@@ -77,6 +81,7 @@ class StockService:
         user_id: int,
         document_id: int | None,
         commit: bool,
+        enforce_non_negative: bool = True,
     ) -> StockMovement | None:
         product = session.get(Product, product_id)
         if not product:
@@ -87,7 +92,7 @@ class StockService:
             return None
 
         # Check for negative stock (if deducting)
-        if qty_change < 0:
+        if qty_change < 0 and enforce_non_negative:
             from cbpos.core.services.config_service import ConfigService
 
             config = ConfigService.get_all()

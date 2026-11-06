@@ -51,6 +51,7 @@ class MovementType:
     ADJUSTMENT = "ADJUSTMENT"
     RETURN = "RETURN"
     VOID = "VOID"
+    OPENING = "OPENING"
 
 
 class PaymentMethodKind(StrEnum):

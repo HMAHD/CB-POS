@@ -6,7 +6,6 @@ from typing import Any
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
-from cbpos.core.constants.status import Precision
 from cbpos.core.database import Database
 from cbpos.core.models import AuditLog, Product, Purchase, PurchaseItem, PurchaseOrder, StockMovement, Supplier
 from cbpos.core.services.document_service import DocumentService
@@ -289,15 +288,13 @@ class PurchaseService:
                 # 1. Update Stock
                 product.stock_qty += qty_received
 
-                # 2. Calculate Weighted Average Cost
-                # Formula: ((OldQty * OldCost) + (NewQty * NewCost)) / (OldQty + NewQty)
-                total_old_value = old_qty * old_cost
-                total_new_value = qty_received * unit_cost
-                total_qty = old_qty + qty_received
-
-                if total_qty > 0:
-                    new_avg_cost = (total_old_value + total_new_value) / total_qty
-                    product.cost = new_avg_cost.quantize(Precision.MONEY)
+                # 2. Calculate Weighted Average Cost (Invariant 2, #899)
+                if old_qty <= Decimal("0"):
+                    product.cost = unit_cost
+                else:
+                    product.cost = round_money(
+                        (old_qty * old_cost + qty_received * unit_cost) / (old_qty + qty_received)
+                    )
 
                 # 3. Log Stock Movement
                 movement = StockMovement(

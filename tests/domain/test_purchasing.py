@@ -223,3 +223,75 @@ def test_issue_895_future_date_rejected(db_session, test_user, test_supplier, te
     )
     with pytest.raises(ValueError, match="grn_future_date"):
         PurchaseService.receive_goods(req)
+
+
+def test_issue_899_negative_stock_receipt_uses_unit_cost(db_session, test_user, test_supplier, test_product):
+    test_product.stock_qty = Decimal("-5.000")
+    test_product.cost = Decimal("100.00")
+    db_session.flush()
+
+    purchase = PurchaseService.create_purchase(test_supplier.id, "INV-899-1", test_user.id)
+    PurchaseService.commit_purchase(
+        purchase.id,
+        [{"product_id": test_product.id, "qty": Decimal("10.000"), "cost": Decimal("120.00")}],
+    )
+
+    db_session.refresh(test_product)
+    assert test_product.cost == Decimal("120.00")
+    assert test_product.stock_qty == Decimal("5.000")
+
+
+def test_issue_899_receipt_to_exact_zero_updates_cost(db_session, test_user, test_supplier, test_product):
+    test_product.stock_qty = Decimal("-10.000")
+    test_product.cost = Decimal("100.00")
+    db_session.flush()
+
+    purchase = PurchaseService.create_purchase(test_supplier.id, "INV-899-2", test_user.id)
+    PurchaseService.commit_purchase(
+        purchase.id,
+        [{"product_id": test_product.id, "qty": Decimal("10.000"), "cost": Decimal("120.00")}],
+    )
+
+    db_session.refresh(test_product)
+    assert test_product.cost == Decimal("120.00")
+    assert test_product.stock_qty == Decimal("0.000")
+
+
+def test_issue_899_receive_goods_negative_stock(db_session, test_user, test_supplier, test_product):
+    test_product.stock_qty = Decimal("-4.000")
+    test_product.cost = Decimal("80.00")
+    db_session.flush()
+
+    req = GrnRequest(
+        supplier_id=test_supplier.id,
+        date_received=datetime.now(),
+        supplier_invoice_no="INV-899-4",
+        input_vat=Decimal("0.00"),
+        lines=[GrnLine(product_id=test_product.id, qty=Decimal("10.000"), unit_cost=Decimal("150.00"))],
+        user_id=test_user.id,
+    )
+    PurchaseService.receive_goods(req)
+
+    db_session.refresh(test_product)
+    assert test_product.cost == Decimal("150.00")
+    assert test_product.stock_qty == Decimal("6.000")
+
+
+def test_issue_899_normal_weighted_average(db_session, test_user, test_supplier, test_product):
+    test_product.stock_qty = Decimal("10.000")
+    test_product.cost = Decimal("100.00")
+    db_session.flush()
+
+    req = GrnRequest(
+        supplier_id=test_supplier.id,
+        date_received=datetime.now(),
+        supplier_invoice_no="INV-899-3",
+        input_vat=Decimal("0.00"),
+        lines=[GrnLine(product_id=test_product.id, qty=Decimal("10.000"), unit_cost=Decimal("120.00"))],
+        user_id=test_user.id,
+    )
+    PurchaseService.receive_goods(req)
+
+    db_session.refresh(test_product)
+    assert test_product.cost == Decimal("110.00")
+    assert test_product.stock_qty == Decimal("20.000")

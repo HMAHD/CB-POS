@@ -2537,6 +2537,7 @@
       "update_user": "User details changed",
       "tax_rate_change": "Tax settings changed",
       "price_override": "Price changed at checkout",
+      "line_qty_reduced": "Item quantity reduced in cart",
       "line_discount": "Item discount given",
       "price_list_create": "Price list added",
       "price_list_update": "Price list changed",

@@ -135,7 +135,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #893 | Lowering a cart line's quantity skips the void permission and leaves no audit… | medium | 5.1 | done | #998 | 8e4ed10 · Require sales.void or override when lowering cart quantity, audit LINE_QTY_REDUCED via CartAuditService |
 | #894 | Eight permissions in the Permissions screen are checked nowhere, and CSV impo… | medium | 5.1 | done | #998 | 8e4ed10 · Permission catalogue audit, remove inventory.delete, gate CSV/categories/units/proforma/maintenance, AST guardrail |
 | #896 | Committing a GRN has no permission check (purchase.create_grn is defined but … | medium | 5.1 | done | #998 | 8e4ed10 · Enforce purchase.create_grn on GRN commit, add suppliers.manage and migration |
-| #809 | Settings encryption key is derived from hostname when missing (predictable) | medium | 5.2 | todo | | |
+| #809 | Settings encryption key is derived from hostname when missing (predictable) | medium | 5.2 | done | | Random Fernet key, DPAPI/raw protection at rest, atomic legacy migration, unwrap quarantine |
 | #898 | Excel export writes text cells starting with "=" as live formulas (CSV/formul… | medium | 5.2 | todo | | |
 | #911 | Reprint prints voided sales and credit notes as ordinary "Cash Receipt" dupli… | low | 5.3 | todo | | |
 | #917 | PIN login runs one bcrypt check per active user on the UI thread, freezing th… | low | 5.4 | todo | | |

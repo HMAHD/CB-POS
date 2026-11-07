@@ -131,7 +131,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 |---|---|---|---|---|---|---|
 | #858 | Stock Take, Price Lists and Promotions need `admin.manage_users`, so the defa… | high | 5.1 | done | | Tab permissions (stock_take.view, pricing.manage, promotions.manage), migration, prevent non-admin privilege escalation |
 | #880 | reports.view_sales / view_profit never enforced; Email/Print skip REPORTS_EXPORT | medium | 5.1 | done | | Report view permissions (view_sales, view_profit, inventory.view), service enforcement in available_reports/run, export check for Print/Email |
-| #889 | Refund from Management → Documents skips the `sales.refund` permission check | medium | 5.1 | todo | | |
+| #889 | Refund from Management → Documents skips the `sales.refund` permission check | medium | 5.1 | done | | Route Documents refund through shared RefundDialog flow with preselected sale and override check |
 | #893 | Lowering a cart line's quantity skips the void permission and leaves no audit… | medium | 5.1 | todo | | |
 | #894 | Eight permissions in the Permissions screen are checked nowhere, and CSV impo… | medium | 5.1 | done | | Permission catalogue audit, remove inventory.delete, gate CSV/categories/units/proforma/maintenance, AST guardrail |
 | #896 | Committing a GRN has no permission check (purchase.create_grn is defined but … | medium | 5.1 | todo | | |

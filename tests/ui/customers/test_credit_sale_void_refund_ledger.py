@@ -383,6 +383,10 @@ class TestEveryRefundEntryPointStatesTheSplit:
         assert text == self._expected_html(sale)
 
     def test_document_view_confirm(self, db_session, user, product, customer):
+        """Documents Refund button routes through the shared RefundDialog (#889)."""
+        from PyQt6.QtWidgets import QDialog
+
+        from cbpos.ui.dialogs.refund_dialog import RefundDialog
         from cbpos.ui.views.document_view import DocumentBrowserView
 
         sale = _sell(db_session, user, product, customer, [("Cash", "120.00"), ("Credit", "80.00")])
@@ -394,9 +398,16 @@ class TestEveryRefundEntryPointStatesTheSplit:
             "total_amount": sale.total_amount,
         }
 
-        text = self._confirm_text("cbpos.ui.views.document_view", view, view.process_refund)
+        with (
+            patch.object(RefundDialog, "exec", return_value=QDialog.DialogCode.Rejected),
+            patch.object(RefundDialog, "load_sale") as mock_load,
+        ):
+            view.process_refund()
 
-        assert text == self._expected_html(sale)
+        mock_load.assert_called_once()
+        loaded = mock_load.call_args[0][0]
+        assert loaded.id == sale.id
+        view.deleteLater()
 
     def test_sale_history_dialog_confirm(self, db_session, user, product, customer):
         from cbpos.core.utils.formatters import format_currency

@@ -37,7 +37,12 @@ class SaleQueryService:
                 .first()
             )
             if sale:
-                session.expunge(sale)
+                _ = sale.customer
+                _ = sale.user
+                for it in sale.items:
+                    _ = it.product
+                _ = sale.payments
+                session.expunge_all()
             return sale
 
     @staticmethod
@@ -117,5 +122,10 @@ class SaleQueryService:
                 ],
             )
             if sale:
-                session.expunge(sale)
+                _ = sale.customer
+                _ = sale.user
+                for it in sale.items:
+                    _ = it.product
+                _ = sale.payments
+                session.expunge_all()
             return sale

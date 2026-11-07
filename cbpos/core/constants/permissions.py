@@ -52,6 +52,7 @@ class Permissions:
     PURCHASE_CREATE_GRN = "purchase.create_grn"
     PURCHASE_MAKE_PAYMENT = "purchase.make_payment"
     PURCHASE_ADJUST_PAYABLE = "purchase.adjust_payable"
+    SUPPLIERS_MANAGE = "suppliers.manage"
 
     # Stock Take
     STOCK_TAKE_VIEW = "stock_take.view"
@@ -125,6 +126,7 @@ class Permissions:
                 cls.PURCHASE_CREATE_GRN,
                 cls.PURCHASE_MAKE_PAYMENT,
                 cls.PURCHASE_ADJUST_PAYABLE,
+                cls.SUPPLIERS_MANAGE,
             ],
             "Stock Take": [
                 cls.STOCK_TAKE_VIEW,
@@ -167,7 +169,7 @@ _EVERYONE_IN_MANAGEMENT = (
 MANAGEMENT_TAB_PERMISSIONS: dict[str, tuple[str, ...]] = {
     "dashboard": _EVERYONE_IN_MANAGEMENT,
     "inventory": (Permissions.INVENTORY_VIEW, Permissions.INVENTORY_EDIT),
-    "purchasing": (Permissions.PURCHASE_VIEW, Permissions.PURCHASE_CREATE_GRN),
+    "purchasing": (Permissions.PURCHASE_VIEW, Permissions.PURCHASE_CREATE_GRN, Permissions.SUPPLIERS_MANAGE),
     "credit_book": _EVERYONE_IN_MANAGEMENT,
     "reports": _EVERYONE_IN_MANAGEMENT,
     "documents": _EVERYONE_IN_MANAGEMENT,

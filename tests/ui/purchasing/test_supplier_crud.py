@@ -10,7 +10,8 @@ to the supplier table.
 import pytest
 from PyQt6.QtCore import QModelIndex
 
-from cbpos.core.models import Supplier
+from cbpos.core.models import Role, Supplier, User
+from cbpos.core.services.auth_service import AuthService
 from cbpos.ui.views.purchase_view import PurchaseView, SupplierDialog
 
 pytestmark = pytest.mark.usefixtures("qapp")
@@ -18,7 +19,15 @@ pytestmark = pytest.mark.usefixtures("qapp")
 
 @pytest.fixture
 def view(qapp, db_session):
-    return PurchaseView()
+    role = Role(name="Admin")
+    admin = User(username="admin_supplier_test", pin_hash="hash", role=role)
+    db_session.add_all([role, admin])
+    db_session.commit()
+    AuthService._current_user = admin
+    v = PurchaseView()
+    v.set_user(admin)
+    yield v
+    AuthService._current_user = None
 
 
 class TestAddSupplierValidation:

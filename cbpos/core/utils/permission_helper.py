@@ -47,6 +47,8 @@ def check_permission_with_override(permission_code: str, parent_widget=None) -> 
         or None if denied/cancelled.
     """
     current_user = AuthService.get_current_user()
+    if not current_user and parent_widget is not None:
+        current_user = getattr(parent_widget, "user", None)
     if not current_user:
         return None
 

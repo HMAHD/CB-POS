@@ -40,6 +40,7 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
         sale: Sale,
         config_override: dict[str, Any] | None = None,
         is_reprint: bool = False,
+        part_refunded_note: str | None = None,
     ) -> list[dict[str, Any]]:
         """
         Generates receipt commands for a given Sale.
@@ -82,6 +83,9 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
                     line_chars,
                 )
             )
+
+        if part_refunded_note:
+            commands.append({"type": "text", "val": part_refunded_note, "align": "center"})
 
         cashier_name = ""
         if gc("show_cashier_on_receipt", True, config_override):
@@ -255,6 +259,14 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
         """Derive document title from payment methods."""
         payments = getattr(sale, "payments", []) or []
         methods = {p.payment_method.strip().upper() for p in payments}
+
+        if (
+            "REFUND" in methods
+            or getattr(sale, "payment_method", "") == "REFUND"
+            or getattr(sale, "refund_of_sale_id", None) is not None
+            or (getattr(sale, "document_number", "") or "").startswith("CN-")
+        ):
+            return cls._rt("refund_label")
 
         if "CREDIT" in methods:
             return cls._rt("doc_title_credit")

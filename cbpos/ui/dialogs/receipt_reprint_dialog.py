@@ -29,6 +29,7 @@ from cbpos.i18n import _t
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.receipt_preview_widget import ReceiptPreviewWidget
+from cbpos.ui.widgets.status_pill_delegate import StatusPillDelegate, set_status_pill
 from cbpos.ui.widgets.table_helpers import (
     NUMERIC_ALIGNMENT,
     align_numeric_headers,
@@ -117,7 +118,7 @@ class ReceiptReprintDialog(QDialog):
 
         # Results table
         self.results_table = QTableWidget()
-        self.results_table.setColumnCount(5)
+        self.results_table.setColumnCount(6)
         self.results_table.setHorizontalHeaderLabels(
             [
                 _t("common.id"),
@@ -125,6 +126,7 @@ class ReceiptReprintDialog(QDialog):
                 _t("common.date"),
                 _t("receipt_reprint.col_customer"),
                 _t("common.total"),
+                _t("common.status"),
             ]
         )
         self.results_table.setColumnHidden(0, True)
@@ -136,10 +138,12 @@ class ReceiptReprintDialog(QDialog):
                 2: QHeaderView.ResizeMode.ResizeToContents,
                 3: QHeaderView.ResizeMode.Stretch,
                 4: QHeaderView.ResizeMode.ResizeToContents,
+                5: QHeaderView.ResizeMode.ResizeToContents,
             },
         )
         self.results_table.setColumnWidth(1, 140)
         align_numeric_headers(self.results_table, (4,))
+        self.results_table.setItemDelegateForColumn(5, StatusPillDelegate(self.results_table))
         attach_table_empty_state(self.results_table, Icons.PRINT, "common.no_items")
         self.results_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.results_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -223,10 +227,32 @@ class ReceiptReprintDialog(QDialog):
 
         sale = self.results[row]
         self._selected_sale = sale
+        if getattr(sale, "status", "") == "VOID":
+            self.lbl_preview_prompt.setVisible(True)
+            self.preview_scroll.setVisible(False)
+            self.btn_reprint.setEnabled(False)
+            self.btn_reprint.setToolTip(_t("reprint.void_blocked"))
+            return
+
+        self.btn_reprint.setToolTip("")
         try:
             paper_width = ConfigService.get("paper_width") or "80mm"
             self.receipt_preview.set_paper_width(paper_width)
-            commands = ReceiptBuilder.build_receipt(sale, is_reprint=True)
+            doc_number = getattr(sale, "document_number", "") or str(getattr(sale, "id", ""))
+            is_refund = bool(
+                getattr(sale, "refund_of_sale_id", None) is not None
+                or getattr(sale, "payment_method", "") == "REFUND"
+                or doc_number.startswith("CN-")
+            )
+            if is_refund:
+                commands = ReceiptBuilder.build_refund_receipt(
+                    sale=sale,
+                    refund_amount=abs(sale.total_amount),
+                    authorized_by=sale.user.username if getattr(sale, "user", None) else "",
+                    is_reprint=True,
+                )
+            else:
+                commands = ReceiptBuilder.build_receipt(sale, is_reprint=True)
             self.receipt_preview.set_commands(commands)
             self.lbl_preview_prompt.setVisible(False)
             self.preview_scroll.setVisible(True)
@@ -302,8 +328,17 @@ class ReceiptReprintDialog(QDialog):
                 row = self.results_table.rowCount()
                 insert_row(row)
 
+                status = getattr(sale, "status", None) or "COMPLETED"
+                is_void = status == "VOID"
+                doc_number = sale.document_number or f"#{sale.id}"
+                is_refund_doc = (
+                    getattr(sale, "payment_method", "") == "REFUND"
+                    or bool(getattr(sale, "refund_of_sale_id", None))
+                    or doc_number.startswith("CN-")
+                )
+
                 set_item(row, 0, TableItem(str(sale.id)))
-                set_item(row, 1, TableItem(sale.document_number or f"#{sale.id}"))
+                set_item(row, 1, TableItem(doc_number))
 
                 date_str = fmt_dt(sale.date) if sale.date else "N/A"
                 set_item(row, 2, TableItem(date_str))
@@ -315,6 +350,23 @@ class ReceiptReprintDialog(QDialog):
                 total_item.setTextAlignment(num_align)
                 set_item(row, 4, total_item)
 
+                status_item = TableItem()
+                if is_void:
+                    set_status_pill(status_item, _t("sale_history.status_void"), "danger")
+                elif is_refund_doc:
+                    set_status_pill(status_item, _t("sale_history.status_refunded"), "warning")
+                else:
+                    set_status_pill(status_item, _t("sale_history.status_completed"), "success")
+                status_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                set_item(row, 5, status_item)
+
+                if is_void:
+                    gray = Qt.GlobalColor.gray
+                    for col in range(5):
+                        it = self.results_table.item(row, col)
+                        if it:
+                            it.setForeground(gray)
+
     def reprint_selected(self) -> None:
         """Reprint receipt for the selected sale."""
         row = self.results_table.currentRow()
@@ -323,9 +375,56 @@ class ReceiptReprintDialog(QDialog):
             return
 
         sale = self.results[row]
+        if getattr(sale, "status", "") == "VOID":
+            QMessageBox.warning(self, _t("common.warning"), _t("reprint.void_blocked"))
+            return
+
+        from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.services.auth_service import AuthService
+        from cbpos.core.services.receipt_reprint_service import ReceiptReprintService
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+
+        authorized_user = check_permission_with_override(Permissions.SALES_REPRINT, self)
+        if not authorized_user:
+            return
+
+        current_user = AuthService.get_current_user()
+        if not current_user and hasattr(self, "user"):
+            current_user = self.user
+
+        def _get_id(u):
+            if not u:
+                return None
+            try:
+                val = getattr(u, "__dict__", {}).get("id")
+                if val is not None:
+                    return val
+            except Exception:
+                pass
+            try:
+                from sqlalchemy import inspect
+
+                insp = inspect(u)
+                if insp and insp.identity:
+                    return insp.identity[0]
+            except Exception:
+                pass
+            try:
+                return u.id
+            except Exception:
+                return None
+
+        curr_id = _get_id(current_user)
+        auth_id = _get_id(authorized_user)
+        user_id = curr_id or auth_id
+        approver_id = auth_id if (auth_id and curr_id and auth_id != curr_id) else None
 
         try:
-            commands = ReceiptBuilder.build_receipt(sale, is_reprint=True)
+            job = ReceiptReprintService.reprint(
+                sale.id,
+                user_id=user_id,
+                approver_id=approver_id,
+            )
             worker = PrintWorker.instance()
             # PrintWorker.add_job() only queues the job -- the print itself
             # happens later, asynchronously, on the worker thread. Showing
@@ -342,7 +441,12 @@ class ReceiptReprintDialog(QDialog):
                 worker.job_completed.disconnect(self._on_reprint_finished)
             worker.error_occurred.connect(self._on_reprint_error)
             worker.job_completed.connect(self._on_reprint_finished)
-            worker.add_job("print_receipt", commands)
+            worker.add_job("print_receipt", job.commands)
+        except ValueError as e:
+            if str(e) == "reprint_void":
+                QMessageBox.warning(self, _t("common.warning"), _t("reprint.void_blocked"))
+            else:
+                QMessageBox.critical(self, _t("common.error"), _t("receipt_reprint.reprint_failed"))
         except Exception as e:
             logger.error(f"Reprint failed: {e}")
             QMessageBox.critical(self, _t("common.error"), _t("receipt_reprint.reprint_failed"))

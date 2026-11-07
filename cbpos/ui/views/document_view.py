@@ -29,7 +29,6 @@ from cbpos.core.constants.status import DocumentStatus
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.document_browser_service import DocumentBrowserService
-from cbpos.core.services.printer_service import PrinterService
 from cbpos.core.services.proforma_service import ProformaService
 from cbpos.core.services.refund_service import RefundService
 from cbpos.core.services.sale_query_service import SaleQueryService
@@ -836,6 +835,10 @@ class DocumentBrowserView(QWidget, Activatable):
         )
 
         self.reprint_btn.setEnabled(doc_type in ("sale", "purchase", "proforma") and status != DocumentStatus.VOID)
+        if status == DocumentStatus.VOID:
+            self.reprint_btn.setToolTip(_t("reprint.void_blocked"))
+        else:
+            self.reprint_btn.setToolTip("")
 
         is_refundable = (
             doc_type == "sale" and status == DocumentStatus.COMPLETED and not is_refund_doc and rstate != "FULL"
@@ -882,13 +885,55 @@ class DocumentBrowserView(QWidget, Activatable):
             if hasattr(self, "reprint_btn"):
                 self.reprint_btn.setEnabled(False)
             if doc_type == "sale":
-                sale = SaleQueryService.get_sale_details(self.current_doc["id"])
-                if sale:
-                    self._connect_print_signals()
-                    PrinterService.print_receipt(sale, is_reprint=True)
-                else:
+                from cbpos.core.constants.permissions import Permissions
+                from cbpos.core.services.auth_service import AuthService
+                from cbpos.core.services.receipt_reprint_service import ReceiptReprintService
+                from cbpos.core.utils.permission_helper import check_permission_with_override
+
+                authorized_user = check_permission_with_override(Permissions.SALES_REPRINT, self)
+                if not authorized_user:
                     if hasattr(self, "reprint_btn"):
                         self.reprint_btn.setEnabled(True)
+                    return
+
+                current_user = AuthService.get_current_user()
+                if not current_user and hasattr(self, "user"):
+                    current_user = self.user
+
+                def _get_id(u):
+                    if not u:
+                        return None
+                    try:
+                        val = getattr(u, "__dict__", {}).get("id")
+                        if val is not None:
+                            return val
+                    except Exception:
+                        pass
+                    try:
+                        from sqlalchemy import inspect
+
+                        insp = inspect(u)
+                        if insp and insp.identity:
+                            return insp.identity[0]
+                    except Exception:
+                        pass
+                    try:
+                        return u.id
+                    except Exception:
+                        return None
+
+                curr_id = _get_id(current_user)
+                auth_id = _get_id(authorized_user)
+                user_id = curr_id or auth_id
+                approver_id = auth_id if (auth_id and curr_id and auth_id != curr_id) else None
+
+                job = ReceiptReprintService.reprint(
+                    self.current_doc["id"],
+                    user_id=user_id,
+                    approver_id=approver_id,
+                )
+                worker = self._connect_print_signals()
+                worker.add_job("print_receipt", job.commands)
             elif doc_type == "proforma":
                 from cbpos.core.services.receipt_builder import ReceiptBuilder
 
@@ -967,7 +1012,6 @@ class DocumentBrowserView(QWidget, Activatable):
         if not self.current_doc or self.current_doc.get("type") != "sale":
             return
 
-        from cbpos.core.services.sale_query_service import SaleQueryService
         from cbpos.ui.dialogs.refund_dialog import RefundDialog
 
         sale = SaleQueryService.get_sale_details(self.current_doc["id"])

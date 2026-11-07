@@ -3,12 +3,18 @@
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
+import pytest
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QGuiApplication
 from PyQt6.QtWidgets import QSplitter
 
 from cbpos.ui.dialogs.receipt_reprint_dialog import ReceiptReprintDialog
 from cbpos.ui.dialogs.sale_history_dialog import SaleHistoryDialog
+
+
+@pytest.fixture(autouse=True)
+def _use_db(db_session):
+    pass
 
 
 def _create_mock_sale():

@@ -721,7 +721,12 @@ class SaleHistoryDialog(QDialog):
             self.btn_refund.setToolTip("")
 
         # Retained compatibility
-        self.btn_reprint.setEnabled(True)
+        if status == "VOID":
+            self.btn_reprint.setEnabled(False)
+            self.btn_reprint.setToolTip(_t("reprint.void_blocked"))
+        else:
+            self.btn_reprint.setEnabled(True)
+            self.btn_reprint.setToolTip("")
         try:
             commands = ReceiptBuilder.build_receipt(sale)
             self.receipt_preview.set_commands(commands)
@@ -734,6 +739,8 @@ class SaleHistoryDialog(QDialog):
         self.inspector_content.setVisible(has_selection)
         if not has_selection:
             self.btn_refund.setEnabled(False)
+            self.btn_reprint.setEnabled(False)
+            self.btn_reprint.setToolTip("")
             self.receipt_preview.set_commands([])
 
     def _copy_invoice_to_clipboard(self, invoice_no: str) -> None:
@@ -771,11 +778,59 @@ class SaleHistoryDialog(QDialog):
         if not self._selected_sale:
             return
 
+        sale = self._selected_sale
+        if getattr(sale, "status", "") == "VOID":
+            QMessageBox.warning(self, _t("common.warning"), _t("reprint.void_blocked"))
+            return
+
+        from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.services.auth_service import AuthService
+        from cbpos.core.services.receipt_reprint_service import ReceiptReprintService
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+
+        authorized_user = check_permission_with_override(Permissions.SALES_REPRINT, self)
+        if not authorized_user:
+            return
+
+        current_user = AuthService.get_current_user()
+        if not current_user and hasattr(self, "user"):
+            current_user = self.user
+
+        def _get_id(u):
+            if not u:
+                return None
+            try:
+                val = getattr(u, "__dict__", {}).get("id")
+                if val is not None:
+                    return val
+            except Exception:
+                pass
+            try:
+                from sqlalchemy import inspect
+
+                insp = inspect(u)
+                if insp and insp.identity:
+                    return insp.identity[0]
+            except Exception:
+                pass
+            try:
+                return u.id
+            except Exception:
+                return None
+
+        curr_id = _get_id(current_user)
+        auth_id = _get_id(authorized_user)
+        user_id = curr_id or auth_id
+        approver_id = auth_id if (auth_id and curr_id and auth_id != curr_id) else None
+
         try:
-            from cbpos.core.services.receipt_builder import ReceiptBuilder
+            job = ReceiptReprintService.reprint(
+                sale.id,
+                user_id=user_id,
+                approver_id=approver_id,
+            )
             from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 
-            commands = ReceiptBuilder.build_receipt(self._selected_sale, is_reprint=True)
             worker = PrintWorker.instance()
             # PrintWorker.add_job() only queues the job -- the print itself
             # happens later, asynchronously, on the worker thread. Showing
@@ -792,7 +847,12 @@ class SaleHistoryDialog(QDialog):
                 worker.job_completed.disconnect(self._on_reprint_finished)
             worker.error_occurred.connect(self._on_reprint_error)
             worker.job_completed.connect(self._on_reprint_finished)
-            worker.add_job("print_receipt", commands)
+            worker.add_job("print_receipt", job.commands)
+        except ValueError as e:
+            if str(e) == "reprint_void":
+                QMessageBox.warning(self, _t("common.warning"), _t("reprint.void_blocked"))
+            else:
+                QMessageBox.critical(self, _t("common.error"), _t("sale_history.reprint_failed"))
         except Exception as e:
             logger.error("Reprint failed: %s", e)
             QMessageBox.critical(self, _t("common.error"), _t("sale_history.reprint_failed"))

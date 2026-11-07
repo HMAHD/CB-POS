@@ -22,12 +22,14 @@ class RefundReceiptBuilder(BaseReceiptBuilder):
         config_override: dict[str, Any] | None = None,
         refund_timestamp: datetime | None = None,
         credit_reversed: Decimal | None = None,
+        is_reprint: bool = False,
+        original_document_number: str = "",
     ) -> list[dict[str, Any]]:
         """
         Generates a REFUND receipt with distinct visual treatment.
 
         Args:
-            sale: The original Sale being refunded.
+            sale: The original Sale being refunded, or the refund Sale document.
             refund_amount: Amount refunded (defaults to sale total).
             authorized_by: Username who authorized the refund.
             config_override: Optional config overrides.
@@ -35,9 +37,15 @@ class RefundReceiptBuilder(BaseReceiptBuilder):
             credit_reversed: Part of the refund taken off the customer's credit
                 instead of handed back (#715). When non-zero the voucher shows
                 both parts, so a credit sale isn't paid back in cash too.
+            is_reprint: Whether to add DUPLICATE markers.
+            original_document_number: Document number of the original sale if known.
         """
         cls._resolve_receipt_lang(config_override)
         commands: list[dict[str, Any]] = []
+
+        # Duplicate marking (top)
+        if is_reprint:
+            commands.append({"type": "text", "val": cls._rt("duplicate"), "align": "center"})
 
         line_chars = cls._append_header_block(commands, config_override)
 
@@ -47,9 +55,33 @@ class RefundReceiptBuilder(BaseReceiptBuilder):
         commands.append({"type": "text", "val": "=" * line_chars, "align": "center"})
         commands.append({"type": "feed", "lines": 1})
 
-        # Original sale reference
+        # Resolve document and original sale reference
+        orig_doc = original_document_number
+        if not orig_doc and getattr(sale, "refund_of_sale_id", None):
+            try:
+                from cbpos.core.database import Database
+
+                with Database().get_session() as s:
+                    parent_sale = s.get(Sale, sale.refund_of_sale_id)
+                    if parent_sale:
+                        orig_doc = parent_sale.document_number or str(parent_sale.id)
+            except Exception:
+                pass
+
         doc_num = getattr(sale, "document_number", None) or str(sale.id)
-        commands.append({"type": "text", "val": f"{cls._rt('original_receipt')}: {doc_num}", "align": "left"})
+        is_credit_note_doc = bool(
+            getattr(sale, "refund_of_sale_id", None)
+            or getattr(sale, "payment_method", "") == "REFUND"
+            or doc_num.startswith("CN-")
+        )
+
+        if is_credit_note_doc:
+            commands.append({"type": "text", "val": doc_num, "align": "center"})
+            if orig_doc:
+                commands.append({"type": "text", "val": f"{cls._rt('original_receipt')}: {orig_doc}", "align": "left"})
+        else:
+            commands.append({"type": "text", "val": f"{cls._rt('original_receipt')}: {doc_num}", "align": "left"})
+
         date_str = sale.date.strftime("%Y-%m-%d %H:%M") if sale.date else "N/A"
         commands.append({"type": "text", "val": f"{cls._rt('date')}: {date_str}", "align": "left"})
 
@@ -65,15 +97,16 @@ class RefundReceiptBuilder(BaseReceiptBuilder):
         # Items
         for item in sale.items:
             product_name = item.product.name_en if hasattr(item, "product") and item.product else "Unknown"
-            line = (
-                f"{cls._format_item_qty(item)} x {format_currency(item.unit_price)} = {format_currency(item.subtotal)}"
-            )
+            qty_str = cls._format_item_qty(item).lstrip("-")
+            unit_price = abs(item.unit_price) if item.unit_price is not None else Decimal("0.00")
+            subtotal = abs(item.subtotal) if item.subtotal is not None else Decimal("0.00")
+            line = f"{qty_str} x {format_currency(unit_price)} = {format_currency(subtotal)}"
             commands.append({"type": "text", "val": product_name, "align": "left"})
             commands.append({"type": "text", "val": line, "align": "right"})
 
         commands.append({"type": "text", "val": "-" * line_chars, "align": "center"})
 
-        amount = refund_amount if refund_amount is not None else sale.total_amount
+        amount = refund_amount if refund_amount is not None else abs(sale.total_amount)
         commands.append(
             {
                 "type": "text",
@@ -124,6 +157,10 @@ class RefundReceiptBuilder(BaseReceiptBuilder):
         commands.append({"type": "text", "val": "=" * line_chars, "align": "center"})
         commands.append({"type": "text", "val": cls._rt("refund_label"), "align": "center"})
         commands.append({"type": "text", "val": "=" * line_chars, "align": "center"})
+
+        # Duplicate marking (bottom)
+        if is_reprint:
+            commands.append({"type": "text", "val": cls._rt("duplicate"), "align": "center"})
 
         cls._append_branding(commands)
         cls._append_cut(commands, config_override)

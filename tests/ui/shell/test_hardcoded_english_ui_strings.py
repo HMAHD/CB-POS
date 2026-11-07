@@ -7,6 +7,7 @@ Verifies:
 4. Stock Take duplicate product error message localization.
 """
 
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -101,6 +102,7 @@ def test_report_print_html_localized():
     import pandas as pd
 
     viewer = ReportViewer()
+    viewer.user = SimpleNamespace(id=1, role=SimpleNamespace(name="Admin", permissions=[]))
     try:
         mock_report = MagicMock()
         mock_report.name = "Sales Summary"

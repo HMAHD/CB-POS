@@ -73,7 +73,7 @@ def view(db_session, fresh_reads, warnings):
     db_session.flush()
 
     widget = StockTakeView()
-    widget.set_user(SimpleNamespace(id=user.id))
+    widget.set_user(SimpleNamespace(id=user.id, role=SimpleNamespace(name="Admin", permissions=[])))
     widget.show()
     yield widget
     if widget.item_table.state() == QAbstractItemView.State.EditingState:

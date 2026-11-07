@@ -18,6 +18,11 @@ from cbpos.ui.views.admin_tools_view import AdminToolsView
 pytestmark = pytest.mark.usefixtures("qapp")
 
 
+@pytest.fixture(autouse=True)
+def allowed(monkeypatch):
+    monkeypatch.setattr("cbpos.core.utils.permission_helper.check_permission_with_override", lambda *a, **k: True)
+
+
 class TestDatabaseTabHasAnIntegrityCheckButton:
     def test_button_exists(self, db_session):
         view = AdminToolsView()

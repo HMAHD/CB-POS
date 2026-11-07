@@ -18,6 +18,11 @@ def make_pos_db(path: Path, marker: str = "original", stamped: bool = True) -> P
     conn = sqlite3.connect(path)
     try:
         conn.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT)")
+        conn.execute("CREATE TABLE roles (id INTEGER PRIMARY KEY, name TEXT)")
+        conn.execute(
+            'CREATE TABLE permissions (id INTEGER PRIMARY KEY, code TEXT, description TEXT, "group" TEXT, last_modified DATETIME)'
+        )
+        conn.execute("CREATE TABLE role_permissions (role_id INTEGER, permission_id INTEGER)")
         conn.execute("CREATE TABLE products (id INTEGER PRIMARY KEY, name TEXT)")
         conn.execute("CREATE TABLE documents (id INTEGER PRIMARY KEY, document_number TEXT)")
         conn.execute("CREATE TABLE sales (id INTEGER PRIMARY KEY)")

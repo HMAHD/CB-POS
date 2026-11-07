@@ -324,6 +324,12 @@ class ManagementView(QWidget):
         for tab, button in self._tab_buttons.items():
             button.setVisible(tab in visible)
 
+        for i, button in enumerate(self.sidebar.nav_buttons):
+            if not button.isHidden():
+                if self.sidebar.nav_buttons[self._current_tab_index].isHidden():
+                    self.switch_tab(i)
+                break
+
         if hasattr(self, "purchase_view"):
             self.purchase_view.set_user(user)
         if hasattr(self, "stock_take_view"):

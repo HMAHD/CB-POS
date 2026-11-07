@@ -4,6 +4,7 @@ from pathlib import Path
 import pandas as pd
 from xhtml2pdf import pisa
 
+from cbpos.core.utils.spreadsheet_safety import XLSX_WRITER_OPTIONS, csv_safe
 from cbpos.i18n import _t
 
 logger = logging.getLogger(__name__)
@@ -30,10 +31,10 @@ class ExportService:
 
     def export_to_excel(self, df: pd.DataFrame, filepath: str, title: str = "Report"):
         """
-        Exports DataFrame to Excel with styling.
+        Exports DataFrame to Excel with styling and formula injection safety (#898).
         """
         validated = self._validate_export_path(filepath)
-        writer = pd.ExcelWriter(validated, engine="xlsxwriter")
+        writer = pd.ExcelWriter(validated, engine="xlsxwriter", engine_kwargs={"options": XLSX_WRITER_OPTIONS})
         df.to_excel(writer, sheet_name="Sheet1", index=False)
 
         workbook = writer.book
@@ -75,10 +76,12 @@ class ExportService:
 
     def export_to_csv(self, df: pd.DataFrame, filepath: str):
         """
-        Exports DataFrame to CSV.
+        Exports DataFrame to CSV with formula injection safety (#898).
         """
         validated = self._validate_export_path(filepath)
-        df.to_csv(validated, index=False)
+        safe_df = df.map(csv_safe)
+        safe_df.columns = [csv_safe(col) for col in df.columns]
+        safe_df.to_csv(validated, index=False)
 
     def export_to_pdf(self, df: pd.DataFrame, filepath: str, title: str = "Report"):
         """

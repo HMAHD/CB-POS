@@ -333,6 +333,7 @@ class SettingsView(QWidget):
         marker), so several pages can be edited and saved together.
         """
         self.stack.setCurrentIndex(index)
+        self.sidebar.highlight(index)
         self._update_header_title()
 
     # ------------------------------------------------------------------
@@ -437,6 +438,14 @@ class SettingsView(QWidget):
         visible = PermissionService.settings_pages(user)
         for page, button in self._page_buttons.items():
             button.setVisible(page in visible)
+
+        for i, button in enumerate(self.sidebar.nav_buttons):
+            if not button.isHidden():
+                current_idx = self.stack.currentIndex()
+                if 0 <= current_idx < len(self.sidebar.nav_buttons):
+                    if self.sidebar.nav_buttons[current_idx].isHidden():
+                        self.switch_page(i)
+                break
 
     # ------------------------------------------------------------------
     # Load / Save

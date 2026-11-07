@@ -268,27 +268,204 @@ class ConfigService:
             raise
 
     @classmethod
-    def _get_fernet(cls) -> Fernet:
-        """Return a Fernet instance using a persistent key file.
+    def _derive_legacy_hostname_key(cls) -> bytes:
+        """Derive legacy encryption key from machine identity. Strictly for legacy migration."""
+        seed = f"cbpos-{platform.node()}-{platform.system()}".encode()
+        return base64.urlsafe_b64encode(hashlib.sha256(seed).digest())
 
-        The key is stored in a file so it survives hostname changes and
-        machine migrations.  On first run the key is derived from machine
-        identity for backwards compatibility with existing encrypted values.
+    @classmethod
+    def _wrap_key(cls, key_bytes: bytes) -> str:
+        """Wrap a Fernet key for persistent storage at rest."""
+        if platform.system() == "Windows":
+            try:
+                import win32crypt
+
+                blob = win32crypt.CryptProtectData(key_bytes, "CB POS", None, None, None, 1)
+                return f"dpapi:{base64.b64encode(blob).decode('ascii')}"
+            except Exception as e:
+                logger.warning("Could not protect encryption key with DPAPI; falling back to raw: %s", e)
+        return f"raw:{key_bytes.decode('ascii')}"
+
+    @classmethod
+    def _unwrap_key(cls, stored_content: str) -> bytes:
+        """Unwrap a stored encryption key string to Fernet key bytes.
+
+        Raises:
+            ValueError, OSError, Exception on unwrap or format failure.
         """
-        if cls._fernet is None:
-            if os.path.exists(cls._KEY_FILE):
-                with open(cls._KEY_FILE, encoding="ascii") as f:
-                    key = f.read().strip().encode("ascii")
+        raw_str = stored_content.strip()
+        if not raw_str:
+            raise ValueError("Encryption key file is empty")
+
+        if raw_str.startswith("dpapi:"):
+            payload = raw_str[6:].strip()
+            blob = base64.b64decode(payload.encode("ascii"))
+            if platform.system() == "Windows":
+                import win32crypt
+
+                _, key_bytes = win32crypt.CryptUnprotectData(blob, None, None, None, 1)
+                return key_bytes
             else:
-                # First run — derive from machine identity (matches old behaviour)
-                seed = f"cbpos-{platform.node()}-{platform.system()}".encode()
-                key = base64.urlsafe_b64encode(hashlib.sha256(seed).digest())
-                # Persist the key so it stays stable across hostname changes
+                raise OSError("DPAPI encrypted key cannot be unwrapped on non-Windows platform")
+        elif raw_str.startswith("raw:"):
+            return raw_str[4:].strip().encode("ascii")
+        else:
+            raise ValueError("Stored key does not have a valid prefix")
+
+    @classmethod
+    def _ensure_encryption_initialized(cls) -> None:
+        """Ensure encryption key is initialized and legacy data migrated if necessary."""
+        if cls._fernet is not None:
+            return
+
+        key_file_exists = os.path.exists(cls._KEY_FILE)
+        raw_content = ""
+        if key_file_exists:
+            try:
+                with open(cls._KEY_FILE, encoding="ascii") as f:
+                    raw_content = f.read().strip()
+            except Exception as e:
+                logger.warning("Could not read encryption key file: %s", e)
+
+        # Check if legacy migration is needed:
+        # 1. key file exists but has no prefix (legacy format)
+        # 2. key file is missing, but settings.json has sensitive values decryptable with hostname key
+        needs_migration = False
+        legacy_key_bytes: bytes | None = None
+
+        if key_file_exists and raw_content and not raw_content.startswith(("raw:", "dpapi:")):
+            needs_migration = True
+            legacy_key_bytes = raw_content.encode("ascii")
+        elif not key_file_exists and os.path.exists(cls.SETTINGS_FILE):
+            try:
+                with open(cls.SETTINGS_FILE, encoding="utf-8") as f:
+                    stored_settings = json.load(f)
+                candidate_key = cls._derive_legacy_hostname_key()
+                candidate_fernet = Fernet(candidate_key)
+                for k in cls._SENSITIVE_KEYS:
+                    val = stored_settings.get(k)
+                    if val and isinstance(val, str) and val.startswith("gAAAAA"):
+                        candidate_fernet.decrypt(val.encode("ascii"))
+                        needs_migration = True
+                        legacy_key_bytes = candidate_key
+                        break
+            except Exception:
+                pass
+
+        if needs_migration and legacy_key_bytes:
+            cls._migrate_legacy_encryption(legacy_key_bytes)
+            return
+
+        if key_file_exists and raw_content:
+            try:
+                key_bytes = cls._unwrap_key(raw_content)
+                cls._fernet = Fernet(key_bytes)
+                return
+            except Exception as e:
+                logger.warning("Failed to unwrap encryption key (%s); quarantining key file.", e)
+                timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+                corrupt_name = f"{os.path.basename(cls._KEY_FILE)}.corrupt-{timestamp}"
+                corrupt_path = os.path.join(os.path.dirname(cls._KEY_FILE) or ".", corrupt_name)
+                with contextlib.suppress(OSError):
+                    os.replace(cls._KEY_FILE, corrupt_path)
+
+        # Fresh install or replaced unreadable key: generate new random Fernet key
+        new_key = Fernet.generate_key()
+        wrapped = cls._wrap_key(new_key)
+        try:
+            cls._write_restricted(cls._KEY_FILE, wrapped, encoding="ascii")
+        except OSError as e:
+            logger.warning("Could not persist encryption key: %s", e)
+        cls._fernet = Fernet(new_key)
+
+    @classmethod
+    def _migrate_legacy_encryption(cls, legacy_key: bytes) -> None:
+        """Migrate legacy encryption key to cryptographically random key with DPAPI/raw protection."""
+        try:
+            legacy_fernet = Fernet(legacy_key)
+        except Exception as e:
+            logger.warning("Invalid legacy encryption key format: %s; generating new random key", e)
+            new_key = Fernet.generate_key()
+            wrapped = cls._wrap_key(new_key)
+            cls._write_restricted(cls._KEY_FILE, wrapped, encoding="ascii")
+            cls._fernet = Fernet(new_key)
+            return
+
+        # Decrypt sensitive settings
+        raw_settings: dict[str, Any] = {}
+        if os.path.exists(cls.SETTINGS_FILE):
+            try:
+                with open(cls.SETTINGS_FILE, encoding="utf-8") as f:
+                    raw_settings = json.load(f)
+            except Exception:
+                raw_settings = {}
+
+        decrypted_sensitive: dict[str, str] = {}
+        for k in cls._SENSITIVE_KEYS:
+            val = raw_settings.get(k)
+            if val and isinstance(val, str):
                 try:
-                    cls._write_restricted(cls._KEY_FILE, key.decode("ascii"), encoding="ascii")
-                except OSError as e:
-                    logger.warning("Could not persist encryption key: %s", e)
-            cls._fernet = Fernet(key)
+                    decrypted_sensitive[k] = legacy_fernet.decrypt(val.encode("ascii")).decode("utf-8")
+                except Exception:
+                    pass
+
+        # Decrypt backup password if present
+        decrypted_backup_pw: str | None = None
+        if os.path.exists(cls._BACKUP_PASSWORD_FILE):
+            try:
+                with open(cls._BACKUP_PASSWORD_FILE, encoding="ascii") as f:
+                    token = f.read().strip()
+                if token:
+                    decrypted_backup_pw = legacy_fernet.decrypt(token.encode("ascii")).decode("utf-8")
+            except Exception:
+                timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+                corrupt_pw = f"{os.path.basename(cls._BACKUP_PASSWORD_FILE)}.corrupt-{timestamp}"
+                corrupt_path = os.path.join(os.path.dirname(cls._BACKUP_PASSWORD_FILE) or ".", corrupt_pw)
+                with contextlib.suppress(OSError):
+                    os.replace(cls._BACKUP_PASSWORD_FILE, corrupt_path)
+                logger.warning("Quarantined unreadable backup password during migration")
+
+        # Generate new random key
+        new_key = Fernet.generate_key()
+        new_fernet = Fernet(new_key)
+        wrapped_key = cls._wrap_key(new_key)
+
+        # Re-encrypt sensitive settings
+        for k, plain_val in decrypted_sensitive.items():
+            raw_settings[k] = new_fernet.encrypt(plain_val.encode("utf-8")).decode("ascii")
+
+        # Re-encrypt and persist backup password if it existed
+        if decrypted_backup_pw is not None:
+            new_pw_token = new_fernet.encrypt(decrypted_backup_pw.encode("utf-8")).decode("ascii")
+            cls._write_restricted(cls._BACKUP_PASSWORD_FILE, new_pw_token, encoding="ascii")
+
+        # Write new protected key
+        cls._write_restricted(cls._KEY_FILE, wrapped_key, encoding="ascii")
+
+        # Atomically write updated settings.json and settings.json.bak
+        if os.path.exists(cls.SETTINGS_FILE):
+            content = json.dumps(raw_settings, indent=4, ensure_ascii=False)
+            cls._write_restricted(cls.SETTINGS_FILE, content)
+            bak_file = f"{cls.SETTINGS_FILE}.bak"
+            if os.path.exists(bak_file):
+                try:
+                    with open(bak_file, encoding="utf-8") as f_bak:
+                        bak_settings = json.load(f_bak)
+                    for k, plain_val in decrypted_sensitive.items():
+                        if bak_settings.get(k):
+                            bak_settings[k] = new_fernet.encrypt(plain_val.encode("utf-8")).decode("ascii")
+                    cls._write_restricted(bak_file, json.dumps(bak_settings, indent=4, ensure_ascii=False))
+                except Exception:
+                    pass
+
+        cls._fernet = new_fernet
+        logger.info("Settings encryption key upgraded")
+
+    @classmethod
+    def _get_fernet(cls) -> Fernet:
+        """Return a Fernet instance using a persistent key file."""
+        if cls._fernet is None:
+            cls._ensure_encryption_initialized()
         return cls._fernet
 
     @classmethod
@@ -381,6 +558,7 @@ class ConfigService:
     def load(cls):
         """Load settings from file, or create with defaults if not exists."""
         cls._undecryptable_keys.clear()
+        cls._ensure_encryption_initialized()
         if os.path.exists(cls.SETTINGS_FILE):
             try:
                 with open(cls.SETTINGS_FILE, encoding="utf-8") as f:

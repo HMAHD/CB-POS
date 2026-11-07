@@ -10,6 +10,7 @@ from decimal import Decimal
 import pytest
 from PyQt6.QtWidgets import QMessageBox
 
+from cbpos.core.constants.permissions import Permissions
 from cbpos.core.models import Permission, Product, PurchaseOrder, Role, Supplier, Unit, User
 from cbpos.core.services.purchase_order_service import PurchaseOrderService
 from cbpos.i18n import _t
@@ -26,9 +27,12 @@ def test_user(db_session):
     _counter += 1
     suffix = str(_counter)
     permission = Permission(code=f"po_discrepancy_test_{suffix}")
-    role = Role(name=f"PODiscrepancyRole_{suffix}", permissions=[permission])
+    grn_perm = db_session.query(Permission).filter_by(code=Permissions.PURCHASE_CREATE_GRN).first() or Permission(
+        code=Permissions.PURCHASE_CREATE_GRN
+    )
+    role = Role(name=f"PODiscrepancyRole_{suffix}", permissions=[permission, grn_perm])
     user = User(username=f"po_discrepancy_user_{suffix}", pin_hash="hash", role=role)
-    db_session.add_all([permission, role, user])
+    db_session.add_all([permission, grn_perm, role, user])
     db_session.flush()
     return user
 

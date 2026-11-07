@@ -711,8 +711,15 @@ class StockTakeView(QWidget, Activatable):
             return
 
         if not self.current_stock_count:
+            from cbpos.core.constants.permissions import Permissions
+            from cbpos.core.utils.permission_helper import check_permission_with_override
+
+            user = check_permission_with_override(Permissions.STOCK_TAKE_CREATE, self)
+            if not user:
+                return
+
             note = self.note_input.text().strip() or None
-            self.current_stock_count = StockCountService.create_stock_count(user_id=self.user.id, note=note)
+            self.current_stock_count = StockCountService.create_stock_count(user_id=user.id, note=note)
 
         category_id = self.category_combo.currentData()
         try:
@@ -759,8 +766,16 @@ class StockTakeView(QWidget, Activatable):
             if not hasattr(self, "user") or not self.user:
                 QMessageBox.warning(self, _t("common.error"), _t("stock_take.user_not_logged_in"))
                 return False
+
+            from cbpos.core.constants.permissions import Permissions
+            from cbpos.core.utils.permission_helper import check_permission_with_override
+
+            user = check_permission_with_override(Permissions.STOCK_TAKE_CREATE, self)
+            if not user:
+                return False
+
             note = self.note_input.text().strip() or None
-            self.current_stock_count = StockCountService.create_stock_count(user_id=self.user.id, note=note)
+            self.current_stock_count = StockCountService.create_stock_count(user_id=user.id, note=note)
 
         # Exact barcode first: a LIKE search can match a longer barcode first.
         product = ProductService.get_by_barcode(query)

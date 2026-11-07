@@ -7,11 +7,27 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
+from cbpos.core.constants.permissions import Permissions
 from cbpos.core.database import Database
-from cbpos.core.models import Category
+from cbpos.core.models import Category, Role, User
+from cbpos.core.services.auth_service import AuthService
+from cbpos.core.services.permission_service import PermissionService
 from cbpos.core.utils.terminal_guard import require_catalog_writable
 
 logger = logging.getLogger(__name__)
+
+
+def _require_inventory_edit(session, acting_user_id: int | None) -> None:
+    effective_actor_id = acting_user_id
+    if effective_actor_id is None:
+        curr = AuthService.get_current_user()
+        if curr:
+            effective_actor_id = curr.id
+
+    if effective_actor_id is not None:
+        user = session.get(User, effective_actor_id, options=[joinedload(User.role).joinedload(Role.permissions)])
+        if not user or not PermissionService.user_has_permission(user, Permissions.INVENTORY_EDIT):
+            raise PermissionError("Permission denied: inventory.edit required")
 
 
 class CategoryService:
@@ -184,11 +200,12 @@ class CategoryService:
             return count or 0
 
     @staticmethod
-    def delete_with_descendants(category_id: int) -> None:
+    def delete_with_descendants(category_id: int, acting_user_id: int | None = None) -> None:
         """Delete a category and all its descendants (deepest first).
 
         Args:
             category_id: ID of the category to delete.
+            acting_user_id: Optional ID of user performing the deletion.
 
         Raises:
             ValueError: If category not found.
@@ -196,6 +213,7 @@ class CategoryService:
         require_catalog_writable()
         db = Database()
         with db.get_session() as session:
+            _require_inventory_edit(session, acting_user_id)
             category = session.get(Category, category_id)
             if not category:
                 raise ValueError(f"Category ID {category_id} not found.")
@@ -223,13 +241,19 @@ class CategoryService:
                     session.delete(cat)
 
     @staticmethod
-    def create(name: str, parent_id: int | None = None, color: str | None = None) -> Category:
+    def create(
+        name: str,
+        parent_id: int | None = None,
+        color: str | None = None,
+        acting_user_id: int | None = None,
+    ) -> Category:
         """Create a new category.
 
         Args:
             name: Category name.
             parent_id: Optional parent category ID for subcategories.
             color: Optional hex color string (e.g. '#FF0000').
+            acting_user_id: Optional ID of user creating the category.
 
         Returns:
             The newly created Category.
@@ -240,6 +264,7 @@ class CategoryService:
         require_catalog_writable()
         db = Database()
         with db.get_session() as session:
+            _require_inventory_edit(session, acting_user_id)
             existing = session.query(Category).filter(Category.name == name).first()
             if existing:
                 raise ValueError(f"Category '{name}' already exists.")
@@ -267,6 +292,7 @@ class CategoryService:
         name: str | None = None,
         color: str | None = None,
         parent_id: object = ...,
+        acting_user_id: int | None = None,
     ) -> Category:
         """Update an existing category.
 
@@ -275,6 +301,7 @@ class CategoryService:
             name: New name (if provided).
             color: New color hex string (if provided).
             parent_id: New parent ID. Use None for root, omit (``...``) to leave unchanged.
+            acting_user_id: Optional ID of user updating the category.
 
         Returns:
             The updated Category.
@@ -285,6 +312,7 @@ class CategoryService:
         require_catalog_writable()
         db = Database()
         with db.get_session() as session:
+            _require_inventory_edit(session, acting_user_id)
             category = session.get(Category, category_id)
             if not category:
                 raise ValueError(f"Category ID {category_id} not found.")
@@ -318,11 +346,12 @@ class CategoryService:
             return category
 
     @staticmethod
-    def delete(category_id: int) -> None:
+    def delete(category_id: int, acting_user_id: int | None = None) -> None:
         """Delete a category. Checks for products first.
 
         Args:
             category_id: ID of the category to delete.
+            acting_user_id: Optional ID of user deleting the category.
 
         Raises:
             ValueError: If category not found or has products assigned.
@@ -330,6 +359,7 @@ class CategoryService:
         require_catalog_writable()
         db = Database()
         with db.get_session() as session:
+            _require_inventory_edit(session, acting_user_id)
             category = session.get(Category, category_id)
             if not category:
                 raise ValueError(f"Category ID {category_id} not found.")
@@ -343,12 +373,13 @@ class CategoryService:
             session.delete(category)
 
     @staticmethod
-    def reparent(category_id: int, new_parent_id: int | None) -> Category:
+    def reparent(category_id: int, new_parent_id: int | None, acting_user_id: int | None = None) -> Category:
         """Move a category under a new parent.
 
         Args:
             category_id: ID of the category to move.
             new_parent_id: ID of the new parent, or None for root.
+            acting_user_id: Optional ID of user reparenting the category.
 
         Returns:
             The updated Category.
@@ -359,6 +390,7 @@ class CategoryService:
         require_catalog_writable()
         db = Database()
         with db.get_session() as session:
+            _require_inventory_edit(session, acting_user_id)
             category = session.get(Category, category_id)
             if not category:
                 raise ValueError(f"Category ID {category_id} not found.")

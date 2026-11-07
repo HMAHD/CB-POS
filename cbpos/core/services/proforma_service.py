@@ -5,11 +5,13 @@ from typing import Any
 
 from sqlalchemy.orm import joinedload
 
+from cbpos.core.constants.permissions import Permissions
 from cbpos.core.constants.status import DocumentStatus
 from cbpos.core.database import Database
-from cbpos.core.models import Proforma, ProformaItem
+from cbpos.core.models import Proforma, ProformaItem, Role, User
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.document_service import DocumentService
+from cbpos.core.services.permission_service import PermissionService
 from cbpos.core.services.tax_service import TaxService
 
 logger = logging.getLogger(__name__)
@@ -24,6 +26,7 @@ class ProformaService:
         customer_id: int | None = None,
         validity_days: int = 30,
         notes: str | None = None,
+        acting_user_id: int | None = None,
     ) -> Proforma | None:
         """
         Create a new proforma/quotation.
@@ -34,17 +37,27 @@ class ProformaService:
             customer_id: Optional customer ID.
             validity_days: Days until expiry (default 30).
             notes: Optional notes.
+            acting_user_id: Optional ID of user creating the proforma.
 
         Returns:
             Created Proforma or None on failure.
         """
-        current_user = AuthService.get_current_user()
-        if not current_user:
+        effective_user_id = acting_user_id
+        if effective_user_id is None:
+            curr = AuthService.get_current_user()
+            if curr:
+                effective_user_id = curr.id
+
+        if not effective_user_id:
             logger.error("No user logged in for proforma creation")
             return None
 
         db = Database()
         with db.get_session() as session:
+            user = session.get(User, effective_user_id, options=[joinedload(User.role).joinedload(Role.permissions)])
+            if not user or not PermissionService.user_has_permission(user, Permissions.DOCUMENTS_CREATE_PROFORMA):
+                raise PermissionError("Permission denied: documents.create_proforma required")
+
             try:
                 doc_number = DocumentService.generate_number("PROFORMA")
                 now = datetime.now()
@@ -64,7 +77,7 @@ class ProformaService:
                     document_number=doc_number,
                     type="proforma",
                     date=now,
-                    user_id=current_user.id,
+                    user_id=effective_user_id,
                     status=DocumentStatus.QUOTE,
                     customer_id=customer_id,
                     total_amount=total.quantize(Decimal("0.01")),
@@ -142,7 +155,7 @@ class ProformaService:
             )
 
     @staticmethod
-    def convert_to_sale(proforma_id: int) -> dict[str, Any] | None:
+    def convert_to_sale(proforma_id: int, acting_user_id: int | None = None) -> dict[str, Any] | None:
         """
         Prepare proforma data for conversion to a sale.
 
@@ -150,8 +163,21 @@ class ProformaService:
         to populate the SalesView cart. Does NOT mark as converted yet -
         that happens after the sale is completed.
         """
+        effective_user_id = acting_user_id
+        if effective_user_id is None:
+            curr = AuthService.get_current_user()
+            if curr:
+                effective_user_id = curr.id
+
         db = Database()
         with db.get_session() as session:
+            if effective_user_id is not None:
+                user = session.get(
+                    User, effective_user_id, options=[joinedload(User.role).joinedload(Role.permissions)]
+                )
+                if not user or not PermissionService.user_has_permission(user, Permissions.DOCUMENTS_CONVERT_PROFORMA):
+                    raise PermissionError("Permission denied: documents.convert_proforma required")
+
             proforma = (
                 session.query(Proforma)
                 .options(
@@ -206,10 +232,27 @@ class ProformaService:
                 return False
 
     @staticmethod
-    def void_proforma(proforma_id: int, reason_id: int | None = None) -> bool:
+    def void_proforma(
+        proforma_id: int,
+        reason_id: int | None = None,
+        acting_user_id: int | None = None,
+    ) -> bool:
         """Void a proforma/quotation."""
+        effective_user_id = acting_user_id
+        if effective_user_id is None:
+            curr = AuthService.get_current_user()
+            if curr:
+                effective_user_id = curr.id
+
         db = Database()
         with db.get_session() as session:
+            if effective_user_id is not None:
+                user = session.get(
+                    User, effective_user_id, options=[joinedload(User.role).joinedload(Role.permissions)]
+                )
+                if not user or not PermissionService.user_has_permission(user, Permissions.DOCUMENTS_VOID):
+                    raise PermissionError("Permission denied: documents.void required")
+
             try:
                 proforma = session.query(Proforma).filter_by(id=proforma_id).first()
                 if not proforma:

@@ -133,7 +133,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #880 | reports.view_sales / view_profit never enforced; Email/Print skip REPORTS_EXPORT | medium | 5.1 | todo | | |
 | #889 | Refund from Management → Documents skips the `sales.refund` permission check | medium | 5.1 | todo | | |
 | #893 | Lowering a cart line's quantity skips the void permission and leaves no audit… | medium | 5.1 | todo | | |
-| #894 | Eight permissions in the Permissions screen are checked nowhere, and CSV impo… | medium | 5.1 | todo | | |
+| #894 | Eight permissions in the Permissions screen are checked nowhere, and CSV impo… | medium | 5.1 | done | | Permission catalogue audit, remove inventory.delete, gate CSV/categories/units/proforma/maintenance, AST guardrail |
 | #896 | Committing a GRN has no permission check (purchase.create_grn is defined but … | medium | 5.1 | todo | | |
 | #809 | Settings encryption key is derived from hostname when missing (predictable) | medium | 5.2 | todo | | |
 | #898 | Excel export writes text cells starting with "=" as live formulas (CSV/formul… | medium | 5.2 | todo | | |

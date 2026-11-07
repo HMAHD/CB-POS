@@ -21,7 +21,6 @@ class Permissions:
     # Inventory Group
     INVENTORY_VIEW = "inventory.view"
     INVENTORY_EDIT = "inventory.edit"
-    INVENTORY_DELETE = "inventory.delete"
     INVENTORY_STOCK_ADJUST = "inventory.stock_adjust"
     INVENTORY_SET_COST = "inventory.set_cost"
     PRICING_MANAGE = "pricing.manage"
@@ -99,7 +98,6 @@ class Permissions:
             "Inventory": [
                 cls.INVENTORY_VIEW,
                 cls.INVENTORY_EDIT,
-                cls.INVENTORY_DELETE,
                 cls.INVENTORY_STOCK_ADJUST,
                 cls.INVENTORY_SET_COST,
                 cls.PRICING_MANAGE,
@@ -168,8 +166,8 @@ _EVERYONE_IN_MANAGEMENT = (
 )
 MANAGEMENT_TAB_PERMISSIONS: dict[str, tuple[str, ...]] = {
     "dashboard": _EVERYONE_IN_MANAGEMENT,
-    "inventory": _EVERYONE_IN_MANAGEMENT,
-    "purchasing": _EVERYONE_IN_MANAGEMENT,
+    "inventory": (Permissions.INVENTORY_VIEW, Permissions.INVENTORY_EDIT),
+    "purchasing": (Permissions.PURCHASE_VIEW, Permissions.PURCHASE_CREATE_GRN),
     "credit_book": _EVERYONE_IN_MANAGEMENT,
     "reports": _EVERYONE_IN_MANAGEMENT,
     "documents": _EVERYONE_IN_MANAGEMENT,
@@ -180,7 +178,7 @@ MANAGEMENT_TAB_PERMISSIONS: dict[str, tuple[str, ...]] = {
     "reorder": _EVERYONE_IN_MANAGEMENT,
 }
 
-_EVERYONE_IN_SETTINGS = (Permissions.SETTINGS_VIEW, Permissions.ADMIN_SETTINGS, Permissions.ADMIN_TOOLS)
+_EVERYONE_IN_SETTINGS = (Permissions.SETTINGS_VIEW, Permissions.ADMIN_SETTINGS)
 SETTINGS_PAGE_PERMISSIONS: dict[str, tuple[str, ...]] = {
     "shop_info": _EVERYONE_IN_SETTINGS,
     "sales_tax": _EVERYONE_IN_SETTINGS,

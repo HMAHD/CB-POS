@@ -345,7 +345,13 @@ class InventoryView(QWidget, Activatable):
         if catalog_is_read_only():
             return
 
+        from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
         from cbpos.ui.dialogs.category_manager import CategoryManagerDialog
+
+        user = check_permission_with_override(Permissions.INVENTORY_EDIT, self)
+        if not user:
+            return
 
         dialog = CategoryManagerDialog(parent=self)
         dialog.exec()
@@ -356,7 +362,13 @@ class InventoryView(QWidget, Activatable):
         if catalog_is_read_only():
             return
 
+        from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
         from cbpos.ui.dialogs.unit_manager import UnitManagerDialog
+
+        user = check_permission_with_override(Permissions.INVENTORY_EDIT, self)
+        if not user:
+            return
 
         dialog = UnitManagerDialog(parent=self)
         dialog.exec()
@@ -423,7 +435,13 @@ class InventoryView(QWidget, Activatable):
         if catalog_is_read_only():
             return
 
+        from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
         from cbpos.ui.dialogs.csv_import_dialog import CsvImportDialog
+
+        user = check_permission_with_override(Permissions.INVENTORY_EDIT, self)
+        if not user:
+            return
 
         dialog = CsvImportDialog(self.import_service, parent=self)
         if dialog.exec():

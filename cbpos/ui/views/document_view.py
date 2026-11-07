@@ -1025,6 +1025,13 @@ class DocumentBrowserView(QWidget, Activatable):
         if not self.current_doc or self.current_doc.get("type") != "proforma":
             return
 
+        from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+
+        user = check_permission_with_override(Permissions.DOCUMENTS_CONVERT_PROFORMA, self)
+        if not user:
+            return
+
         reply = QMessageBox.question(
             self,
             _t("document_browser.convert_title"),
@@ -1163,7 +1170,13 @@ class DocumentBrowserView(QWidget, Activatable):
 
     def open_proforma_dialog(self) -> None:
         """Open the dialog to create a new proforma/quotation."""
+        from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
         from cbpos.ui.dialogs.proforma_dialog import ProformaDialog
+
+        user = check_permission_with_override(Permissions.DOCUMENTS_CREATE_PROFORMA, self)
+        if not user:
+            return
 
         dialog = ProformaDialog(self)
         if dialog.exec():

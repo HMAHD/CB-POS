@@ -206,3 +206,92 @@ def test_issue_859_one_of_two_admins_can_be_deactivated(db_session, user_roles):
     assert UserService.is_last_active_admin(admin2.id) is True
     with pytest.raises(ValueError, match="last_admin"):
         UserService.update_user(admin2.id, "admin2_859", None, admin_role.id, False)
+
+
+def test_issue_858_non_admin_cannot_grant_admin_role(db_session, user_roles):
+    """A non-Admin user cannot create a user with the Admin role (ValueError('only_admin_can_grant_admin'))."""
+    from cbpos.core.constants.permissions import ADMIN_ROLE_NAME
+
+    admin_role = db_session.query(Role).filter_by(name=ADMIN_ROLE_NAME).first()
+    if not admin_role:
+        admin_role = Role(name=ADMIN_ROLE_NAME)
+        db_session.add(admin_role)
+        db_session.flush()
+
+    manager_user = User(
+        username="manager_858",
+        pin_hash=AuthService.hash_pin("5555"),
+        role_id=user_roles.id,
+        is_active=True,
+    )
+    db_session.add(manager_user)
+    db_session.commit()
+
+    with pytest.raises(ValueError, match="only_admin_can_grant_admin"):
+        UserService.create_user("new_admin", "9876", admin_role.id, acting_user_id=manager_user.id)
+
+
+def test_issue_858_cannot_change_own_role(db_session, user_roles):
+    """A user cannot change their own role, even if they have user-management permission (ValueError('cannot_change_own_role'))."""
+    from cbpos.core.constants.permissions import ADMIN_ROLE_NAME
+
+    admin_role = db_session.query(Role).filter_by(name=ADMIN_ROLE_NAME).first()
+    if not admin_role:
+        admin_role = Role(name=ADMIN_ROLE_NAME)
+        db_session.add(admin_role)
+        db_session.flush()
+
+    manager_user = User(
+        username="manager_self_858",
+        pin_hash=AuthService.hash_pin("5556"),
+        role_id=user_roles.id,
+        is_active=True,
+    )
+    db_session.add(manager_user)
+    db_session.commit()
+
+    with pytest.raises(ValueError, match="cannot_change_own_role"):
+        UserService.update_user(
+            manager_user.id,
+            "manager_self_858",
+            None,
+            admin_role.id,
+            True,
+            acting_user_id=manager_user.id,
+        )
+
+
+def test_issue_858_non_admin_cannot_modify_admin_user(db_session, user_roles):
+    """A non-Admin cannot update an existing Admin user's details or PIN (ValueError('only_admin_can_modify_admin'))."""
+    from cbpos.core.constants.permissions import ADMIN_ROLE_NAME
+
+    admin_role = db_session.query(Role).filter_by(name=ADMIN_ROLE_NAME).first()
+    if not admin_role:
+        admin_role = Role(name=ADMIN_ROLE_NAME)
+        db_session.add(admin_role)
+        db_session.flush()
+
+    admin_user = User(
+        username="target_admin_858",
+        pin_hash=AuthService.hash_pin("1234"),
+        role_id=admin_role.id,
+        is_active=True,
+    )
+    manager_user = User(
+        username="manager_attacker_858",
+        pin_hash=AuthService.hash_pin("5557"),
+        role_id=user_roles.id,
+        is_active=True,
+    )
+    db_session.add_all([admin_user, manager_user])
+    db_session.commit()
+
+    with pytest.raises(ValueError, match="only_admin_can_modify_admin"):
+        UserService.update_user(
+            admin_user.id,
+            "target_admin_858",
+            "0000",
+            admin_role.id,
+            True,
+            acting_user_id=manager_user.id,
+        )

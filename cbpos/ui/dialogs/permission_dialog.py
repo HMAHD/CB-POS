@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.core.constants.permissions import ADMIN_ROLE_NAME, CRITICAL_ADMIN_PERMISSIONS
+from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.permission_service import PermissionService
 from cbpos.core.services.user_service import UserService
 from cbpos.core.utils.display_labels import display_role_name, permission_group_label, permission_label
@@ -26,6 +27,7 @@ from cbpos.ui.widgets.table_helpers import configure_table_columns
 # Per-cell flag for a role-column cell that must stay ticked. Item flags are per-row in a
 # QTreeWidget, so the lock lives in the cell's data and _RoleCheckDelegate enforces it (#614).
 LOCKED_CELL_ROLE = Qt.ItemDataRole.UserRole + 1
+ORIGINAL_CHECK_STATE_ROLE = Qt.ItemDataRole.UserRole + 2
 
 
 class _RoleCheckDelegate(QStyledItemDelegate):
@@ -125,11 +127,15 @@ class _RoleCheckDelegate(QStyledItemDelegate):
 
     @classmethod
     def _restore_locked_descendants(cls, item: QTreeWidgetItem, column: int) -> None:
-        """Re-assert Qt.CheckState.Checked on any descendant flagged with LOCKED_CELL_ROLE."""
+        """Re-assert original check state on any descendant flagged with LOCKED_CELL_ROLE."""
         for i in range(item.childCount()):
             child = item.child(i)
             if child.data(column, LOCKED_CELL_ROLE):
-                child.setCheckState(column, Qt.CheckState.Checked)
+                orig_state = child.data(column, ORIGINAL_CHECK_STATE_ROLE)
+                if orig_state is not None:
+                    child.setCheckState(column, orig_state)
+                else:
+                    child.setCheckState(column, Qt.CheckState.Checked)
             if child.childCount() > 0:
                 cls._restore_locked_descendants(child, column)
 
@@ -194,6 +200,13 @@ class PermissionDialog(QDialog):
         for perm in self.permissions:
             grouped_perms.setdefault(perm.group or None, []).append(perm)
 
+        # Identify acting user and non-admin constraints
+        current_user = AuthService.get_current_user()
+        is_non_admin = bool(current_user and current_user.role and current_user.role.name != ADMIN_ROLE_NAME)
+        actor_perm_ids = (
+            {p.id for p in current_user.role.permissions} if (current_user and current_user.role) else set()
+        )
+
         # Populate Tree
         for group_name, perms in grouped_perms.items():
             group_item = QTreeWidgetItem(self.tree)
@@ -218,13 +231,24 @@ class PermissionDialog(QDialog):
                         checkbox = Qt.CheckState.Checked
 
                     perm_item.setCheckState(col_index, checkbox)
+                    perm_item.setData(col_index, ORIGINAL_CHECK_STATE_ROLE, checkbox)
 
                     # Lock only Admin's own critical cells, so other roles can still be granted
                     # them (#614). PermissionService re-adds them on save regardless (#551).
                     if role.name == ADMIN_ROLE_NAME and perm.code in CRITICAL_ADMIN_PERMISSIONS:
                         perm_item.setCheckState(col_index, Qt.CheckState.Checked)  # Force Checked
+                        perm_item.setData(col_index, ORIGINAL_CHECK_STATE_ROLE, Qt.CheckState.Checked)
                         perm_item.setData(col_index, LOCKED_CELL_ROLE, True)
                         perm_item.setToolTip(col_index, _t("permission.admin_locked_tooltip"))
+                    elif is_non_admin and role.name == ADMIN_ROLE_NAME:
+                        perm_item.setData(col_index, LOCKED_CELL_ROLE, True)
+                        perm_item.setToolTip(col_index, _t("roles.cannot_edit_admin"))
+                    elif is_non_admin and current_user and role.id == current_user.role_id:
+                        perm_item.setData(col_index, LOCKED_CELL_ROLE, True)
+                        perm_item.setToolTip(col_index, _t("roles.cannot_edit_own_role"))
+                    elif is_non_admin and perm.id not in actor_perm_ids:
+                        perm_item.setData(col_index, LOCKED_CELL_ROLE, True)
+                        perm_item.setToolTip(col_index, _t("roles.cannot_grant_unheld"))
 
         # Resize columns: permission title column stretches to absorb space, while role columns resize to content.
         column_modes = {0: QHeaderView.ResizeMode.Stretch}
@@ -256,10 +280,27 @@ class PermissionDialog(QDialog):
 
     def save_changes(self):
         """Apply the tree's checked permissions to each role via PermissionService."""
+        current_user = AuthService.get_current_user()
+        is_non_admin = bool(current_user and current_user.role and current_user.role.name != ADMIN_ROLE_NAME)
+        effective_actor_id = current_user.id if current_user else None
+
         try:
             role_permission_map = self.collect_role_permission_map(self.tree, self.roles)
-            for role_id, permission_ids in role_permission_map.items():
-                PermissionService.update_role_permissions(role_id, permission_ids)
+            for role in self.roles:
+                if is_non_admin:
+                    if role.name == ADMIN_ROLE_NAME:
+                        continue
+                    if current_user and role.id == current_user.role_id:
+                        continue
+
+                new_ids = role_permission_map.get(role.id, [])
+                initial_ids = {p.id for p in role.permissions}
+                if set(new_ids) != initial_ids:
+                    PermissionService.update_role_permissions(
+                        role.id,
+                        new_ids,
+                        acting_user_id=effective_actor_id,
+                    )
 
             QMessageBox.information(self, _t("common.success"), _t("permission.save_success"))
             self.accept()

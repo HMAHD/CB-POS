@@ -24,6 +24,8 @@ class Permissions:
     INVENTORY_DELETE = "inventory.delete"
     INVENTORY_STOCK_ADJUST = "inventory.stock_adjust"
     INVENTORY_SET_COST = "inventory.set_cost"
+    PRICING_MANAGE = "pricing.manage"
+    PROMOTIONS_MANAGE = "promotions.manage"
 
     # Reports
     REPORTS_VIEW_SALES = "reports.view_sales"
@@ -100,6 +102,8 @@ class Permissions:
                 cls.INVENTORY_DELETE,
                 cls.INVENTORY_STOCK_ADJUST,
                 cls.INVENTORY_SET_COST,
+                cls.PRICING_MANAGE,
+                cls.PROMOTIONS_MANAGE,
             ],
             "Reports": [cls.REPORTS_VIEW_SALES, cls.REPORTS_VIEW_PROFIT, cls.REPORTS_EXPORT],
             "Documents": [
@@ -170,9 +174,9 @@ MANAGEMENT_TAB_PERMISSIONS: dict[str, tuple[str, ...]] = {
     "reports": _EVERYONE_IN_MANAGEMENT,
     "documents": _EVERYONE_IN_MANAGEMENT,
     "users": (Permissions.ADMIN_MANAGE_USERS, Permissions.ADMIN_MANAGE_ROLES),
-    "pricelists": (Permissions.ADMIN_MANAGE_USERS,),
-    "promotions": (Permissions.ADMIN_MANAGE_USERS,),
-    "stock_take": (Permissions.ADMIN_MANAGE_USERS,),
+    "pricelists": (Permissions.PRICING_MANAGE,),
+    "promotions": (Permissions.PROMOTIONS_MANAGE,),
+    "stock_take": (Permissions.STOCK_TAKE_VIEW,),
     "reorder": _EVERYONE_IN_MANAGEMENT,
 }
 

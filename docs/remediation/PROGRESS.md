@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 5 · Batch: 5.1 · Branch: none · PR: none · Last session: 2026-11-06
+- Phase: 5 · Batch: 5.1 · Branch: fix/p5-b1-permission-model · PR: none · Last session: 2026-11-07
 
 ## Issues
 
@@ -129,7 +129,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 | # | Title | Sev | Batch | Status | PR | Notes |
 |---|---|---|---|---|---|---|
-| #858 | Stock Take, Price Lists and Promotions need `admin.manage_users`, so the defa… | high | 5.1 | todo | | |
+| #858 | Stock Take, Price Lists and Promotions need `admin.manage_users`, so the defa… | high | 5.1 | done | | Tab permissions (stock_take.view, pricing.manage, promotions.manage), migration, prevent non-admin privilege escalation |
 | #880 | reports.view_sales / view_profit never enforced; Email/Print skip REPORTS_EXPORT | medium | 5.1 | todo | | |
 | #889 | Refund from Management → Documents skips the `sales.refund` permission check | medium | 5.1 | todo | | |
 | #893 | Lowering a cart line's quantity skips the void permission and leaves no audit… | medium | 5.1 | todo | | |

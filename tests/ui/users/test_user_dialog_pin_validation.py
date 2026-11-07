@@ -159,3 +159,73 @@ def test_user_dialog_last_admin_save_rejection_shows_warning(monkeypatch):
         assert not mock_accept.called
         assert len(warning_box) == 1
         assert _t("users.last_admin") in warning_box[0][1]
+
+
+def test_user_dialog_non_admin_cannot_see_admin_role_in_create_mode(monkeypatch):
+    """A non-Admin actor does not see the Admin role in cmb_role when creating a user."""
+    monkeypatch.setattr(
+        AuthService,
+        "get_current_user",
+        lambda: SimpleNamespace(id=2, username="manager", role=SimpleNamespace(name="Manager"), role_id=2),
+    )
+    monkeypatch.setattr(
+        "cbpos.core.services.user_service.UserService.get_all_roles",
+        lambda: [
+            SimpleNamespace(id=1, name="Admin"),
+            SimpleNamespace(id=2, name="Manager"),
+            SimpleNamespace(id=3, name="Cashier"),
+        ],
+    )
+
+    dialog = UserDialog()
+    dialog.show()
+
+    role_ids = [dialog.cmb_role.itemData(i) for i in range(dialog.cmb_role.count())]
+    assert 1 not in role_ids
+    assert 2 in role_ids
+    assert 3 in role_ids
+
+
+def test_user_dialog_editing_self_disables_role_combo(monkeypatch):
+    """A user editing their own account has the role dropdown disabled with a tooltip."""
+    from cbpos.i18n import _t
+
+    current_user = SimpleNamespace(id=2, username="manager", role=SimpleNamespace(name="Manager"), role_id=2)
+    monkeypatch.setattr(AuthService, "get_current_user", lambda: current_user)
+    monkeypatch.setattr(
+        "cbpos.core.services.user_service.UserService.get_all_roles",
+        lambda: [SimpleNamespace(id=2, name="Manager"), SimpleNamespace(id=3, name="Cashier")],
+    )
+    monkeypatch.setattr("cbpos.core.services.user_service.UserService.is_last_active_admin", lambda uid: False)
+
+    target_user = SimpleNamespace(
+        id=2, username="manager", role=SimpleNamespace(name="Manager"), role_id=2, is_active=True
+    )
+    dialog = UserDialog(user=target_user)
+    dialog.show()
+
+    assert not dialog.cmb_role.isEnabled()
+    assert dialog.cmb_role.toolTip() == _t("users.cannot_change_own_role")
+
+
+def test_user_dialog_non_admin_editing_admin_disables_all_fields(monkeypatch):
+    """A non-Admin attempting to edit an Admin user sees all fields and save button disabled with tooltip."""
+    from cbpos.i18n import _t
+
+    current_user = SimpleNamespace(id=2, username="manager", role=SimpleNamespace(name="Manager"), role_id=2)
+    monkeypatch.setattr(AuthService, "get_current_user", lambda: current_user)
+    monkeypatch.setattr(
+        "cbpos.core.services.user_service.UserService.get_all_roles",
+        lambda: [SimpleNamespace(id=1, name="Admin"), SimpleNamespace(id=2, name="Manager")],
+    )
+    monkeypatch.setattr("cbpos.core.services.user_service.UserService.is_last_active_admin", lambda uid: False)
+
+    admin_user = SimpleNamespace(id=1, username="admin", role=SimpleNamespace(name="Admin"), role_id=1, is_active=True)
+    dialog = UserDialog(user=admin_user)
+    dialog.show()
+
+    assert not dialog.txt_username.isEnabled()
+    assert not dialog.txt_pin.isEnabled()
+    assert not dialog.cmb_role.isEnabled()
+    assert not dialog.chk_active.isEnabled()
+    assert dialog.txt_username.toolTip() == _t("users.only_admin_can_modify_admin")

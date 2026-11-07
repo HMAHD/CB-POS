@@ -2470,7 +2470,8 @@
       "settings.view": "සැකසුම් තිරය ඇරීම",
       "loyalty.adjust_points": "පාරිභෝගික ලොයල්ටි ලකුණු වෙනස් කිරීම",
       "pricing.manage": "මිල ලැයිස්තු කළමනාකරණය",
-      "promotions.manage": "ප්‍රවර්ධන කළමනාකරණය"
+      "promotions.manage": "ප්‍රවර්ධන කළමනාකරණය",
+      "suppliers.manage": "සැපයුම්කරුවන් කළමනාකරණය"
     }
   },
   "roles": {

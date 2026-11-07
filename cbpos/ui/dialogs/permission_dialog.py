@@ -294,13 +294,14 @@ class PermissionDialog(QDialog):
                         continue
 
                 new_ids = role_permission_map.get(role.id, [])
-                initial_ids = {p.id for p in role.permissions}
-                if set(new_ids) != initial_ids:
+                if effective_actor_id is not None:
                     PermissionService.update_role_permissions(
                         role.id,
                         new_ids,
                         acting_user_id=effective_actor_id,
                     )
+                else:
+                    PermissionService.update_role_permissions(role.id, new_ids)
 
             QMessageBox.information(self, _t("common.success"), _t("permission.save_success"))
             self.accept()

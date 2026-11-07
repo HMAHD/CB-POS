@@ -56,13 +56,13 @@ class UserDialog(QDialog):
 
         # Role
         current_user = AuthService.get_current_user()
-        actor_is_admin = bool(current_user and current_user.role and current_user.role.name == ADMIN_ROLE_NAME)
+        actor_is_non_admin = bool(current_user and current_user.role and current_user.role.name != ADMIN_ROLE_NAME)
 
         layout.addWidget(QLabel(_t("user.role_label")))
         self.cmb_role = QComboBox()
         self.roles = UserService.get_all_roles()
         for role in self.roles:
-            if role.name == ADMIN_ROLE_NAME and not actor_is_admin and not (self.user and self.user.role_id == role.id):
+            if role.name == ADMIN_ROLE_NAME and actor_is_non_admin and not (self.user and self.user.role_id == role.id):
                 continue
             self.cmb_role.addItem(display_role_name(role), role.id)
 
@@ -101,7 +101,7 @@ class UserDialog(QDialog):
             self.cmb_role.setToolTip(last_admin_msg)
             self.chk_active.setEnabled(False)
             self.chk_active.setToolTip(last_admin_msg)
-        elif self.user and self.user.role and self.user.role.name == ADMIN_ROLE_NAME and not actor_is_admin:
+        elif self.user and self.user.role and self.user.role.name == ADMIN_ROLE_NAME and actor_is_non_admin:
             only_admin_msg = _t("users.only_admin_can_modify_admin")
             self.txt_username.setEnabled(False)
             self.txt_username.setToolTip(only_admin_msg)

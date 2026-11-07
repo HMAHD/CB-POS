@@ -2505,7 +2505,8 @@
       "settings.view": "Open the Settings screen",
       "loyalty.adjust_points": "Adjust customer loyalty points",
       "pricing.manage": "Manage price lists",
-      "promotions.manage": "Manage promotions"
+      "promotions.manage": "Manage promotions",
+      "suppliers.manage": "Manage suppliers"
     }
   },
   "roles": {

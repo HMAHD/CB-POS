@@ -104,6 +104,10 @@ class TestChangeLineQuantityUsesStyledDialog:
 
             mp.setattr(sales_view_module, "QuantityDialog", fake_dialog_cls)
             mp.setattr(ConfigService, "get", lambda k, d=None: 50 if k == "max_discount_percent" else d)
+            mp.setattr(
+                "cbpos.core.utils.permission_helper.check_permission_with_override",
+                lambda perm, parent: MagicMock(id=1),
+            )
             view.change_line_quantity()
 
         assert view.cart_service.items[0]["discount_type"] == "NONE"

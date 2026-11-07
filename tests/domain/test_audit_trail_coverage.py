@@ -128,6 +128,7 @@ class TestPermissionChangeAuditLog:
         suffix = _next_suffix()
         perm = Permission(code=f"perm_scope_{suffix}")
         role = Role(name=f"ScopedRole_{suffix}")
+        test_user.role.permissions.append(perm)
         db_session.add_all([perm, role])
         db_session.flush()
 

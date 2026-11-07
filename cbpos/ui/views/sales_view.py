@@ -1401,12 +1401,40 @@ class SalesView(QWidget):
         row = self.cart_table.currentRow()
         if row >= 0:
             item = self.cart_service.items[row]
-            dialog = QuantityDialog(item["product"], parent=self, initial_qty=item["qty"])
+            current_qty = item["qty"]
+            dialog = QuantityDialog(item["product"], parent=self, initial_qty=current_qty)
             if dialog.exec():
-                notice = self.cart_service.update_quantity(row, dialog.get_quantity())
+                new_qty = dialog.get_quantity()
+                approver = None
+                if new_qty < current_qty:
+                    from cbpos.core.constants.permissions import Permissions
+                    from cbpos.core.utils.permission_helper import check_permission_with_override
+
+                    approver = check_permission_with_override(Permissions.SALES_VOID, self)
+                    if not approver:
+                        self._focus_search()
+                        return
+
+                notice = self.cart_service.update_quantity(row, new_qty)
                 self.update_cart_display()
                 if notice:
                     self._show_status_message(notice)
+
+                if new_qty < current_qty:
+                    from cbpos.core.services.auth_service import AuthService
+                    from cbpos.core.services.cart_audit_service import CartAuditService
+
+                    current_user = AuthService.get_current_user()
+                    user_id = current_user.id if current_user else None
+                    approver_id = getattr(approver, "id", None)
+                    CartAuditService.record_line_reduction(
+                        product_id=item["product"].id,
+                        from_qty=current_qty,
+                        to_qty=new_qty,
+                        user_id=user_id,
+                        approver_id=approver_id,
+                        product_name=item["product"].name_en,
+                    )
         self._focus_search()
 
     def apply_line_discount(self):

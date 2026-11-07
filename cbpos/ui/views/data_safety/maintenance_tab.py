@@ -190,6 +190,13 @@ class MaintenanceTabWidget(QWidget):
             logger.warning("Could not load DB info: %s", e)
 
     def _run_vacuum(self) -> None:
+        from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+
+        user = check_permission_with_override(Permissions.DATA_SAFETY_MAINTENANCE, self)
+        if not user:
+            return
+
         self.btn_vacuum.setEnabled(False)
         self.lbl_maintenance_status.setText("")
         self._overlay.show_loading(_t("data_safety.maintenance_optimizing"))
@@ -224,6 +231,13 @@ class MaintenanceTabWidget(QWidget):
         )
 
     def _run_integrity_check(self) -> None:
+        from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+
+        user = check_permission_with_override(Permissions.DATA_SAFETY_MAINTENANCE, self)
+        if not user:
+            return
+
         self.btn_integrity.setEnabled(False)
         self.lbl_maintenance_status.setText("")
         self._overlay.show_loading(_t("data_safety.maintenance_checking"))

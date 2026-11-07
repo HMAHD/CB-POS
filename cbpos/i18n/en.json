@@ -2503,13 +2503,19 @@
       "admin.tools": "Use admin tools",
       "management.view": "Open the Management screen",
       "settings.view": "Open the Settings screen",
-      "loyalty.adjust_points": "Adjust customer loyalty points"
+      "loyalty.adjust_points": "Adjust customer loyalty points",
+      "pricing.manage": "Manage price lists",
+      "promotions.manage": "Manage promotions",
+      "suppliers.manage": "Manage suppliers"
     }
   },
   "roles": {
     "admin": "Admin",
     "manager": "Manager",
-    "cashier": "Cashier"
+    "cashier": "Cashier",
+    "cannot_edit_own_role": "You can't change the permissions of your own role.",
+    "cannot_edit_admin": "Only an Admin can edit Admin permissions.",
+    "cannot_grant_unheld": "You can only give permissions that you have yourself."
   },
   "audit": {
     "action": {
@@ -2532,6 +2538,7 @@
       "update_user": "User details changed",
       "tax_rate_change": "Tax settings changed",
       "price_override": "Price changed at checkout",
+      "line_qty_reduced": "Item quantity reduced in cart",
       "line_discount": "Item discount given",
       "price_list_create": "Price list added",
       "price_list_update": "Price list changed",
@@ -2804,7 +2811,10 @@
   "users": {
     "pin_in_use": "That PIN can't be used. Please choose a different PIN.",
     "pin_required_on_reactivate": "Enter a new PIN to turn this user back on.",
-    "last_admin": "This is the only active Admin. Make another user an Admin first, then you can change this one."
+    "last_admin": "This is the only active Admin. Make another user an Admin first, then you can change this one.",
+    "only_admin_can_grant_admin": "Only an Admin can give someone the Admin role.",
+    "only_admin_can_modify_admin": "Only an Admin can edit an Admin account.",
+    "cannot_change_own_role": "You can't change your own role. Ask another Admin."
   },
   "user": {
     "add_user": "Add User",

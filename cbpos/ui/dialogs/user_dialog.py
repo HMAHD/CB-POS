@@ -14,6 +14,8 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
+from cbpos.core.constants.permissions import ADMIN_ROLE_NAME
+from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.user_service import UserService
 from cbpos.core.utils.display_labels import display_role_name
 from cbpos.core.utils.error_messages import translate_error
@@ -53,10 +55,15 @@ class UserDialog(QDialog):
         layout.addWidget(self.txt_pin)
 
         # Role
+        current_user = AuthService.get_current_user()
+        actor_is_non_admin = bool(current_user and current_user.role and current_user.role.name != ADMIN_ROLE_NAME)
+
         layout.addWidget(QLabel(_t("user.role_label")))
         self.cmb_role = QComboBox()
         self.roles = UserService.get_all_roles()
         for role in self.roles:
+            if role.name == ADMIN_ROLE_NAME and actor_is_non_admin and not (self.user and self.user.role_id == role.id):
+                continue
             self.cmb_role.addItem(display_role_name(role), role.id)
 
         if self.user and self.user.role:
@@ -72,13 +79,6 @@ class UserDialog(QDialog):
             self.chk_active.setChecked(self.user.is_active)
         layout.addWidget(self.chk_active)
 
-        if self.user and UserService.is_last_active_admin(self.user.id):
-            last_admin_msg = _t("users.last_admin")
-            self.cmb_role.setEnabled(False)
-            self.cmb_role.setToolTip(last_admin_msg)
-            self.chk_active.setEnabled(False)
-            self.chk_active.setToolTip(last_admin_msg)
-
         # Buttons
         btn_layout = QHBoxLayout()
         btn_save = QPushButton(_t("common.save"))
@@ -93,6 +93,29 @@ class UserDialog(QDialog):
         btn_layout.addWidget(btn_save)
         btn_layout.addWidget(btn_cancel)
         layout.addLayout(btn_layout)
+
+        # Privilege & Safety restrictions
+        if self.user and UserService.is_last_active_admin(self.user.id):
+            last_admin_msg = _t("users.last_admin")
+            self.cmb_role.setEnabled(False)
+            self.cmb_role.setToolTip(last_admin_msg)
+            self.chk_active.setEnabled(False)
+            self.chk_active.setToolTip(last_admin_msg)
+        elif self.user and self.user.role and self.user.role.name == ADMIN_ROLE_NAME and actor_is_non_admin:
+            only_admin_msg = _t("users.only_admin_can_modify_admin")
+            self.txt_username.setEnabled(False)
+            self.txt_username.setToolTip(only_admin_msg)
+            self.txt_pin.setEnabled(False)
+            self.txt_pin.setToolTip(only_admin_msg)
+            self.cmb_role.setEnabled(False)
+            self.cmb_role.setToolTip(only_admin_msg)
+            self.chk_active.setEnabled(False)
+            self.chk_active.setToolTip(only_admin_msg)
+            btn_save.setEnabled(False)
+            btn_save.setToolTip(only_admin_msg)
+        elif self.user and current_user and self.user.id == current_user.id:
+            self.cmb_role.setEnabled(False)
+            self.cmb_role.setToolTip(_t("users.cannot_change_own_role"))
 
     def save(self):
         """Validate the form and create or update the user via UserService, closing the dialog on success."""
@@ -113,11 +136,26 @@ class UserDialog(QDialog):
             QMessageBox.warning(self, _t("common.error"), _t("user.pin_invalid"))
             return
 
+        current_user = AuthService.get_current_user()
+        effective_actor_id = current_user.id if current_user else None
+
         try:
             if self.user:
-                UserService.update_user(self.user.id, username, pin if pin else None, role_id, is_active)
+                UserService.update_user(
+                    self.user.id,
+                    username,
+                    pin if pin else None,
+                    role_id,
+                    is_active,
+                    acting_user_id=effective_actor_id,
+                )
             else:
-                UserService.create_user(username, pin, role_id)
+                UserService.create_user(
+                    username,
+                    pin,
+                    role_id,
+                    acting_user_id=effective_actor_id,
+                )
             self.accept()
         except ValueError as e:
             err_code = str(e)
@@ -127,10 +165,21 @@ class UserDialog(QDialog):
                 msg = _t("users.pin_required_on_reactivate")
             elif err_code == "last_admin":
                 msg = _t("users.last_admin")
+            elif err_code == "only_admin_can_grant_admin":
+                msg = _t("users.only_admin_can_grant_admin")
+            elif err_code == "only_admin_can_modify_admin":
+                msg = _t("users.only_admin_can_modify_admin")
+            elif err_code == "cannot_change_own_role":
+                msg = _t("users.cannot_change_own_role")
             else:
                 msg = translate_error(err_code)
             QMessageBox.warning(self, _t("common.error"), msg)
-            if err_code != "last_admin":
+            if err_code not in (
+                "last_admin",
+                "only_admin_can_grant_admin",
+                "only_admin_can_modify_admin",
+                "cannot_change_own_role",
+            ):
                 self.txt_pin.setFocus()
                 self.txt_pin.selectAll()
         except Exception as e:

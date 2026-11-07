@@ -1,13 +1,30 @@
 import logging
 
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 
+from cbpos.core.constants.permissions import Permissions
 from cbpos.core.database import Database
-from cbpos.core.models import Supplier
+from cbpos.core.models import Role, Supplier, User
+from cbpos.core.services.auth_service import AuthService
+from cbpos.core.services.permission_service import PermissionService
 from cbpos.core.utils.formatters import escape_like
 from cbpos.core.utils.terminal_guard import require_catalog_writable
 
 logger = logging.getLogger(__name__)
+
+
+def _require_suppliers_manage(session, acting_user_id: int | None) -> None:
+    effective_actor_id = acting_user_id
+    if effective_actor_id is None:
+        curr = AuthService.get_current_user()
+        if curr:
+            effective_actor_id = curr.id
+
+    if effective_actor_id is not None:
+        user = session.get(User, effective_actor_id, options=[joinedload(User.role).joinedload(Role.permissions)])
+        if not user or not PermissionService.user_has_permission(user, Permissions.SUPPLIERS_MANAGE):
+            raise PermissionError("Permission denied: suppliers.manage required")
 
 
 class SupplierService:
@@ -25,6 +42,7 @@ class SupplierService:
         tax_number: str | None = None,
         contact_details: str | None = None,
         payment_terms: int = 0,
+        acting_user_id: int | None = None,
     ) -> Supplier:
         """
         Create a new supplier.
@@ -42,6 +60,7 @@ class SupplierService:
 
         db = Database()
         with db.get_session() as session:
+            _require_suppliers_manage(session, acting_user_id)
             if session.query(Supplier).filter(Supplier.company_name == company_name).first():
                 raise ValueError(f"A supplier named '{company_name}' already exists.")
             if phone and session.query(Supplier).filter(Supplier.phone == phone).first():
@@ -74,6 +93,7 @@ class SupplierService:
         contact_details: str | None = None,
         payment_terms: int | None = None,
         is_active: bool | None = None,
+        acting_user_id: int | None = None,
     ) -> Supplier | None:
         """
         Update an existing supplier.
@@ -85,6 +105,7 @@ class SupplierService:
         require_catalog_writable()
         db = Database()
         with db.get_session() as session:
+            _require_suppliers_manage(session, acting_user_id)
             supplier = session.get(Supplier, supplier_id)
             if not supplier:
                 return None

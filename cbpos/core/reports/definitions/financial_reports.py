@@ -28,6 +28,13 @@ class ProfitLossReport(BaseReport):
         """Report category."""
         return CATEGORY_FINANCIAL
 
+    @property
+    def required_permission(self) -> str:
+        """Required permission code."""
+        from cbpos.core.constants.permissions import Permissions
+
+        return Permissions.REPORTS_VIEW_PROFIT
+
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         """Date range filter only."""
         return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]

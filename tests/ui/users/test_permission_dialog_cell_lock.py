@@ -173,3 +173,32 @@ class TestAdminCriticalCellsAreLocked:
         _click_cell_center(dialog, item, col)
 
         assert item.checkState(col) == Qt.CheckState.Checked
+
+
+class TestNonAdminActorPermissionDialog:
+    def test_non_admin_cannot_edit_admin_or_own_role(self, open_dialog, matrix, monkeypatch):
+        from cbpos.ui.dialogs.permission_dialog import LOCKED_CELL_ROLE
+
+        manager_role = SimpleNamespace(
+            id=matrix["manager"],
+            name="Manager",
+            permissions=[
+                SimpleNamespace(id=matrix["perms"][Permissions.ADMIN_MANAGE_ROLES], code=Permissions.ADMIN_MANAGE_ROLES)
+            ],
+        )
+        current_user = SimpleNamespace(id=10, username="manager_user", role=manager_role, role_id=matrix["manager"])
+        monkeypatch.setattr(AuthService, "get_current_user", lambda: current_user)
+
+        dialog = open_dialog()
+
+        # Admin column is locked
+        item_admin, col_admin = _cell(dialog, matrix["perms"][EXTRA_CODE], matrix["admin"])
+        assert item_admin.data(col_admin, LOCKED_CELL_ROLE) is True
+
+        # Manager column (actor's own role) is locked
+        item_mgr, col_mgr = _cell(dialog, matrix["perms"][Permissions.ADMIN_MANAGE_ROLES], matrix["manager"])
+        assert item_mgr.data(col_mgr, LOCKED_CELL_ROLE) is True
+
+        # Unheld permission is locked
+        item_unheld, col_mgr2 = _cell(dialog, matrix["perms"][EXTRA_CODE], matrix["manager"])
+        assert item_unheld.data(col_mgr2, LOCKED_CELL_ROLE) is True

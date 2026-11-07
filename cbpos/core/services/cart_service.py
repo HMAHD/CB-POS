@@ -82,7 +82,7 @@ class CartService:
     def update_quantity(self, index: int, qty: Decimal) -> str | None:
         """Change a line's quantity, keeping any existing discount applied.
 
-        TODO(#893): Quantity reduction should be permission-gated and audited.
+        Quantity reduction is permission-gated (SALES_VOID) and audited in SalesView (#893).
         """
         if not (0 <= index < len(self.items)):
             return None

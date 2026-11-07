@@ -10,9 +10,14 @@ import sqlite3
 from datetime import datetime
 
 from sqlalchemy import func, select, table, text
+from sqlalchemy.orm import joinedload
 
 from cbpos.config import Config
+from cbpos.core.constants.permissions import Permissions
 from cbpos.core.database import Database
+from cbpos.core.models import Role, User
+from cbpos.core.services.auth_service import AuthService
+from cbpos.core.services.permission_service import PermissionService
 from cbpos.core.utils.formatters import format_bytes
 
 logger = logging.getLogger(__name__)
@@ -38,7 +43,7 @@ class MaintenanceService:
             raise MaintenanceError("network_mode", "Maintenance operations are not supported in network database mode")
 
     @staticmethod
-    def vacuum_database() -> dict[str, str]:
+    def vacuum_database(acting_user_id: int | None = None) -> dict[str, str]:
         """
         Run VACUUM on the SQLite database to reclaim unused space.
 
@@ -48,6 +53,21 @@ class MaintenanceService:
             Dict with size_before, size_after, saved (human-readable).
         """
         MaintenanceService._require_standalone()
+
+        effective_actor_id = acting_user_id
+        if effective_actor_id is None:
+            curr = AuthService.get_current_user()
+            if curr:
+                effective_actor_id = curr.id
+
+        if effective_actor_id is not None:
+            db_auth = Database()
+            with db_auth.get_session() as auth_session:
+                user = auth_session.get(
+                    User, effective_actor_id, options=[joinedload(User.role).joinedload(Role.permissions)]
+                )
+                if not user or not PermissionService.user_has_permission(user, Permissions.DATA_SAFETY_MAINTENANCE):
+                    raise PermissionError("Permission denied: data_safety.maintenance required")
 
         db_path = Config.DATA_DIR / "cbpos.db"
         size_before = db_path.stat().st_size if db_path.exists() else 0
@@ -178,7 +198,7 @@ class MaintenanceService:
         }
 
     @staticmethod
-    def integrity_check() -> tuple[bool, str]:
+    def integrity_check(acting_user_id: int | None = None) -> tuple[bool, str]:
         """
         Run PRAGMA integrity_check on the database.
 
@@ -186,6 +206,24 @@ class MaintenanceService:
             Tuple of (is_ok: bool, message: str).
         """
         MaintenanceService._require_standalone()
+
+        effective_actor_id = acting_user_id
+        if effective_actor_id is None:
+            curr = AuthService.get_current_user()
+            if curr:
+                effective_actor_id = curr.id
+
+        if effective_actor_id is not None:
+            db_auth = Database()
+            with db_auth.get_session() as auth_session:
+                user = auth_session.get(
+                    User, effective_actor_id, options=[joinedload(User.role).joinedload(Role.permissions)]
+                )
+                allowed = PermissionService.user_has_any_permission(
+                    user, [Permissions.DATA_SAFETY_MAINTENANCE, Permissions.ADMIN_TOOLS]
+                )
+                if not user or not allowed:
+                    raise PermissionError("Permission denied: data_safety.maintenance or admin.tools required")
 
         db = Database()
         try:

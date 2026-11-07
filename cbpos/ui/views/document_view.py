@@ -49,7 +49,6 @@ from cbpos.i18n import _t, register_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.ui.components.activation import Activatable
 from cbpos.ui.dialogs.void_reason_dialog import VoidReasonDialog
-from cbpos.ui.refund_messages import refund_confirm_html, refund_done_text
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS, WARNING, pill_colors
 from cbpos.ui.widgets.status_pill_delegate import StatusPillDelegate, set_status_pill
@@ -964,65 +963,33 @@ class DocumentBrowserView(QWidget, Activatable):
         QMessageBox.critical(self, _t("common.error"), _t("document_browser.reprint_failed"))
 
     def process_refund(self) -> None:
-        """Process a refund for the selected sale."""
+        """Process a refund for the selected sale by opening the shared RefundDialog."""
         if not self.current_doc or self.current_doc.get("type") != "sale":
             return
 
-        # What is handed back vs. taken off credit (#715)
-        doc_number = self.current_doc["document_number"]
-        breakdown = TransactionService.refund_breakdown(self.current_doc["id"])
-        if breakdown is None:
+        from cbpos.core.services.sale_query_service import SaleQueryService
+        from cbpos.ui.dialogs.refund_dialog import RefundDialog
+
+        sale = SaleQueryService.get_sale_details(self.current_doc["id"])
+        if not sale:
             QMessageBox.critical(self, _t("common.error"), _t("document_browser.refund_failed"))
             return
-        reply = QMessageBox.question(
-            self,
-            _t("document_browser.confirm_refund_title"),
-            refund_confirm_html(
-                doc_number,
-                breakdown,
-                question=_t("document_browser.refund_question"),
-                receipt_label=_t("document_browser.detail_receipt"),
-                warning=_t("document_browser.refund_warning"),
-            ),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
 
-        if reply == QMessageBox.StandardButton.Yes:
-            try:
-                current_user = AuthService.get_current_user()
-                if not current_user:
-                    QMessageBox.warning(self, _t("common.error"), _t("document_browser.no_user_msg"))
-                    return
-
-                success = TransactionService.process_refund(self.current_doc["id"], "Customer Return", current_user.id)
-                if success:
-                    QMessageBox.information(
-                        self,
-                        _t("common.success"),
-                        refund_done_text(doc_number, breakdown),
-                    )
-                    self.load_documents()
-                else:
-                    QMessageBox.critical(
-                        self,
-                        _t("common.error"),
-                        _t("document_browser.refund_failed"),
-                    )
-            except ValueError as e:
-                logger.warning("Refund rejected: %s", e)
-                QMessageBox.warning(self, _t("common.warning"), translate_error(str(e)))
-            except Exception as e:
-                logger.exception("Refund failed: %s", e)
-                QMessageBox.critical(
-                    self,
-                    _t("common.error"),
-                    _t("document_browser.refund_error", error=translate_error(str(e))),
-                )
+        dlg = RefundDialog(self)
+        dlg.load_sale(sale)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            self.load_documents()
 
     def convert_proforma(self) -> None:
         """Convert selected proforma to a sale via SalesView."""
         if not self.current_doc or self.current_doc.get("type") != "proforma":
+            return
+
+        from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+
+        user = check_permission_with_override(Permissions.DOCUMENTS_CONVERT_PROFORMA, self)
+        if not user:
             return
 
         reply = QMessageBox.question(
@@ -1163,7 +1130,13 @@ class DocumentBrowserView(QWidget, Activatable):
 
     def open_proforma_dialog(self) -> None:
         """Open the dialog to create a new proforma/quotation."""
+        from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
         from cbpos.ui.dialogs.proforma_dialog import ProformaDialog
+
+        user = check_permission_with_override(Permissions.DOCUMENTS_CREATE_PROFORMA, self)
+        if not user:
+            return
 
         dialog = ProformaDialog(self)
         if dialog.exec():

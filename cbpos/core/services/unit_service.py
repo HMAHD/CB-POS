@@ -5,12 +5,29 @@ Service for managing units of measurement.
 import logging
 
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 
+from cbpos.core.constants.permissions import Permissions
 from cbpos.core.database import Database
-from cbpos.core.models import Unit
+from cbpos.core.models import Role, Unit, User
+from cbpos.core.services.auth_service import AuthService
+from cbpos.core.services.permission_service import PermissionService
 from cbpos.core.utils.terminal_guard import require_catalog_writable
 
 logger = logging.getLogger(__name__)
+
+
+def _require_inventory_edit(session, acting_user_id: int | None) -> None:
+    effective_actor_id = acting_user_id
+    if effective_actor_id is None:
+        curr = AuthService.get_current_user()
+        if curr:
+            effective_actor_id = curr.id
+
+    if effective_actor_id is not None:
+        user = session.get(User, effective_actor_id, options=[joinedload(User.role).joinedload(Role.permissions)])
+        if not user or not PermissionService.user_has_permission(user, Permissions.INVENTORY_EDIT):
+            raise PermissionError("Permission denied: inventory.edit required")
 
 
 class UnitService:
@@ -40,11 +57,12 @@ class UnitService:
             return unit
 
     @staticmethod
-    def create(name: str, abbreviation: str, decimal_places: int = 0) -> Unit:
+    def create(name: str, abbreviation: str, decimal_places: int = 0, acting_user_id: int | None = None) -> Unit:
         """Create a new unit."""
         require_catalog_writable()
         db = Database()
         with db.get_session() as session:
+            _require_inventory_edit(session, acting_user_id)
             existing = session.query(Unit).filter(Unit.name == name).first()
             if existing:
                 raise ValueError(f"Unit '{name}' already exists.")
@@ -60,11 +78,18 @@ class UnitService:
             return unit
 
     @staticmethod
-    def update(unit_id: int, name: str, abbreviation: str, decimal_places: int) -> Unit:
+    def update(
+        unit_id: int,
+        name: str,
+        abbreviation: str,
+        decimal_places: int,
+        acting_user_id: int | None = None,
+    ) -> Unit:
         """Update an existing unit."""
         require_catalog_writable()
         db = Database()
         with db.get_session() as session:
+            _require_inventory_edit(session, acting_user_id)
             unit = session.get(Unit, unit_id)
             if not unit:
                 raise ValueError(f"Unit ID {unit_id} not found.")
@@ -82,11 +107,12 @@ class UnitService:
             return unit
 
     @staticmethod
-    def delete(unit_id: int) -> None:
+    def delete(unit_id: int, acting_user_id: int | None = None) -> None:
         """Deactivate a unit (soft delete). Prevents deletion if products use it."""
         require_catalog_writable()
         db = Database()
         with db.get_session() as session:
+            _require_inventory_edit(session, acting_user_id)
             unit = session.get(Unit, unit_id)
             if not unit:
                 raise ValueError(f"Unit ID {unit_id} not found.")

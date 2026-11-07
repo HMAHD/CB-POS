@@ -180,6 +180,7 @@ def viewer(db_session, monkeypatch):
     monkeypatch.setattr(rv, "QMessageBox", MagicMock())
     monkeypatch.setattr("PyQt6.QtPrintSupport.QPrintDialog", _AcceptingPrintDialog)
     monkeypatch.setattr("PyQt6.QtWidgets.QInputDialog.getText", lambda *a, **k: (" owner@shop.lk ", True))
+    monkeypatch.setattr("cbpos.core.utils.permission_helper.check_permission_with_override", lambda *a, **k: True)
     view = rv.ReportViewer()
     view.current_report = SimpleNamespace(name="Stock Valuation")
     view._full_df = _DF

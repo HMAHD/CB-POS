@@ -50,7 +50,7 @@ def inv_admin(db_session):
         "inventory.stock_adjust",
         "inventory.manage",
         "purchase.create_grn",
-        "stock_count.manage",
+        "stock_take.create",
     ]
     perms = []
     for code in perm_codes:

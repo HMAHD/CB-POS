@@ -75,6 +75,16 @@ class BaseReport(ABC):
         Not a display name: use :func:`category_label` to show it.
         """
 
+    @property
+    def required_permission(self) -> str:
+        """Required permission code to view or run this report.
+
+        Defaults to Permissions.REPORTS_VIEW_SALES.
+        """
+        from cbpos.core.constants.permissions import Permissions
+
+        return Permissions.REPORTS_VIEW_SALES
+
     @abstractmethod
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         """Returns a list of filter definitions required for this report.

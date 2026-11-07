@@ -1,6 +1,8 @@
 from collections.abc import Iterable
 from datetime import datetime
 
+from sqlalchemy import select
+
 from cbpos.core.constants.permissions import (
     ADMIN_ROLE_NAME,
     CRITICAL_ADMIN_PERMISSIONS,
@@ -83,23 +85,57 @@ class PermissionService:
             return permissions
 
     @staticmethod
-    def update_role_permissions(role_id: int, permission_ids: list[int]):
-        """
-        Update permissions for a role.
+    def update_role_permissions(
+        role_id: int,
+        permission_ids: list[int],
+        acting_user_id: int | None = None,
+    ) -> bool:
+        """Update permissions for a role.
 
-        SAFETY: Prevents revoking critical permissions from Admin.
+        SAFETY:
+        - Prevents revoking critical permissions from Admin.
+        - Non-Admin cannot edit the Admin role.
+        - Non-Admin cannot edit their own role.
+        - Non-Admin cannot grant permissions they do not possess themselves.
         """
         from cbpos.core.utils.terminal_guard import require_catalog_writable
 
         require_catalog_writable()
         from cbpos.core.database import Database
-        from cbpos.core.models import AuditLog, Permission, Role
+        from cbpos.core.models import AuditLog, Permission, Role, User
 
         db = Database()
         with db.get_session() as session:
             role = session.get(Role, role_id)
             if not role:
                 return False
+
+            # Resolve acting user
+            effective_actor_id = acting_user_id
+            if effective_actor_id is None:
+                curr = AuthService.get_current_user()
+                if curr:
+                    effective_actor_id = curr.id
+
+            admin_role = session.execute(select(Role).where(Role.name == ADMIN_ROLE_NAME)).scalar_one_or_none()
+            actor_is_admin = False
+            actor = None
+            if effective_actor_id is not None:
+                actor = session.get(User, effective_actor_id)
+                if actor and admin_role and actor.role_id == admin_role.id:
+                    actor_is_admin = True
+
+            # Non-Admin restrictions
+            if effective_actor_id is not None and not actor_is_admin:
+                if role.name == ADMIN_ROLE_NAME:
+                    raise ValueError("only_admin_can_modify_admin_role")
+                if actor and role.id == actor.role_id:
+                    raise ValueError("cannot_edit_own_role")
+
+                actor_perm_ids = {p.id for p in actor.role.permissions} if (actor and actor.role) else set()
+                for pid in permission_ids:
+                    if pid not in actor_perm_ids:
+                        raise ValueError("cannot_grant_unheld_permission")
 
             # Fetch new permissions
             new_perms = session.query(Permission).filter(Permission.id.in_(permission_ids)).all()
@@ -121,10 +157,10 @@ class PermissionService:
             role.permissions = new_perms
             role.last_modified = datetime.now()
 
-            current_user = AuthService.get_current_user()
-            if current_user is not None:
+            logger_id = effective_actor_id
+            if logger_id is not None:
                 log = AuditLog(
-                    user_id=current_user.id,
+                    user_id=logger_id,
                     action="UPDATE_PERMISSIONS",
                     event_type="SECURITY",
                     details=f"Updated permissions for role '{role.name}' ({len(new_perms)} permission(s) granted).",

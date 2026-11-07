@@ -30,6 +30,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from cbpos.core.constants.permissions import Permissions
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.purchase_order_service import PurchaseOrderService
@@ -44,6 +45,7 @@ from cbpos.core.utils.formatters import (
     format_quantity,
     format_relative_time,
 )
+from cbpos.core.utils.permission_helper import check_permission_with_override
 from cbpos.core.utils.terminal_guard import catalog_is_read_only
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.components.activation import Activatable
@@ -759,11 +761,14 @@ class PurchaseView(QWidget, Activatable):
         """Open the Add Supplier dialog and persist the new supplier on accept."""
         if catalog_is_read_only():
             return
+        approver = check_permission_with_override(Permissions.SUPPLIERS_MANAGE, self)
+        if not approver:
+            return
         dialog = SupplierDialog(self)
         if dialog.exec():
             data = dialog.get_data()
             try:
-                SupplierService.create_supplier(**data)
+                SupplierService.create_supplier(**data, acting_user_id=approver.id)
             except ValueError as e:
                 logger.warning("Failed to create supplier: %s", e)
                 QMessageBox.warning(self, _t("common.validation_error"), translate_error(str(e)))
@@ -781,6 +786,9 @@ class PurchaseView(QWidget, Activatable):
         """Open the Edit Supplier dialog for the selected row and persist changes on accept (#523)."""
         if catalog_is_read_only():
             return
+        approver = check_permission_with_override(Permissions.SUPPLIERS_MANAGE, self)
+        if not approver:
+            return
         supplier = self._selected_supplier()
         if not supplier:
             return
@@ -789,7 +797,7 @@ class PurchaseView(QWidget, Activatable):
         if dialog.exec():
             data = dialog.get_data()
             try:
-                SupplierService.update_supplier(supplier.id, **data)
+                SupplierService.update_supplier(supplier.id, **data, acting_user_id=approver.id)
             except ValueError as e:
                 logger.warning("Failed to update supplier %s: %s", supplier.id, e)
                 QMessageBox.warning(self, _t("common.validation_error"), translate_error(str(e)))
@@ -805,6 +813,9 @@ class PurchaseView(QWidget, Activatable):
         """
         if catalog_is_read_only():
             return
+        approver = check_permission_with_override(Permissions.SUPPLIERS_MANAGE, self)
+        if not approver:
+            return
         supplier = self._selected_supplier()
         if not supplier:
             return
@@ -817,7 +828,7 @@ class PurchaseView(QWidget, Activatable):
             QMessageBox.StandardButton.No,
         )
         if reply == QMessageBox.StandardButton.Yes:
-            SupplierService.update_supplier(supplier.id, is_active=False)
+            SupplierService.update_supplier(supplier.id, is_active=False, acting_user_id=approver.id)
             self.refresh_suppliers()
 
     def load_products_for_completer(self):
@@ -1082,6 +1093,10 @@ class PurchaseView(QWidget, Activatable):
                         return
 
             # 3. Receive Goods (atomic single transaction, #919)
+            approver = check_permission_with_override(Permissions.PURCHASE_CREATE_GRN, self)
+            if not approver:
+                return
+
             req = GrnRequest(
                 supplier_id=supplier_id,
                 date_received=date_received,
@@ -1090,6 +1105,7 @@ class PurchaseView(QWidget, Activatable):
                 lines=grn_lines,
                 user_id=self.user.id,
                 purchase_order_id=self.current_purchase_order_id,
+                approved_by=approver.id,
             )
             purchase = PurchaseService.receive_goods(req)
 
@@ -1607,9 +1623,6 @@ class PurchaseView(QWidget, Activatable):
 
     def make_payment(self) -> None:
         """Open supplier payment dialog."""
-        from cbpos.core.constants.permissions import Permissions
-        from cbpos.core.utils.permission_helper import check_permission_with_override
-
         if not check_permission_with_override(Permissions.PURCHASE_MAKE_PAYMENT, self):
             return
 
@@ -1641,9 +1654,6 @@ class PurchaseView(QWidget, Activatable):
 
     def adjust_payable(self) -> None:
         """Adjust supplier payable balance."""
-        from cbpos.core.constants.permissions import Permissions
-        from cbpos.core.utils.permission_helper import check_permission_with_override
-
         if not check_permission_with_override(Permissions.PURCHASE_ADJUST_PAYABLE, self):
             return
 

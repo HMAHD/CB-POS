@@ -164,7 +164,7 @@ class UserService:
             return []
 
     @staticmethod
-    def create_user(username: str, pin: str, role_id: int) -> bool:
+    def create_user(username: str, pin: str, role_id: int, acting_user_id: int | None = None) -> bool:
         """Create a new user."""
         require_catalog_writable()
         try:
@@ -176,6 +176,23 @@ class UserService:
                 if AuthService.is_pin_in_use(pin):
                     raise ValueError("pin_in_use")
 
+                # Resolve acting user
+                effective_actor_id = acting_user_id
+                if effective_actor_id is None:
+                    curr = AuthService.get_current_user()
+                    if curr:
+                        effective_actor_id = curr.id
+
+                admin_role = session.execute(select(Role).where(Role.name == ADMIN_ROLE_NAME)).scalar_one_or_none()
+                if admin_role and role_id == admin_role.id:
+                    actor_is_admin = False
+                    if effective_actor_id is not None:
+                        actor = session.get(User, effective_actor_id)
+                        if actor and actor.role_id == admin_role.id:
+                            actor_is_admin = True
+                    if not actor_is_admin:
+                        raise ValueError("only_admin_can_grant_admin")
+
                 pin_hash = AuthService.hash_pin(pin)
 
                 user = User(username=username, pin_hash=pin_hash, role_id=role_id, is_active=True)
@@ -183,8 +200,7 @@ class UserService:
                 session.flush()
 
                 # Log
-                current_user = AuthService.get_current_user()
-                logger_id = current_user.id if current_user else user.id  # Fallback
+                logger_id = effective_actor_id or user.id
 
                 log = AuditLog(
                     user_id=logger_id,
@@ -228,7 +244,14 @@ class UserService:
             return False
 
     @staticmethod
-    def update_user(user_id: int, username: str, pin: str | None, role_id: int, is_active: bool) -> bool:
+    def update_user(
+        user_id: int,
+        username: str,
+        pin: str | None,
+        role_id: int,
+        is_active: bool,
+        acting_user_id: int | None = None,
+    ) -> bool:
         """Update an existing user."""
         require_catalog_writable()
         try:
@@ -237,8 +260,45 @@ class UserService:
                 if not user:
                     return False
 
-                # Guard against demoting or deactivating the last active Admin
+                # Resolve acting user
+                effective_actor_id = acting_user_id
+                if effective_actor_id is None:
+                    curr = AuthService.get_current_user()
+                    if curr:
+                        effective_actor_id = curr.id
+
                 admin_role = session.execute(select(Role).where(Role.name == ADMIN_ROLE_NAME)).scalar_one_or_none()
+                actor_is_admin = False
+                if effective_actor_id is not None:
+                    actor = session.get(User, effective_actor_id)
+                    if actor and admin_role and actor.role_id == admin_role.id:
+                        actor_is_admin = True
+
+                # 1. Cannot change own role
+                if effective_actor_id is not None and user_id == effective_actor_id:
+                    if user.role_id != role_id:
+                        raise ValueError("cannot_change_own_role")
+
+                # 2. Cannot modify an existing Admin user if actor is not Admin
+                if (
+                    effective_actor_id is not None
+                    and admin_role
+                    and user.role_id == admin_role.id
+                    and not actor_is_admin
+                ):
+                    raise ValueError("only_admin_can_modify_admin")
+
+                # 3. Cannot grant Admin role if actor is not Admin
+                if (
+                    effective_actor_id is not None
+                    and admin_role
+                    and role_id == admin_role.id
+                    and user.role_id != admin_role.id
+                    and not actor_is_admin
+                ):
+                    raise ValueError("only_admin_can_grant_admin")
+
+                # Guard against demoting or deactivating the last active Admin
                 if admin_role and user.is_active and user.role_id == admin_role.id:
                     leaving_admin = (not is_active) or (role_id != admin_role.id)
                     if leaving_admin:
@@ -269,8 +329,7 @@ class UserService:
                     user.pin_hash = AuthService.hash_pin(pin)
 
                 # Log
-                current_user = AuthService.get_current_user()
-                logger_id = current_user.id if current_user else user_id
+                logger_id = effective_actor_id or user_id
 
                 log = AuditLog(
                     user_id=logger_id,

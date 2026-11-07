@@ -10,10 +10,14 @@ from pathlib import Path
 from typing import Any
 
 from sqlalchemy import func, select
+from sqlalchemy.orm import joinedload
 
+from cbpos.core.constants.permissions import Permissions
 from cbpos.core.database import Database
-from cbpos.core.models import Category, Product, Unit
+from cbpos.core.models import Category, Product, Role, Unit, User
+from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.inventory_service import InventoryService
+from cbpos.core.services.permission_service import PermissionService
 from cbpos.core.utils.terminal_guard import require_catalog_writable
 from cbpos.core.utils.validators import ProductValidator
 
@@ -183,26 +187,47 @@ class ImportService:
         self,
         file_path: str,
         mapping: dict[str, str] | None = None,
+        acting_user_id: int | None = None,
     ) -> dict[str, Any]:
         """Import products from a CSV file without progress reporting."""
-        return self._import_csv(file_path, progress_callback=None, mapping=mapping)
+        return self._import_csv(file_path, progress_callback=None, mapping=mapping, acting_user_id=acting_user_id)
 
     def import_products_from_csv_with_progress(
         self,
         file_path: str,
         progress_callback: Callable[[int], None] | None = None,
         mapping: dict[str, str] | None = None,
+        acting_user_id: int | None = None,
     ) -> dict[str, Any]:
         """Import products with a progress callback called after each row."""
-        return self._import_csv(file_path, progress_callback=progress_callback, mapping=mapping)
+        return self._import_csv(
+            file_path, progress_callback=progress_callback, mapping=mapping, acting_user_id=acting_user_id
+        )
 
     def _import_csv(
         self,
         file_path: str,
         progress_callback: Callable[[int], None] | None = None,
         mapping: dict[str, str] | None = None,
+        acting_user_id: int | None = None,
     ) -> dict[str, Any]:
         require_catalog_writable()
+
+        effective_user_id = acting_user_id
+        if effective_user_id is None:
+            curr = AuthService.get_current_user()
+            if curr:
+                effective_user_id = curr.id
+
+        if effective_user_id is not None:
+            db_auth = Database()
+            with db_auth.get_session() as auth_session:
+                user = auth_session.get(
+                    User, effective_user_id, options=[joinedload(User.role).joinedload(Role.permissions)]
+                )
+                if not user or not PermissionService.user_has_permission(user, Permissions.INVENTORY_EDIT):
+                    raise PermissionError("Permission denied: inventory.edit required")
+
         results: dict[str, Any] = {"success": 0, "failed": 0, "skipped": 0, "errors": []}
 
         validated_path = self._validate_file_path(file_path)

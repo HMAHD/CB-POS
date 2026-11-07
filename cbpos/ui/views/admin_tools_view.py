@@ -292,6 +292,13 @@ class AdminToolsView(QWidget):
         Data Safety screen's Maintenance section, rather than
         duplicating it -- only the call site here was missing (#344).
         """
+        from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+
+        user = check_permission_with_override(Permissions.ADMIN_TOOLS, self)
+        if not user:
+            return
+
         self.btn_check_integrity.setEnabled(False)
         self.btn_check_integrity.setText(_t("admin_tools.db_integrity_checking"))
         self.lbl_integrity_status.setText("")

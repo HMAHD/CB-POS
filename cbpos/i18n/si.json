@@ -2468,13 +2468,19 @@
       "admin.tools": "පරිපාලන මෙවලම් පාවිච්චි කිරීම",
       "management.view": "කළමනාකරණ තිරය ඇරීම",
       "settings.view": "සැකසුම් තිරය ඇරීම",
-      "loyalty.adjust_points": "පාරිභෝගික ලොයල්ටි ලකුණු වෙනස් කිරීම"
+      "loyalty.adjust_points": "පාරිභෝගික ලොයල්ටි ලකුණු වෙනස් කිරීම",
+      "pricing.manage": "මිල ලැයිස්තු කළමනාකරණය",
+      "promotions.manage": "ප්‍රවර්ධන කළමනාකරණය",
+      "suppliers.manage": "සැපයුම්කරුවන් කළමනාකරණය"
     }
   },
   "roles": {
     "admin": "පරිපාලක",
     "manager": "කළමනාකරු",
-    "cashier": "කැෂියර්"
+    "cashier": "කැෂියර්",
+    "cannot_edit_own_role": "ඔබේ තනතුරේ අවසර වෙනස් කළ නොහැක.",
+    "cannot_edit_admin": "Admin අවසර වෙනස් කළ හැක්කේ Admin කෙනෙකුට පමණි.",
+    "cannot_grant_unheld": "ඔබට දිය හැක්කේ ඔබට ඇති අවසර පමණි."
   },
   "audit": {
     "action": {
@@ -2497,6 +2503,7 @@
       "update_user": "පරිශීලකයාගේ විස්තර වෙනස් කළා",
       "tax_rate_change": "බදු සැකසුම් වෙනස් කළා",
       "price_override": "බිල් කරනකොට මිල වෙනස් කළා",
+      "line_qty_reduced": "කරත්තයේ භාණ්ඩ ප්‍රමාණය අඩු කරන ලදී",
       "line_discount": "අයිතමයකට වට්ටමක් දුන්නා",
       "price_list_create": "මිල ලැයිස්තුවක් එකතු කළා",
       "price_list_update": "මිල ලැයිස්තුව වෙනස් කළා",
@@ -2804,7 +2811,10 @@
   "users": {
     "pin_in_use": "ඒ PIN එක පාවිච්චි කරන්න බෑ. වෙන PIN එකක් තෝරන්න.",
     "pin_required_on_reactivate": "මේ පරිශීලකයා ආයෙත් සක්‍රිය කරන්න අලුත් PIN එකක් දාන්න.",
-    "last_admin": "මේ ඉන්නේ එකම ඇක්ටිව් Admin. වෙන කෙනෙක්ව Admin කරලා ඊටපස්සේ මේක වෙනස් කරන්න."
+    "last_admin": "මේ ඉන්නේ එකම ඇක්ටිව් Admin. වෙන කෙනෙක්ව Admin කරලා ඊටපස්සේ මේක වෙනස් කරන්න.",
+    "only_admin_can_grant_admin": "කෙනෙකුට Admin තනතුර දිය හැක්කේ Admin කෙනෙකුට පමණි.",
+    "only_admin_can_modify_admin": "Admin ගිණුමක් වෙනස් කළ හැක්කේ Admin කෙනෙකුට පමණි.",
+    "cannot_change_own_role": "ඔබේ තනතුර ඔබටම වෙනස් කළ නොහැක. වෙනත් Admin කෙනෙකුගෙන් ඉල්ලන්න."
   },
   "user": {
     "add_user": "පරිශීලකයෙක් එකතු කරන්න",

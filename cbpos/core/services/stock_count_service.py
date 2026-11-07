@@ -9,10 +9,12 @@ from decimal import Decimal
 from sqlalchemy import func, update
 from sqlalchemy.orm import joinedload
 
+from cbpos.core.constants.permissions import Permissions
 from cbpos.core.constants.status import DocumentStatus, Precision
 from cbpos.core.database import Database
-from cbpos.core.models import Product, StockCount, StockCountItem
+from cbpos.core.models import Product, Role, StockCount, StockCountItem, User
 from cbpos.core.services.document_service import DocumentService
+from cbpos.core.services.permission_service import PermissionService
 from cbpos.core.services.stock_service import StockService
 
 logger = logging.getLogger(__name__)
@@ -73,6 +75,14 @@ class StockCountService:
 
         db = Database()
         with db.get_session() as session:
+            user = session.get(User, user_id, options=[joinedload(User.role).joinedload(Role.permissions)])
+            if (
+                user
+                and user.role_id is not None
+                and not PermissionService.user_has_permission(user, Permissions.STOCK_TAKE_CREATE)
+            ):
+                raise PermissionError("Permission denied: stock_take.create required")
+
             stock_count = StockCount(
                 document_number=document_number,
                 type="stock_count",

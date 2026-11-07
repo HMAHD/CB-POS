@@ -6,9 +6,21 @@ from typing import Any
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
+from cbpos.core.constants.permissions import Permissions
 from cbpos.core.database import Database
-from cbpos.core.models import AuditLog, Product, Purchase, PurchaseItem, PurchaseOrder, StockMovement, Supplier
+from cbpos.core.models import (
+    AuditLog,
+    Product,
+    Purchase,
+    PurchaseItem,
+    PurchaseOrder,
+    Role,
+    StockMovement,
+    Supplier,
+    User,
+)
 from cbpos.core.services.document_service import DocumentService
+from cbpos.core.services.permission_service import PermissionService
 from cbpos.core.services.stock_service import StockService
 from cbpos.core.services.supplier_payable_service import SupplierPayableService
 from cbpos.core.utils.money import round_money
@@ -34,6 +46,7 @@ class GrnRequest:
     lines: list[GrnLine]
     user_id: int
     purchase_order_id: int | None = None
+    approved_by: int | None = None
 
 
 class PurchaseService:
@@ -67,6 +80,14 @@ class PurchaseService:
 
         db = Database()
         with db.get_session() as session:
+            effective_user_id = request.approved_by if request.approved_by is not None else request.user_id
+            if effective_user_id is not None:
+                user = session.get(
+                    User, effective_user_id, options=[joinedload(User.role).joinedload(Role.permissions)]
+                )
+                if not user or not PermissionService.user_has_permission(user, Permissions.PURCHASE_CREATE_GRN):
+                    raise PermissionError(f"Permission denied: {Permissions.PURCHASE_CREATE_GRN} required")
+
             supplier = session.get(Supplier, request.supplier_id)
             if not supplier:
                 raise ValueError(f"Supplier {request.supplier_id} not found")

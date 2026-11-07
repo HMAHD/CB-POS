@@ -26,6 +26,13 @@ class InventoryValuationReport(BaseReport):
         """Report category."""
         return CATEGORY_INVENTORY
 
+    @property
+    def required_permission(self) -> str:
+        """Required permission code."""
+        from cbpos.core.constants.permissions import Permissions
+
+        return Permissions.INVENTORY_VIEW
+
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         """Optional category filter, populated from active categories in the DB."""
         with get_db_session() as session:
@@ -177,6 +184,13 @@ class LowStockReport(BaseReport):
     def category(self) -> str:
         """Report category."""
         return CATEGORY_INVENTORY
+
+    @property
+    def required_permission(self) -> str:
+        """Required permission code."""
+        from cbpos.core.constants.permissions import Permissions
+
+        return Permissions.INVENTORY_VIEW
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         """No filters; always shows all products at or below their reorder point."""

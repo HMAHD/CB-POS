@@ -1,10 +1,14 @@
 from datetime import date, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
+import pandas as pd
 from sqlalchemy import desc, extract, func, select
 
 from cbpos.core.database import Database
 from cbpos.core.models import Product, Sale, SaleItem, SalePayment
+
+if TYPE_CHECKING:
+    from cbpos.core.reports.base_report import BaseReport
 
 
 class ReportService:
@@ -150,3 +154,41 @@ class ReportService:
                 "potential_profit": potential_profit,
                 "category_breakdown": category_breakdown,
             }
+
+    @staticmethod
+    def available_reports(user: Any = None) -> list["BaseReport"]:
+        """Return all reports that the given user has permission to view.
+
+        If a user is provided and has a role, only reports whose required_permission
+        is granted to that role are returned. If user is None or has no role,
+        all registered reports are returned.
+        """
+        from cbpos.core.reports.registry import ReportRegistry
+        from cbpos.core.services.permission_service import PermissionService
+
+        all_reports = list(ReportRegistry()._all_reports.values())
+        if user is None or getattr(user, "role_id", None) is None:
+            return all_reports
+
+        return [r for r in all_reports if PermissionService.user_has_permission(user, r.required_permission)]
+
+    @staticmethod
+    def run(report_id: str, params: dict[str, Any], user: Any = None) -> pd.DataFrame:
+        """Run a registered report by ID after verifying user permissions.
+
+        Scheduled auto-email reports (scheduler_service.py) run as the system
+        (user=None). When an authenticated user is provided, required_permission is
+        enforced before generating data.
+        """
+        from cbpos.core.reports.registry import ReportRegistry
+        from cbpos.core.services.permission_service import PermissionService
+
+        report = ReportRegistry().get_report_by_id(report_id)
+        if not report:
+            raise ValueError(f"Unknown report: {report_id}")
+
+        if user is not None and getattr(user, "role_id", None) is not None:
+            if not PermissionService.user_has_permission(user, report.required_permission):
+                raise PermissionError(f"Permission denied: {report.required_permission} required")
+
+        return report.generate(params)

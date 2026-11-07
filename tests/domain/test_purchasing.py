@@ -3,6 +3,7 @@ from decimal import Decimal
 
 import pytest
 
+from cbpos.core.constants.permissions import Permissions
 from cbpos.core.models import Permission, Product, Purchase, Role, StockMovement, Supplier, SupplierLedgerEntry, User
 from cbpos.core.services.purchase_service import GrnLine, GrnRequest, PurchaseService
 
@@ -13,10 +14,13 @@ _counter = 0
 def test_user(db_session):
     global _counter
     _counter += 1
-    permission = Permission(code=f"purch_test_perm_{_counter}")
-    role = Role(name=f"PurchTestRole_{_counter}", permissions=[permission])
+    p_grn = db_session.query(Permission).filter_by(code=Permissions.PURCHASE_CREATE_GRN).first()
+    if not p_grn:
+        p_grn = Permission(code=Permissions.PURCHASE_CREATE_GRN, description="Create GRN", group="Purchase")
+        db_session.add(p_grn)
+    role = Role(name=f"PurchTestRole_{_counter}", permissions=[p_grn])
     user = User(username=f"purch_test_user_{_counter}", pin_hash="hash", role=role)
-    db_session.add_all([permission, role, user])
+    db_session.add_all([role, user])
     db_session.flush()
     return user
 

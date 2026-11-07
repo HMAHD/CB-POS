@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.import_service import ImportError_, ImportService
 from cbpos.core.utils.error_messages import translate_error
 from cbpos.i18n import _t
+from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 from cbpos.ui.workers import CsvImportWorker
 
 logger = logging.getLogger(__name__)
@@ -61,6 +62,7 @@ class CsvImportDialog(QDialog):
         self._column_combos: dict[str, QComboBox] = {}
         self._total_rows: int = 0
         self._init_ui()
+        install_wheel_guard(self)
 
     def _init_ui(self) -> None:
         main_layout = QVBoxLayout(self)

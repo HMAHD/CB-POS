@@ -30,14 +30,18 @@ class PermissionService:
         Returns:
             bool: True if authorized, False otherwise.
         """
-        if not user or not user.role:
+        if not user:
+            return False
+
+        role = getattr(user, "role", None)
+        if not role:
             return False
 
         # Admin has all permissions
-        if user.role.name == ADMIN_ROLE_NAME:
+        if getattr(role, "name", None) == ADMIN_ROLE_NAME:
             return True
 
-        return any(perm.code == permission_code for perm in getattr(user.role, "permissions", None) or [])
+        return any(perm.code == permission_code for perm in getattr(role, "permissions", None) or [])
 
     @staticmethod
     def user_has_any_permission(user: User, permission_codes: Iterable[str]) -> bool:
@@ -110,32 +114,21 @@ class PermissionService:
             if not role:
                 return False
 
-            # Resolve acting user
-            effective_actor_id = acting_user_id
-            if effective_actor_id is None:
-                curr = AuthService.get_current_user()
-                if curr:
-                    effective_actor_id = curr.id
+            # Non-Admin restrictions apply when an acting user is provided
+            if acting_user_id is not None:
+                admin_role = session.execute(select(Role).where(Role.name == ADMIN_ROLE_NAME)).scalar_one_or_none()
+                actor = session.get(User, acting_user_id)
+                actor_is_admin = bool(actor and admin_role and actor.role_id == admin_role.id)
+                if not actor_is_admin:
+                    if role.name == ADMIN_ROLE_NAME:
+                        raise ValueError("only_admin_can_modify_admin_role")
+                    if actor and role.id == actor.role_id:
+                        raise ValueError("cannot_edit_own_role")
 
-            admin_role = session.execute(select(Role).where(Role.name == ADMIN_ROLE_NAME)).scalar_one_or_none()
-            actor_is_admin = False
-            actor = None
-            if effective_actor_id is not None:
-                actor = session.get(User, effective_actor_id)
-                if actor and admin_role and actor.role_id == admin_role.id:
-                    actor_is_admin = True
-
-            # Non-Admin restrictions
-            if effective_actor_id is not None and not actor_is_admin:
-                if role.name == ADMIN_ROLE_NAME:
-                    raise ValueError("only_admin_can_modify_admin_role")
-                if actor and role.id == actor.role_id:
-                    raise ValueError("cannot_edit_own_role")
-
-                actor_perm_ids = {p.id for p in actor.role.permissions} if (actor and actor.role) else set()
-                for pid in permission_ids:
-                    if pid not in actor_perm_ids:
-                        raise ValueError("cannot_grant_unheld_permission")
+                    actor_perm_ids = {p.id for p in actor.role.permissions} if (actor and actor.role) else set()
+                    for pid in permission_ids:
+                        if pid not in actor_perm_ids:
+                            raise ValueError("cannot_grant_unheld_permission")
 
             # Fetch new permissions
             new_perms = session.query(Permission).filter(Permission.id.in_(permission_ids)).all()
@@ -157,7 +150,11 @@ class PermissionService:
             role.permissions = new_perms
             role.last_modified = datetime.now()
 
-            logger_id = effective_actor_id
+            logger_id = acting_user_id
+            if logger_id is None:
+                curr = AuthService.get_current_user()
+                if curr:
+                    logger_id = curr.id
             if logger_id is not None:
                 log = AuditLog(
                     user_id=logger_id,

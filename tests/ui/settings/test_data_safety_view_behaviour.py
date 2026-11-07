@@ -296,7 +296,7 @@ class TestRestoreTab:
 
 
 class TestMaintenanceTab:
-    def test_optimize_reports_space_saved(self, view, started):
+    def test_optimize_reports_space_saved(self, view, allowed, started):
         view.maintenance_tab.btn_vacuum.click()
         assert view.maintenance_tab.btn_vacuum.isEnabled() is False
 
@@ -306,7 +306,7 @@ class TestMaintenanceTab:
         assert view.maintenance_tab.lbl_maintenance_status.property("class") == "credit"
         assert "12 KB" in view.maintenance_tab.lbl_maintenance_status.text()
 
-    def test_optimize_failure(self, view, started):
+    def test_optimize_failure(self, view, allowed, started):
         view.maintenance_tab.btn_vacuum.click()
 
         _last(started, workers.VacuumWorker).error.emit("locked")
@@ -315,7 +315,7 @@ class TestMaintenanceTab:
         assert "locked" in view.maintenance_tab.lbl_maintenance_status.text()
 
     @pytest.mark.parametrize("ok, css", [(True, "credit"), (False, "debit")])
-    def test_integrity_check(self, view, started, ok, css):
+    def test_integrity_check(self, view, allowed, started, ok, css):
         view.maintenance_tab.btn_integrity.click()
 
         _last(started, workers.IntegrityCheckWorker).result.emit(ok, "page 3 broken")

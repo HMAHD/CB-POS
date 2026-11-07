@@ -45,6 +45,10 @@ CODES = [code for code, _ in NEW_PERMISSIONS]
 
 def upgrade() -> None:
     conn = op.get_bind()
+    insp = sa.inspect(conn)
+    existing_tables = set(insp.get_table_names())
+    if "permissions" not in existing_tables:
+        return
     existing = set(conn.execute(sa.select(PERMISSIONS.c.code).where(PERMISSIONS.c.code.in_(CODES))).scalars())
     missing = [
         {"code": code, "description": description, "group": GROUP, "last_modified": datetime.now()}
@@ -90,6 +94,10 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     conn = op.get_bind()
+    insp = sa.inspect(conn)
+    existing_tables = set(insp.get_table_names())
+    if "permissions" not in existing_tables:
+        return
     perm_ids = sa.select(PERMISSIONS.c.id).where(PERMISSIONS.c.code.in_(CODES))
     conn.execute(ROLE_PERMISSIONS.delete().where(ROLE_PERMISSIONS.c.permission_id.in_(perm_ids)))
     conn.execute(PERMISSIONS.delete().where(PERMISSIONS.c.code.in_(CODES)))

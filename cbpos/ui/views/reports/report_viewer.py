@@ -42,17 +42,20 @@ class ReportWorker(QThread):
     result = pyqtSignal(object)
     error = pyqtSignal(str)
 
-    def __init__(self, report, filters):
-        """Initialize the worker with a report instance and its filter values."""
+    def __init__(self, report, filters, user=None):
+        """Initialize the worker with a report instance, filter values, and executing user."""
         super().__init__()
         self.finished.connect(self.deleteLater)
         self.report = report
         self.filters = filters
+        self.user = user
 
     def run(self):
-        """Generate the report's DataFrame and emit the result, or emit an error message on failure."""
+        """Generate the report's DataFrame via ReportService and emit result or error."""
         try:
-            df = self.report.generate(self.filters)
+            from cbpos.core.services.report_service import ReportService
+
+            df = ReportService.run(self.report.id, self.filters, user=self.user)
             self.result.emit(df)
         except Exception as e:
             self.error.emit(str(e))
@@ -434,11 +437,22 @@ class ReportViewer(QWidget):
         vat_active = self._sidebar_vat_active = TaxService.is_vat_active()
         rendered_any = False
 
+        from cbpos.core.services.auth_service import AuthService
+        from cbpos.core.services.report_service import ReportService
+
+        current_user = AuthService.get_current_user()
+        if current_user is not None and getattr(current_user, "role_id", None) is not None:
+            allowed_reports = set(ReportService.available_reports(current_user))
+        else:
+            allowed_reports = None
+
         fav_ids = set(self._get_favorite_ids())
         fav_reports = []
         for r_id in self._get_favorite_ids():
             r = self.registry.get_report_by_id(r_id)
             if r and (not getattr(r, "requires_vat", False) or vat_active):
+                if allowed_reports is not None and r not in allowed_reports:
+                    continue
                 fav_reports.append(r)
 
         # ── 1. Favorites Group (top of sidebar, #542) ──
@@ -470,8 +484,13 @@ class ReportViewer(QWidget):
         categories = self.registry.get_all_categories()
         for category in categories:
             all_reports = self.registry.get_reports_by_category(category)
-            # Filter out VAT-only reports when VAT is not active
-            reports = [r for r in all_reports if not getattr(r, "requires_vat", False) or vat_active]
+            # Filter out VAT-only reports when VAT is not active and reports not permitted
+            reports = [
+                r
+                for r in all_reports
+                if (not getattr(r, "requires_vat", False) or vat_active)
+                and (allowed_reports is None or r in allowed_reports)
+            ]
             if not reports:
                 continue
 
@@ -578,7 +597,10 @@ class ReportViewer(QWidget):
         self._overlay.show_loading(_t("report_viewer.generating"))
         self.btn_run.setEnabled(False)
 
-        self._report_worker = ReportWorker(self.current_report, filters)
+        from cbpos.core.services.auth_service import AuthService
+
+        current_user = AuthService.get_current_user()
+        self._report_worker = ReportWorker(self.current_report, filters, user=current_user)
         self._report_worker.result.connect(self._on_report_finished)
         self._report_worker.error.connect(self._on_report_error)
         start_background_job(self._report_worker)
@@ -699,6 +721,12 @@ class ReportViewer(QWidget):
         """Ask for a printer, then lay out and print the full report off the UI thread (#643)."""
         from PyQt6.QtPrintSupport import QPrintDialog, QPrinter
 
+        from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+
+        if not check_permission_with_override(Permissions.REPORTS_EXPORT, self):
+            return
+
         df = self._full_df
         if df.empty or self.current_report is None:
             return
@@ -736,7 +764,12 @@ class ReportViewer(QWidget):
         """Ask for a recipient, then export the report to PDF and email it off the UI thread (#643)."""
         from PyQt6.QtWidgets import QInputDialog
 
+        from cbpos.core.constants.permissions import Permissions
         from cbpos.core.services.config_service import ConfigService
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+
+        if not check_permission_with_override(Permissions.REPORTS_EXPORT, self):
+            return
 
         df = self._full_df
         if df.empty or self.current_report is None:

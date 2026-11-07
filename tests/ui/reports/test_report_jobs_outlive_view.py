@@ -99,6 +99,7 @@ def test_report_viewer_email_job_outlives_the_viewer(db_session, monkeypatch, qt
     monkeypatch.setattr(email_service, "deliver_email", _slow_deliver)
     monkeypatch.setattr(rv, "QMessageBox", MagicMock())
     monkeypatch.setattr("PyQt6.QtWidgets.QInputDialog.getText", lambda *a, **k: ("owner@shop.lk", True))
+    monkeypatch.setattr("cbpos.core.utils.permission_helper.check_permission_with_override", lambda *a, **k: True)
 
     view = rv.ReportViewer()
     view.current_report = MagicMock()

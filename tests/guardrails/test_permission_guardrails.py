@@ -8,8 +8,6 @@ from cbpos.core.constants.permissions import Permissions
 # Temporary allow-list for tracked permission codes whose enforcement is implemented
 # in subsequent issues within Batch 5.1. Each entry MUST be removed in that issue's commit.
 _ALLOW_UNREFERENCED: dict[str, str] = {
-    "REPORTS_VIEW_SALES": "Tracked in #880",
-    "REPORTS_VIEW_PROFIT": "Tracked in #880",
     "PURCHASE_CREATE_GRN": "Tracked in #896",
 }
 

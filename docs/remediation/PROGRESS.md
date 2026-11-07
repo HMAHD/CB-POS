@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 5 · Batch: 5.1 · Branch: fix/p5-b1-permission-model · PR: none · Last session: 2026-11-07
+- Phase: 5 · Batch: 5.2 · Branch: fix/p5-b2-secrets-spreadsheet-safety · PR: none · Last session: 2026-11-07
 
 ## Issues
 
@@ -129,12 +129,12 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 | # | Title | Sev | Batch | Status | PR | Notes |
 |---|---|---|---|---|---|---|
-| #858 | Stock Take, Price Lists and Promotions need `admin.manage_users`, so the defa… | high | 5.1 | done | | Tab permissions (stock_take.view, pricing.manage, promotions.manage), migration, prevent non-admin privilege escalation |
-| #880 | reports.view_sales / view_profit never enforced; Email/Print skip REPORTS_EXPORT | medium | 5.1 | done | | Report view permissions (view_sales, view_profit, inventory.view), service enforcement in available_reports/run, export check for Print/Email |
-| #889 | Refund from Management → Documents skips the `sales.refund` permission check | medium | 5.1 | done | | Route Documents refund through shared RefundDialog flow with preselected sale and override check |
-| #893 | Lowering a cart line's quantity skips the void permission and leaves no audit… | medium | 5.1 | done | | Require sales.void or override when lowering cart quantity, audit LINE_QTY_REDUCED via CartAuditService |
-| #894 | Eight permissions in the Permissions screen are checked nowhere, and CSV impo… | medium | 5.1 | done | | Permission catalogue audit, remove inventory.delete, gate CSV/categories/units/proforma/maintenance, AST guardrail |
-| #896 | Committing a GRN has no permission check (purchase.create_grn is defined but … | medium | 5.1 | done | | Enforce purchase.create_grn on GRN commit, add suppliers.manage and migration |
+| #858 | Stock Take, Price Lists and Promotions need `admin.manage_users`, so the defa… | high | 5.1 | done | #998 | 8e4ed10 · Tab permissions (stock_take.view, pricing.manage, promotions.manage), migration, prevent non-admin privilege escalation |
+| #880 | reports.view_sales / view_profit never enforced; Email/Print skip REPORTS_EXPORT | medium | 5.1 | done | #998 | 8e4ed10 · Report view permissions (view_sales, view_profit, inventory.view), service enforcement in available_reports/run, export check for Print/Email |
+| #889 | Refund from Management → Documents skips the `sales.refund` permission check | medium | 5.1 | done | #998 | 8e4ed10 · Route Documents refund through shared RefundDialog flow with preselected sale and override check |
+| #893 | Lowering a cart line's quantity skips the void permission and leaves no audit… | medium | 5.1 | done | #998 | 8e4ed10 · Require sales.void or override when lowering cart quantity, audit LINE_QTY_REDUCED via CartAuditService |
+| #894 | Eight permissions in the Permissions screen are checked nowhere, and CSV impo… | medium | 5.1 | done | #998 | 8e4ed10 · Permission catalogue audit, remove inventory.delete, gate CSV/categories/units/proforma/maintenance, AST guardrail |
+| #896 | Committing a GRN has no permission check (purchase.create_grn is defined but … | medium | 5.1 | done | #998 | 8e4ed10 · Enforce purchase.create_grn on GRN commit, add suppliers.manage and migration |
 | #809 | Settings encryption key is derived from hostname when missing (predictable) | medium | 5.2 | todo | | |
 | #898 | Excel export writes text cells starting with "=" as live formulas (CSV/formul… | medium | 5.2 | todo | | |
 | #911 | Reprint prints voided sales and credit notes as ordinary "Cash Receipt" dupli… | low | 5.3 | todo | | |
@@ -304,5 +304,5 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 |---|---|---|
 
 ## Handoff
-Phase 4 (Inventory & Purchasing) is fully completed and merged (Batch 4.4 PR #997, 8971b68). All 14 issues (#794, #861, #862, #863, #864, #865, #900, #901, #895, #899, #902, #919, #920, #921) are verified closed on GitHub and ticked in epic #922. The Phase 4 exit gate stock invariants test (`tests/domain/test_stock_invariants.py`) is passing. Ready to start Phase 5 (Permissions & Security) with Batch 5.1 (#858, #880, #889, #893).
+Phase 5.1 (Permission model repair) is fully completed and merged (PR #998, 8e4ed10). All six issues (#858, #894, #880, #889, #893, #896) are verified closed on GitHub and ticked in epic #922. The permission catalogue audit, AST guardrail, report permissions, document refund flow, cart quantity void check, and GRN/supplier permissions are active. Ready to start Batch 5.2 (Secret and spreadsheet safety: #809, #898) on branch `fix/p5-b2-secrets-spreadsheet-safety`.
 

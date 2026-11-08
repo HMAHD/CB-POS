@@ -4,10 +4,10 @@ from contextlib import contextmanager
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 
-from sqlalchemy import Integer, extract, func
+from sqlalchemy import Integer, case, extract, func
 from sqlalchemy.orm import joinedload
 
-from cbpos.core.constants.status import ShiftStatus
+from cbpos.core.constants.status import DocumentStatus, ShiftStatus
 from cbpos.core.database import Database
 from cbpos.core.models import (
     Category,
@@ -63,15 +63,40 @@ class DashboardService:
             today = date.today()
 
             total_sales = _decimal(
-                session.query(func.sum(Sale.total_amount)).filter(func.date(Sale.date) == today).scalar()
+                session.query(
+                    func.sum(
+                        case(
+                            (Sale.refund_of_sale_id.is_not(None), -func.abs(Sale.total_amount)),
+                            else_=Sale.total_amount,
+                        )
+                    )
+                )
+                .filter(func.date(Sale.date) == today, Sale.status == DocumentStatus.COMPLETED)
+                .scalar()
             )
 
-            txn_count = session.query(func.count(Sale.id)).filter(func.date(Sale.date) == today).scalar() or 0
+            txn_count = (
+                session.query(func.count(Sale.id))
+                .filter(
+                    func.date(Sale.date) == today,
+                    Sale.status == DocumentStatus.COMPLETED,
+                    Sale.refund_of_sale_id.is_(None),
+                )
+                .scalar()
+                or 0
+            )
 
             items_sold = _decimal(
-                session.query(func.sum(SaleItem.qty))
+                session.query(
+                    func.sum(
+                        case(
+                            (Sale.refund_of_sale_id.is_not(None), -func.abs(SaleItem.qty)),
+                            else_=SaleItem.qty,
+                        )
+                    )
+                )
                 .join(Sale, SaleItem.sale_id == Sale.id)
-                .filter(func.date(Sale.date) == today)
+                .filter(func.date(Sale.date) == today, Sale.status == DocumentStatus.COMPLETED)
                 .scalar()
             )
 
@@ -103,15 +128,26 @@ class DashboardService:
             yesterday = date.today() - timedelta(days=1)
 
             total_sales = _decimal(
-                session.query(func.sum(Sale.total_amount)).filter(func.date(Sale.date) == yesterday).scalar()
+                session.query(func.sum(Sale.total_amount))
+                .filter(func.date(Sale.date) == yesterday, Sale.status == DocumentStatus.COMPLETED)
+                .scalar()
             )
 
-            txn_count = session.query(func.count(Sale.id)).filter(func.date(Sale.date) == yesterday).scalar() or 0
+            txn_count = (
+                session.query(func.count(Sale.id))
+                .filter(
+                    func.date(Sale.date) == yesterday,
+                    Sale.status == DocumentStatus.COMPLETED,
+                    Sale.refund_of_sale_id.is_(None),
+                )
+                .scalar()
+                or 0
+            )
 
             items_sold = _decimal(
                 session.query(func.sum(SaleItem.qty))
                 .join(Sale, SaleItem.sale_id == Sale.id)
-                .filter(func.date(Sale.date) == yesterday)
+                .filter(func.date(Sale.date) == yesterday, Sale.status == DocumentStatus.COMPLETED)
                 .scalar()
             )
 
@@ -138,7 +174,7 @@ class DashboardService:
                 )
                 .filter(
                     func.date(Sale.date) == today,
-                    Sale.status == "COMPLETED",
+                    Sale.status == DocumentStatus.COMPLETED,
                 )
                 .one()
             )
@@ -161,9 +197,18 @@ class DashboardService:
         return (
             session.query(
                 func.cast(extract("month", Sale.date), Integer).label("month"),
-                func.sum(Sale.total_amount).label("total"),
+                func.sum(
+                    case(
+                        (Sale.refund_of_sale_id.is_not(None), -func.abs(Sale.total_amount)),
+                        else_=Sale.total_amount,
+                    )
+                ).label("total"),
             )
-            .filter(Sale.date >= year_start, Sale.date < year_end)
+            .filter(
+                Sale.date >= year_start,
+                Sale.date < year_end,
+                Sale.status == DocumentStatus.COMPLETED,
+            )
             .group_by("month")
         )
 
@@ -207,16 +252,29 @@ class DashboardService:
             rows = (
                 session.query(
                     Product.name_en,
-                    func.sum(SaleItem.subtotal).label("total"),
+                    func.sum(
+                        case(
+                            (Sale.refund_of_sale_id.is_not(None), -func.abs(SaleItem.subtotal)),
+                            else_=SaleItem.subtotal,
+                        )
+                    ).label("total"),
                 )
                 .join(SaleItem, SaleItem.product_id == Product.id)
                 .join(Sale, SaleItem.sale_id == Sale.id)
                 .filter(
                     func.date(Sale.date) >= start_date,
                     func.date(Sale.date) <= end_date,
+                    Sale.status == DocumentStatus.COMPLETED,
                 )
                 .group_by(Product.id)
-                .order_by(func.sum(SaleItem.subtotal).desc())
+                .order_by(
+                    func.sum(
+                        case(
+                            (Sale.refund_of_sale_id.is_not(None), -func.abs(SaleItem.subtotal)),
+                            else_=SaleItem.subtotal,
+                        )
+                    ).desc()
+                )
                 .limit(limit)
                 .all()
             )
@@ -231,11 +289,17 @@ class DashboardService:
         return (
             session.query(
                 func.cast(extract("hour", Sale.date), Integer).label("hour"),
-                func.sum(Sale.total_amount).label("total"),
+                func.sum(
+                    case(
+                        (Sale.refund_of_sale_id.is_not(None), -func.abs(Sale.total_amount)),
+                        else_=Sale.total_amount,
+                    )
+                ).label("total"),
             )
             .filter(
                 Sale.date >= start_dt,
                 Sale.date < end_dt,
+                Sale.status == DocumentStatus.COMPLETED,
             )
             .group_by("hour")
         )
@@ -268,10 +332,18 @@ class DashboardService:
         unique_customers, txn_count."""
         with _session() as session:
             total_sales = _decimal(
-                session.query(func.sum(Sale.total_amount))
+                session.query(
+                    func.sum(
+                        case(
+                            (Sale.refund_of_sale_id.is_not(None), -func.abs(Sale.total_amount)),
+                            else_=Sale.total_amount,
+                        )
+                    )
+                )
                 .filter(
                     func.date(Sale.date) >= start_date,
                     func.date(Sale.date) <= end_date,
+                    Sale.status == DocumentStatus.COMPLETED,
                 )
                 .scalar()
             )
@@ -281,17 +353,27 @@ class DashboardService:
                 .filter(
                     func.date(Sale.date) >= start_date,
                     func.date(Sale.date) <= end_date,
+                    Sale.status == DocumentStatus.COMPLETED,
+                    Sale.refund_of_sale_id.is_(None),
                 )
                 .scalar()
                 or 0
             )
 
             items_sold = _decimal(
-                session.query(func.sum(SaleItem.qty))
+                session.query(
+                    func.sum(
+                        case(
+                            (Sale.refund_of_sale_id.is_not(None), -func.abs(SaleItem.qty)),
+                            else_=SaleItem.qty,
+                        )
+                    )
+                )
                 .join(Sale, SaleItem.sale_id == Sale.id)
                 .filter(
                     func.date(Sale.date) >= start_date,
                     func.date(Sale.date) <= end_date,
+                    Sale.status == DocumentStatus.COMPLETED,
                 )
                 .scalar()
             )
@@ -324,7 +406,12 @@ class DashboardService:
             rows = (
                 session.query(
                     Category.name,
-                    func.sum(SaleItem.subtotal).label("total"),
+                    func.sum(
+                        case(
+                            (Sale.refund_of_sale_id.is_not(None), -func.abs(SaleItem.subtotal)),
+                            else_=SaleItem.subtotal,
+                        )
+                    ).label("total"),
                 )
                 .join(Product, Product.category_id == Category.id)
                 .join(SaleItem, SaleItem.product_id == Product.id)
@@ -332,9 +419,17 @@ class DashboardService:
                 .filter(
                     func.date(Sale.date) >= start_date,
                     func.date(Sale.date) <= end_date,
+                    Sale.status == DocumentStatus.COMPLETED,
                 )
                 .group_by(Category.id)
-                .order_by(func.sum(SaleItem.subtotal).desc())
+                .order_by(
+                    func.sum(
+                        case(
+                            (Sale.refund_of_sale_id.is_not(None), -func.abs(SaleItem.subtotal)),
+                            else_=SaleItem.subtotal,
+                        )
+                    ).desc()
+                )
                 .limit(limit)
                 .all()
             )
@@ -348,15 +443,28 @@ class DashboardService:
             rows = (
                 session.query(
                     Customer.name,
-                    func.sum(Sale.total_amount).label("total"),
+                    func.sum(
+                        case(
+                            (Sale.refund_of_sale_id.is_not(None), -func.abs(Sale.total_amount)),
+                            else_=Sale.total_amount,
+                        )
+                    ).label("total"),
                 )
                 .join(Sale, Sale.customer_id == Customer.id)
                 .filter(
                     func.date(Sale.date) >= start_date,
                     func.date(Sale.date) <= end_date,
+                    Sale.status == DocumentStatus.COMPLETED,
                 )
                 .group_by(Customer.id)
-                .order_by(func.sum(Sale.total_amount).desc())
+                .order_by(
+                    func.sum(
+                        case(
+                            (Sale.refund_of_sale_id.is_not(None), -func.abs(Sale.total_amount)),
+                            else_=Sale.total_amount,
+                        )
+                    ).desc()
+                )
                 .limit(limit)
                 .all()
             )
@@ -377,6 +485,7 @@ class DashboardService:
                     joinedload(Sale.customer),
                     joinedload(Sale.payments),
                 )
+                .filter(Sale.status == DocumentStatus.COMPLETED)
                 .order_by(Sale.date.desc())
                 .limit(limit)
                 .all()
@@ -392,7 +501,11 @@ class DashboardService:
                         "doc_number": sale.document_number or "",
                         "customer": customer_name,
                         "payment": payment_methods,
-                        "total": _decimal(sale.total_amount),
+                        "total": (
+                            _decimal(-abs(sale.total_amount or 0))
+                            if sale.refund_of_sale_id is not None
+                            else _decimal(sale.total_amount)
+                        ),
                     }
                 )
             return results
@@ -406,14 +519,34 @@ class DashboardService:
             rows = (
                 session.query(
                     Product.name_en,
-                    func.sum(SaleItem.qty).label("total_qty"),
-                    func.sum(SaleItem.subtotal).label("total_revenue"),
+                    func.sum(
+                        case(
+                            (Sale.refund_of_sale_id.is_not(None), -func.abs(SaleItem.qty)),
+                            else_=SaleItem.qty,
+                        )
+                    ).label("total_qty"),
+                    func.sum(
+                        case(
+                            (Sale.refund_of_sale_id.is_not(None), -func.abs(SaleItem.subtotal)),
+                            else_=SaleItem.subtotal,
+                        )
+                    ).label("total_revenue"),
                 )
                 .join(SaleItem, SaleItem.product_id == Product.id)
                 .join(Sale, SaleItem.sale_id == Sale.id)
-                .filter(func.date(Sale.date) == today)
+                .filter(
+                    func.date(Sale.date) == today,
+                    Sale.status == DocumentStatus.COMPLETED,
+                )
                 .group_by(Product.id)
-                .order_by(func.sum(SaleItem.qty).desc())
+                .order_by(
+                    func.sum(
+                        case(
+                            (Sale.refund_of_sale_id.is_not(None), -func.abs(SaleItem.qty)),
+                            else_=SaleItem.qty,
+                        )
+                    ).desc()
+                )
                 .limit(limit)
                 .all()
             )
@@ -429,19 +562,21 @@ class DashboardService:
 
     @staticmethod
     def get_payment_breakdown() -> list:
-        """Payment method totals for today."""
+        """Payment method totals for today, grouped by method_kind (#845)."""
         with _session() as session:
             today = date.today()
 
-            # TODO(#844): use method_kind
             rows = (
                 session.query(
-                    SalePayment.payment_method,  # TODO(#844): use method_kind
+                    SalePayment.method_kind,
                     func.sum(SalePayment.amount).label("total"),
                 )
                 .join(Sale, SalePayment.sale_id == Sale.id)
-                .filter(func.date(Sale.date) == today)
-                .group_by(SalePayment.payment_method)
+                .filter(
+                    func.date(Sale.date) == today,
+                    Sale.status == DocumentStatus.COMPLETED,
+                )
+                .group_by(SalePayment.method_kind)
                 .order_by(func.sum(SalePayment.amount).desc())
                 .all()
             )
@@ -449,6 +584,7 @@ class DashboardService:
             return [
                 {
                     "method": row[0],
+                    "method_kind": row[0],
                     "total": _decimal(row[1]),
                 }
                 for row in rows

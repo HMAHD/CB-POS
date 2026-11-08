@@ -1577,6 +1577,7 @@
     "col_net_revenue": "Net Revenue",
     "col_vat": "VAT",
     "col_sscl": "SSCL",
+    "col_sscl_expense": "SSCL Expense",
     "col_total_tax": "Total Tax",
     "col_barcode": "Barcode",
     "col_name": "Name",
@@ -1603,6 +1604,9 @@
     "col_user": "User",
     "col_product": "Product",
     "col_type": "Type",
+    "col_scope": "Scope",
+    "col_original_receipt": "Original Receipt",
+    "col_approver": "Approver",
     "col_qty_change": "Qty Change",
     "col_balance": "Balance",
     "col_reference": "Reference",
@@ -1658,7 +1662,11 @@
     "cashflow_net": "Net Cash Flow",
     "cashflow_inflow": "Inflow",
     "cashflow_outflow": "Outflow",
-    "cashflow_net_type": "Net"
+    "cashflow_net_type": "Net",
+    "type_void": "Void",
+    "type_refund": "Refund",
+    "scope_part": "Part",
+    "scope_full": "Full"
   },
   "settings": {
     "unsaved_title": "Unsaved Changes",

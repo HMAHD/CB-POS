@@ -1542,6 +1542,7 @@
     "col_net_revenue": "ශුද්ධ ආදායම",
     "col_vat": "VAT",
     "col_sscl": "SSCL",
+    "col_sscl_expense": "SSCL වියදම",
     "col_total_tax": "මුළු බදු",
     "col_barcode": "බාර්කෝඩ්",
     "col_name": "නම",
@@ -1568,6 +1569,9 @@
     "col_user": "පරිශීලකයා",
     "col_product": "අයිතමය",
     "col_type": "වර්ගය",
+    "col_scope": "ප්‍රමාණය",
+    "col_original_receipt": "මුල් රිසිට්පත",
+    "col_approver": "අනුමතකරු",
     "col_qty_change": "ප්‍රමාණ වෙනස",
     "col_balance": "ශේෂය",
     "col_reference": "යොමුව",
@@ -1623,7 +1627,11 @@
     "cashflow_net": "ශුද්ධ මුදල් ප්‍රවාහය",
     "cashflow_inflow": "ආදායම් ප්‍රවාහය",
     "cashflow_outflow": "වියදම් ප්‍රවාහය",
-    "cashflow_net_type": "ශුද්ධ"
+    "cashflow_net_type": "ශුද්ධ",
+    "type_void": "අවලංගු කිරීම",
+    "type_refund": "ආපසු ගෙවීම",
+    "scope_part": "කොටසක්",
+    "scope_full": "සම්පූර්ණ"
   },
   "settings": {
     "unsaved_title": "සුරකින්නෙ නැති වෙනස්කම්",

@@ -1,12 +1,15 @@
+import re
 from datetime import date
+from decimal import Decimal
 from typing import Any
 
 import pandas as pd
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
+from sqlalchemy.orm import joinedload
 
 from cbpos.core.constants.status import DocumentStatus
 from cbpos.core.database import Database
-from cbpos.core.models import Sale, User
+from cbpos.core.models import AuditLog, Sale
 from cbpos.core.reports.base_report import (
     CATEGORY_AUDIT,
     CATEGORY_SALES,
@@ -17,6 +20,8 @@ from cbpos.core.reports.base_report import (
     BaseReport,
     report_columns,
 )
+from cbpos.core.reports.sale_filters import date_bounds, refund_documents, voided
+from cbpos.core.services.refund_service import RefundService
 from cbpos.i18n import _t
 
 
@@ -57,56 +62,173 @@ class VoidRefundReport(BaseReport):
                 {
                     "Date": DATE,
                     "Document #": TEXT,
-                    "Status": TEXT,
+                    "Type": TEXT,
+                    "Scope": TEXT,
+                    "Original Receipt": TEXT,
                     "Amount": MONEY,
                     "User": TEXT,
-                    "Payment": TEXT,
+                    "Approver": TEXT,
+                    "Reason": TEXT,
                 }
             )
         }
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
-        """List voided/refunded sales within the date range, newest first.
+        """List voided and completed refund documents within the date range, newest first.
 
-        Includes the acting user, amount, status, and payment method.
+        Includes original receipt, acting cashier, manager approver from AuditLog,
+        translated type/scope, and negative amounts for refunds (#843).
         """
         date_range = filters.get("date_range", {})
-        start_date = date_range.get("start")
-        end_date = date_range.get("end")
+        start_dt, end_dt = date_bounds(date_range)
 
         with Database().get_session() as session:
             query = (
-                session.query(Sale, User.username)
-                .join(User, Sale.user_id == User.id)
+                session.query(Sale)
+                .options(
+                    joinedload(Sale.user),
+                    joinedload(Sale.refund_of_sale),
+                    joinedload(Sale.void_reason),
+                    joinedload(Sale.items),
+                )
                 .filter(
-                    Sale.status.in_([DocumentStatus.VOID, "REFUND"]),
+                    or_(voided(), refund_documents()),
                 )
             )
 
-            if start_date:
-                query = query.filter(func.date(Sale.date) >= start_date)
-            if end_date:
-                query = query.filter(func.date(Sale.date) <= end_date)
+            if start_dt:
+                query = query.filter(Sale.date >= start_dt)
+            if end_dt:
+                query = query.filter(Sale.date < end_dt)
 
-            results = query.order_by(Sale.date.desc()).all()
+            sales = query.order_by(Sale.date.desc()).all()
+
+            if not sales:
+                return pd.DataFrame(
+                    columns=[
+                        "Date",
+                        "Document #",
+                        "Type",
+                        "Scope",
+                        "Original Receipt",
+                        "Amount",
+                        "User",
+                        "Approver",
+                        "Reason",
+                    ]
+                )
+
+            orig_sale_ids = [s.refund_of_sale_id for s in sales if s.refund_of_sale_id]
+            refund_states = RefundService.refund_states(orig_sale_ids, session=session) if orig_sale_ids else {}
+
+            doc_numbers = [s.document_number for s in sales if s.document_number]
+            doc_audits: dict[str, list[AuditLog]] = {}
+            if doc_numbers:
+                # Query in chunks of 100 to avoid SQLite expression tree limits
+                chunk_size = 100
+                audit_entries: list[AuditLog] = []
+                for i in range(0, len(doc_numbers), chunk_size):
+                    chunk = doc_numbers[i : i + chunk_size]
+                    audit_entries.extend(
+                        session.query(AuditLog)
+                        .options(joinedload(AuditLog.user))
+                        .filter(
+                            AuditLog.action.in_(["VOID_SALE", "REFUND", "REFUND_TENDER_OVERRIDE", "OVERRIDE_AUTH"]),
+                            or_(*[AuditLog.details.like(f"%{doc_no}%") for doc_no in chunk]),
+                        )
+                        .order_by(AuditLog.id.asc())
+                        .all()
+                    )
+
+                for audit in audit_entries:
+                    details = audit.details or ""
+                    for doc_no in doc_numbers:
+                        if doc_no in details:
+                            doc_audits.setdefault(doc_no, []).append(audit)
 
             data = []
-            for sale, username in results:
+            for sale in sales:
+                is_void = sale.status == DocumentStatus.VOID
+                doc_no = sale.document_number or ""
+                matching_audits = doc_audits.get(doc_no, [])
+
+                # 1. Type
+                doc_type = _t("reports.type_void") if is_void else _t("reports.type_refund")
+
+                # 2. Scope
+                if is_void:
+                    scope = "-"
+                else:
+                    rf_state = refund_states.get(sale.refund_of_sale_id, "NONE")
+                    scope = _t("reports.scope_full") if rf_state == "FULL" else _t("reports.scope_part")
+
+                # 3. Original receipt
+                orig_receipt = (
+                    sale.refund_of_sale.document_number
+                    if (sale.refund_of_sale and sale.refund_of_sale.document_number)
+                    else "-"
+                )
+
+                # 4. Amount (negative for refunds)
+                amount = sale.total_amount or Decimal(0)
+                if not is_void:
+                    amount = -abs(amount)
+
+                # 5. Acting user
+                user_name = sale.user.username if sale.user else ""
+
+                # 6. Approver
+                approver = None
+                primary_actions = ["VOID_SALE"] if is_void else ["REFUND"]
+                for audit in matching_audits:
+                    if audit.action in primary_actions and audit.user and audit.user.username:
+                        approver = audit.user.username
+                        break
+                if not approver:
+                    for audit in matching_audits:
+                        if audit.user and audit.user.username:
+                            approver = audit.user.username
+                            break
+                if not approver:
+                    approver = user_name
+
+                # 7. Reason
+                reason = ""
+                if is_void:
+                    if sale.void_reason and sale.void_reason.description:
+                        reason = sale.void_reason.description
+                else:
+                    item_reasons = [it.refund_reason for it in sale.items if it.refund_reason]
+                    if item_reasons:
+                        reason = ", ".join(dict.fromkeys(item_reasons))
+
+                if not reason:
+                    for audit in matching_audits:
+                        details = audit.details or ""
+                        if "Reason:" in details:
+                            match = re.search(r"Reason:\s*([^.]+)", details)
+                            if match:
+                                reason = match.group(1).strip()
+                                break
+                            else:
+                                reason = details.split("Reason:", 1)[1].strip()
+                                break
+
                 data.append(
                     {
                         "Date": sale.date.strftime("%Y-%m-%d %H:%M") if sale.date else "",
-                        "Document #": sale.document_number or "",
-                        "Status": sale.status,
-                        "Amount": float(sale.total_amount or 0),
-                        "User": username,
-                        "Payment": sale.payment_method or "",
+                        "Document #": doc_no,
+                        "Type": doc_type,
+                        "Scope": scope,
+                        "Original Receipt": orig_receipt,
+                        "Amount": amount,
+                        "User": user_name,
+                        "Approver": approver,
+                        "Reason": reason,
                     }
                 )
 
-            df = pd.DataFrame(data)
-            if df.empty:
-                df = pd.DataFrame(columns=["Date", "Document #", "Status", "Amount", "User", "Payment"])
-            return df
+            return pd.DataFrame(data)
 
 
 class PaymentMethodSummaryReport(BaseReport):
@@ -186,7 +308,7 @@ class PaymentMethodSummaryReport(BaseReport):
                     {
                         "Payment Method": row.payment_method,
                         "Transactions": row.count,
-                        "Total Amount": float(row.total) if row.total else 0.0,
+                        "Total Amount": row.total if row.total is not None else Decimal(0),
                     }
                 )
 

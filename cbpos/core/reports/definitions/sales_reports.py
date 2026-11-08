@@ -1,11 +1,14 @@
+from decimal import Decimal
 from typing import Any
 
 import pandas as pd
-from sqlalchemy import func
+from sqlalchemy import case, func, select
 
+from cbpos.core.constants.status import DocumentStatus
 from cbpos.core.database import get_db_session
 from cbpos.core.models import Category, Product, Sale, SaleItem, User
 from cbpos.core.reports.base_report import CATEGORY_SALES, INT, MONEY, QTY, TEXT, BaseReport, report_columns
+from cbpos.core.reports.sale_filters import date_bounds
 from cbpos.i18n import _t
 
 
@@ -44,43 +47,57 @@ class SalesByCategoryReport(BaseReport):
         }
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
-        """Sum quantity sold and gross revenue (sale item subtotal) per category."""
-        with get_db_session() as session:
-            date_range = filters.get("date_range", {})
-            start_date = date_range.get("start")
-            end_date = date_range.get("end")
+        """Sum quantity sold and gross revenue (sale item subtotal) per category for completed sales and refunds.
 
-            # Join SaleItem -> Product -> Category
-            # Filter by Sale Date
-            query = (
-                session.query(
+        Voided sales are strictly excluded (#845).
+        """
+        date_range = filters.get("date_range", {})
+        start_dt, end_dt = date_bounds(date_range)
+
+        with get_db_session() as session:
+            stmt = (
+                select(
                     Category.name.label("category_name"),
-                    func.sum(SaleItem.qty).label("qty_sold"),
-                    func.sum(SaleItem.subtotal).label("gross_revenue"),
+                    func.sum(
+                        case(
+                            (Sale.refund_of_sale_id.is_not(None), -func.abs(SaleItem.qty)),
+                            else_=SaleItem.qty,
+                        )
+                    ).label("qty_sold"),
+                    func.sum(
+                        case(
+                            (Sale.refund_of_sale_id.is_not(None), -func.abs(SaleItem.subtotal)),
+                            else_=SaleItem.subtotal,
+                        )
+                    ).label("gross_revenue"),
                 )
                 .join(Product, SaleItem.product_id == Product.id)
                 .join(Category, Product.category_id == Category.id)
                 .join(Sale, SaleItem.sale_id == Sale.id)
+                .where(Sale.status == DocumentStatus.COMPLETED)
             )
 
-            if start_date:
-                query = query.filter(func.date(Sale.date) >= start_date)
-            if end_date:
-                query = query.filter(func.date(Sale.date) <= end_date)
+            if start_dt:
+                stmt = stmt.where(Sale.date >= start_dt)
+            if end_dt:
+                stmt = stmt.where(Sale.date < end_dt)
 
-            results = query.group_by(Category.name).all()
+            results = session.execute(stmt.group_by(Category.name).order_by(func.sum(SaleItem.subtotal).desc())).all()
 
             data = []
             for row in results:
                 data.append(
                     {
                         "Category": row.category_name,
-                        "Qty Sold": float(row.qty_sold or 0),
-                        "Gross Revenue": float(row.gross_revenue or 0),
+                        "Qty Sold": row.qty_sold if row.qty_sold is not None else Decimal("0"),
+                        "Gross Revenue": row.gross_revenue if row.gross_revenue is not None else Decimal("0.00"),
                     }
                 )
 
-            return pd.DataFrame(data)
+            df = pd.DataFrame(data)
+            if df.empty:
+                df = pd.DataFrame(columns=["Category", "Qty Sold", "Gross Revenue"])
+            return df
 
 
 class CashierPerformanceReport(BaseReport):
@@ -118,24 +135,36 @@ class CashierPerformanceReport(BaseReport):
         }
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
-        """Sum transaction count and total sales per cashier (user)."""
+        """Sum transaction count and total sales per cashier for completed sales and refunds.
+
+        Voided sales are strictly excluded (#845).
+        Refund documents reduce total sales but do not increment transaction count.
+        """
+        date_range = filters.get("date_range", {})
+        start_dt, end_dt = date_bounds(date_range)
+
         with get_db_session() as session:
-            date_range = filters.get("date_range", {})
-            start_date = date_range.get("start")
-            end_date = date_range.get("end")
+            stmt = (
+                select(
+                    User.username.label("cashier_name"),
+                    func.count(case((Sale.refund_of_sale_id.is_(None), Sale.id))).label("txn_count"),
+                    func.sum(
+                        case(
+                            (Sale.refund_of_sale_id.is_not(None), -func.abs(Sale.total_amount)),
+                            else_=Sale.total_amount,
+                        )
+                    ).label("total_sales"),
+                )
+                .join(User, Sale.user_id == User.id)
+                .where(Sale.status == DocumentStatus.COMPLETED)
+            )
 
-            query = session.query(
-                User.username.label("cashier_name"),
-                func.count(Sale.id).label("txn_count"),
-                func.sum(Sale.total_amount).label("total_sales"),
-            ).join(User, Sale.user_id == User.id)
+            if start_dt:
+                stmt = stmt.where(Sale.date >= start_dt)
+            if end_dt:
+                stmt = stmt.where(Sale.date < end_dt)
 
-            if start_date:
-                query = query.filter(func.date(Sale.date) >= start_date)
-            if end_date:
-                query = query.filter(func.date(Sale.date) <= end_date)
-
-            results = query.group_by(User.username).all()
+            results = session.execute(stmt.group_by(User.username).order_by(func.sum(Sale.total_amount).desc())).all()
 
             data = []
             for row in results:
@@ -143,8 +172,11 @@ class CashierPerformanceReport(BaseReport):
                     {
                         "Cashier Name": row.cashier_name,
                         "Transaction Count": int(row.txn_count or 0),
-                        "Total Sales": float(row.total_sales or 0),
+                        "Total Sales": row.total_sales if row.total_sales is not None else Decimal("0.00"),
                     }
                 )
 
-            return pd.DataFrame(data)
+            df = pd.DataFrame(data)
+            if df.empty:
+                df = pd.DataFrame(columns=["Cashier Name", "Transaction Count", "Total Sales"])
+            return df

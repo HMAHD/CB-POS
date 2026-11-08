@@ -1542,6 +1542,7 @@
     "col_net_revenue": "நிகர வருமானம்",
     "col_vat": "VAT",
     "col_sscl": "SSCL",
+    "col_sscl_expense": "SSCL செலவு",
     "col_total_tax": "மொத்த வரி",
     "col_barcode": "பார்கோட்",
     "col_name": "பேர்",
@@ -1568,6 +1569,9 @@
     "col_user": "பயனர்",
     "col_product": "பொருள்",
     "col_type": "வகை",
+    "col_scope": "அளவு",
+    "col_original_receipt": "அசல் ரசீது",
+    "col_approver": "அங்கீகரிப்பாளர்",
     "col_qty_change": "அளவு மாற்றம்",
     "col_balance": "இருப்பு",
     "col_reference": "ரெஃபரன்ஸ்",
@@ -1623,7 +1627,11 @@
     "cashflow_net": "நிகர பண ஓட்டம்",
     "cashflow_inflow": "உள்வரவு",
     "cashflow_outflow": "வெளிச்செலவு",
-    "cashflow_net_type": "நிகர"
+    "cashflow_net_type": "நிகர",
+    "type_void": "ரத்து",
+    "type_refund": "திரும்பப் பெறுதல்",
+    "scope_part": "பகுதி",
+    "scope_full": "முழு"
   },
   "settings": {
     "unsaved_title": "சேமிக்காத மாற்றங்கள்",

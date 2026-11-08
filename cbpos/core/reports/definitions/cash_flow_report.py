@@ -1,16 +1,20 @@
+from decimal import Decimal
 from typing import Any
 
 import pandas as pd
-from sqlalchemy import func
+from sqlalchemy import select
 
+from cbpos.core.constants.status import DocumentStatus, PaymentMethodKind
 from cbpos.core.database import get_db_session
-from cbpos.core.models import Sale
+from cbpos.core.models import CashMovement, Sale, SalePayment
 from cbpos.core.reports.base_report import CATEGORY_FINANCIAL, MONEY, TEXT, BaseReport, report_columns
+from cbpos.core.reports.sale_filters import date_bounds
+from cbpos.core.services.refund_breakdown import refund_cash_back
 from cbpos.i18n import _t
 
 
 class CashFlowReport(BaseReport):
-    """Net cash flow for a period: sales inflow minus refunds and expenses outflow."""
+    """Net cash flow for a period: sales inflow minus refunds and drawer cash movements."""
 
     @property
     def id(self) -> str:
@@ -41,62 +45,132 @@ class CashFlowReport(BaseReport):
             "color_map": {"Inflow": "success", "Outflow": "danger"},
         }
 
-    def generate(self, filters: dict[str, Any] = None) -> pd.DataFrame:
-        """Compute total sales inflow vs. refund/expense outflow for the date range.
+    def generate(self, filters: dict[str, Any] | None = None) -> pd.DataFrame:
+        """Compute cash flow from payments grouped by PaymentMethodKind and drawer movements.
 
-        Refunds are identified via ``Sale.refund_of_sale_id``. Expenses are a
-        static 0.00 placeholder pending a dedicated Expense model. Net Cash
-        Flow = sales - refunds - expenses.
+        - Cash Inflow = sum of positive CASH-kind payments from completed sales.
+        - Cash Outflow = sum of absolute negative CASH-kind payments, plus legacy cash-back share.
+        - Drawer In / Out = genuine cash drawer movements.
+        - Other tenders reported with their respective inflow, refund and net.
+        - Pure Decimal throughout (#844).
         """
         if filters is None:
             filters = {}
 
+        date_range = filters.get("date_range", {})
+        start_dt, end_dt = date_bounds(date_range)
+
         with get_db_session() as session:
-            date_range = filters.get("date_range", {})
-            start_date = date_range.get("start")
-            end_date = date_range.get("end")
+            # 1. Query payments from valid completed revenue documents (sales & completed refunds)
+            stmt_payments = (
+                select(SalePayment)
+                .join(Sale, SalePayment.sale_id == Sale.id)
+                .where(Sale.status == DocumentStatus.COMPLETED)
+            )
+            if start_dt:
+                stmt_payments = stmt_payments.where(Sale.date >= start_dt)
+            if end_dt:
+                stmt_payments = stmt_payments.where(Sale.date < end_dt)
 
-            # 1. Total Sales (Inflow)
-            query_sales = session.query(func.sum(Sale.total_amount)).filter(Sale.status == "COMPLETED")
+            payments = session.scalars(stmt_payments).all()
 
-            if start_date:
-                query_sales = query_sales.filter(func.date(Sale.date) >= start_date)
-            if end_date:
-                query_sales = query_sales.filter(func.date(Sale.date) <= end_date)
+            inflows: dict[str, Decimal] = {}
+            refunds: dict[str, Decimal] = {}
+            refunded_sale_ids_with_payments: set[int] = set()
 
-            total_sales = float(query_sales.scalar() or 0)
+            for p in payments:
+                amt = p.amount or Decimal("0.00")
+                kind = p.method_kind or PaymentMethodKind.OTHER
 
-            # 2. Refunds (Outflow)
-            # Assuming refunds are tracked via negative sales or specific status
-            # For now, let's query Sales where total_amount < 0 or specific refund logic
-            # The system seems to use refund_of_sale_id for refunds, but are they stored as new Sales
-            # with negative amount?
-            # Based on HistoryView, refunds are new sales.
-            # Let's check if they have negative amounts.
-            # If not, we might need to check is_refund flag if it exists, or just rely on negative total.
-            # I'll assume standard POS behavior: Refunds are negative or separate type.
-            # OR better: check if refund_of_sale_id is not None.
+                if kind == PaymentMethodKind.REFUND_LEGACY:
+                    cash_portion = refund_cash_back(abs(amt), Decimal("0.00"))
+                    refunds[PaymentMethodKind.CASH] = (
+                        refunds.get(PaymentMethodKind.CASH, Decimal("0.00")) + cash_portion
+                    )
+                    refunded_sale_ids_with_payments.add(p.sale_id)
+                else:
+                    if amt > 0:
+                        inflows[kind] = inflows.get(kind, Decimal("0.00")) + amt
+                    elif amt < 0:
+                        refunds[kind] = refunds.get(kind, Decimal("0.00")) + abs(amt)
+                        refunded_sale_ids_with_payments.add(p.sale_id)
 
-            query_refunds = session.query(func.sum(Sale.total_amount)).filter(Sale.refund_of_sale_id.isnot(None))
-            if start_date:
-                query_refunds = query_refunds.filter(func.date(Sale.date) >= start_date)
-            if end_date:
-                query_refunds = query_refunds.filter(func.date(Sale.date) <= end_date)
+            # 2. Check for legacy completed refund sales that have NO SalePayment rows
+            stmt_legacy_refunds = select(Sale).where(
+                Sale.status == DocumentStatus.COMPLETED,
+                Sale.refund_of_sale_id.isnot(None),
+            )
+            if start_dt:
+                stmt_legacy_refunds = stmt_legacy_refunds.where(Sale.date >= start_dt)
+            if end_dt:
+                stmt_legacy_refunds = stmt_legacy_refunds.where(Sale.date < end_dt)
 
-            total_refunds = float(query_refunds.scalar() or 0)
+            legacy_refund_sales = session.scalars(stmt_legacy_refunds).all()
+            for rfs in legacy_refund_sales:
+                if rfs.id not in refunded_sale_ids_with_payments:
+                    cash_portion = refund_cash_back(abs(rfs.total_amount or Decimal("0.00")), Decimal("0.00"))
+                    refunds[PaymentMethodKind.CASH] = (
+                        refunds.get(PaymentMethodKind.CASH, Decimal("0.00")) + cash_portion
+                    )
 
-            # 3. Expenses (Outflow) - Placeholder as no Expense model yet
-            total_expenses = 0.0
+            # 3. Drawer movements
+            stmt_movements = select(CashMovement)
+            if start_dt:
+                stmt_movements = stmt_movements.where(CashMovement.timestamp >= start_dt)
+            if end_dt:
+                stmt_movements = stmt_movements.where(CashMovement.timestamp < end_dt)
 
-            data = [
-                {"Category": "Total Sales", "Amount": float(total_sales), "Type": "Inflow"},
-                {"Category": "Refunds", "Amount": float(total_refunds), "Type": "Outflow"},
-                {"Category": "Expenses", "Amount": float(total_expenses), "Type": "Outflow"},
-                {
-                    "Category": "Net Cash Flow",
-                    "Amount": float(total_sales - total_refunds - total_expenses),
-                    "Type": "Net",
-                },
-            ]
+            movements = session.scalars(stmt_movements).all()
+            drawer_in = Decimal("0.00")
+            drawer_out = Decimal("0.00")
+            for m in movements:
+                m_type = (m.type or "").upper()
+                amt = m.amount or Decimal("0.00")
+                if m_type == "IN":
+                    drawer_in += amt
+                elif m_type in ("OUT", "DROP", "PAYOUT"):
+                    drawer_out += amt
+
+            # 4. Build output data
+            data: list[dict[str, Any]] = []
+
+            # Physical Cash Section
+            cash_in = inflows.get(PaymentMethodKind.CASH, Decimal("0.00"))
+            cash_refunded = refunds.get(PaymentMethodKind.CASH, Decimal("0.00"))
+            net_cash = cash_in - cash_refunded + drawer_in - drawer_out
+
+            data.append({"Category": "Cash Sales", "Amount": cash_in, "Type": "Inflow"})
+            data.append({"Category": "Cash Refunds", "Amount": cash_refunded, "Type": "Outflow"})
+            if drawer_in > 0:
+                data.append({"Category": "Cash In (Drawer)", "Amount": drawer_in, "Type": "Inflow"})
+            if drawer_out > 0:
+                data.append({"Category": "Cash Out (Drawer)", "Amount": drawer_out, "Type": "Outflow"})
+            data.append({"Category": "Net Cash", "Amount": net_cash, "Type": "Net"})
+
+            # Other tenders
+            kind_labels = {
+                PaymentMethodKind.CARD: "Card",
+                PaymentMethodKind.CREDIT: "Store Credit",
+                PaymentMethodKind.QR: "QR / Digital",
+                PaymentMethodKind.CHEQUE: "Cheque",
+                PaymentMethodKind.TRANSFER: "Bank Transfer",
+                PaymentMethodKind.OTHER: "Other",
+            }
+
+            total_other_net = Decimal("0.00")
+            for kind, label in kind_labels.items():
+                k_in = inflows.get(kind, Decimal("0.00"))
+                k_ref = refunds.get(kind, Decimal("0.00"))
+                if k_in > 0 or k_ref > 0:
+                    k_net = k_in - k_ref
+                    total_other_net += k_net
+                    data.append({"Category": f"{label} Sales", "Amount": k_in, "Type": "Inflow"})
+                    if k_ref > 0:
+                        data.append({"Category": f"{label} Refunds", "Amount": k_ref, "Type": "Outflow"})
+                    data.append({"Category": f"Net {label}", "Amount": k_net, "Type": "Net"})
+
+            # Overall Net Cash Flow
+            total_net_flow = net_cash + total_other_net
+            data.append({"Category": "Net Cash Flow", "Amount": total_net_flow, "Type": "Net"})
 
             return pd.DataFrame(data)

@@ -5,6 +5,7 @@ from typing import Any
 
 from cbpos.core.models import Sale, SaleItem
 from cbpos.core.services.base_receipt_builder import BaseReceiptBuilder
+from cbpos.core.services.tax_service import TaxService
 from cbpos.core.utils.formatters import format_currency, format_quantity
 
 
@@ -183,7 +184,6 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
         )
 
         # Tax — indented under total (skip when VAT off, unless sale has historical tax)
-        from cbpos.core.services.tax_service import TaxService
 
         has_stored_tax = bool(sale.tax_vat and sale.tax_vat > 0)
         if gc("show_tax_breakdown", False, config_override) and (TaxService.is_vat_active() or has_stored_tax):
@@ -201,9 +201,10 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
                     cls._split_row("  {}:".format(cls._rt("tax_exempt")), format_currency(exempt_amount), line_chars)
                 )
             if sale.tax_vat and sale.tax_vat > 0:
-                commands.append(
-                    cls._split_row("  {}:".format(cls._rt("vat")), format_currency(sale.tax_vat), line_chars)
-                )
+                vat_rate = TaxService.resolve_historical_vat_rate(sale)
+                vat_rate_str = TaxService.format_rate(vat_rate)
+                vat_label = cls._rt("vat_with_rate", rate=vat_rate_str)
+                commands.append(cls._split_row(f"  {vat_label}:", format_currency(sale.tax_vat), line_chars))
             # SSCL is a business levy hidden from customer receipts (D9/D25, #831); customer net total is gross minus customer-facing VAT
             net_val = sale.total_amount - (sale.tax_vat or Decimal("0.00"))
             if net_val and net_val > 0:

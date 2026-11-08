@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 6 · Batch: 6.2 · Branch: fix/p6-b2-tax-reports-invoice-history · PR: none · Last session: 2026-11-08
+- Phase: 6 · Batch: 6.2 · Branch: fix/p6-b2-tax-reports-invoice-history · PR: #1003 · Last session: 2026-11-08
 
 ## Issues
 
@@ -148,9 +148,9 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #797 | Tax-exempt categories cannot be set from the UI; exempt split is not stored o… | high | 6.1 | done | #1002 | 7d3ce6e · CategoryService tax_exempt/sscl_exempt flag persistence & inheritance, UI checkboxes in CategoryManagerDialog, Sale/SaleItem exemption facts & cost snapshot, line-aware refund split |
 | #810 | Tax rounding uses banker's rounding (ROUND_HALF_EVEN); VAT rate field is inte… | medium | 6.1 | done | #1002 | 7d3ce6e · ROUND_HALF_UP via round_money, net = total - vat - sscl, QDoubleSpinBox with 2 decimals, guardrail test |
 | #831 | SSCL: not calculated for non-VAT-registered liable shops (Rs 36M threshold fr… | high | 6.1 | done | #1002 | 7d3ce6e · Independent sscl_registered config and migration, turnover presets (Retail 50%, Manufacturer 85%, Distributor 25%, Custom), VAT-exclusive SSCL base, SSCL removed from receipts & invoices, settings UI split, D25 |
-| #795 | Tax Liability Report includes voided sales and hard-codes "VAT (18%)" / "SSCL… | high | 6.2 | todo | | |
-| #796 | Tax Filing Summary: period selector not wired, Total Discounts always 0, SSCL… | high | 6.2 | todo | | |
-| #811 | Invoice reprint shows the current tax % next to amounts stored at the old rate | low | 6.2 | todo | | |
+| #795 | Tax Liability Report includes voided sales and hard-codes "VAT (18%)" / "SSCL… | high | 6.2 | pr-open | #1003 | completed_sales/refund_documents filters exclude voids, separate refund section with net totals, dynamic VAT/SSCL headers, per-rate breakdown table |
+| #796 | Tax Filing Summary: period selector not wired, Total Discounts always 0, SSCL… | high | 6.2 | pr-open | #1003 | interactive monthly/quarterly/custom period resolution in FilterWidget, discounts computed from lines/bill/loyalty, reconciled SSCL liable turnover and quarterly liability section, method_kind grouping |
+| #811 | Invoice reprint shows the current tax % next to amounts stored at the old rate | low | 6.2 | pr-open | #1003 | resolve_historical_vat_rate snapshot fallback, format_rate cleanly, receipt and invoice PDF use sale rate, receipt_strings.vat_with_rate translation |
 | #798 | Profit & Loss report uses VAT-inclusive revenue, current cost and float math | high | 6.3 | todo | | |
 | #843 | Refunds never appear in the Void/Refund report | high | 6.3 | todo | | |
 | #844 | Cash Flow report adds refunds back (net too high by 2× refunds) | high | 6.3 | todo | | |
@@ -305,5 +305,5 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #911 | Physical thermal print of duplicate receipt (SalesReceiptBuilder & RefundReceiptBuilder duplicate markers) | pending |
 
 ## Handoff
-Phase 6, Batch 6.1 (Tax calculation and stored facts: #810, #797, #831) is complete and merged to `main` in PR #1002 (7d3ce6e). Issues #797, #810, #831 verified closed. Decision D25 recorded. Ready to begin Batch 6.2 (Tax reporting and invoice history: #811, #795, #796) on branch `fix/p6-b2-tax-reports-invoice-history`. Shared foundation `cbpos/core/reports/sale_filters.py` to be created first.
+Phase 6, Batch 6.2 (Tax reporting and invoice history: #811, #795, #796) PR #1003 is open with all review findings resolved via commit `cb43f11` (full suite and focused tests passing, translations valid, pre-commit clean). Awaiting user merge approval. Once merged, verify #811, #795, #796 are closed and proceed to Batch 6.3.
 

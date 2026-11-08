@@ -182,6 +182,19 @@ class TestVatInvoicePdf:
         assert "CB POS" in text
         assert "ceybyte.com" in text
 
+    def test_issue_811_reprint_uses_sale_rate_after_setting_change(self, settings, tmp_path, monkeypatch):
+        sale = _vat_sale()
+        sale.vat_rate = Decimal("15.00")
+
+        # Current setting changed to 18%
+        monkeypatch.setattr(
+            ConfigService, "get", lambda k, *a: 18.0 if k in ("tax_vat_rate", "vat_rate") else settings.get(k)
+        )
+
+        text = _pdf_text(sale, tmp_path)
+        assert "VAT (15%)" in text
+        assert "VAT (18%)" not in text
+
 
 class TestNonVatInvoicePdf:
     def test_shop_not_vat_registered_gets_a_plain_invoice_without_vat_rows(self, settings, tmp_path):

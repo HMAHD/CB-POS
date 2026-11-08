@@ -1,8 +1,12 @@
+import logging
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+from typing import Any
 
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.utils.money import round_money
+
+logger = logging.getLogger(__name__)
 
 SSCL_PRESETS: dict[str, Decimal] = {
     "RETAIL": Decimal("50.0"),
@@ -39,6 +43,44 @@ class TaxService:
         if val is None:
             return bool(config.get("vat_registered", False))
         return bool(val)
+
+    @staticmethod
+    def resolve_historical_vat_rate(sale: Any) -> Decimal:
+        """Resolve the VAT rate for a sale (stored snapshot with fallback for unmigrated rows) (#811).
+
+        Args:
+            sale: Sale instance or duck-typed object with vat_rate and document_number.
+
+        Returns:
+            Decimal: The effective VAT rate percentage (e.g. Decimal("18.00")).
+        """
+        vat_rate = getattr(sale, "vat_rate", None)
+        if vat_rate is not None:
+            return Decimal(str(vat_rate))
+
+        doc_num = getattr(sale, "document_number", None) or getattr(sale, "id", "unknown")
+        logger.warning(
+            "Document %s missing stored vat_rate, falling back to current setting",
+            doc_num,
+        )
+        current = ConfigService.get("tax_vat_rate")
+        if current is None:
+            current = 18.0
+        return Decimal(str(current))
+
+    @staticmethod
+    def format_rate(rate: Any) -> str:
+        """Format a tax rate percentage cleanly: 18 -> "18", 18.5 -> "18.5", 0 -> "0"."""
+        if rate is None:
+            return ""
+        try:
+            d = Decimal(str(rate))
+            if d == d.to_integral():
+                return f"{int(d)}"
+            s = f"{d:f}".rstrip("0").rstrip(".")
+            return s if s else "0"
+        except (InvalidOperation, TypeError, ValueError):
+            return str(rate)
 
     @staticmethod
     def _get_rates():

@@ -449,7 +449,8 @@ class InvoiceService:
             # SSCL is a business levy hidden from customer invoices (D9/D25, #831); customer net value is gross minus customer-facing VAT
             net_val = total - _dec(sale.tax_vat)
             rows.append((t("net_value"), format_currency(net_val)))
-            vat_rate_str = _pct(sale.vat_rate if sale.vat_rate is not None else ConfigService.get("tax_vat_rate"), "18")
+            vat_rate = TaxService.resolve_historical_vat_rate(sale)
+            vat_rate_str = TaxService.format_rate(vat_rate)
             rows.append((t("vat", rate=vat_rate_str), format_currency(sale.tax_vat)))
 
         data = []

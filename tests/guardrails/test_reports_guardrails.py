@@ -22,18 +22,18 @@ def test_no_float_on_money_in_reports():
     # Allowlist of legacy files pending remediation in their respective batches.
     # financial_reports.py is remediated in Batch 6.3 (#798) and must have NO float() calls.
     ALLOWED_LEGACY_FILES = {
-        "audit_reports.py",
-        "credit_report.py",
-        "inventory_reports.py",
-        "overdue_report.py",
-        "shift_variance_report.py",
+        "definitions/audit_reports.py",
+        "definitions/credit_report.py",
+        "definitions/inventory_reports.py",
+        "definitions/overdue_report.py",
+        "definitions/shift_variance_report.py",
     }
 
     violations = []
     scanned_files = 0
 
     for py_file in reports_dir.rglob("*.py"):
-        rel_name = py_file.name
+        rel_path = py_file.relative_to(reports_dir).as_posix()
         scanned_files += 1
 
         try:
@@ -41,12 +41,16 @@ def test_no_float_on_money_in_reports():
         except Exception as e:
             pytest.fail(f"Could not parse {py_file}: {e}")
 
+        if rel_path in ALLOWED_LEGACY_FILES:
+            continue
+
         for node in ast.walk(tree):
-            if isinstance(node, ast.Call):
-                if isinstance(node.func, ast.Name) and node.func.id == "float":
-                    if rel_name in ALLOWED_LEGACY_FILES:
-                        continue
-                    violations.append(f"{py_file.relative_to(reports_dir.parent.parent)}:{node.lineno}")
+            if isinstance(node, ast.Name) and node.id == "float" and isinstance(node.ctx, ast.Load):
+                violations.append(f"{py_file.relative_to(reports_dir.parent.parent)}:{node.lineno} (Name: float)")
+            elif isinstance(node, ast.Attribute) and node.attr == "float" and isinstance(node.ctx, ast.Load):
+                violations.append(f"{py_file.relative_to(reports_dir.parent.parent)}:{node.lineno} (Attribute: float)")
+            elif isinstance(node, ast.alias) and (node.name == "float" or node.asname == "float"):
+                violations.append(f"{py_file.relative_to(reports_dir.parent.parent)}:{node.lineno} (Alias: float)")
 
     assert scanned_files > 5, f"Expected >5 report files, got {scanned_files}"
     assert not violations, f"Found {len(violations)} forbidden float() call(s) in reports (Issue #798):\n" + "\n".join(

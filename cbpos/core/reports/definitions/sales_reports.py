@@ -58,8 +58,18 @@ class SalesByCategoryReport(BaseReport):
             stmt = (
                 select(
                     Category.name.label("category_name"),
-                    func.sum(SaleItem.qty).label("qty_sold"),
-                    func.sum(SaleItem.subtotal).label("gross_revenue"),
+                    func.sum(
+                        case(
+                            (Sale.refund_of_sale_id.is_not(None), -func.abs(SaleItem.qty)),
+                            else_=SaleItem.qty,
+                        )
+                    ).label("qty_sold"),
+                    func.sum(
+                        case(
+                            (Sale.refund_of_sale_id.is_not(None), -func.abs(SaleItem.subtotal)),
+                            else_=SaleItem.subtotal,
+                        )
+                    ).label("gross_revenue"),
                 )
                 .join(Product, SaleItem.product_id == Product.id)
                 .join(Category, Product.category_id == Category.id)
@@ -138,7 +148,12 @@ class CashierPerformanceReport(BaseReport):
                 select(
                     User.username.label("cashier_name"),
                     func.count(case((Sale.refund_of_sale_id.is_(None), Sale.id))).label("txn_count"),
-                    func.sum(Sale.total_amount).label("total_sales"),
+                    func.sum(
+                        case(
+                            (Sale.refund_of_sale_id.is_not(None), -func.abs(Sale.total_amount)),
+                            else_=Sale.total_amount,
+                        )
+                    ).label("total_sales"),
                 )
                 .join(User, Sale.user_id == User.id)
                 .where(Sale.status == DocumentStatus.COMPLETED)

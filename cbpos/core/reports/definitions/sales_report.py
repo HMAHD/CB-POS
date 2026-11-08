@@ -149,7 +149,12 @@ class DailySalesSummaryReport(BaseReport):
             stmt = select(
                 func.date(Sale.date).label("sale_date"),
                 func.count(case((Sale.refund_of_sale_id.is_(None), Sale.id))).label("transaction_count"),
-                func.sum(Sale.total_amount).label("total_sales"),
+                func.sum(
+                    case(
+                        (Sale.refund_of_sale_id.is_not(None), -func.abs(Sale.total_amount)),
+                        else_=Sale.total_amount,
+                    )
+                ).label("total_sales"),
             ).where(Sale.status == DocumentStatus.COMPLETED)
 
             if start_dt:

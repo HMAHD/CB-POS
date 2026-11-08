@@ -122,25 +122,29 @@ class VoidRefundReport(BaseReport):
             refund_states = RefundService.refund_states(orig_sale_ids, session=session) if orig_sale_ids else {}
 
             doc_numbers = [s.document_number for s in sales if s.document_number]
-            audit_entries: list[AuditLog] = []
-            if doc_numbers:
-                audit_entries = (
-                    session.query(AuditLog)
-                    .options(joinedload(AuditLog.user))
-                    .filter(
-                        AuditLog.action.in_(["VOID_SALE", "REFUND", "REFUND_TENDER_OVERRIDE", "OVERRIDE_AUTH"]),
-                        or_(*[AuditLog.details.like(f"%{doc_no}%") for doc_no in doc_numbers]),
-                    )
-                    .order_by(AuditLog.id.asc())
-                    .all()
-                )
-
             doc_audits: dict[str, list[AuditLog]] = {}
-            for audit in audit_entries:
-                details = audit.details or ""
-                for doc_no in doc_numbers:
-                    if doc_no in details:
-                        doc_audits.setdefault(doc_no, []).append(audit)
+            if doc_numbers:
+                # Query in chunks of 100 to avoid SQLite expression tree limits
+                chunk_size = 100
+                audit_entries: list[AuditLog] = []
+                for i in range(0, len(doc_numbers), chunk_size):
+                    chunk = doc_numbers[i : i + chunk_size]
+                    audit_entries.extend(
+                        session.query(AuditLog)
+                        .options(joinedload(AuditLog.user))
+                        .filter(
+                            AuditLog.action.in_(["VOID_SALE", "REFUND", "REFUND_TENDER_OVERRIDE", "OVERRIDE_AUTH"]),
+                            or_(*[AuditLog.details.like(f"%{doc_no}%") for doc_no in chunk]),
+                        )
+                        .order_by(AuditLog.id.asc())
+                        .all()
+                    )
+
+                for audit in audit_entries:
+                    details = audit.details or ""
+                    for doc_no in doc_numbers:
+                        if doc_no in details:
+                            doc_audits.setdefault(doc_no, []).append(audit)
 
             data = []
             for sale in sales:

@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 import pandas as pd
-from sqlalchemy import desc, extract, func, select
+from sqlalchemy import case, desc, extract, func, select
 
 from cbpos.core.constants.status import DocumentStatus
 from cbpos.core.database import Database
@@ -32,7 +32,14 @@ class ReportService:
 
             # Total Sales
             total_sales = session.scalar(
-                select(func.sum(Sale.total_amount)).where(
+                select(
+                    func.sum(
+                        case(
+                            (Sale.refund_of_sale_id.is_not(None), -func.abs(Sale.total_amount)),
+                            else_=Sale.total_amount,
+                        )
+                    )
+                ).where(
                     Sale.date >= start_dt,
                     Sale.date <= end_dt,
                     Sale.status == DocumentStatus.COMPLETED,
@@ -50,7 +57,15 @@ class ReportService:
 
             # Payment Breakdown
             payment_breakdown = session.execute(
-                select(SalePayment.method_kind, func.sum(SalePayment.amount))
+                select(
+                    SalePayment.method_kind,
+                    func.sum(
+                        case(
+                            (Sale.refund_of_sale_id.is_not(None), -func.abs(SalePayment.amount)),
+                            else_=SalePayment.amount,
+                        )
+                    ),
+                )
                 .join(Sale)
                 .where(
                     Sale.date >= start_dt,
@@ -72,7 +87,15 @@ class ReportService:
         with self.db.get_session() as session:
             # Top selling products by quantity
             results = session.execute(
-                select(Product.name_en, func.sum(SaleItem.qty).label("total_qty"))
+                select(
+                    Product.name_en,
+                    func.sum(
+                        case(
+                            (Sale.refund_of_sale_id.is_not(None), -func.abs(SaleItem.qty)),
+                            else_=SaleItem.qty,
+                        )
+                    ).label("total_qty"),
+                )
                 .join(SaleItem, SaleItem.product_id == Product.id)
                 .join(Sale, SaleItem.sale_id == Sale.id)
                 .where(Sale.status == DocumentStatus.COMPLETED)
@@ -93,7 +116,12 @@ class ReportService:
             results = session.execute(
                 select(
                     extract("hour", Sale.date).label("hour"),
-                    func.sum(Sale.total_amount),
+                    func.sum(
+                        case(
+                            (Sale.refund_of_sale_id.is_not(None), -func.abs(Sale.total_amount)),
+                            else_=Sale.total_amount,
+                        )
+                    ),
                 )
                 .where(
                     Sale.date >= start_dt,

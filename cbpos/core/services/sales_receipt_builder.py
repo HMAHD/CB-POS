@@ -185,7 +185,7 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
         # Tax — indented under total (skip when VAT off, unless sale has historical tax)
         from cbpos.core.services.tax_service import TaxService
 
-        has_stored_tax = (sale.tax_vat and sale.tax_vat > 0) or (sale.tax_sscl and sale.tax_sscl > 0)
+        has_stored_tax = bool(sale.tax_vat and sale.tax_vat > 0)
         if gc("show_tax_breakdown", False, config_override) and (TaxService.is_vat_active() or has_stored_tax):
             exempt_amount = (
                 sale.vat_exempt_amount if sale.vat_exempt_amount is not None else getattr(sale, "_exempt_amount", None)
@@ -200,17 +200,15 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
                 commands.append(
                     cls._split_row("  {}:".format(cls._rt("tax_exempt")), format_currency(exempt_amount), line_chars)
                 )
-            if sale.tax_vat > 0:
+            if sale.tax_vat and sale.tax_vat > 0:
                 commands.append(
                     cls._split_row("  {}:".format(cls._rt("vat")), format_currency(sale.tax_vat), line_chars)
                 )
-            if sale.tax_sscl > 0:
+            # SSCL is a business levy, not charged to customers: omitted from receipts (#831)
+            net_val = sale.total_amount - (sale.tax_vat or Decimal("0.00"))
+            if net_val and net_val > 0:
                 commands.append(
-                    cls._split_row("  {}:".format(cls._rt("sscl")), format_currency(sale.tax_sscl), line_chars)
-                )
-            if sale.net_revenue and sale.net_revenue > 0:
-                commands.append(
-                    cls._split_row("  {}:".format(cls._rt("net_total")), format_currency(sale.net_revenue), line_chars)
+                    cls._split_row("  {}:".format(cls._rt("net_total")), format_currency(net_val), line_chars)
                 )
 
         # Payment block

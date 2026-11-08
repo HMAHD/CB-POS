@@ -147,7 +147,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 |---|---|---|---|---|---|---|
 | #797 | Tax-exempt categories cannot be set from the UI; exempt split is not stored o… | high | 6.1 | done | | CategoryService tax_exempt/sscl_exempt flag persistence & inheritance, UI checkboxes in CategoryManagerDialog, Sale/SaleItem exemption facts & cost snapshot, line-aware refund split |
 | #810 | Tax rounding uses banker's rounding (ROUND_HALF_EVEN); VAT rate field is inte… | medium | 6.1 | done | | ROUND_HALF_UP via round_money, net = total - vat - sscl, QDoubleSpinBox with 2 decimals, guardrail test |
-| #831 | SSCL: not calculated for non-VAT-registered liable shops (Rs 36M threshold fr… | high | 6.1 | todo | | |
+| #831 | SSCL: not calculated for non-VAT-registered liable shops (Rs 36M threshold fr… | high | 6.1 | done | | Independent sscl_registered config and migration, turnover presets (Retail 50%, Manufacturer 85%, Distributor 25%, Custom), VAT-exclusive SSCL base, SSCL removed from receipts & invoices, settings UI split, D25 |
 | #795 | Tax Liability Report includes voided sales and hard-codes "VAT (18%)" / "SSCL… | high | 6.2 | todo | | |
 | #796 | Tax Filing Summary: period selector not wired, Total Discounts always 0, SSCL… | high | 6.2 | todo | | |
 | #811 | Invoice reprint shows the current tax % next to amounts stored at the old rate | low | 6.2 | todo | | |

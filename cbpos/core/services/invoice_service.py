@@ -245,8 +245,8 @@ class InvoiceService:
 
     @staticmethod
     def _shows_vat(sale: Sale) -> bool:
-        """A tax invoice (VAT rows, VAT numbers) when the shop is VAT registered or the sale carried tax."""
-        return TaxService.is_vat_active() or _dec(sale.tax_vat) > 0 or _dec(sale.tax_sscl) > 0
+        """A tax invoice (VAT rows, VAT numbers) when the shop is VAT registered or the sale carried VAT."""
+        return TaxService.is_vat_active() or _dec(sale.tax_vat) > 0
 
     @staticmethod
     def generate_pdf(sale: Sale, filepath: str) -> str:
@@ -446,14 +446,10 @@ class InvoiceService:
             if exempt > 0:
                 rows.append((t("taxable"), format_currency(taxable)))
                 rows.append((t("exempt"), format_currency(exempt)))
-            rows.append((t("net_value"), format_currency(_dec(sale.net_revenue))))
+            net_val = total - _dec(sale.tax_vat)
+            rows.append((t("net_value"), format_currency(net_val)))
             vat_rate_str = _pct(sale.vat_rate if sale.vat_rate is not None else ConfigService.get("tax_vat_rate"), "18")
             rows.append((t("vat", rate=vat_rate_str), format_currency(sale.tax_vat)))
-            if _dec(sale.tax_sscl) > 0:
-                sscl_rate = _pct(
-                    sale.sscl_rate if sale.sscl_rate is not None else ConfigService.get("tax_sscl_rate"), "2.5"
-                )
-                rows.append((t("sscl", rate=sscl_rate), format_currency(sale.tax_sscl)))
 
         data = []
         for i, (label, value) in enumerate(rows):

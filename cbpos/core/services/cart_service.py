@@ -411,37 +411,29 @@ class CartService:
 
         final_total = after_cart_discount - loyalty_discount_amt
 
-        # 3. Split into taxable vs exempt amounts when item-level exemptions enabled
-        taxable_amount = None
-        exempt_amount = Decimal("0.00")
-        if ConfigService.get("item_tax_exemptions") and subtotal > Decimal("0"):
-            taxable_sub = Decimal("0.00")
-            exempt_sub = Decimal("0.00")
-            for item in self.items:
-                if self._is_item_tax_exempt(item):
-                    exempt_sub += item["total"]
-                else:
-                    taxable_sub += item["total"]
+        # 3. Build tax lines with per-line exemptions and distributed discounts (#797, #831)
+        from cbpos.core.services.tax_service import TaxLine
 
-            # Distribute total discount proportionally
-            total_discount_amt = cart_discount_amt + loyalty_discount_amt
-            if total_discount_amt > Decimal("0") and subtotal > Decimal("0"):
-                discount_ratio = total_discount_amt / subtotal
-                taxable_discount = round_money(taxable_sub * discount_ratio)
-                taxable_amount = round_money(taxable_sub - taxable_discount)
-                exempt_discount = round_money(exempt_sub * discount_ratio)
-                exempt_amount = round_money(exempt_sub - exempt_discount)
-            else:
-                taxable_amount = round_money(taxable_sub)
-                exempt_amount = round_money(exempt_sub)
-        else:
-            taxable_amount = round_money(final_total)
-            exempt_amount = Decimal("0.00")
+        tax_exemptions_enabled = bool(ConfigService.get("item_tax_exemptions"))
+        total_discount_amt = cart_discount_amt + loyalty_discount_amt
+        raw_amounts = [item["total"] for item in self.items]
+        line_discounted_amounts = TaxService.distribute_bill_discount(raw_amounts, total_discount_amt)
+
+        tax_lines = [
+            TaxLine(
+                amount=amt,
+                vat_exempt=bool(item.get("vat_exempt", item.get("tax_exempt", False)))
+                if tax_exemptions_enabled
+                else False,
+                sscl_exempt=bool(item.get("sscl_exempt", False)) if tax_exemptions_enabled else False,
+            )
+            for item, amt in zip(self.items, line_discounted_amounts, strict=False)
+        ]
 
         # Calculate tax breakdown from the final (post-discount) amount
         tax_info = TaxService.calculate_taxes(
-            round_money(final_total),
-            taxable_amount=taxable_amount,
+            total_mrp=round_money(final_total),
+            lines=tax_lines,
         )
 
         return {
@@ -452,13 +444,13 @@ class CartService:
             "loyalty_discount": round_money(loyalty_discount_amt),
             "loyalty_points_redeemed": points_to_redeem,
             "final_total": round_money(final_total),
-            "taxable_amount": taxable_amount,
+            "taxable_amount": tax_info["taxable_amount"],
             "tax_vat": tax_info["vat"],
             "tax_sscl": tax_info["sscl"],
             "tax": tax_info["vat"] + tax_info["sscl"],
             "net_revenue": tax_info["net"],
-            "exempt_amount": tax_info.get("exempt_amount", exempt_amount),
-            "sscl_base": tax_info.get("sscl_base", Decimal("0.00")),
+            "exempt_amount": tax_info["exempt_amount"],
+            "sscl_base": tax_info["sscl_base"],
             "count": len(self.items),
             "item_count": sum(item["qty"] for item in self.items),
         }

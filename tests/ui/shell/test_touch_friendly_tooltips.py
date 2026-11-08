@@ -85,7 +85,7 @@ class TestSalesTaxPageTouchFriendlyHelp:
     def test_sscl_help_button_invokes_guide_dialog(self, qtbot, monkeypatch):
         page = SalesTaxPage()
         qtbot.addWidget(page)
-        page.chk_vat_registered.setChecked(True)
+        page.chk_sscl_registered.setChecked(True)
 
         guide_exec = MagicMock()
         monkeypatch.setattr(GuideDialog, "exec", guide_exec)
@@ -109,14 +109,18 @@ class TestSalesTaxPageTouchFriendlyHelp:
         qtbot.addWidget(page)
 
         page.chk_vat_registered.setChecked(False)
+        page.chk_sscl_registered.setChecked(False)
         assert not page.btn_sscl_turnover_help.isEnabled()
         assert not page.btn_item_exempt_help.isEnabled()
         assert not page.lbl_item_exemptions_hint.isEnabled()
 
         page.chk_vat_registered.setChecked(True)
-        assert page.btn_sscl_turnover_help.isEnabled()
+        assert not page.btn_sscl_turnover_help.isEnabled()
         assert page.btn_item_exempt_help.isEnabled()
         assert page.lbl_item_exemptions_hint.isEnabled()
+
+        page.chk_sscl_registered.setChecked(True)
+        assert page.btn_sscl_turnover_help.isEnabled()
 
 
 class TestReceiptPageTouchFriendlyHelp:

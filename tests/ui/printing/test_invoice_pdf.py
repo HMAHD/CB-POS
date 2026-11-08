@@ -159,12 +159,11 @@ class TestVatInvoicePdf:
         assert "2,700.00" not in text  # no gross-of-line-discount sub total
         assert "Item Discounts" not in text  # line discounts show per line only
         assert "You saved Rs. 340.00" in text
-        # Backward from MRP: 2,360 = net 1,975 + VAT 360 + SSCL 25
+        # Backward from MRP: 2,360 = net 2,000 + VAT 360 (SSCL is not shown to customers)
         assert "VAT (18%)" in text
         assert "360.00" in text
-        assert "SSCL (2.5%)" in text
-        assert "25.00" in text
-        assert "1,975.00" in text
+        assert "SSCL" not in text
+        assert "2,000.00" in text
 
     def test_shop_and_customer_vat_numbers(self, settings, tmp_path):
         text = _pdf_text(_vat_sale(), tmp_path)

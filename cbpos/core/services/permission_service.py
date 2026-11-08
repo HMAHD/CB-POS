@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Iterable
 from datetime import datetime
 
@@ -11,6 +12,8 @@ from cbpos.core.constants.permissions import (
 )
 from cbpos.core.models import User
 from cbpos.core.services.auth_service import AuthService
+
+logger = logging.getLogger(__name__)
 
 
 class PermissionService:
@@ -33,15 +36,50 @@ class PermissionService:
         if not user:
             return False
 
-        role = getattr(user, "role", None)
-        if not role:
+        try:
+            role = getattr(user, "role", None)
+            if not role:
+                return False
+
+            # Admin has all permissions
+            if getattr(role, "name", None) == ADMIN_ROLE_NAME:
+                return True
+
+            return any(perm.code == permission_code for perm in getattr(role, "permissions", None) or [])
+        except Exception:
+            # Handle detached user instances gracefully
+            user_id = getattr(user, "__dict__", {}).get("id")
+            if not user_id:
+                try:
+                    from sqlalchemy import inspect
+
+                    insp = inspect(user)
+                    if insp and insp.identity:
+                        user_id = insp.identity[0]
+                except Exception:
+                    pass
+            if user_id:
+                try:
+                    from sqlalchemy.orm import joinedload
+
+                    from cbpos.core.database import Database
+                    from cbpos.core.models import Role
+
+                    db = Database()
+                    with db.get_session() as session:
+                        fresh_user = (
+                            session.query(User)
+                            .options(joinedload(User.role).joinedload(Role.permissions))
+                            .filter(User.id == user_id)
+                            .first()
+                        )
+                        if fresh_user and fresh_user.role:
+                            if fresh_user.role.name == ADMIN_ROLE_NAME:
+                                return True
+                            return any(perm.code == permission_code for perm in fresh_user.role.permissions or [])
+                except Exception as inner_exc:
+                    logger.debug("Failed to reload detached user %s: %s", user_id, inner_exc)
             return False
-
-        # Admin has all permissions
-        if getattr(role, "name", None) == ADMIN_ROLE_NAME:
-            return True
-
-        return any(perm.code == permission_code for perm in getattr(role, "permissions", None) or [])
 
     @staticmethod
     def user_has_any_permission(user: User, permission_codes: Iterable[str]) -> bool:

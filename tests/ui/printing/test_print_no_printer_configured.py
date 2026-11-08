@@ -16,6 +16,7 @@ from unittest.mock import patch
 
 import pytest
 
+from cbpos.core.constants.permissions import Permissions
 from cbpos.core.models import Permission, Product, Role, Sale, SaleItem, User
 from cbpos.core.services.config_service import ConfigService
 from cbpos.i18n import _t
@@ -45,12 +46,16 @@ def no_printer(monkeypatch):
 
 
 @pytest.fixture
-def sale_doc(db_session) -> dict:
+def sale_doc(db_session):
     global _counter
     _counter += 1
     suffix = str(_counter)
+    perm_reprint = db_session.query(Permission).filter_by(code=Permissions.SALES_REPRINT).first()
+    if not perm_reprint:
+        perm_reprint = Permission(code=Permissions.SALES_REPRINT)
+        db_session.add(perm_reprint)
     permission = Permission(code=f"npc_test_{suffix}")
-    role = Role(name=f"NpcRole_{suffix}", permissions=[permission])
+    role = Role(name=f"NpcRole_{suffix}", permissions=[permission, perm_reprint])
     user = User(username=f"npc_user_{suffix}", pin_hash="hash", role=role)
     product = Product(name_en=f"NpcProduct_{suffix}", price=100.0, stock_qty=10.0, barcode=f"NPC{_counter:04d}")
     db_session.add_all([permission, role, user, product])
@@ -78,7 +83,8 @@ def sale_doc(db_session) -> dict:
     # Drop it from the shared test session's identity map so the reprint's
     # own query really eager-loads items, as it does in the app.
     db_session.expunge_all()
-    return doc
+    with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=user):
+        yield doc
 
 
 class TestWorkerReportsMissingPrinter:

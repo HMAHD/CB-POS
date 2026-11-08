@@ -192,3 +192,264 @@ def test_void_and_refund_receipts_format_quantity_by_unit(config_store, logged_i
 
     assert any(line.startswith("2 x ") for line in lines)
     assert not any("2.000 x" in line for line in lines)
+
+
+# ==============================================================================
+# Issue #911: Reprint authorisation and document truth
+# ==============================================================================
+
+
+@pytest.fixture
+def reprint_users(db_session):
+    from cbpos.core.constants.permissions import Permissions
+    from cbpos.core.models import Permission, Role, User
+    from cbpos.core.services.auth_service import AuthService
+
+    perm_reprint = Permission(code=getattr(Permissions, "SALES_REPRINT", "sales.reprint"))
+    perm_view = Permission(code="sales.view")
+    db_session.add_all([perm_reprint, perm_view])
+    db_session.flush()
+
+    role_allowed = Role(name="ReprintAllowedRole_911", permissions=[perm_reprint, perm_view])
+    role_denied = Role(name="ReprintDeniedRole_911", permissions=[perm_view])
+    role_manager = Role(name="ReprintManagerRole_911", permissions=[perm_reprint, perm_view])
+    db_session.add_all([role_allowed, role_denied, role_manager])
+    db_session.flush()
+
+    user_allowed = User(
+        username="reprint_user_allowed",
+        pin_hash=AuthService.hash_pin("1111"),
+        role_id=role_allowed.id,
+        is_active=True,
+    )
+    user_denied = User(
+        username="reprint_user_denied",
+        pin_hash=AuthService.hash_pin("2222"),
+        role_id=role_denied.id,
+        is_active=True,
+    )
+    user_manager = User(
+        username="reprint_manager",
+        pin_hash=AuthService.hash_pin("3333"),
+        role_id=role_manager.id,
+        is_active=True,
+    )
+    db_session.add_all([user_allowed, user_denied, user_manager])
+    db_session.commit()
+    return user_allowed, user_denied, user_manager
+
+
+def test_issue_911_reprint_void_refused(db_session, reprint_users):
+    """Reprinting a VOID sale is refused with ValueError('reprint_void') (#911)."""
+    from cbpos.core.models import Sale
+    from cbpos.core.services.receipt_reprint_service import ReceiptReprintService
+
+    user_allowed, _, _ = reprint_users
+    void_sale = Sale(
+        document_number="INV-2026-VOID",
+        date=datetime.now(),
+        total_amount=Decimal("100.00"),
+        status="VOID",
+        payment_method="CASH",
+        user_id=user_allowed.id,
+    )
+    db_session.add(void_sale)
+    db_session.commit()
+
+    with pytest.raises(ValueError, match="reprint_void"):
+        ReceiptReprintService.reprint(void_sale.id, user_id=user_allowed.id)
+
+
+def test_issue_911_reprint_requires_permission(db_session, reprint_users):
+    """Calling reprint without sales.reprint permission raises an authorization error (#911)."""
+    from cbpos.core.models import Sale
+    from cbpos.core.services.receipt_reprint_service import ReceiptReprintService
+
+    user_allowed, user_denied, _ = reprint_users
+    sale = Sale(
+        document_number="INV-2026-COMPLETED",
+        date=datetime.now(),
+        total_amount=Decimal("150.00"),
+        status="COMPLETED",
+        payment_method="CASH",
+        user_id=user_allowed.id,
+    )
+    db_session.add(sale)
+    db_session.commit()
+
+    with pytest.raises(Exception, match="permission_denied"):
+        ReceiptReprintService.reprint(sale.id, user_id=user_denied.id)
+
+
+def test_issue_911_credit_note_reprints_with_refund_title(db_session, reprint_users):
+    """A credit note (refund document) reprints with refund title/builder, not 'CASH RECEIPT' (#911)."""
+    from cbpos.core.models import Product, Sale, SaleItem
+    from cbpos.core.services.receipt_reprint_service import ReceiptReprintService
+
+    user_allowed, _, _ = reprint_users
+    orig_sale = Sale(
+        document_number="INV-2026-ORIG",
+        date=datetime(2026, 11, 1, 10, 0),
+        total_amount=Decimal("200.00"),
+        status="COMPLETED",
+        payment_method="CASH",
+        user_id=user_allowed.id,
+    )
+    db_session.add(orig_sale)
+    db_session.flush()
+
+    prod = Product(name_en="RefundedItem", price=Decimal("100.00"), stock_qty=Decimal("5"), barcode="RF001")
+    db_session.add(prod)
+    db_session.flush()
+
+    refund_doc = Sale(
+        document_number="CN-2026-0001",
+        date=datetime(2026, 11, 2, 14, 0),
+        total_amount=Decimal("-100.00"),
+        status="COMPLETED",
+        refund_of_sale_id=orig_sale.id,
+        payment_method="REFUND",
+        user_id=user_allowed.id,
+    )
+    refund_item = SaleItem(
+        product=prod,
+        qty=Decimal("1.000"),
+        unit_price=Decimal("100.00"),
+        original_price=Decimal("100.00"),
+        subtotal=Decimal("-100.00"),
+    )
+    refund_doc.items = [refund_item]
+    db_session.add_all([refund_doc, refund_item])
+    db_session.commit()
+
+    job = ReceiptReprintService.reprint(refund_doc.id, user_id=user_allowed.id)
+    assert job is not None
+    assert job.is_refund is True
+    lines = _texts(job.commands)
+
+    # Must contain refund label / title
+    assert any("REFUND" in line or "ආපසු ගෙවීම" in line or "பணத்திரும்ப" in line for line in lines)
+    # Must NOT be an ordinary CASH RECEIPT
+    assert not any(line == "CASH RECEIPT" for line in lines)
+    # Must have DUPLICATE marking
+    assert any("DUPLICATE" in line or "පිටපත" in line or "நகல்" in line for line in lines)
+    # Must reference original sale
+    assert any("INV-2026-ORIG" in line for line in lines)
+
+
+def test_issue_911_ordinary_sale_reprint_has_duplicate_marker(db_session, reprint_users):
+    """Reprinting an ordinary completed sale carries the DUPLICATE marker (#911)."""
+    from cbpos.core.models import Product, Sale, SaleItem
+    from cbpos.core.services.receipt_reprint_service import ReceiptReprintService
+
+    user_allowed, _, _ = reprint_users
+    prod = Product(name_en="Item_911", price=Decimal("50.00"), stock_qty=Decimal("10"), barcode="IT911")
+    db_session.add(prod)
+    db_session.flush()
+
+    sale = Sale(
+        document_number="INV-2026-DUP",
+        date=datetime.now(),
+        total_amount=Decimal("50.00"),
+        status="COMPLETED",
+        payment_method="CASH",
+        user_id=user_allowed.id,
+    )
+    item = SaleItem(
+        product=prod,
+        qty=Decimal("1.000"),
+        unit_price=Decimal("50.00"),
+        original_price=Decimal("50.00"),
+        subtotal=Decimal("50.00"),
+    )
+    sale.items = [item]
+    db_session.add_all([sale, item])
+    db_session.commit()
+
+    job = ReceiptReprintService.reprint(sale.id, user_id=user_allowed.id)
+    lines = _texts(job.commands)
+    assert any("DUPLICATE" in line or "පිටපත" in line or "நகல்" in line for line in lines)
+
+
+def test_issue_911_reprint_writes_audit(db_session, reprint_users):
+    """Reprint writes an AuditLog entry with action REPRINT_RECEIPT, recording actor and approver (#911)."""
+    from cbpos.core.models import AuditLog, Sale
+    from cbpos.core.services.receipt_reprint_service import ReceiptReprintService
+
+    user_allowed, _, user_manager = reprint_users
+    sale = Sale(
+        document_number="INV-2026-AUDIT",
+        date=datetime.now(),
+        total_amount=Decimal("100.00"),
+        status="COMPLETED",
+        payment_method="CASH",
+        user_id=user_allowed.id,
+    )
+    db_session.add(sale)
+    db_session.commit()
+
+    ReceiptReprintService.reprint(sale.id, user_id=user_allowed.id, approver_id=user_manager.id)
+
+    db_session.expire_all()
+    log = db_session.query(AuditLog).filter_by(action="REPRINT_RECEIPT").order_by(AuditLog.id.desc()).first()
+    assert log is not None
+    assert log.event_type == "TRANSACTION"
+    assert "INV-2026-AUDIT" in log.details
+    assert str(user_allowed.username) in log.details or str(user_allowed.id) in log.details
+    assert str(user_manager.username) in log.details or str(user_manager.id) in log.details
+
+
+def test_issue_911_partly_refunded_sale_lists_credit_note_numbers(db_session, reprint_users):
+    """Partly refunded sale includes 'Part refunded — see {numbers}' on reprint (#911)."""
+    from cbpos.core.models import Product, Sale, SaleItem
+    from cbpos.core.services.receipt_reprint_service import ReceiptReprintService
+
+    user_allowed, _, _ = reprint_users
+    prod1 = Product(name_en="ItemA", price=Decimal("100.00"), stock_qty=Decimal("10"), barcode="IA001")
+    prod2 = Product(name_en="ItemB", price=Decimal("100.00"), stock_qty=Decimal("10"), barcode="IB001")
+    db_session.add_all([prod1, prod2])
+    db_session.flush()
+
+    orig_sale = Sale(
+        document_number="INV-2026-PARTIAL",
+        date=datetime.now(),
+        total_amount=Decimal("200.00"),
+        status="COMPLETED",
+        payment_method="CASH",
+        user_id=user_allowed.id,
+    )
+    item1 = SaleItem(
+        product=prod1,
+        qty=Decimal("1.000"),
+        unit_price=Decimal("100.00"),
+        original_price=Decimal("100.00"),
+        subtotal=Decimal("100.00"),
+        refunded_qty=Decimal("1.000"),  # Partially refunded
+    )
+    item2 = SaleItem(
+        product=prod2,
+        qty=Decimal("1.000"),
+        unit_price=Decimal("100.00"),
+        original_price=Decimal("100.00"),
+        subtotal=Decimal("100.00"),
+        refunded_qty=Decimal("0.000"),
+    )
+    orig_sale.items = [item1, item2]
+    db_session.add_all([orig_sale, item1, item2])
+    db_session.flush()
+
+    cn_doc = Sale(
+        document_number="CN-2026-P001",
+        date=datetime.now(),
+        total_amount=Decimal("-100.00"),
+        status="COMPLETED",
+        refund_of_sale_id=orig_sale.id,
+        payment_method="REFUND",
+        user_id=user_allowed.id,
+    )
+    db_session.add(cn_doc)
+    db_session.commit()
+
+    job = ReceiptReprintService.reprint(orig_sale.id, user_id=user_allowed.id)
+    lines = _texts(job.commands)
+    assert any("CN-2026-P001" in line for line in lines)

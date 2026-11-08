@@ -214,15 +214,24 @@ _counter = 0
 
 @pytest.fixture
 def db_user(db_session):
+    from cbpos.core.constants.permissions import Permissions
     from cbpos.core.models import Permission, Role, User
 
     global _counter
     _counter += 1
+    perm_reprint = db_session.query(Permission).filter_by(code=Permissions.SALES_REPRINT).first()
+    if not perm_reprint:
+        perm_reprint = Permission(code=Permissions.SALES_REPRINT)
+        db_session.add(perm_reprint)
+    perm_refund = db_session.query(Permission).filter_by(code=Permissions.SALES_REFUND).first()
+    if not perm_refund:
+        perm_refund = Permission(code=Permissions.SALES_REFUND)
+        db_session.add(perm_refund)
     permission = Permission(code=f"rpp_perm_{_counter}")
-    role = Role(name=f"RppRole_{_counter}", permissions=[permission])
+    role = Role(name=f"RppRole_{_counter}", permissions=[permission, perm_reprint, perm_refund])
     user = User(username=f"rpp_user_{_counter}", pin_hash="hash", role=role)
     db_session.add_all([permission, role, user])
-    db_session.flush()
+    db_session.commit()
     with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=user):
         yield user
 

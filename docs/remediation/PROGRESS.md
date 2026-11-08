@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 5 · Batch: 5.3 · Branch: fix/p5-b3-reprint-truth · PR: none · Last session: 2026-11-07
+- Phase: 5 · Batch: 5.3 · Branch: fix/p5-b3-reprint-truth · PR: #1000 · Last session: 2026-11-07
 
 ## Issues
 
@@ -137,7 +137,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #896 | Committing a GRN has no permission check (purchase.create_grn is defined but … | medium | 5.1 | done | #998 | 8e4ed10 · Enforce purchase.create_grn on GRN commit, add suppliers.manage and migration |
 | #809 | Settings encryption key is derived from hostname when missing (predictable) | medium | 5.2 | done | #999 | e8d78e6 · Random Fernet key, DPAPI/raw protection at rest, atomic legacy migration, unwrap quarantine |
 | #898 | Excel export writes text cells starting with "=" as live formulas (CSV/formul… | medium | 5.2 | done | #999 | e8d78e6 · Prevent formula injection via XLSX_WRITER_OPTIONS and csv_safe escaping |
-| #911 | Reprint prints voided sales and credit notes as ordinary "Cash Receipt" dupli… | low | 5.3 | todo | | |
+| #911 | Reprint prints voided sales and credit notes as ordinary "Cash Receipt" dupli… | low | 5.3 | pr-open | #1000 | ReceiptReprintService, sales.reprint permission & migration, refund document receipt truth, part-refunded note, void disable & tooltip |
 | #917 | PIN login runs one bcrypt check per active user on the UI thread, freezing th… | low | 5.4 | todo | | |
 | #918 | Three places use the segfault-prone `destroyed` pattern that CLAUDE.md forbid… | low | 5.4 | todo | | |
 
@@ -302,6 +302,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 | Issue | What to verify | Result |
 |---|---|---|
+| #911 | Physical thermal print of duplicate receipt (SalesReceiptBuilder & RefundReceiptBuilder duplicate markers) | pending |
 
 ## Handoff
 Phase 5.2 (Secret and spreadsheet safety) is fully completed and merged (PR #999, e8d78e6). Both issues (#809, #898) are verified closed on GitHub and ticked in epic #922. Settings encryption uses random Fernet keys protected by Windows DPAPI / raw 0600 on POSIX with atomic legacy migration, and spreadsheet exports prevent formula injection. Ready to start Batch 5.3 (Reprint authorisation and document truth: #911) on branch `fix/p5-b3-reprint-truth`.

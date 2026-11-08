@@ -14,6 +14,7 @@ from unittest.mock import patch
 
 import pytest
 
+from cbpos.core.constants.permissions import Permissions
 from cbpos.core.models import Customer, Permission, Product, Role, Sale, SaleItem, User
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.ui.dialogs.customer_statement_dialog import CustomerStatementDialog
@@ -35,12 +36,17 @@ def test_user(db_session):
     global _counter
     _counter += 1
     suffix = str(_counter)
+    perm_reprint = db_session.query(Permission).filter_by(code=Permissions.SALES_REPRINT).first()
+    if not perm_reprint:
+        perm_reprint = Permission(code=Permissions.SALES_REPRINT)
+        db_session.add(perm_reprint)
     permission = Permission(code=f"ptr_test_{suffix}")
-    role = Role(name=f"PtrRole_{suffix}", permissions=[permission])
+    role = Role(name=f"PtrRole_{suffix}", permissions=[permission, perm_reprint])
     user = User(username=f"ptr_user_{suffix}", pin_hash="hash", role=role)
     db_session.add_all([permission, role, user])
     db_session.flush()
-    return user
+    with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=user):
+        yield user
 
 
 @pytest.fixture

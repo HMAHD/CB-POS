@@ -359,7 +359,11 @@
   "receipt": {
     "email_sent": "{email} ට රිසිට්පත යැව්වා.",
     "email_failed": "ඊමේල් එක යවන්න බැරි වුණා: {reason}. විකිණීම සේව් වෙලා තියෙන්නේ; විකුණුම් ඉතිහාසයෙන් ආයෙත් යවන්න පුළුවන්.",
-    "email_not_configured": "ඊමේල් සකස් කර නැත. සැකසුම් → ඊමේල් වෙතින් සකසන්න."
+    "email_not_configured": "ඊමේල් සකස් කර නැත. සැකසුම් → ඊමේල් වෙතින් සකසන්න.",
+    "part_refunded_note": "කොටසක් ආපසු ගෙවන ලදී — බලන්න {numbers}"
+  },
+  "reprint": {
+    "void_blocked": "අවලංගු කළ විකුණුම් නැවත මුද්‍රණය කළ නොහැක."
   },
   "email": {
     "receipt_subject": "{shop} වෙතින් ඔබගේ රිසිට්පත {doc}",
@@ -2435,6 +2439,7 @@
       "sales.change_price": "බිල් කරනකොට මිල වෙනස් කිරීම",
       "sales.refund": "මුදල් ආපසු ගෙවීම",
       "sales.refund_override_tender": "ආපසු ගෙවීමේ ක්‍රමය වෙනස් කිරීම",
+      "sales.reprint": "රිසිට්පත් නැවත මුද්‍රණය කිරීම",
       "inventory.view": "අයිතම සහ තොග බැලීම",
       "inventory.edit": "අයිතම එකතු කිරීම සහ වෙනස් කිරීම",
       "inventory.delete": "අයිතම මැකීම",

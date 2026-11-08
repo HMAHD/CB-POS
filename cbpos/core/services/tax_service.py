@@ -1,7 +1,7 @@
 from decimal import Decimal
 
-from cbpos.core.constants.status import Precision
 from cbpos.core.services.config_service import ConfigService
+from cbpos.core.utils.money import round_money
 
 
 class TaxService:
@@ -64,7 +64,7 @@ class TaxService:
             return {
                 "vat": Decimal("0.00"),
                 "sscl": Decimal("0.00"),
-                "net": total_mrp.quantize(Precision.MONEY),
+                "net": round_money(total_mrp),
                 "exempt_amount": Decimal("0.00"),
             }
 
@@ -78,28 +78,26 @@ class TaxService:
 
         vat_rate, sscl_rate, turnover_rate = TaxService._get_rates()
 
-        # 1. VAT Calculation (only on taxable portion)
-        # Base + VAT = MRP
-        # Base * (1 + VAT_RATE) = MRP
-        # Base = MRP / (1 + VAT_RATE)
+        # 1. VAT Calculation (statutory tax fraction r / (1 + r))
         if tax_base_mrp != Decimal("0"):
+            vat_amount = round_money(tax_base_mrp * vat_rate / (Decimal("1") + vat_rate))
             vat_liable_base = tax_base_mrp / (Decimal("1") + vat_rate)
-            vat_amount = tax_base_mrp - vat_liable_base
         else:
             vat_liable_base = Decimal("0")
-            vat_amount = Decimal("0")
+            vat_amount = Decimal("0.00")
 
         # 2. SSCL Calculation
         # SSCL is calculated on a percentage of VAT-exclusive turnover
-        sscl_amount = (vat_liable_base * turnover_rate) * sscl_rate
+        sscl_unrounded = (vat_liable_base * turnover_rate) * sscl_rate
+        sscl_amount = round_money(sscl_unrounded)
 
         # 3. Net Revenue (What the shop keeps)
-        # Revenue = Total - Taxes
+        # Revenue = Total - Taxes (D4: net is never independently rounded)
         net_revenue = total_mrp - vat_amount - sscl_amount
 
         return {
-            "vat": vat_amount.quantize(Precision.MONEY),
-            "sscl": sscl_amount.quantize(Precision.MONEY),
-            "net": net_revenue.quantize(Precision.MONEY),
-            "exempt_amount": exempt_amt.quantize(Precision.MONEY),
+            "vat": vat_amount,
+            "sscl": sscl_amount,
+            "net": net_revenue,
+            "exempt_amount": round_money(exempt_amt),
         }

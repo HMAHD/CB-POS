@@ -9,6 +9,7 @@ from cbpos.core.models import Customer, CustomerContact, CustomerLedgerEntry, Lo
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.loyalty_service import LoyaltyService
 from cbpos.core.utils.formatters import escape_like
+from cbpos.core.utils.money import round_money
 
 
 class CustomerService:
@@ -21,7 +22,7 @@ class CustomerService:
     @staticmethod
     def default_credit_limit() -> Decimal:
         """Return the credit limit a new customer starts with (Settings -> Sales & Tax)."""
-        return Decimal(str(ConfigService.get("default_credit_limit") or 0)).quantize(Decimal("0.01"))
+        return round_money(ConfigService.get("default_credit_limit") or 0)
 
     def create_customer(self, data: dict[str, Any]) -> Customer:
         """Create a customer, along with any nested contacts, from a data dict.

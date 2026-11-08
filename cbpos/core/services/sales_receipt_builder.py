@@ -1,6 +1,6 @@
 """Sales receipt builder — generates receipt commands for completed sales."""
 
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
 from cbpos.core.models import Sale, SaleItem
@@ -138,7 +138,7 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
                 commands.append(cls._split_row(detail, format_currency(total), line_chars))
                 # Show savings per unit
                 saving = orig_price - price
-                disc_pct = (saving * Decimal("100") / orig_price).quantize(Decimal("1"))
+                disc_pct = (saving * Decimal("100") / orig_price).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
                 commands.append(
                     cls._split_row(
                         "   {}".format(cls._rt("was_price", price=format_currency(orig_price), pct=disc_pct)),

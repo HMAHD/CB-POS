@@ -10,12 +10,13 @@ from sqlalchemy import func, update
 from sqlalchemy.orm import joinedload
 
 from cbpos.core.constants.permissions import Permissions
-from cbpos.core.constants.status import DocumentStatus, Precision
+from cbpos.core.constants.status import DocumentStatus
 from cbpos.core.database import Database
 from cbpos.core.models import Product, Role, StockCount, StockCountItem, User
 from cbpos.core.services.document_service import DocumentService
 from cbpos.core.services.permission_service import PermissionService
 from cbpos.core.services.stock_service import StockService
+from cbpos.core.utils.money import round_money, round_qty
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,7 @@ class StockCountService:
         values = [item.variance_value for item in items if item.variance_value is not None]
         net = sum(values, Decimal("0"))
         discrepancy = sum((abs(value) for value in values), Decimal("0"))
-        return VarianceTotals(net=net.quantize(Precision.MONEY), discrepancy=discrepancy.quantize(Precision.MONEY))
+        return VarianceTotals(net=round_money(net), discrepancy=round_money(discrepancy))
 
     @staticmethod
     def create_stock_count(user_id: int, note: str | None = None) -> StockCount:
@@ -226,12 +227,12 @@ class StockCountService:
             if item.counted_qty is None and product:
                 item.expected_qty = product.stock_qty
 
-            item.counted_qty = counted_qty.quantize(Precision.QUANTITY)
-            item.variance_qty = (item.counted_qty - item.expected_qty).quantize(Precision.QUANTITY)
+            item.counted_qty = round_qty(counted_qty)
+            item.variance_qty = round_qty(item.counted_qty - item.expected_qty)
 
             # Calculate variance value using product cost
             if product:
-                item.variance_value = (item.variance_qty * product.cost).quantize(Precision.MONEY)
+                item.variance_value = round_money(item.variance_qty * product.cost)
             else:
                 item.variance_value = Decimal("0.00")
 
@@ -286,11 +287,11 @@ class StockCountService:
                 .execution_options(synchronize_session=False)
             )
             session.refresh(item)
-            item.counted_qty = Decimal(item.counted_qty).quantize(Precision.QUANTITY)
-            item.variance_qty = (item.counted_qty - item.expected_qty).quantize(Precision.QUANTITY)
+            item.counted_qty = round_qty(item.counted_qty)
+            item.variance_qty = round_qty(item.counted_qty - item.expected_qty)
 
             if product:
-                item.variance_value = (item.variance_qty * product.cost).quantize(Precision.MONEY)
+                item.variance_value = round_money(item.variance_qty * product.cost)
             else:
                 item.variance_value = Decimal("0.00")
 
@@ -360,9 +361,9 @@ class StockCountService:
 
             # Recalculate all variances
             for item in stock_count.items:
-                item.variance_qty = (item.counted_qty - item.expected_qty).quantize(Precision.QUANTITY)
+                item.variance_qty = round_qty(item.counted_qty - item.expected_qty)
                 if item.product:
-                    item.variance_value = (item.variance_qty * item.product.cost).quantize(Precision.MONEY)
+                    item.variance_value = round_money(item.variance_qty * item.product.cost)
                 else:
                     item.variance_value = Decimal("0.00")
 

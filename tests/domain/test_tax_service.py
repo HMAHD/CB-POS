@@ -189,3 +189,48 @@ class TestTaxServiceCustomRates:
             assert result["vat"] == Decimal("0.00")
             assert result["sscl"] == Decimal("0.00")
             assert result["net"] == Decimal("1000.00")
+
+
+class TestIssue810RoundingAndDecimalRates:
+    """Regression tests for Issue #810 / Decision D4."""
+
+    def test_issue_810_half_up_boundaries(self):
+        """round_money must round .005 up (not half-to-even)."""
+        from cbpos.core.utils.money import round_money
+
+        # 0.125 -> 0.13 (banker's rounding would round down to 0.12)
+        assert round_money(Decimal("0.125")) == Decimal("0.13")
+        # 0.375 -> 0.38
+        assert round_money(Decimal("0.375")) == Decimal("0.38")
+        # 0.625 -> 0.63 (banker's rounding would round down to 0.62)
+        assert round_money(Decimal("0.625")) == Decimal("0.63")
+        # 0.875 -> 0.88
+        assert round_money(Decimal("0.875")) == Decimal("0.88")
+        # Negative half-up boundaries: symmetric away from zero
+        assert round_money(Decimal("-0.125")) == Decimal("-0.13")
+        assert round_money(Decimal("-0.625")) == Decimal("-0.63")
+
+    def test_issue_810_components_sum_to_total(self):
+        """
+        D4 invariant: for every sale, round_money(vat) + round_money(sscl) + net == total_amount.
+        Tested across 1,000 totals from 0.01 to 99,999.99 with deterministic steps.
+        """
+        with _mock_config():
+            step = (Decimal("99999.99") - Decimal("0.01")) / Decimal("999")
+            for i in range(1000):
+                total = (Decimal("0.01") + step * Decimal(i)).quantize(Decimal("0.01"))
+                res = TaxService.calculate_taxes(total)
+                assert res["vat"] + res["sscl"] + res["net"] == total, (
+                    f"Mismatch at total={total}: vat={res['vat']}, "
+                    f"sscl={res['sscl']}, net={res['net']} sum to "
+                    f"{res['vat'] + res['sscl'] + res['net']}"
+                )
+
+    def test_issue_810_vat_rate_two_decimals(self):
+        """VAT rate supports two decimals (e.g., 15.50%)."""
+        with _mock_config({**DEFAULT_CONFIG, "tax_vat_rate": 15.50}):
+            result = TaxService.calculate_taxes(Decimal("1000.00"))
+            # base = 1000 / 1.155 = 865.8008658...
+            # vat = 1000 * 0.155 / 1.155 = 134.199... -> round_money -> 134.20
+            assert result["vat"] == Decimal("134.20")
+            assert result["vat"] + result["sscl"] + result["net"] == Decimal("1000.00")

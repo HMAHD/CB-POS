@@ -20,11 +20,11 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import Flowable, Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-from cbpos.core.constants.status import Precision
 from cbpos.core.models import Sale
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.tax_service import TaxService
 from cbpos.core.utils.formatters import format_currency, format_quantity, quantity_decimals
+from cbpos.core.utils.money import round_money
 from cbpos.core.utils.text_scripts import needs_raster
 from cbpos.i18n import get_language, translate_in
 
@@ -216,7 +216,7 @@ class InvoiceService:
                     description=item.product.get_display_name(lang),
                     qty=format_quantity(qty, quantity_decimals(unit) if unit is not None else 0),
                     unit_price=listed,
-                    discount=((listed - charged) * qty).quantize(Precision.MONEY),
+                    discount=round_money((listed - charged) * qty),
                     amount=_dec(item.subtotal),
                 )
             )

@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
-from cbpos.core.constants.status import DocumentStatus, PaymentMethodType, Precision, ShiftStatus
+from cbpos.core.constants.status import DocumentStatus, PaymentMethodType, ShiftStatus
 from cbpos.core.database import Database
 from cbpos.core.interfaces.transaction_peripherals import (
     NullPeripherals,
@@ -36,6 +36,7 @@ from cbpos.core.services.loyalty_service import LoyaltyService
 from cbpos.core.services.receipt_builder import ReceiptBuilder
 from cbpos.core.services.refund_breakdown import ZERO_MONEY, RefundBreakdown, refund_cash_back
 from cbpos.core.services.stock_service import StockService
+from cbpos.core.utils.money import round_money
 
 logger = logging.getLogger(__name__)
 
@@ -769,7 +770,7 @@ class TransactionService:
 
             customer = session.get(Customer, sale.customer_id) if sale.customer_id else None
             customer_name = customer.name if customer else ""
-            total = Decimal(str(sale.total_amount or 0)).quantize(Precision.MONEY)
+            total = round_money(sale.total_amount or 0)
             already_refunded = session.query(Sale.id).filter(Sale.refund_of_sale_id == sale_id).first() is not None
             refundable = (
                 sale.status != DocumentStatus.VOID

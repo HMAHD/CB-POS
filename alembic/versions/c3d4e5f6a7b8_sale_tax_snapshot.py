@@ -103,55 +103,85 @@ def upgrade() -> None:
     sscl_registered = bool(settings.get("sscl_registered", vat_registered))
 
     if "sales" in existing_tables:
-        bind.execute(
-            sa.text(
-                """
-                UPDATE sales
-                SET vat_rate = :vat_rate,
-                    sscl_rate = :sscl_rate,
-                    sscl_turnover_pct = :sscl_turnover_pct,
-                    vat_registered = :vat_registered,
-                    sscl_registered = :sscl_registered,
-                    vat_exempt_amount = 0.00,
-                    taxable_amount = CASE
-                        WHEN tax_vat IS NOT NULL AND tax_vat != 0 THEN total_amount
-                        ELSE 0.00
-                    END,
-                    sscl_base = CASE
-                        WHEN tax_sscl IS NOT NULL AND tax_sscl != 0 THEN
-                            CASE
-                                WHEN tax_vat IS NOT NULL AND tax_vat != 0 THEN
-                                    ROUND(total_amount / (1.0 + (:vat_rate / 100.0)), 2)
-                                ELSE total_amount
-                            END
-                        ELSE 0.00
-                    END
-                WHERE vat_rate IS NULL
-                """
-            ),
-            {
-                "vat_rate": vat_rate,
-                "sscl_rate": sscl_rate,
-                "sscl_turnover_pct": sscl_turnover_pct,
-                "vat_registered": vat_registered,
-                "sscl_registered": sscl_registered,
-            },
-        )
+        sales_cols = {col["name"] for col in insp.get_columns("sales")}
+        has_tax_vat = "tax_vat" in sales_cols
+        has_total = "total_amount" in sales_cols
+        if has_tax_vat and has_total:
+            bind.execute(
+                sa.text(
+                    """
+                    UPDATE sales
+                    SET vat_rate = :vat_rate,
+                        sscl_rate = :sscl_rate,
+                        sscl_turnover_pct = :sscl_turnover_pct,
+                        vat_registered = :vat_registered,
+                        sscl_registered = :sscl_registered,
+                        vat_exempt_amount = 0.00,
+                        taxable_amount = CASE
+                            WHEN tax_vat IS NOT NULL AND tax_vat != 0 THEN total_amount
+                            ELSE 0.00
+                        END,
+                        sscl_base = CASE
+                            WHEN tax_sscl IS NOT NULL AND tax_sscl != 0 THEN
+                                CASE
+                                    WHEN tax_vat IS NOT NULL AND tax_vat != 0 THEN
+                                        ROUND(total_amount / (1.0 + (:vat_rate / 100.0)), 2)
+                                    ELSE total_amount
+                                END
+                            ELSE 0.00
+                        END
+                    WHERE vat_rate IS NULL
+                    """
+                ),
+                {
+                    "vat_rate": vat_rate,
+                    "sscl_rate": sscl_rate,
+                    "sscl_turnover_pct": sscl_turnover_pct,
+                    "vat_registered": vat_registered,
+                    "sscl_registered": sscl_registered,
+                },
+            )
+        else:
+            bind.execute(
+                sa.text(
+                    """
+                    UPDATE sales
+                    SET vat_rate = :vat_rate,
+                        sscl_rate = :sscl_rate,
+                        sscl_turnover_pct = :sscl_turnover_pct,
+                        vat_registered = :vat_registered,
+                        sscl_registered = :sscl_registered,
+                        vat_exempt_amount = 0.00,
+                        taxable_amount = 0.00,
+                        sscl_base = 0.00
+                    WHERE vat_rate IS NULL
+                    """
+                ),
+                {
+                    "vat_rate": vat_rate,
+                    "sscl_rate": sscl_rate,
+                    "sscl_turnover_pct": sscl_turnover_pct,
+                    "vat_registered": vat_registered,
+                    "sscl_registered": sscl_registered,
+                },
+            )
 
     if "sale_items" in existing_tables and "products" in existing_tables:
-        bind.execute(
-            sa.text(
-                """
-                UPDATE sale_items
-                SET unit_cost = (
-                    SELECT COALESCE(products.cost, 0.00)
-                    FROM products
-                    WHERE products.id = sale_items.product_id
+        product_cols = {col["name"] for col in insp.get_columns("products")}
+        if "cost" in product_cols:
+            bind.execute(
+                sa.text(
+                    """
+                    UPDATE sale_items
+                    SET unit_cost = (
+                        SELECT COALESCE(products.cost, 0.00)
+                        FROM products
+                        WHERE products.id = sale_items.product_id
+                    )
+                    WHERE unit_cost IS NULL
+                    """
                 )
-                WHERE unit_cost IS NULL
-                """
             )
-        )
 
 
 def downgrade() -> None:

@@ -81,10 +81,12 @@ class SalesTaxPage(SettingsPage):
         self.lbl_tax_warn.setProperty("class", "warning-hint")
         self._form_tax.addRow(self.lbl_tax_warn)
 
-        self.spin_vat = QSpinBox()
+        self.spin_vat = QDoubleSpinBox()
         self.spin_vat.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
-        self.spin_vat.setRange(0, 100)
-        self.spin_vat.setSuffix("%")
+        self.spin_vat.setRange(0.0, 100.0)
+        self.spin_vat.setDecimals(2)
+        self.spin_vat.setSingleStep(0.5)
+        self.spin_vat.setSuffix(" %")
         self.spin_vat.setFixedWidth(200)
         self._lbl_vat_rate = QLabel()
         self._form_tax.addRow(self._lbl_vat_rate, self.spin_vat)
@@ -319,7 +321,7 @@ class SalesTaxPage(SettingsPage):
         self.spin_default_credit.setValue(int(settings.get("default_credit_limit", 0)))
         self.chk_promo_stacking.setChecked(bool(settings.get("promotion_stack_with_price_lists", False)))
         self.chk_vat_registered.setChecked(settings.get("vat_registered", False))
-        self.spin_vat.setValue(int(settings.get("tax_vat_rate", 18)))
+        self.spin_vat.setValue(float(settings.get("tax_vat_rate", 18.0)))
         self.spin_sscl.setValue(float(settings.get("tax_sscl_rate", 2.5)))
         self.spin_sscl_turnover.setValue(float(settings.get("tax_sscl_turnover_pct", 50.0)))
         self.chk_item_tax_exemptions.setChecked(settings.get("item_tax_exemptions", False))
@@ -362,7 +364,7 @@ class SalesTaxPage(SettingsPage):
             "default_credit_limit": self.spin_default_credit.value(),
             "promotion_stack_with_price_lists": self.chk_promo_stacking.isChecked(),
             "vat_registered": self.chk_vat_registered.isChecked(),
-            "tax_vat_rate": self.spin_vat.value(),
+            "tax_vat_rate": round(self.spin_vat.value(), 2),
             "tax_sscl_rate": self.spin_sscl.value(),
             "tax_sscl_turnover_pct": self.spin_sscl_turnover.value(),
             "item_tax_exemptions": self.chk_item_tax_exemptions.isChecked(),

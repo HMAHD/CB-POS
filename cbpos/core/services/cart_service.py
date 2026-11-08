@@ -5,7 +5,6 @@ from typing import Any
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import select
 
-from cbpos.core.constants.status import Precision
 from cbpos.core.models import Category, Customer, Product
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.logging_service import LoggingService
@@ -291,8 +290,8 @@ class CartService:
         # 3. Net Line Total
         net_line = gross_line - discount_amount
 
-        item["subtotal"] = gross_line.quantize(Precision.MONEY)
-        item["total"] = net_line.quantize(Precision.MONEY)
+        item["subtotal"] = round_money(gross_line)
+        item["total"] = round_money(net_line)
 
     def _recalculate_all_prices(self):
         """Recalculate prices for all items (e.g., when customer changes)."""
@@ -428,25 +427,25 @@ class CartService:
             total_discount_amt = cart_discount_amt + loyalty_discount_amt
             if total_discount_amt > Decimal("0") and subtotal > Decimal("0"):
                 discount_ratio = total_discount_amt / subtotal
-                taxable_discount = (taxable_sub * discount_ratio).quantize(Precision.MONEY)
-                taxable_amount = (taxable_sub - taxable_discount).quantize(Precision.MONEY)
+                taxable_discount = round_money(taxable_sub * discount_ratio)
+                taxable_amount = round_money(taxable_sub - taxable_discount)
             else:
-                taxable_amount = taxable_sub.quantize(Precision.MONEY)
+                taxable_amount = round_money(taxable_sub)
 
         # Calculate tax breakdown from the final (post-discount) amount
         tax_info = TaxService.calculate_taxes(
-            final_total.quantize(Precision.MONEY),
+            round_money(final_total),
             taxable_amount=taxable_amount,
         )
 
         return {
-            "subtotal": subtotal.quantize(Precision.MONEY),
-            "cart_discount": cart_discount_amt.quantize(Precision.MONEY),
+            "subtotal": round_money(subtotal),
+            "cart_discount": round_money(cart_discount_amt),
             "cart_discount_type": self.cart_discount_type,
             "cart_discount_value": self.cart_discount_value,
-            "loyalty_discount": loyalty_discount_amt.quantize(Precision.MONEY),
+            "loyalty_discount": round_money(loyalty_discount_amt),
             "loyalty_points_redeemed": points_to_redeem,
-            "final_total": final_total.quantize(Precision.MONEY),
+            "final_total": round_money(final_total),
             "tax_vat": tax_info["vat"],
             "tax_sscl": tax_info["sscl"],
             "tax": tax_info["vat"] + tax_info["sscl"],

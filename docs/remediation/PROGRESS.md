@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 6 · Batch: 6.1 · Branch: fix/p6-b1-tax-configuration · PR: none · Last session: 2026-11-08
+- Phase: 6 · Batch: 6.1 · Branch: fix/p6-b1-tax-calculation-facts · PR: none · Last session: 2026-11-08
 
 ## Issues
 
@@ -146,7 +146,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | # | Title | Sev | Batch | Status | PR | Notes |
 |---|---|---|---|---|---|---|
 | #797 | Tax-exempt categories cannot be set from the UI; exempt split is not stored o… | high | 6.1 | todo | | |
-| #810 | Tax rounding uses banker's rounding (ROUND_HALF_EVEN); VAT rate field is inte… | medium | 6.1 | todo | | |
+| #810 | Tax rounding uses banker's rounding (ROUND_HALF_EVEN); VAT rate field is inte… | medium | 6.1 | done | | ROUND_HALF_UP via round_money, net = total - vat - sscl, QDoubleSpinBox with 2 decimals, guardrail test |
 | #831 | SSCL: not calculated for non-VAT-registered liable shops (Rs 36M threshold fr… | high | 6.1 | todo | | |
 | #795 | Tax Liability Report includes voided sales and hard-codes "VAT (18%)" / "SSCL… | high | 6.2 | todo | | |
 | #796 | Tax Filing Summary: period selector not wired, Total Discounts always 0, SSCL… | high | 6.2 | todo | | |

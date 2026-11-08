@@ -7,6 +7,9 @@ from sqlalchemy import func
 from cbpos.core.database import get_db_session
 from cbpos.core.models import Product, Purchase, Sale, SaleItem
 from cbpos.core.reports.base_report import CATEGORY_FINANCIAL, DATE, MONEY, PERCENT, TEXT, BaseReport, report_columns
+from cbpos.core.reports.sale_filters import completed_sales, date_bounds, refund_documents
+from cbpos.core.services.tax_service import TaxService
+from cbpos.core.utils.money import round_money
 from cbpos.i18n import _t
 
 
@@ -134,7 +137,7 @@ class TaxLiabilityReport(BaseReport):
         return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]
 
     def get_render_hints(self) -> dict[str, Any]:
-        """Declare money columns and bold the net-liability summary row."""
+        """Declare money columns and bold the summary rows."""
         return {
             "columns": report_columns(
                 {
@@ -142,64 +145,181 @@ class TaxLiabilityReport(BaseReport):
                     "Invoice #": TEXT,
                     "Total Sale": MONEY,
                     "Net Revenue": MONEY,
-                    "VAT (18%)": MONEY,
-                    "SSCL (2.5%)": MONEY,
+                    "VAT": MONEY,
+                    "SSCL": MONEY,
                     "Total Tax": MONEY,
                     "Input VAT": MONEY,
                     "Net VAT Liability": MONEY,
                 }
             ),
             "total_row_column": "Invoice #",
-            "total_row_values": ["NET VAT LIABILITY"],
+            "total_row_values": ["NET VAT LIABILITY", "TOTAL SALES", "TOTAL REFUNDS", "NET TOTALS"],
         }
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
-        """List each sale's total, net revenue, VAT (18%), and SSCL (2.5%) within the range,
+        """List each sale's total, net revenue, VAT, and SSCL within the range,
+        with refunds shown in a separate section and netted,
         followed by one summary row: total Output VAT collected minus total Input VAT paid
         to suppliers (entered manually at GRN time, ``Purchase.input_vat``) = net VAT owed.
 
-        VAT and SSCL are read from ``Sale.tax_vat``/``Sale.tax_sscl``, which
-        were already computed backward from the MRP-inclusive sale total at
-        the time of sale — this report does not recompute tax. Input VAT
-        is not computed either; it's whatever was typed in from the
-        supplier's invoice, summed across completed purchases in the range.
+        If more than one distinct VAT rate was charged across the period's sales,
+        appends a per-rate breakdown table.
         """
         with get_db_session() as session:
-            date_range = filters.get("date_range", {})
-            start_date = date_range.get("start")
-            end_date = date_range.get("end")
+            start_dt, end_dt = date_bounds(filters.get("date_range"))
 
-            query = session.query(Sale)
-            if start_date:
-                query = query.filter(func.date(Sale.date) >= start_date)
-            if end_date:
-                query = query.filter(func.date(Sale.date) <= end_date)
-            sales = query.all()
+            # Query completed sales (excluding refund docs and voids)
+            sales_q = session.query(Sale).filter(completed_sales())
+            if start_dt:
+                sales_q = sales_q.filter(Sale.date >= start_dt)
+            if end_dt:
+                sales_q = sales_q.filter(Sale.date < end_dt)
+            sales = sales_q.order_by(Sale.date.asc()).all()
+
+            # Query completed refund documents
+            refunds_q = session.query(Sale).filter(refund_documents())
+            if start_dt:
+                refunds_q = refunds_q.filter(Sale.date >= start_dt)
+            if end_dt:
+                refunds_q = refunds_q.filter(Sale.date < end_dt)
+            refunds = refunds_q.order_by(Sale.date.asc()).all()
 
             data = []
-            output_vat_total = Decimal("0")
-            for sale in sales:
-                output_vat_total += sale.tax_vat
+
+            # Sales section
+            sales_total = Decimal("0")
+            sales_net = Decimal("0")
+            sales_vat = Decimal("0")
+            sales_sscl = Decimal("0")
+            sales_tax = Decimal("0")
+
+            rate_stats: dict[Decimal, dict[str, Decimal]] = {}
+
+            for s in sales:
+                tot = s.total_amount or Decimal("0")
+                net = s.net_revenue or Decimal("0")
+                vat = s.tax_vat or Decimal("0")
+                sscl = s.tax_sscl or Decimal("0")
+                total_tax = vat + sscl
+
+                sales_total += tot
+                sales_net += net
+                sales_vat += vat
+                sales_sscl += sscl
+                sales_tax += total_tax
+
+                r = round_money(TaxService.resolve_historical_vat_rate(s))
+                if r not in rate_stats:
+                    rate_stats[r] = {"net": Decimal("0"), "vat": Decimal("0")}
+                rate_stats[r]["net"] += net
+                rate_stats[r]["vat"] += vat
+
                 data.append(
                     {
-                        "Date": sale.date.strftime("%Y-%m-%d"),
-                        "Invoice #": sale.document_number,
-                        "Total Sale": sale.total_amount,
-                        "Net Revenue": sale.net_revenue,
-                        "VAT (18%)": sale.tax_vat,
-                        "SSCL (2.5%)": sale.tax_sscl,
-                        "Total Tax": sale.tax_vat + sale.tax_sscl,
+                        "Date": s.date.strftime("%Y-%m-%d"),
+                        "Invoice #": s.document_number,
+                        "Total Sale": tot,
+                        "Net Revenue": net,
+                        "VAT": vat,
+                        "SSCL": sscl,
+                        "Total Tax": total_tax,
                         "Input VAT": None,
                         "Net VAT Liability": None,
                     }
                 )
 
+            data.append(
+                {
+                    "Date": "",
+                    "Invoice #": "TOTAL SALES",
+                    "Total Sale": sales_total,
+                    "Net Revenue": sales_net,
+                    "VAT": sales_vat,
+                    "SSCL": sales_sscl,
+                    "Total Tax": sales_tax,
+                    "Input VAT": None,
+                    "Net VAT Liability": None,
+                }
+            )
+
+            # Refunds section
+            refunds_total = Decimal("0")
+            refunds_net = Decimal("0")
+            refunds_vat = Decimal("0")
+            refunds_sscl = Decimal("0")
+            refunds_tax = Decimal("0")
+
+            if refunds:
+                for ref in refunds:
+                    tot = -abs(ref.total_amount or Decimal("0"))
+                    net = -abs(ref.net_revenue or Decimal("0"))
+                    vat = -abs(ref.tax_vat or Decimal("0"))
+                    sscl = -abs(ref.tax_sscl or Decimal("0"))
+                    total_tax = vat + sscl
+
+                    refunds_total += tot
+                    refunds_net += net
+                    refunds_vat += vat
+                    refunds_sscl += sscl
+                    refunds_tax += total_tax
+
+                    r = round_money(TaxService.resolve_historical_vat_rate(ref))
+                    if r not in rate_stats:
+                        rate_stats[r] = {"net": Decimal("0"), "vat": Decimal("0")}
+                    rate_stats[r]["net"] += net
+                    rate_stats[r]["vat"] += vat
+
+                    data.append(
+                        {
+                            "Date": ref.date.strftime("%Y-%m-%d"),
+                            "Invoice #": ref.document_number,
+                            "Total Sale": tot,
+                            "Net Revenue": net,
+                            "VAT": vat,
+                            "SSCL": sscl,
+                            "Total Tax": total_tax,
+                            "Input VAT": None,
+                            "Net VAT Liability": None,
+                        }
+                    )
+
+                data.append(
+                    {
+                        "Date": "",
+                        "Invoice #": "TOTAL REFUNDS",
+                        "Total Sale": refunds_total,
+                        "Net Revenue": refunds_net,
+                        "VAT": refunds_vat,
+                        "SSCL": refunds_sscl,
+                        "Total Tax": refunds_tax,
+                        "Input VAT": None,
+                        "Net VAT Liability": None,
+                    }
+                )
+
+                data.append(
+                    {
+                        "Date": "",
+                        "Invoice #": "NET TOTALS",
+                        "Total Sale": sales_total + refunds_total,
+                        "Net Revenue": sales_net + refunds_net,
+                        "VAT": sales_vat + refunds_vat,
+                        "SSCL": sales_sscl + refunds_sscl,
+                        "Total Tax": sales_tax + refunds_tax,
+                        "Input VAT": None,
+                        "Net VAT Liability": None,
+                    }
+                )
+
+            # Input VAT from completed purchases
             purchase_query = session.query(Purchase).filter(Purchase.status == "COMPLETED")
-            if start_date:
-                purchase_query = purchase_query.filter(func.date(Purchase.date) >= start_date)
-            if end_date:
-                purchase_query = purchase_query.filter(func.date(Purchase.date) <= end_date)
+            if start_dt:
+                purchase_query = purchase_query.filter(Purchase.date >= start_dt)
+            if end_dt:
+                purchase_query = purchase_query.filter(Purchase.date < end_dt)
             input_vat_total = sum((p.input_vat for p in purchase_query.all()), Decimal("0"))
+
+            output_vat_net = sales_vat + refunds_vat
 
             data.append(
                 {
@@ -207,13 +327,45 @@ class TaxLiabilityReport(BaseReport):
                     "Invoice #": "NET VAT LIABILITY",
                     "Total Sale": None,
                     "Net Revenue": None,
-                    "VAT (18%)": output_vat_total,
-                    "SSCL (2.5%)": None,
+                    "VAT": output_vat_net,
+                    "SSCL": None,
                     "Total Tax": None,
                     "Input VAT": input_vat_total,
-                    "Net VAT Liability": output_vat_total - input_vat_total,
+                    "Net VAT Liability": output_vat_net - input_vat_total,
                 }
             )
+
+            # Rate breakdown table (only if more than one distinct rate exists in the period)
+            if len(rate_stats) > 1:
+                data.append(
+                    {
+                        "Date": "",
+                        "Invoice #": _t("reports.vat_by_rate"),
+                        "Total Sale": None,
+                        "Net Revenue": None,
+                        "VAT": None,
+                        "SSCL": None,
+                        "Total Tax": None,
+                        "Input VAT": None,
+                        "Net VAT Liability": None,
+                    }
+                )
+                for rate in sorted(rate_stats.keys()):
+                    stats = rate_stats[rate]
+                    rate_str = TaxService.format_rate(rate)
+                    data.append(
+                        {
+                            "Date": "",
+                            "Invoice #": f"VAT @ {rate_str}%",
+                            "Total Sale": None,
+                            "Net Revenue": stats["net"],
+                            "VAT": stats["vat"],
+                            "SSCL": None,
+                            "Total Tax": stats["vat"],
+                            "Input VAT": None,
+                            "Net VAT Liability": None,
+                        }
+                    )
 
             return pd.DataFrame(data)
 

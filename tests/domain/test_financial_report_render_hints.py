@@ -44,5 +44,5 @@ class TestProfitLossReportRenderHints:
 class TestTaxLiabilityReportRenderHints:
     def test_money_columns_are_currency_formatted(self):
         hints = TaxLiabilityReport().get_render_hints()
-        for column in ("Total Sale", "Net Revenue", "VAT (18%)", "SSCL (2.5%)", "Total Tax"):
+        for column in ("Total Sale", "Net Revenue", "VAT", "SSCL", "Total Tax"):
             assert column in _money_columns(hints)

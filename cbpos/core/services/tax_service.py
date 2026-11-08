@@ -63,7 +63,9 @@ class TaxService:
             "Document %s missing stored vat_rate, falling back to current setting",
             doc_num,
         )
-        current = ConfigService.get("tax_vat_rate", 18.0)
+        current = ConfigService.get("tax_vat_rate")
+        if current is None:
+            current = 18.0
         return Decimal(str(current))
 
     @staticmethod

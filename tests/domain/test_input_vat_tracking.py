@@ -119,7 +119,7 @@ class TestTaxLiabilityReportNetLiability:
         df = TaxLiabilityReport().generate({})
         summary_row = df[df["Invoice #"] == "NET VAT LIABILITY"].iloc[0]
 
-        assert summary_row["VAT (18%)"] == Decimal("180.00")
+        assert summary_row["VAT"] == Decimal("180.00")
         assert summary_row["Input VAT"] == Decimal("50.00")
         assert summary_row["Net VAT Liability"] == Decimal("130.00")
 

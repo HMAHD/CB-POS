@@ -6,9 +6,10 @@ from typing import Any
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
-from cbpos.core.constants.status import PaymentMethodKind, PaymentMethodType, Precision
+from cbpos.core.constants.status import PaymentMethodKind, PaymentMethodType
 from cbpos.core.database import Database
 from cbpos.core.models import AuditLog, Customer, CustomerLedgerEntry, CustomerPayment, Sale, SalePayment, User
+from cbpos.core.utils.money import round_money
 
 logger = logging.getLogger(__name__)
 
@@ -258,9 +259,9 @@ class CustomerCreditService:
         if refund_amount is not None:
             sale_total = Decimal(str(sale.total_amount or 0))
             if sale_total > 0:
-                share = (credit_portion * Decimal(str(refund_amount)) / sale_total).quantize(Precision.MONEY)
+                share = round_money(credit_portion * Decimal(str(refund_amount)) / sale_total)
                 reversal = min(share, remaining)
-        reversal = reversal.quantize(Precision.MONEY)
+        reversal = round_money(reversal)
         if reversal <= 0 or session.get(Customer, sale.customer_id) is None:
             return zero
         return reversal
@@ -315,7 +316,7 @@ class CustomerCreditService:
             raise ValueError(f"Unsupported credit reversal type: {entry_type}")
         session.flush()  # earlier reversals of this sale in the same session count too
         if amount is not None:
-            reversal = Decimal(str(amount)).quantize(Precision.MONEY)
+            reversal = round_money(amount)
         else:
             reversal = CustomerCreditService.credit_to_reverse(session, sale, refund_amount)
         if reversal <= 0:

@@ -20,11 +20,11 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import Flowable, Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-from cbpos.core.constants.status import Precision
 from cbpos.core.models import Sale
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.tax_service import TaxService
 from cbpos.core.utils.formatters import format_currency, format_quantity, quantity_decimals
+from cbpos.core.utils.money import round_money
 from cbpos.core.utils.text_scripts import needs_raster
 from cbpos.i18n import get_language, translate_in
 
@@ -216,7 +216,7 @@ class InvoiceService:
                     description=item.product.get_display_name(lang),
                     qty=format_quantity(qty, quantity_decimals(unit) if unit is not None else 0),
                     unit_price=listed,
-                    discount=((listed - charged) * qty).quantize(Precision.MONEY),
+                    discount=round_money((listed - charged) * qty),
                     amount=_dec(item.subtotal),
                 )
             )
@@ -245,8 +245,8 @@ class InvoiceService:
 
     @staticmethod
     def _shows_vat(sale: Sale) -> bool:
-        """A tax invoice (VAT rows, VAT numbers) when the shop is VAT registered or the sale carried tax."""
-        return TaxService.is_vat_active() or _dec(sale.tax_vat) > 0 or _dec(sale.tax_sscl) > 0
+        """A tax invoice (VAT rows, VAT numbers) when the shop is VAT registered or the sale carried VAT."""
+        return TaxService.is_vat_active() or _dec(sale.tax_vat) > 0
 
     @staticmethod
     def generate_pdf(sale: Sale, filepath: str) -> str:
@@ -439,15 +439,18 @@ class InvoiceService:
 
         if show_vat:
             rows.append((t("taxes_included"), ""))
-            exempt = _dec(getattr(sale, "_exempt_amount", None))
+            exempt = _dec(
+                sale.vat_exempt_amount if sale.vat_exempt_amount is not None else getattr(sale, "_exempt_amount", None)
+            )
+            taxable = _dec(sale.taxable_amount) if sale.taxable_amount is not None else (total - exempt)
             if exempt > 0:
-                rows.append((t("taxable"), format_currency(total - exempt)))
+                rows.append((t("taxable"), format_currency(taxable)))
                 rows.append((t("exempt"), format_currency(exempt)))
-            rows.append((t("net_value"), format_currency(_dec(sale.net_revenue))))
-            rows.append((t("vat", rate=_pct(ConfigService.get("tax_vat_rate"), "18")), format_currency(sale.tax_vat)))
-            if _dec(sale.tax_sscl) > 0:
-                sscl_rate = _pct(ConfigService.get("tax_sscl_rate"), "2.5")
-                rows.append((t("sscl", rate=sscl_rate), format_currency(sale.tax_sscl)))
+            # SSCL is a business levy hidden from customer invoices (D9/D25, #831); customer net value is gross minus customer-facing VAT
+            net_val = total - _dec(sale.tax_vat)
+            rows.append((t("net_value"), format_currency(net_val)))
+            vat_rate_str = _pct(sale.vat_rate if sale.vat_rate is not None else ConfigService.get("tax_vat_rate"), "18")
+            rows.append((t("vat", rate=vat_rate_str), format_currency(sale.tax_vat)))
 
         data = []
         for i, (label, value) in enumerate(rows):

@@ -52,7 +52,7 @@ class ProductValidator:
             try:
                 from cbpos.core.services.config_service import ConfigService
 
-                allow_negative_stock = ConfigService.get("allow_negative_stock", False)
+                allow_negative_stock = bool(ConfigService.get("allow_negative_stock"))
             except Exception:
                 allow_negative_stock = False
 

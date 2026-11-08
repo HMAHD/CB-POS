@@ -36,6 +36,9 @@ class ConfigService:
         "date_format": "YYYY-MM-DD",
         # Tax Configuration
         "vat_registered": False,  # Whether business is VAT-registered
+        "sscl_registered": False,  # Whether business is SSCL-registered (#831)
+        "sscl_turnover_preset": "RETAIL",  # RETAIL, MANUFACTURER, DISTRIBUTOR, CUSTOM (#831)
+        "item_tax_exemptions": False,  # Enable item-level tax exemptions (#797)
         "tax_vat_rate": 18.0,
         "tax_sscl_rate": 2.5,
         "tax_sscl_turnover_pct": 50.0,
@@ -573,6 +576,7 @@ class ConfigService:
                 changed = cls._migrate_receipt_printer(cls._settings)
                 changed = cls._clear_demo_bank_details(cls._settings) or changed
                 changed = cls._migrate_loyalty_keys(cls._settings) or changed
+                changed = cls._migrate_sscl_keys(cls._settings) or changed
                 if "setup_completed" not in cls._settings:
                     cls._settings["setup_completed"] = True
                     changed = True
@@ -605,6 +609,7 @@ class ConfigService:
                         cls._migrate_receipt_printer(cls._settings)
                         cls._clear_demo_bank_details(cls._settings)
                         cls._migrate_loyalty_keys(cls._settings)
+                        cls._migrate_sscl_keys(cls._settings)
                         if "setup_completed" not in cls._settings:
                             cls._settings["setup_completed"] = True
                         cls._recovery_reason = "restored_from_backup"
@@ -713,6 +718,18 @@ class ConfigService:
                 del settings[key]
                 changed = True
         return changed
+
+    @classmethod
+    def _migrate_sscl_keys(cls, settings: dict[str, Any]) -> bool:
+        """Migrate SSCL registration setting (#831).
+
+        When 'sscl_registered' is not explicitly present, initialize it from
+        'vat_registered' so existing behavior doesn't change on upgrade.
+        """
+        if "sscl_registered" not in settings:
+            settings["sscl_registered"] = bool(settings.get("vat_registered", False))
+            return True
+        return False
 
     @classmethod
     def save(cls, *, raise_errors: bool = False):

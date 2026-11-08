@@ -69,6 +69,9 @@ Format: `D<n> — <date> — #<issue> — <decision>`. New decisions go at the b
 
 **D24 — 2026-11-05 — #812 — Partial-refund VAT proportional to value.** A partial refund's VAT is proportional to value now (`round_money(sale.tax_vat * value / sale.total_amount)` with remainder reconciliation on final refund). Switch to line-level calculation once #797 stores the per-line taxable flag in Phase 6.1.
 
+**D25 — 2026-11-08 — #831 — Independent SSCL registration and presets.** `sscl_registered` is independent of `vat_registered` (defaulting on config load to current `vat_registered` if unset). Support turnover presets: RETAIL (50%), MANUFACTURER (85%), DISTRIBUTOR (25%), CUSTOM. SSCL base is VAT-exclusive turnover: `amount / (1 + vat_rate/100)` for VAT-taxable lines in VAT-registered shops; full `amount` for lines where no VAT was charged (VAT-exempt or shop not VAT-registered); 0.00 for SSCL-exempt lines. SSCL is removed from customer receipts and invoices, shown in tax reports only.
+
+
 
 
 

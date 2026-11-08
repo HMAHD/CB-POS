@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
-from cbpos.core.constants.status import DocumentStatus, PaymentMethodType, Precision, ShiftStatus
+from cbpos.core.constants.status import DocumentStatus, PaymentMethodType, ShiftStatus
 from cbpos.core.database import Database
 from cbpos.core.interfaces.transaction_peripherals import (
     NullPeripherals,
@@ -36,6 +36,7 @@ from cbpos.core.services.loyalty_service import LoyaltyService
 from cbpos.core.services.receipt_builder import ReceiptBuilder
 from cbpos.core.services.refund_breakdown import ZERO_MONEY, RefundBreakdown, refund_cash_back
 from cbpos.core.services.stock_service import StockService
+from cbpos.core.utils.money import round_money
 
 logger = logging.getLogger(__name__)
 
@@ -389,12 +390,35 @@ class TransactionService:
         Returns:
             Sale: The new header, without a document number.
         """
+        from cbpos.core.services.tax_service import TaxService
+
+        vat_registered = TaxService.is_vat_active()
+        sscl_registered = TaxService.is_sscl_active()
+        vat_rate_dec, sscl_rate_dec, turnover_rate_dec = TaxService._get_rates()
+        vat_rate_val = vat_rate_dec * Decimal("100")
+        sscl_rate_val = sscl_rate_dec * Decimal("100")
+        sscl_turnover_pct_val = turnover_rate_dec * Decimal("100")
+
+        taxable_amt = totals.get("taxable_amount")
+        if taxable_amt is None:
+            taxable_amt = totals["final_total"] if vat_registered else Decimal("0.00")
+        exempt_amt = totals.get("exempt_amount", Decimal("0.00"))
+        sscl_base_val = totals.get("sscl_base", Decimal("0.00"))
+
         sale = Sale(
             date=datetime.now(),
             total_amount=totals["final_total"],
             tax_vat=totals["tax_vat"],
             tax_sscl=totals["tax_sscl"],
             net_revenue=totals["net_revenue"],
+            vat_rate=vat_rate_val,
+            sscl_rate=sscl_rate_val,
+            sscl_turnover_pct=sscl_turnover_pct_val,
+            vat_registered=vat_registered,
+            sscl_registered=sscl_registered,
+            taxable_amount=round_money(taxable_amt),
+            vat_exempt_amount=round_money(exempt_amt),
+            sscl_base=round_money(sscl_base_val),
             additional_discount_type=totals.get("cart_discount_type", "NONE"),
             additional_discount_value=totals.get("cart_discount_value", Decimal("0.00")),
             payment_method=payments[0]["method"] if len(payments) == 1 else "SPLIT",
@@ -406,7 +430,7 @@ class TransactionService:
             origin_terminal_id=ConfigService.get("terminal_id") or "TERM-01",
             shift_id=shift_id,
         )
-        sale._exempt_amount = totals.get("exempt_amount", Decimal("0"))
+        sale._exempt_amount = sale.vat_exempt_amount
         return sale
 
     @staticmethod
@@ -425,6 +449,11 @@ class TransactionService:
             product = item["product"]
             qty = item["qty"]
 
+            cost = getattr(product, "cost", None)
+            unit_cost = round_money(cost) if cost is not None else Decimal("0.00")
+            vat_exempt = bool(item.get("vat_exempt", item.get("tax_exempt", False)))
+            sscl_exempt = bool(item.get("sscl_exempt", False))
+
             sale_item = SaleItem(
                 sale_id=sale.id,
                 product_id=product.id,
@@ -432,6 +461,9 @@ class TransactionService:
                 unit_price=item["unit_price"],
                 original_price=item["original_price"],
                 subtotal=item["total"],
+                vat_exempt=vat_exempt,
+                sscl_exempt=sscl_exempt,
+                unit_cost=unit_cost,
                 notes=item.get("note") or None,
             )
             session.add(sale_item)
@@ -769,7 +801,7 @@ class TransactionService:
 
             customer = session.get(Customer, sale.customer_id) if sale.customer_id else None
             customer_name = customer.name if customer else ""
-            total = Decimal(str(sale.total_amount or 0)).quantize(Precision.MONEY)
+            total = round_money(sale.total_amount or 0)
             already_refunded = session.query(Sale.id).filter(Sale.refund_of_sale_id == sale_id).first() is not None
             refundable = (
                 sale.status != DocumentStatus.VOID

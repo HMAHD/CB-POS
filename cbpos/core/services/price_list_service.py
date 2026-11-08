@@ -16,6 +16,7 @@ from cbpos.core.constants.audit import PRICE_LIST_BULK_ADJUST, PRICING_EVENT
 from cbpos.core.database import Database
 from cbpos.core.models import PriceList, PriceListItem, Product
 from cbpos.core.services.logging_service import LoggingService, diff_changes, snapshot_changes
+from cbpos.core.utils.money import round_money
 from cbpos.core.utils.terminal_guard import require_catalog_writable
 
 
@@ -51,15 +52,15 @@ def round_price(val: Decimal, mode: str) -> Decimal:
     """Round a calculated price according to the specified rounding rule (#544)."""
     val = max(Decimal("0.00"), val)
     if mode == "NEAREST_1":
-        return val.quantize(Decimal("1"), rounding=ROUND_HALF_UP).quantize(Decimal("0.01"))
+        return round_money(val.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
     elif mode == "NEAREST_5":
         divided = (val / Decimal("5")).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
-        return (divided * Decimal("5")).quantize(Decimal("0.01"))
+        return round_money(divided * Decimal("5"))
     elif mode == "CHARM_99":
         int_part = int(val)
-        return (Decimal(int_part) + Decimal("0.99")).quantize(Decimal("0.01"))
+        return round_money(Decimal(int_part) + Decimal("0.99"))
     else:  # "EXACT"
-        return val.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        return round_money(val)
 
 
 def live_price_list_condition(now: datetime) -> ColumnElement[bool]:

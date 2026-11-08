@@ -88,7 +88,7 @@ class TestSettingsPages:
 
         _wheel(spin, steps=1)
 
-        assert spin.value() == 19
+        assert spin.value() == 18.5
 
     def test_focus_comes_from_click_or_tab_not_the_wheel(self, tax_page):
         assert tax_page.spin_vat.focusPolicy() == Qt.FocusPolicy.StrongFocus

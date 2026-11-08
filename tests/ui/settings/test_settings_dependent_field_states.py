@@ -77,6 +77,40 @@ class TestTaxFieldsAndLabelsFollowVatRegistration:
         assert tax_page._lbl_vat_rate.isEnabled() is True
         assert tax_page._lbl_sscl_turnover.isEnabled() is True
 
+    def test_issue_831_sscl_independent_from_vat(self, tax_page):
+        """SSCL registered controls can be active while VAT is disabled (#831)."""
+        tax_page.load({"vat_registered": False, "sscl_registered": True})
+        assert tax_page.spin_vat.isEnabled() is False
+        assert tax_page._lbl_vat_rate.isEnabled() is False
+        assert tax_page.spin_sscl.isEnabled() is True
+        assert tax_page._lbl_sscl_rate.isEnabled() is True
+        assert tax_page.combo_sscl_preset.isEnabled() is True
+        assert tax_page._lbl_sscl_preset.isEnabled() is True
+        assert tax_page._lbl_sscl_turnover.isEnabled() is True
+
+    def test_issue_831_turnover_spin_enabled_only_on_custom_preset(self, tax_page):
+        """Turnover % is locked to preset values and editable only under CUSTOM (#831)."""
+        tax_page.load({"sscl_registered": True, "sscl_turnover_preset": "RETAIL"})
+        assert tax_page.spin_sscl_turnover.isEnabled() is False
+        assert tax_page.spin_sscl_turnover.value() == 50.0
+
+        # Change preset to CUSTOM enables editing
+        idx_custom = tax_page.combo_sscl_preset.findData("CUSTOM")
+        tax_page.combo_sscl_preset.setCurrentIndex(idx_custom)
+        assert tax_page.spin_sscl_turnover.isEnabled() is True
+
+        # Change preset to MANUFACTURER locks to 85%
+        idx_mfg = tax_page.combo_sscl_preset.findData("MANUFACTURER")
+        tax_page.combo_sscl_preset.setCurrentIndex(idx_mfg)
+        assert tax_page.spin_sscl_turnover.isEnabled() is False
+        assert tax_page.spin_sscl_turnover.value() == 85.0
+
+        # Change preset to DISTRIBUTOR locks to 25%
+        idx_dist = tax_page.combo_sscl_preset.findData("DISTRIBUTOR")
+        tax_page.combo_sscl_preset.setCurrentIndex(idx_dist)
+        assert tax_page.spin_sscl_turnover.isEnabled() is False
+        assert tax_page.spin_sscl_turnover.value() == 25.0
+
 
 class TestQrContentFollowsShowQr:
     def test_load_with_qr_off_disables_content(self, receipt_page):

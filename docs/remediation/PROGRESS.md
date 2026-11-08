@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 6 · Batch: 6.1 · Branch: fix/p6-b1-tax-configuration · PR: none · Last session: 2026-11-08
+- Phase: 6 · Batch: 6.1 · Branch: fix/p6-b1-tax-calculation-facts · PR: #1002 · Last session: 2026-11-08
 
 ## Issues
 
@@ -145,9 +145,9 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 | # | Title | Sev | Batch | Status | PR | Notes |
 |---|---|---|---|---|---|---|
-| #797 | Tax-exempt categories cannot be set from the UI; exempt split is not stored o… | high | 6.1 | todo | | |
-| #810 | Tax rounding uses banker's rounding (ROUND_HALF_EVEN); VAT rate field is inte… | medium | 6.1 | todo | | |
-| #831 | SSCL: not calculated for non-VAT-registered liable shops (Rs 36M threshold fr… | high | 6.1 | todo | | |
+| #797 | Tax-exempt categories cannot be set from the UI; exempt split is not stored o… | high | 6.1 | pr-open | #1002 | CategoryService tax_exempt/sscl_exempt flag persistence & inheritance, UI checkboxes in CategoryManagerDialog, Sale/SaleItem exemption facts & cost snapshot, line-aware refund split |
+| #810 | Tax rounding uses banker's rounding (ROUND_HALF_EVEN); VAT rate field is inte… | medium | 6.1 | pr-open | #1002 | ROUND_HALF_UP via round_money, net = total - vat - sscl, QDoubleSpinBox with 2 decimals, guardrail test |
+| #831 | SSCL: not calculated for non-VAT-registered liable shops (Rs 36M threshold fr… | high | 6.1 | pr-open | #1002 | Independent sscl_registered config and migration, turnover presets (Retail 50%, Manufacturer 85%, Distributor 25%, Custom), VAT-exclusive SSCL base, SSCL removed from receipts & invoices, settings UI split, D25 |
 | #795 | Tax Liability Report includes voided sales and hard-codes "VAT (18%)" / "SSCL… | high | 6.2 | todo | | |
 | #796 | Tax Filing Summary: period selector not wired, Total Discounts always 0, SSCL… | high | 6.2 | todo | | |
 | #811 | Invoice reprint shows the current tax % next to amounts stored at the old rate | low | 6.2 | todo | | |
@@ -280,7 +280,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | Q1 | #914 | D11's unique index on `refund_of_sale_id` would block partial refunds (D5). Replace it with row locks plus a CHECK on `sale_items.refunded_qty`? (Recommended: yes; record as the next free D-number) | 2026-10-28 (plan) | 2026-11-04 → D23 |
 | Q2 | #812 | Partial-refund VAT proportional to value now, switching to line-level once #797 stores the per-line taxable flag? (Recommended: yes) | 2026-10-28 (plan) | 2026-11-05 → D24 |
 | Q3 | #817 | D8 says GPLv3 (publish source) but product notes say free + closed code. Choose GPLv3 / PyQt6 commercial licence / PySide6 migration (lawyer review) | 2026-10-28 (plan) | |
-| Q4 | #831 | VAT-exempt items: SSCL on full MRP unless the category is also SSCL-exempt? (Recommended: yes, independent flags; accountant to confirm) | 2026-10-28 (plan) | |
+| Q4 | #831 | VAT-exempt items: SSCL on full MRP unless the category is also SSCL-exempt? (Recommended: yes, independent flags; accountant to confirm) | 2026-10-28 (plan) | 2026-11-08 → D25 |
 
 ## Discovered during remediation (§0.9)
 
@@ -305,5 +305,5 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #911 | Physical thermal print of duplicate receipt (SalesReceiptBuilder & RefundReceiptBuilder duplicate markers) | pending |
 
 ## Handoff
-Phase 5 (Permissions, Audit, Export Safety, Qt Lifecycle) is complete and merged to `main` across PRs #998 (8e4ed10), #999 (e8d78e6), #1000 (d9bf172), and #1001 (e83346c). All 11 issues implemented; #911 remains open with `ready-for-human` exclusively for Windows thermal printer check. Phase 5 exit gate passed. Ready to begin Phase 6 (Tax, Reports, Financial Integrity) starting with Batch 6.1 (Tax configuration: #797, #810, #831) on branch `fix/p6-b1-tax-configuration`.
+Phase 6, Batch 6.1 (Tax calculation and stored facts: #810, #797, #831) is implemented and opened in PR #1002 on branch `fix/p6-b1-tax-calculation-facts`. Shared migration `c3d4e5f6a7b8_sale_tax_snapshot` created and backfilled; ROUND_HALF_UP enforced everywhere; category VAT/SSCL exemptions implemented and snapshotted to sale/sale_items; SSCL decoupled from VAT with turnover presets and customer receipt/invoice removal (D25). Full test suite passed (3,259 passed, 0 failures). Awaiting PR merge approval before closing issues and starting Batch 6.2.
 

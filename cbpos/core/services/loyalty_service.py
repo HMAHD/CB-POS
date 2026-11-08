@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from cbpos.core.database import Database
 from cbpos.core.models import AuditLog, Customer, LoyaltyLedgerEntry, Sale
 from cbpos.core.services.config_service import ConfigService
+from cbpos.core.utils.money import round_money
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +65,7 @@ class LoyaltyService:
             point_val = Decimal(str(val_cfg or "1.00"))
         else:
             point_val = Decimal(str(point_value))
-        return (Decimal(points) * point_val).quantize(Decimal("0.01"))
+        return round_money(Decimal(points) * point_val)
 
     @staticmethod
     def min_redeem_points() -> int:

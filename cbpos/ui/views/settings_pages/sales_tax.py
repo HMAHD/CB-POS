@@ -81,13 +81,35 @@ class SalesTaxPage(SettingsPage):
         self.lbl_tax_warn.setProperty("class", "warning-hint")
         self._form_tax.addRow(self.lbl_tax_warn)
 
-        self.spin_vat = QSpinBox()
+        self.spin_vat = QDoubleSpinBox()
         self.spin_vat.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
-        self.spin_vat.setRange(0, 100)
-        self.spin_vat.setSuffix("%")
+        self.spin_vat.setRange(0.0, 100.0)
+        self.spin_vat.setDecimals(2)
+        self.spin_vat.setSingleStep(0.5)
+        self.spin_vat.setSuffix(" %")
         self.spin_vat.setFixedWidth(200)
         self._lbl_vat_rate = QLabel()
         self._form_tax.addRow(self._lbl_vat_rate, self.spin_vat)
+
+        # Separator between VAT and SSCL
+        sep_vat = QFrame()
+        sep_vat.setFrameShape(QFrame.Shape.HLine)
+        self._form_tax.addRow(sep_vat)
+
+        # SSCL Configuration (#831)
+        self.chk_sscl_registered = QCheckBox()
+        self.chk_sscl_registered.stateChanged.connect(self._toggle_tax_fields)
+        self._form_tax.addRow(self.chk_sscl_registered)
+
+        self.lbl_sscl_hint = QLabel()
+        self.lbl_sscl_hint.setProperty("class", "muted")
+        self.lbl_sscl_hint.setWordWrap(True)
+        self._form_tax.addRow(self.lbl_sscl_hint)
+
+        self.lbl_sscl_help = QLabel()
+        self.lbl_sscl_help.setProperty("class", "muted")
+        self.lbl_sscl_help.setWordWrap(True)
+        self._form_tax.addRow(self.lbl_sscl_help)
 
         self.spin_sscl = QDoubleSpinBox()
         self.spin_sscl.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
@@ -97,6 +119,12 @@ class SalesTaxPage(SettingsPage):
         self.spin_sscl.setFixedWidth(200)
         self._lbl_sscl_rate = QLabel()
         self._form_tax.addRow(self._lbl_sscl_rate, self.spin_sscl)
+
+        self.combo_sscl_preset = QComboBox()
+        self.combo_sscl_preset.setFixedWidth(200)
+        self.combo_sscl_preset.currentIndexChanged.connect(self._on_sscl_preset_changed)
+        self._lbl_sscl_preset = QLabel()
+        self._form_tax.addRow(self._lbl_sscl_preset, self.combo_sscl_preset)
 
         sscl_turnover_row = QHBoxLayout()
         self.spin_sscl_turnover = QDoubleSpinBox()
@@ -245,7 +273,27 @@ class SalesTaxPage(SettingsPage):
         self.lbl_vat_hint.setText(_t("settings.sales_tax.hint_vat_registered"))
         self.lbl_tax_warn.setText(_t("settings.sales_tax.tax_warning"))
         self._lbl_vat_rate.setText(_t("settings.sales_tax.vat_rate"))
+
+        self.chk_sscl_registered.setText(_t("settings.sales_tax.sscl_registered"))
+        self.chk_sscl_registered.setToolTip(_t("settings.sales_tax.tooltip_sscl_registered"))
+        self.lbl_sscl_hint.setText(_t("settings.sales_tax.hint_sscl_registered"))
+        self.lbl_sscl_help.setText(_t("settings.sales_tax.sscl_help"))
         self._lbl_sscl_rate.setText(_t("settings.sales_tax.sscl_rate"))
+        self._lbl_sscl_preset.setText(_t("settings.sales_tax.sscl_preset"))
+
+        current_preset = self.combo_sscl_preset.currentData()
+        self.combo_sscl_preset.blockSignals(True)
+        self.combo_sscl_preset.clear()
+        self.combo_sscl_preset.addItem(_t("settings.sales_tax.sscl_preset_retail"), "RETAIL")
+        self.combo_sscl_preset.addItem(_t("settings.sales_tax.sscl_preset_manufacturer"), "MANUFACTURER")
+        self.combo_sscl_preset.addItem(_t("settings.sales_tax.sscl_preset_distributor"), "DISTRIBUTOR")
+        self.combo_sscl_preset.addItem(_t("settings.sales_tax.sscl_preset_custom"), "CUSTOM")
+        if current_preset:
+            p_idx = self.combo_sscl_preset.findData(current_preset)
+            if p_idx >= 0:
+                self.combo_sscl_preset.setCurrentIndex(p_idx)
+        self.combo_sscl_preset.blockSignals(False)
+
         self._lbl_sscl_turnover.setText(_t("settings.sales_tax.sscl_turnover_base"))
         self.btn_sscl_turnover_help.setToolTip(_t("settings.sales_tax.sscl_turnover_help"))
         self.chk_item_tax_exemptions.setText(_t("settings.sales_tax.item_tax_exemptions"))
@@ -270,23 +318,40 @@ class SalesTaxPage(SettingsPage):
         self.equalize_form_labels()
 
     def _toggle_tax_fields(self) -> None:
-        """Enable/disable tax rate fields and sub-options based on VAT registration status."""
-        enabled = self.chk_vat_registered.isChecked()
+        """Enable/disable tax rate fields and sub-options based on registration statuses (#831)."""
+        vat_enabled = self.chk_vat_registered.isChecked()
+        sscl_enabled = self.chk_sscl_registered.isChecked()
+
         # Labels are toggled with their fields so the whole row reads as
         # inactive, not just the input (#564).
-        for widget in (
-            self.spin_vat,
-            self._lbl_vat_rate,
-            self.spin_sscl,
-            self._lbl_sscl_rate,
-            self.spin_sscl_turnover,
-            self._lbl_sscl_turnover,
-            self.btn_sscl_turnover_help,
-            self.chk_item_tax_exemptions,
-            self.btn_item_exempt_help,
-            self.lbl_item_exemptions_hint,
-        ):
-            widget.setEnabled(enabled)
+        self.spin_vat.setEnabled(vat_enabled)
+        self._lbl_vat_rate.setEnabled(vat_enabled)
+
+        self.spin_sscl.setEnabled(sscl_enabled)
+        self._lbl_sscl_rate.setEnabled(sscl_enabled)
+        self.combo_sscl_preset.setEnabled(sscl_enabled)
+        self._lbl_sscl_preset.setEnabled(sscl_enabled)
+        self._lbl_sscl_turnover.setEnabled(sscl_enabled)
+        self.btn_sscl_turnover_help.setEnabled(sscl_enabled)
+
+        preset_data = self.combo_sscl_preset.currentData()
+        self.spin_sscl_turnover.setEnabled(sscl_enabled and preset_data == "CUSTOM")
+
+        exemptions_active = vat_enabled or sscl_enabled
+        self.chk_item_tax_exemptions.setEnabled(exemptions_active)
+        self.btn_item_exempt_help.setEnabled(exemptions_active)
+        self.lbl_item_exemptions_hint.setEnabled(exemptions_active)
+
+    def _on_sscl_preset_changed(self) -> None:
+        """Update turnover spin box based on selected preset (#831)."""
+        preset = self.combo_sscl_preset.currentData()
+        from cbpos.core.services.tax_service import SSCL_PRESETS
+
+        if preset in SSCL_PRESETS:
+            self.spin_sscl_turnover.setValue(float(SSCL_PRESETS[preset]))
+            self.spin_sscl_turnover.setEnabled(False)
+        else:
+            self.spin_sscl_turnover.setEnabled(self.chk_sscl_registered.isChecked())
 
     def _toggle_loyalty_fields(self, enabled: bool) -> None:
         """Enable or disable dependent settings controls based on loyalty toggle."""
@@ -318,11 +383,24 @@ class SalesTaxPage(SettingsPage):
         self.spin_loyalty_ratio.setValue(int(settings.get("loyalty_points_ratio", 100)))
         self.spin_default_credit.setValue(int(settings.get("default_credit_limit", 0)))
         self.chk_promo_stacking.setChecked(bool(settings.get("promotion_stack_with_price_lists", False)))
-        self.chk_vat_registered.setChecked(settings.get("vat_registered", False))
-        self.spin_vat.setValue(int(settings.get("tax_vat_rate", 18)))
+        self.chk_vat_registered.setChecked(bool(settings.get("vat_registered", False)))
+        self.chk_sscl_registered.setChecked(
+            bool(settings.get("sscl_registered", settings.get("vat_registered", False)))
+        )
+        self.spin_vat.setValue(float(settings.get("tax_vat_rate", 18.0)))
         self.spin_sscl.setValue(float(settings.get("tax_sscl_rate", 2.5)))
+
+        preset = str(settings.get("sscl_turnover_preset", "RETAIL")).upper()
+        p_idx = self.combo_sscl_preset.findData(preset)
+        if p_idx >= 0:
+            self.combo_sscl_preset.setCurrentIndex(p_idx)
+        else:
+            custom_idx = self.combo_sscl_preset.findData("CUSTOM")
+            if custom_idx >= 0:
+                self.combo_sscl_preset.setCurrentIndex(custom_idx)
+
         self.spin_sscl_turnover.setValue(float(settings.get("tax_sscl_turnover_pct", 50.0)))
-        self.chk_item_tax_exemptions.setChecked(settings.get("item_tax_exemptions", False))
+        self.chk_item_tax_exemptions.setChecked(bool(settings.get("item_tax_exemptions", False)))
         self._toggle_tax_fields()
 
         # Loyalty
@@ -362,9 +440,11 @@ class SalesTaxPage(SettingsPage):
             "default_credit_limit": self.spin_default_credit.value(),
             "promotion_stack_with_price_lists": self.chk_promo_stacking.isChecked(),
             "vat_registered": self.chk_vat_registered.isChecked(),
-            "tax_vat_rate": self.spin_vat.value(),
-            "tax_sscl_rate": self.spin_sscl.value(),
-            "tax_sscl_turnover_pct": self.spin_sscl_turnover.value(),
+            "sscl_registered": self.chk_sscl_registered.isChecked(),
+            "tax_vat_rate": round(self.spin_vat.value(), 2),
+            "tax_sscl_rate": round(self.spin_sscl.value(), 2),
+            "sscl_turnover_preset": self.combo_sscl_preset.currentData() or "RETAIL",
+            "tax_sscl_turnover_pct": round(self.spin_sscl_turnover.value(), 1),
             "item_tax_exemptions": self.chk_item_tax_exemptions.isChecked(),
             "enable_loyalty": self.chk_enable_loyalty.isChecked(),
             "loyalty_points_ratio": self.spin_points_ratio.value(),

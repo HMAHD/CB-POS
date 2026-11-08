@@ -13,6 +13,7 @@ from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.document_service import DocumentService
 from cbpos.core.services.permission_service import PermissionService
 from cbpos.core.services.tax_service import TaxService
+from cbpos.core.utils.money import round_money
 
 logger = logging.getLogger(__name__)
 
@@ -80,9 +81,9 @@ class ProformaService:
                     user_id=effective_user_id,
                     status=DocumentStatus.QUOTE,
                     customer_id=customer_id,
-                    total_amount=total.quantize(Decimal("0.01")),
-                    tax_vat=tax_vat.quantize(Decimal("0.01")),
-                    tax_sscl=tax_sscl.quantize(Decimal("0.01")),
+                    total_amount=round_money(total),
+                    tax_vat=round_money(tax_vat),
+                    tax_sscl=round_money(tax_sscl),
                     validity_days=validity_days,
                     expiry_date=expiry,
                     notes=notes,

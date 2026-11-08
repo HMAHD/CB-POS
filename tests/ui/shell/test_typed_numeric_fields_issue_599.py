@@ -66,10 +66,10 @@ class TestSettingsNumericFieldSteppers:
             for field in fields:
                 assert field.buttonSymbols() == QAbstractSpinBox.ButtonSymbols.NoButtons
 
-            # Stepping via keyboard / stepBy still works
+            # Stepping via keyboard / stepBy still works (spin_vat has singleStep 0.5 per #810)
             page.spin_vat.setValue(18)
             page.spin_vat.stepBy(1)
-            assert page.spin_vat.value() == 19
+            assert page.spin_vat.value() == 18.5
             page.spin_vat.stepBy(-1)
             assert page.spin_vat.value() == 18
         finally:

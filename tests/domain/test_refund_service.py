@@ -812,3 +812,81 @@ def test_migration_refund_lines(tmp_path, monkeypatch):
         items_cols = [c[1] for c in conn.execute(text("PRAGMA table_info(sale_items)")).fetchall()]
         assert "refund_of_item_id" not in items_cols
     engine.dispose()
+
+
+def test_issue_797_partial_refund_uses_line_flags(db_session, refund_user):
+    """
+    Partial refund calculates tax from refunded items' stored taxability (D24, #797).
+    Refunding a VAT-exempt line yields 0 VAT refund, while refunding a taxable line yields line VAT.
+    """
+    prod_exempt = _create_product(db_session, "ExemptRice", price=100.0)
+    prod_taxable = _create_product(db_session, "TaxableSoap", price=118.0)
+
+    # Sale has 1 exempt item (100) and 1 taxable item (118 with 18 VAT)
+    sale = Sale(
+        document_number="INV-797-RF",
+        date=datetime.now(),
+        total_amount=Decimal("218.00"),
+        tax_vat=Decimal("18.00"),
+        tax_sscl=Decimal("0.00"),
+        net_revenue=Decimal("200.00"),
+        vat_rate=Decimal("18.00"),
+        vat_registered=True,
+        taxable_amount=Decimal("118.00"),
+        vat_exempt_amount=Decimal("100.00"),
+        payment_method="CASH",
+        status="COMPLETED",
+        user_id=refund_user.id,
+    )
+    db_session.add(sale)
+    db_session.flush()
+
+    item_exempt = SaleItem(
+        sale_id=sale.id,
+        product_id=prod_exempt.id,
+        qty=Decimal("1.000"),
+        unit_price=Decimal("100.00"),
+        original_price=Decimal("100.00"),
+        subtotal=Decimal("100.00"),
+        refunded_qty=Decimal("0.000"),
+        vat_exempt=True,
+        sscl_exempt=False,
+    )
+    item_taxable = SaleItem(
+        sale_id=sale.id,
+        product_id=prod_taxable.id,
+        qty=Decimal("1.000"),
+        unit_price=Decimal("118.00"),
+        original_price=Decimal("118.00"),
+        subtotal=Decimal("118.00"),
+        refunded_qty=Decimal("0.000"),
+        vat_exempt=False,
+        sscl_exempt=False,
+    )
+    pay = SalePayment(
+        sale_id=sale.id,
+        payment_method="Cash",
+        method_kind=PaymentMethodKind.CASH,
+        amount=Decimal("218.00"),
+    )
+    db_session.add_all([item_exempt, item_taxable, pay])
+    db_session.commit()
+
+    # Case 1: Refund ONLY the exempt item (Rs. 100)
+    # Line taxability rule: since vat_exempt=True, refund_vat must be 0.00 (not proportional 8.26!)
+    preview_exempt = RefundService.preview(
+        sale.id,
+        [RefundLineRequest(sale_item_id=item_exempt.id, qty=Decimal("1.000"))],
+    )
+    assert preview_exempt.total_refund_amount == Decimal("100.00")
+    assert preview_exempt.refund_vat == Decimal("0.00")
+    assert preview_exempt.refund_net == Decimal("100.00")
+
+    # Case 2: Refund ONLY the taxable item (Rs. 118)
+    preview_taxable = RefundService.preview(
+        sale.id,
+        [RefundLineRequest(sale_item_id=item_taxable.id, qty=Decimal("1.000"))],
+    )
+    assert preview_taxable.total_refund_amount == Decimal("118.00")
+    assert preview_taxable.refund_vat == Decimal("18.00")
+    assert preview_taxable.refund_net == Decimal("100.00")

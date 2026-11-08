@@ -1,12 +1,16 @@
 from datetime import date
+from decimal import Decimal
 from typing import Any
 
 import pandas as pd
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 
+from cbpos.core.constants.status import DocumentStatus
 from cbpos.core.database import Database
 from cbpos.core.models import Sale
 from cbpos.core.reports.base_report import CATEGORY_SALES, DATE, INT, MONEY, BaseReport, report_columns
+from cbpos.core.reports.sale_filters import date_bounds
+from cbpos.core.services.config_service import ConfigService
 from cbpos.i18n import _t
 
 
@@ -53,8 +57,7 @@ class DailySalesSummaryReport(BaseReport):
         }
 
     def get_summary(self, df: pd.DataFrame) -> list[dict[str, Any]]:
-        """Compute KPI summary cards for daily sales: Total Sales, Invoices, Avg Ticket (#543)."""
-        from cbpos.core.services.config_service import ConfigService
+        """Calculate KPI summary cards for daily sales: Total Sales, Invoices, Avg Ticket (#543)."""
         from cbpos.ui.resources.icons import Icons
 
         currency = ConfigService.get("currency_symbol") or "Rs."
@@ -85,9 +88,13 @@ class DailySalesSummaryReport(BaseReport):
             ]
 
         # Total Sales
-        total_sales = 0.0
+        total_sales = Decimal("0.00")
         if "Total Sales" in df.columns:
-            total_sales = float(pd.to_numeric(df["Total Sales"], errors="coerce").fillna(0.0).sum())
+            for val in df["Total Sales"]:
+                if isinstance(val, Decimal):
+                    total_sales += val
+                elif val is not None and not pd.isna(val):
+                    total_sales += Decimal(str(val))
 
         # Invoices / Transactions count
         invoices = 0
@@ -98,7 +105,7 @@ class DailySalesSummaryReport(BaseReport):
         else:
             invoices = len(df)
 
-        avg_ticket = (total_sales / invoices) if invoices > 0 else 0.0
+        avg_ticket = (total_sales / Decimal(invoices)) if invoices > 0 else Decimal("0.00")
 
         return [
             {
@@ -125,38 +132,32 @@ class DailySalesSummaryReport(BaseReport):
         ]
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
-        """Group sales by calendar date within the range, summing count and total.
+        """Group completed sales and refunds by calendar date within the range, summing count and total.
 
-        Returns an empty DataFrame if no date range is provided.
+        Voided transactions are strictly excluded (#845).
+        Refund documents reduce total sales but do not increment transaction count.
         """
         start_date = filters.get("date_range", {}).get("start")
         end_date = filters.get("date_range", {}).get("end")
 
         if not start_date or not end_date:
-            return pd.DataFrame()
+            return pd.DataFrame(columns=["Date", "Transactions", "Total Sales"])
+
+        start_dt, end_dt = date_bounds(filters.get("date_range", {}))
 
         with Database().get_session() as session:
-            # Query: Group by Date and Sum Total Amount
-            # Note: SQLite stores dates as strings usually, but SQLAlchemy handles
-            # it if typed correctly.
-            # Assuming Sale.date is a Date or DateTime object.
+            stmt = select(
+                func.date(Sale.date).label("sale_date"),
+                func.count(case((Sale.refund_of_sale_id.is_(None), Sale.id))).label("transaction_count"),
+                func.sum(Sale.total_amount).label("total_sales"),
+            ).where(Sale.status == DocumentStatus.COMPLETED)
 
-            # If Sale.date is DateTime, we might need to cast to Date for grouping.
-            # For simplicity, assuming we filter by range and just list sales or
-            # group by day.
-            # The prompt says: "Group by Date -> Sum Total".
+            if start_dt:
+                stmt = stmt.where(Sale.date >= start_dt)
+            if end_dt:
+                stmt = stmt.where(Sale.date < end_dt)
 
-            stmt = (
-                select(
-                    func.date(Sale.date).label("sale_date"),
-                    func.count(Sale.id).label("transaction_count"),
-                    func.sum(Sale.total_amount).label("total_sales"),
-                )
-                .filter(func.date(Sale.date) >= start_date)
-                .filter(func.date(Sale.date) <= end_date)
-                .group_by(func.date(Sale.date))
-                .order_by(func.date(Sale.date))
-            )
+            stmt = stmt.group_by(func.date(Sale.date)).order_by(func.date(Sale.date))
 
             results = session.execute(stmt).all()
 
@@ -165,14 +166,12 @@ class DailySalesSummaryReport(BaseReport):
                 data.append(
                     {
                         "Date": row.sale_date,
-                        "Transactions": row.transaction_count,
-                        "Total Sales": float(row.total_sales) if row.total_sales else 0.0,
+                        "Transactions": int(row.transaction_count or 0),
+                        "Total Sales": row.total_sales if row.total_sales is not None else Decimal("0.00"),
                     }
                 )
 
             df = pd.DataFrame(data)
-
-            # Ensure columns exist even if empty
             if df.empty:
                 df = pd.DataFrame(columns=["Date", "Transactions", "Total Sales"])
 

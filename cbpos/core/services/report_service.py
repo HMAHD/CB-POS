@@ -1,9 +1,11 @@
 from datetime import date, datetime
+from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 from sqlalchemy import desc, extract, func, select
 
+from cbpos.core.constants.status import DocumentStatus
 from cbpos.core.database import Database
 from cbpos.core.models import Product, Sale, SaleItem, SalePayment
 
@@ -19,33 +21,43 @@ class ReportService:
         self.db = Database()
 
     def get_daily_sales(self, report_date: date) -> dict[str, Any]:
-        """Return total sales, total VAT+SSCL, and a payment-method breakdown for one calendar day."""
+        """Return total sales, total VAT+SSCL, and a payment-method breakdown for one calendar day.
+
+        Excludes voided sales and groups payments by method_kind (#845).
+        """
         with self.db.get_session() as session:
             # Filter by date
             start_dt = datetime.combine(report_date, datetime.min.time())
             end_dt = datetime.combine(report_date, datetime.max.time())
 
             # Total Sales
-            total_sales = (
-                session.scalar(select(func.sum(Sale.total_amount)).where(Sale.date >= start_dt, Sale.date <= end_dt))
-                or 0
-            )
+            total_sales = session.scalar(
+                select(func.sum(Sale.total_amount)).where(
+                    Sale.date >= start_dt,
+                    Sale.date <= end_dt,
+                    Sale.status == DocumentStatus.COMPLETED,
+                )
+            ) or Decimal("0.00")
 
             # Total Tax
-            total_tax = (
-                session.scalar(
-                    select(func.sum(Sale.tax_vat + Sale.tax_sscl)).where(Sale.date >= start_dt, Sale.date <= end_dt)
+            total_tax = session.scalar(
+                select(func.sum(Sale.tax_vat + Sale.tax_sscl)).where(
+                    Sale.date >= start_dt,
+                    Sale.date <= end_dt,
+                    Sale.status == DocumentStatus.COMPLETED,
                 )
-                or 0
-            )
+            ) or Decimal("0.00")
 
             # Payment Breakdown
-            # TODO(#844): use method_kind
             payment_breakdown = session.execute(
-                select(SalePayment.payment_method, func.sum(SalePayment.amount))  # TODO(#844): use method_kind
+                select(SalePayment.method_kind, func.sum(SalePayment.amount))
                 .join(Sale)
-                .where(Sale.date >= start_dt, Sale.date <= end_dt)
-                .group_by(SalePayment.payment_method)
+                .where(
+                    Sale.date >= start_dt,
+                    Sale.date <= end_dt,
+                    Sale.status == DocumentStatus.COMPLETED,
+                )
+                .group_by(SalePayment.method_kind)
             ).all()
 
             return {
@@ -61,7 +73,9 @@ class ReportService:
             # Top selling products by quantity
             results = session.execute(
                 select(Product.name_en, func.sum(SaleItem.qty).label("total_qty"))
-                .join(SaleItem)
+                .join(SaleItem, SaleItem.product_id == Product.id)
+                .join(Sale, SaleItem.sale_id == Sale.id)
+                .where(Sale.status == DocumentStatus.COMPLETED)
                 .group_by(Product.id)
                 .order_by(desc("total_qty"))
                 .limit(limit)
@@ -75,14 +89,17 @@ class ReportService:
             start_dt = datetime.combine(report_date, datetime.min.time())
             end_dt = datetime.combine(report_date, datetime.max.time())
 
-            # Extract hour from timestamp (SQLite specific syntax might be needed depending on dialect,
-            # but SQLAlchemy extract usually handles it)
+            # Extract hour from timestamp
             results = session.execute(
                 select(
                     extract("hour", Sale.date).label("hour"),
                     func.sum(Sale.total_amount),
                 )
-                .where(Sale.date >= start_dt, Sale.date <= end_dt)
+                .where(
+                    Sale.date >= start_dt,
+                    Sale.date <= end_dt,
+                    Sale.status == DocumentStatus.COMPLETED,
+                )
                 .group_by("hour")
                 .order_by("hour")
             ).all()

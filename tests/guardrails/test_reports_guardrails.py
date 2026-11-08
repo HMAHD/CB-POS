@@ -26,8 +26,6 @@ def test_no_float_on_money_in_reports():
         "credit_report.py",
         "inventory_reports.py",
         "overdue_report.py",
-        "sales_report.py",  # Batch 6.3 #845
-        "sales_reports.py",  # Batch 6.3 #845
         "shift_variance_report.py",
     }
 

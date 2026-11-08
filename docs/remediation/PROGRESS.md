@@ -154,7 +154,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #798 | Profit & Loss report uses VAT-inclusive revenue, current cost and float math | high | 6.3 | in-progress | | commit 09e47e7 · P&L uses VAT-exclusive turnover, stored SaleItem.unit_cost, SSCL expense line, Decimal arithmetic, and AST guardrail |
 | #843 | Refunds never appear in the Void/Refund report | high | 6.3 | in-progress | | Report queries or_(voided(), refund_documents()), shows negative refund amount, original receipt, approver from AuditLog, Part/Full scope, pure Decimal |
 | #844 | Cash Flow report adds refunds back (net too high by 2× refunds) | high | 6.3 | in-progress | | Cash flow from SalePayment grouped by PaymentMethodKind, drawer CashMovement, Decimal math |
-| #845 | Daily Sales, Cashier Performance, Sales by Category, Dashboard and the auto-e… | high | 6.3 | todo | | |
+| #845 | Daily Sales, Cashier Performance, Sales by Category, Dashboard and the auto-e… | high | 6.3 | in-progress | | commit pending · Unified sale_filters across Daily Sales, Cashier, Category, Dashboard, and Scheduler |
 | #883 | Overdue Customers report resets the clock on every new credit sale | medium | 6.4 | todo | | |
 | #897 | "Overdue suppliers" measures days since the last ledger entry of any type, so… | medium | 6.4 | todo | | |
 | #907 | The thermal customer statement shows today's debt as both opening and closing… | low | 6.4 | todo | | |

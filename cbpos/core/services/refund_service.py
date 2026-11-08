@@ -114,6 +114,9 @@ class RefundPreview:
     refund_net: Decimal
     tenders: list[TenderRefundItem]
     is_full_refund: bool
+    taxable_amount: Decimal = Decimal("0.00")
+    vat_exempt_amount: Decimal = Decimal("0.00")
+    sscl_base: Decimal = Decimal("0.00")
 
 
 @dataclass
@@ -243,6 +246,9 @@ class RefundService:
                     or (total_val - (sale.tax_vat or Decimal("0.00")) - (sale.tax_sscl or Decimal("0.00"))),
                     tenders=tenders,
                     is_full_refund=True,
+                    taxable_amount=sale.taxable_amount or Decimal("0.00"),
+                    vat_exempt_amount=sale.vat_exempt_amount or Decimal("0.00"),
+                    sscl_base=sale.sscl_base or Decimal("0.00"),
                 )
             raise ValueError("no_lines")
 
@@ -321,22 +327,84 @@ class RefundService:
                 )
             )
 
-        # Taxes: proportional or remainder rule
+        # Taxes: line-level facts or historical fallback, plus remainder rule on final refund (D24, #797)
+        taxable_amt = Decimal("0.00")
+        exempt_amt = Decimal("0.00")
+        sscl_base_amt = Decimal("0.00")
+
         if sale.total_amount > Decimal("0.00") and total_value > Decimal("0.00"):
-            if is_final_refund:
-                prev_vat = sum((abs(r.tax_vat or Decimal("0.00")) for r in prev_refunds), Decimal("0.00"))
-                prev_sscl = sum((abs(r.tax_sscl or Decimal("0.00")) for r in prev_refunds), Decimal("0.00"))
-                refund_vat = (sale.tax_vat or Decimal("0.00")) - prev_vat
-                refund_sscl = (sale.tax_sscl or Decimal("0.00")) - prev_sscl
+            has_line_facts = any(items_map[req.sale_item_id].vat_exempt is not None for req in lines)
+
+            if has_line_facts:
+                vat_r = (sale.vat_rate or Decimal("18.00")) / Decimal("100")
+                sscl_r = (sale.sscl_rate or Decimal("2.50")) / Decimal("100")
+                sscl_t = (sale.sscl_turnover_pct or Decimal("50.00")) / Decimal("100")
+                is_vat_reg = (
+                    sale.vat_registered if sale.vat_registered is not None else (sale.tax_vat and sale.tax_vat > 0)
+                )
+                is_sscl_reg = sale.sscl_registered if sale.sscl_registered is not None else is_vat_reg
+
+                vat_acc = Decimal("0.00")
+                sscl_acc = Decimal("0.00")
+                for i, req in enumerate(lines):
+                    orig = items_map[req.sale_item_id]
+                    line_val = raw_values[i]
+                    if orig.vat_exempt:
+                        exempt_amt += line_val
+                    else:
+                        taxable_amt += line_val
+                        if is_vat_reg:
+                            vat_acc += round_money(line_val * vat_r / (Decimal("1") + vat_r))
+
+                    if not orig.sscl_exempt and is_sscl_reg:
+                        if is_vat_reg and not orig.vat_exempt:
+                            base = line_val / (Decimal("1") + vat_r)
+                        else:
+                            base = line_val
+                        sscl_base_amt += base
+                        sscl_acc += round_money(base * sscl_t * sscl_r)
+
+                if is_final_refund:
+                    prev_vat = sum((abs(r.tax_vat or Decimal("0.00")) for r in prev_refunds), Decimal("0.00"))
+                    prev_sscl = sum((abs(r.tax_sscl or Decimal("0.00")) for r in prev_refunds), Decimal("0.00"))
+                    refund_vat = (sale.tax_vat or Decimal("0.00")) - prev_vat
+                    refund_sscl = (sale.tax_sscl or Decimal("0.00")) - prev_sscl
+                else:
+                    refund_vat = vat_acc
+                    refund_sscl = sscl_acc
                 refund_net = total_value - refund_vat - refund_sscl
             else:
-                refund_vat = round_money((sale.tax_vat or Decimal("0.00")) * total_value / sale.total_amount)
-                refund_sscl = round_money((sale.tax_sscl or Decimal("0.00")) * total_value / sale.total_amount)
-                refund_net = total_value - refund_vat - refund_sscl
+                # Historical fallback: value-proportional
+                if is_final_refund:
+                    prev_vat = sum((abs(r.tax_vat or Decimal("0.00")) for r in prev_refunds), Decimal("0.00"))
+                    prev_sscl = sum((abs(r.tax_sscl or Decimal("0.00")) for r in prev_refunds), Decimal("0.00"))
+                    refund_vat = (sale.tax_vat or Decimal("0.00")) - prev_vat
+                    refund_sscl = (sale.tax_sscl or Decimal("0.00")) - prev_sscl
+                    refund_net = total_value - refund_vat - refund_sscl
+                else:
+                    refund_vat = round_money((sale.tax_vat or Decimal("0.00")) * total_value / sale.total_amount)
+                    refund_sscl = round_money((sale.tax_sscl or Decimal("0.00")) * total_value / sale.total_amount)
+                    refund_net = total_value - refund_vat - refund_sscl
+
+                if sale.taxable_amount is not None:
+                    taxable_amt = round_money(sale.taxable_amount * total_value / sale.total_amount)
+                    exempt_amt = round_money(
+                        (sale.vat_exempt_amount or Decimal("0.00")) * total_value / sale.total_amount
+                    )
+                    sscl_base_amt = round_money((sale.sscl_base or Decimal("0.00")) * total_value / sale.total_amount)
+                else:
+                    taxable_amt = total_value if (sale.tax_vat and sale.tax_vat > 0) else Decimal("0.00")
         else:
             refund_vat = Decimal("0.00")
             refund_sscl = Decimal("0.00")
             refund_net = Decimal("0.00")
+
+        # Guard: cannot refund taxes that were not charged on the original sale
+        if (sale.tax_vat or Decimal("0.00")) == Decimal("0.00"):
+            refund_vat = Decimal("0.00")
+        if (sale.tax_sscl or Decimal("0.00")) == Decimal("0.00"):
+            refund_sscl = Decimal("0.00")
+        refund_net = total_value - refund_vat - refund_sscl
 
         # Tender allocation
         tenders = RefundService._allocate_tenders(sale, total_value, tender_override, override_reason)
@@ -349,6 +417,9 @@ class RefundService:
             refund_net=refund_net,
             tenders=tenders,
             is_full_refund=is_final_refund,
+            taxable_amount=round_money(taxable_amt),
+            vat_exempt_amount=round_money(exempt_amt),
+            sscl_base=round_money(sscl_base_amt),
         )
 
     @staticmethod
@@ -508,6 +579,14 @@ class RefundService:
                 tax_vat=-preview.refund_vat,
                 tax_sscl=-preview.refund_sscl,
                 net_revenue=-preview.refund_net,
+                vat_rate=sale.vat_rate,
+                sscl_rate=sale.sscl_rate,
+                sscl_turnover_pct=sale.sscl_turnover_pct,
+                vat_registered=sale.vat_registered,
+                sscl_registered=sale.sscl_registered,
+                taxable_amount=-preview.taxable_amount,
+                vat_exempt_amount=-preview.vat_exempt_amount,
+                sscl_base=-preview.sscl_base,
                 payment_method="REFUND",
                 status=DocumentStatus.COMPLETED,
                 user_id=user_id,
@@ -538,6 +617,9 @@ class RefundService:
                     subtotal=-line_val,
                     refund_of_item_id=orig_item.id,
                     refund_reason=req.reason or reason,
+                    vat_exempt=orig_item.vat_exempt,
+                    sscl_exempt=orig_item.sscl_exempt,
+                    unit_cost=orig_item.unit_cost,
                 )
                 session.add(refund_item)
                 orig_item.refunded_qty = (orig_item.refunded_qty or Decimal("0.000")) + req.qty

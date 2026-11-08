@@ -187,9 +187,13 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
 
         has_stored_tax = (sale.tax_vat and sale.tax_vat > 0) or (sale.tax_sscl and sale.tax_sscl > 0)
         if gc("show_tax_breakdown", False, config_override) and (TaxService.is_vat_active() or has_stored_tax):
-            exempt_amount = getattr(sale, "_exempt_amount", None)
+            exempt_amount = (
+                sale.vat_exempt_amount if sale.vat_exempt_amount is not None else getattr(sale, "_exempt_amount", None)
+            )
             if exempt_amount and exempt_amount > Decimal("0"):
-                taxable_amount = sale.total_amount - exempt_amount
+                taxable_amount = (
+                    sale.taxable_amount if sale.taxable_amount is not None else (sale.total_amount - exempt_amount)
+                )
                 commands.append(
                     cls._split_row("  {}:".format(cls._rt("taxable")), format_currency(taxable_amount), line_chars)
                 )

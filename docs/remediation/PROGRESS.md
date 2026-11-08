@@ -145,7 +145,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 | # | Title | Sev | Batch | Status | PR | Notes |
 |---|---|---|---|---|---|---|
-| #797 | Tax-exempt categories cannot be set from the UI; exempt split is not stored o… | high | 6.1 | todo | | |
+| #797 | Tax-exempt categories cannot be set from the UI; exempt split is not stored o… | high | 6.1 | done | | CategoryService tax_exempt/sscl_exempt flag persistence & inheritance, UI checkboxes in CategoryManagerDialog, Sale/SaleItem exemption facts & cost snapshot, line-aware refund split |
 | #810 | Tax rounding uses banker's rounding (ROUND_HALF_EVEN); VAT rate field is inte… | medium | 6.1 | done | | ROUND_HALF_UP via round_money, net = total - vat - sscl, QDoubleSpinBox with 2 decimals, guardrail test |
 | #831 | SSCL: not calculated for non-VAT-registered liable shops (Rs 36M threshold fr… | high | 6.1 | todo | | |
 | #795 | Tax Liability Report includes voided sales and hard-codes "VAT (18%)" / "SSCL… | high | 6.2 | todo | | |

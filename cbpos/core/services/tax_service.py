@@ -66,6 +66,7 @@ class TaxService:
                 "sscl": Decimal("0.00"),
                 "net": round_money(total_mrp),
                 "exempt_amount": Decimal("0.00"),
+                "sscl_base": round_money(total_mrp),
             }
 
         # Determine taxable vs exempt portions
@@ -100,4 +101,5 @@ class TaxService:
             "sscl": sscl_amount,
             "net": net_revenue,
             "exempt_amount": round_money(exempt_amt),
+            "sscl_base": round_money(vat_liable_base),
         }

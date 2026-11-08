@@ -7,6 +7,7 @@ import logging
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QIcon, QPixmap
 from PyQt6.QtWidgets import (
+    QCheckBox,
     QColorDialog,
     QComboBox,
     QDialog,
@@ -26,6 +27,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.models import Category
 from cbpos.core.services.category_service import CategoryService
+from cbpos.core.services.config_service import ConfigService
 from cbpos.core.utils.error_messages import translate_error
 from cbpos.i18n import _t
 from cbpos.ui.styles.style_helpers import set_color_swatch
@@ -121,6 +123,23 @@ class CategoryManagerDialog(QDialog):
         color_row.addStretch()
         form_layout.addRow(_t("category_manager.color_label"), color_row)
 
+        # Tax exemption options
+        self.chk_vat_exempt = QCheckBox(_t("category_manager.vat_exempt"))
+        self.chk_sscl_exempt = QCheckBox(_t("category_manager.sscl_exempt"))
+        self.lbl_tax_exempt_hint = QLabel(_t("category_manager.tax_exemptions_disabled_hint"))
+        self.lbl_tax_exempt_hint.setProperty("class", "muted")
+        self.lbl_tax_exempt_hint.setWordWrap(True)
+
+        tax_exemptions_enabled = bool(ConfigService.get("item_tax_exemptions"))
+        if tax_exemptions_enabled:
+            form_layout.addRow("", self.chk_vat_exempt)
+            form_layout.addRow("", self.chk_sscl_exempt)
+            self.lbl_tax_exempt_hint.hide()
+        else:
+            self.chk_vat_exempt.hide()
+            self.chk_sscl_exempt.hide()
+            form_layout.addRow("", self.lbl_tax_exempt_hint)
+
         right.addWidget(form_group)
 
         # Action buttons
@@ -215,6 +234,8 @@ class CategoryManagerDialog(QDialog):
         self.txt_name.setText(cat.name)
         self.selected_color = cat.color or "#00BCEB"
         self._update_color_preview()
+        self.chk_vat_exempt.setChecked(bool(cat.tax_exempt))
+        self.chk_sscl_exempt.setChecked(bool(cat.sscl_exempt))
 
         # Rebuild parent combo excluding self
         self._populate_parent_combo(exclude_id=cat_id)
@@ -243,6 +264,8 @@ class CategoryManagerDialog(QDialog):
             return
 
         parent_id = self.combo_parent.currentData()
+        tax_exempt = self.chk_vat_exempt.isChecked()
+        sscl_exempt = self.chk_sscl_exempt.isChecked()
 
         try:
             if self._editing_id:
@@ -251,12 +274,16 @@ class CategoryManagerDialog(QDialog):
                     name=name,
                     color=self.selected_color,
                     parent_id=parent_id,
+                    tax_exempt=tax_exempt,
+                    sscl_exempt=sscl_exempt,
                 )
             else:
                 CategoryService.create(
                     name=name,
                     color=self.selected_color,
                     parent_id=parent_id,
+                    tax_exempt=tax_exempt,
+                    sscl_exempt=sscl_exempt,
                 )
         except Exception as e:
             QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))
@@ -329,6 +356,8 @@ class CategoryManagerDialog(QDialog):
         self.txt_name.clear()
         self.selected_color = "#00BCEB"
         self._update_color_preview()
+        self.chk_vat_exempt.setChecked(False)
+        self.chk_sscl_exempt.setChecked(False)
         self.btn_save.setText(_t("category_manager.save_new"))
         self.btn_delete.setEnabled(False)
         self.tree.clearSelection()

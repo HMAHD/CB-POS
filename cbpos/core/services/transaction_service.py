@@ -390,12 +390,43 @@ class TransactionService:
         Returns:
             Sale: The new header, without a document number.
         """
+        config = ConfigService.get_all()
+        vat_registered = bool(config.get("vat_registered", False))
+        sscl_registered_val = config.get("sscl_registered")
+        sscl_registered = bool(vat_registered if sscl_registered_val is None else sscl_registered_val)
+        try:
+            vat_rate_val = Decimal(str(config.get("tax_vat_rate", 18.0)))
+        except Exception:
+            vat_rate_val = Decimal("18.00")
+        try:
+            sscl_rate_val = Decimal(str(config.get("tax_sscl_rate", 2.5)))
+        except Exception:
+            sscl_rate_val = Decimal("2.50")
+        try:
+            sscl_turnover_pct_val = Decimal(str(config.get("tax_sscl_turnover_pct", 50.0)))
+        except Exception:
+            sscl_turnover_pct_val = Decimal("50.00")
+
+        taxable_amt = totals.get("taxable_amount")
+        if taxable_amt is None:
+            taxable_amt = totals["final_total"] if vat_registered else Decimal("0.00")
+        exempt_amt = totals.get("exempt_amount", Decimal("0.00"))
+        sscl_base_val = totals.get("sscl_base", Decimal("0.00"))
+
         sale = Sale(
             date=datetime.now(),
             total_amount=totals["final_total"],
             tax_vat=totals["tax_vat"],
             tax_sscl=totals["tax_sscl"],
             net_revenue=totals["net_revenue"],
+            vat_rate=vat_rate_val,
+            sscl_rate=sscl_rate_val,
+            sscl_turnover_pct=sscl_turnover_pct_val,
+            vat_registered=vat_registered,
+            sscl_registered=sscl_registered,
+            taxable_amount=round_money(taxable_amt),
+            vat_exempt_amount=round_money(exempt_amt),
+            sscl_base=round_money(sscl_base_val),
             additional_discount_type=totals.get("cart_discount_type", "NONE"),
             additional_discount_value=totals.get("cart_discount_value", Decimal("0.00")),
             payment_method=payments[0]["method"] if len(payments) == 1 else "SPLIT",
@@ -407,7 +438,7 @@ class TransactionService:
             origin_terminal_id=ConfigService.get("terminal_id") or "TERM-01",
             shift_id=shift_id,
         )
-        sale._exempt_amount = totals.get("exempt_amount", Decimal("0"))
+        sale._exempt_amount = sale.vat_exempt_amount
         return sale
 
     @staticmethod
@@ -426,6 +457,11 @@ class TransactionService:
             product = item["product"]
             qty = item["qty"]
 
+            cost = getattr(product, "cost", None)
+            unit_cost = round_money(cost) if cost is not None else Decimal("0.00")
+            vat_exempt = bool(item.get("vat_exempt", item.get("tax_exempt", False)))
+            sscl_exempt = bool(item.get("sscl_exempt", False))
+
             sale_item = SaleItem(
                 sale_id=sale.id,
                 product_id=product.id,
@@ -433,6 +469,9 @@ class TransactionService:
                 unit_price=item["unit_price"],
                 original_price=item["original_price"],
                 subtotal=item["total"],
+                vat_exempt=vat_exempt,
+                sscl_exempt=sscl_exempt,
+                unit_cost=unit_cost,
                 notes=item.get("note") or None,
             )
             session.add(sale_item)

@@ -2,14 +2,15 @@
 Service for managing product categories.
 """
 
+import json
 import logging
 
 from sqlalchemy import select
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import Session, joinedload
 
 from cbpos.core.constants.permissions import Permissions
 from cbpos.core.database import Database
-from cbpos.core.models import Category, Role, User
+from cbpos.core.models import AuditLog, Category, Role, User
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.permission_service import PermissionService
 from cbpos.core.utils.terminal_guard import require_catalog_writable
@@ -28,6 +29,20 @@ def _require_inventory_edit(session, acting_user_id: int | None) -> None:
         user = session.get(User, effective_actor_id, options=[joinedload(User.role).joinedload(Role.permissions)])
         if not user or not PermissionService.user_has_permission(user, Permissions.INVENTORY_EDIT):
             raise PermissionError("Permission denied: inventory.edit required")
+
+
+def _require_admin_settings(session, acting_user_id: int | None) -> int | None:
+    effective_actor_id = acting_user_id
+    if effective_actor_id is None:
+        curr = AuthService.get_current_user()
+        if curr:
+            effective_actor_id = curr.id
+
+    if effective_actor_id is not None:
+        user = session.get(User, effective_actor_id, options=[joinedload(User.role).joinedload(Role.permissions)])
+        if not user or not PermissionService.user_has_permission(user, Permissions.ADMIN_SETTINGS):
+            raise PermissionError("Permission denied: admin.settings required")
+    return effective_actor_id
 
 
 class CategoryService:
@@ -241,10 +256,39 @@ class CategoryService:
                     session.delete(cat)
 
     @staticmethod
+    def effective_flags(category_id: int | None, session: Session | None = None) -> dict[str, bool]:
+        """Return effective VAT and SSCL exemption flags for a category, resolving inheritance."""
+        if category_id is None or not isinstance(category_id, int):
+            return {"vat_exempt": False, "sscl_exempt": False}
+
+        def _resolve(s: Session) -> dict[str, bool]:
+            cat = s.get(Category, category_id)
+            if not cat:
+                return {"vat_exempt": False, "sscl_exempt": False}
+            vat_exempt = bool(cat.tax_exempt)
+            sscl_exempt = bool(cat.sscl_exempt)
+            if (not vat_exempt or not sscl_exempt) and cat.parent_id:
+                parent = s.get(Category, cat.parent_id)
+                if parent:
+                    if not vat_exempt and parent.tax_exempt:
+                        vat_exempt = True
+                    if not sscl_exempt and parent.sscl_exempt:
+                        sscl_exempt = True
+            return {"vat_exempt": vat_exempt, "sscl_exempt": sscl_exempt}
+
+        if session is not None:
+            return _resolve(session)
+        with Database().get_session() as s:
+            return _resolve(s)
+
+    @staticmethod
     def create(
         name: str,
         parent_id: int | None = None,
         color: str | None = None,
+        tax_exempt: bool | None = None,
+        sscl_exempt: bool | None = None,
+        vat_exempt: bool | None = None,
         acting_user_id: int | None = None,
     ) -> Category:
         """Create a new category.
@@ -253,6 +297,9 @@ class CategoryService:
             name: Category name.
             parent_id: Optional parent category ID for subcategories.
             color: Optional hex color string (e.g. '#FF0000').
+            tax_exempt: Whether items in this category are VAT exempt.
+            sscl_exempt: Whether items in this category are SSCL exempt.
+            vat_exempt: Alias for tax_exempt.
             acting_user_id: Optional ID of user creating the category.
 
         Returns:
@@ -260,6 +307,7 @@ class CategoryService:
 
         Raises:
             ValueError: If a category with the same name already exists.
+            PermissionError: If tax exemption flags are set without admin.settings.
         """
         require_catalog_writable()
         db = Database()
@@ -276,13 +324,41 @@ class CategoryService:
                 if parent.parent_id is not None:
                     raise ValueError("category_too_deep")
 
+            effective_vat_exempt = vat_exempt if vat_exempt is not None else tax_exempt
+            if effective_vat_exempt or sscl_exempt:
+                actor_id = _require_admin_settings(session, acting_user_id)
+            else:
+                actor_id = acting_user_id or (
+                    AuthService.get_current_user().id if AuthService.get_current_user() else None
+                )
+
             category = Category(
                 name=name,
                 parent_id=parent_id,
                 color=color or "#FFFFFF",
+                tax_exempt=bool(effective_vat_exempt),
+                sscl_exempt=bool(sscl_exempt),
             )
             session.add(category)
             session.flush()
+
+            if effective_vat_exempt or sscl_exempt:
+                audit = AuditLog(
+                    user_id=actor_id,
+                    action="CATEGORY_TAX_FLAG_CHANGED",
+                    event_type="CATEGORY",
+                    details=json.dumps(
+                        {
+                            "category_id": category.id,
+                            "category_name": category.name,
+                            "old": {"vat_exempt": False, "sscl_exempt": False},
+                            "new": {"vat_exempt": bool(effective_vat_exempt), "sscl_exempt": bool(sscl_exempt)},
+                        }
+                    ),
+                )
+                session.add(audit)
+                session.flush()
+
             session.expunge(category)
             return category
 
@@ -292,6 +368,9 @@ class CategoryService:
         name: str | None = None,
         color: str | None = None,
         parent_id: object = ...,
+        tax_exempt: bool | None = None,
+        sscl_exempt: bool | None = None,
+        vat_exempt: bool | None = None,
         acting_user_id: int | None = None,
     ) -> Category:
         """Update an existing category.
@@ -301,6 +380,9 @@ class CategoryService:
             name: New name (if provided).
             color: New color hex string (if provided).
             parent_id: New parent ID. Use None for root, omit (``...``) to leave unchanged.
+            tax_exempt: New tax_exempt flag (if provided).
+            sscl_exempt: New sscl_exempt flag (if provided).
+            vat_exempt: Alias for tax_exempt.
             acting_user_id: Optional ID of user updating the category.
 
         Returns:
@@ -308,6 +390,7 @@ class CategoryService:
 
         Raises:
             ValueError: If category not found or duplicate name.
+            PermissionError: If tax exemption flags are changed without admin.settings.
         """
         require_catalog_writable()
         db = Database()
@@ -340,6 +423,33 @@ class CategoryService:
                     if has_children:
                         raise ValueError("category_too_deep")
                 category.parent_id = parent_id
+
+            effective_vat_exempt = vat_exempt if vat_exempt is not None else tax_exempt
+            vat_changed = effective_vat_exempt is not None and effective_vat_exempt != category.tax_exempt
+            sscl_changed = sscl_exempt is not None and sscl_exempt != category.sscl_exempt
+
+            if vat_changed or sscl_changed:
+                actor_id = _require_admin_settings(session, acting_user_id)
+                old_vat = category.tax_exempt
+                old_sscl = category.sscl_exempt
+                if effective_vat_exempt is not None:
+                    category.tax_exempt = bool(effective_vat_exempt)
+                if sscl_exempt is not None:
+                    category.sscl_exempt = bool(sscl_exempt)
+                audit = AuditLog(
+                    user_id=actor_id,
+                    action="CATEGORY_TAX_FLAG_CHANGED",
+                    event_type="CATEGORY",
+                    details=json.dumps(
+                        {
+                            "category_id": category.id,
+                            "category_name": category.name,
+                            "old": {"vat_exempt": old_vat, "sscl_exempt": old_sscl},
+                            "new": {"vat_exempt": category.tax_exempt, "sscl_exempt": category.sscl_exempt},
+                        }
+                    ),
+                )
+                session.add(audit)
 
             session.flush()
             session.expunge(category)

@@ -269,10 +269,11 @@ class TestCreditAndMixedPayments:
 # ── Exempt amount ────────────────────────────────────────────────────────
 
 
-def _exempt_config(key):
+def _exempt_config(key, default=None):
     if key in ("item_tax_exemptions", "vat_registered"):
         return True
-    return ConfigService.DEFAULTS.get(key)
+    val = ConfigService.DEFAULTS.get(key)
+    return val if val is not None else default
 
 
 def _exempt_config_all():
@@ -302,3 +303,94 @@ def test_returned_sale_carries_the_exempt_amount_for_the_receipt(db_session, use
 
     assert sale._exempt_amount == Decimal("118.00")
     assert sale.tax_vat == Decimal("18.00")
+
+
+def test_issue_797_sale_stores_exempt_split_and_line_flags(db_session, user):
+    """Sale header and lines store complete tax facts at checkout time (#797)."""
+    category_exempt = Category(name=f"Exempt_{_next()}", tax_exempt=True, sscl_exempt=False)
+    category_taxable = Category(name=f"Taxable_{_next()}", tax_exempt=False, sscl_exempt=False)
+    db_session.add_all([category_exempt, category_taxable])
+    db_session.flush()
+
+    prod_exempt = Product(
+        name_en="Exempt Prod",
+        barcode=f"797-E-{_next()}",
+        price=Decimal("100.00"),
+        cost=Decimal("70.00"),
+        stock_qty=Decimal("10"),
+        category_id=category_exempt.id,
+    )
+    prod_taxable = Product(
+        name_en="Taxable Prod",
+        barcode=f"797-T-{_next()}",
+        price=Decimal("118.00"),
+        cost=Decimal("80.00"),
+        stock_qty=Decimal("10"),
+        category_id=category_taxable.id,
+    )
+    db_session.add_all([prod_exempt, prod_taxable])
+    db_session.flush()
+
+    with (
+        patch.object(ConfigService, "get", side_effect=_exempt_config),
+        patch.object(ConfigService, "get_all", side_effect=_exempt_config_all),
+    ):
+        sale = _sell(db_session, user, [(prod_exempt, "1"), (prod_taxable, "1")], [("CASH", "218.00")])
+
+    # Header facts stored
+    assert sale.taxable_amount == Decimal("118.00")
+    assert sale.vat_exempt_amount == Decimal("100.00")
+    assert sale.vat_rate == Decimal("18.00")
+    assert sale.vat_registered is True
+    assert sale.tax_vat == Decimal("18.00")
+
+    # Line facts stored
+    items_by_prod = {item.product_id: item for item in sale.items}
+    item_e = items_by_prod[prod_exempt.id]
+    item_t = items_by_prod[prod_taxable.id]
+
+    assert item_e.vat_exempt is True
+    assert item_e.unit_cost == Decimal("70.00")
+
+    assert item_t.vat_exempt is False
+    assert item_t.unit_cost == Decimal("80.00")
+
+
+def test_issue_797_reprint_shows_stored_split_after_flag_change(db_session, user):
+    """Reprinting uses stored sale facts, unaffected by later category flag changes."""
+    from cbpos.core.services.sales_receipt_builder import SalesReceiptBuilder
+
+    category = Category(name=f"ExemptMut_{_next()}", tax_exempt=True)
+    db_session.add(category)
+    db_session.flush()
+
+    rice = Product(
+        name_en="Rice",
+        barcode=f"797-R-{_next()}",
+        price=Decimal("100.00"),
+        stock_qty=Decimal("10"),
+        category_id=category.id,
+    )
+    soap = _product(db_session, "Soap", "118.00", "10")
+    db_session.add(rice)
+    db_session.flush()
+
+    with (
+        patch.object(ConfigService, "get", side_effect=_exempt_config),
+        patch.object(ConfigService, "get_all", side_effect=_exempt_config_all),
+    ):
+        sale = _sell(db_session, user, [(rice, "1"), (soap, "1")], [("CASH", "218.00")])
+
+    # Now mutate the category: turn tax_exempt to False
+    category.tax_exempt = False
+    db_session.commit()
+
+    # Re-fetch sale and build receipt
+    reloaded_sale = db_session.get(Sale, sale.id)
+    commands = SalesReceiptBuilder.build_receipt(reloaded_sale, config_override={"show_tax_breakdown": True})
+
+    # Search commands for the exempt line
+    text_vals = [c.get("val", "") for c in commands if isinstance(c, dict) and "val" in c]
+    joined_text = " ".join(text_vals)
+    assert "100.00" in joined_text
+    assert reloaded_sale.vat_exempt_amount == Decimal("100.00")

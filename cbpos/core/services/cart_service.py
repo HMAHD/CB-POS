@@ -5,7 +5,7 @@ from typing import Any
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import select
 
-from cbpos.core.models import Category, Customer, Product
+from cbpos.core.models import Customer, Product
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.logging_service import LoggingService
 from cbpos.core.services.pricing_service import PricingService
@@ -57,7 +57,7 @@ class CartService:
         # Calculate price using Pricing Engine
         pricing = PricingService.calculate_price(product, self._customer)
 
-        # Add new line
+        flags = self._resolve_effective_flags(product)
         new_item = {
             "product": product,
             "qty": qty,
@@ -70,8 +70,10 @@ class CartService:
             "total": Decimal("0.00"),
             "subtotal": Decimal("0.00"),  # Gross line total
             # Captured now, not at totals time: by then nothing guarantees
-            # the detached product can still reach its category (#701).
-            "tax_exempt": self._resolve_tax_exempt(product),
+            # the detached product can still reach its category (#701, #797).
+            "tax_exempt": flags["vat_exempt"],
+            "vat_exempt": flags["vat_exempt"],
+            "sscl_exempt": flags["sscl_exempt"],
             "note": None,
             "override_approved_by": None,
         }
@@ -317,67 +319,64 @@ class CartService:
         return item["tax_exempt"]
 
     @staticmethod
-    def _resolve_tax_exempt(product: Any) -> bool:
-        """Return whether ``product``'s category is tax exempt (#701).
+    def _resolve_effective_flags(product: Any) -> dict[str, bool]:
+        """Return effective exemption flags (vat_exempt, sscl_exempt) for product's category (#701, #797)."""
+        from cbpos.core.database import Database
+        from cbpos.core.services.category_service import CategoryService
 
-        Cart products are detached: the session that loaded them has closed.
-        ``Product.category`` is joined-loaded by normal queries, but a product
-        that was flushed without a refresh, or whose attributes were expired,
-        reaches the cart without it, and touching ``product.category`` then
-        raises ``DetachedInstanceError``. That used to be swallowed and the
-        item silently taxed. Instead, read the already-loaded value when it is
-        there, and otherwise look the flag up in the database.
-
-        Args:
-            product: The cart line's product (ORM instance or a plain stand-in).
-
-        Returns:
-            True if the product's category is marked tax exempt.
-        """
         if product is None:
-            return False
+            return {"vat_exempt": False, "sscl_exempt": False}
 
+        category_id = None
         state = sa_inspect(product, raiseerr=False)
         if state is None:
-            # Not an ORM instance: nothing can lazy-load, read it as-is.
             category = getattr(product, "category", None)
-            return bool(getattr(category, "tax_exempt", False)) if category is not None else False
+            if category is not None:
+                cat_id = getattr(category, "id", None)
+                if isinstance(cat_id, int):
+                    category_id = cat_id
+                elif hasattr(category, "tax_exempt") and isinstance(category.tax_exempt, bool):
+                    return {
+                        "vat_exempt": bool(category.tax_exempt),
+                        "sscl_exempt": bool(getattr(category, "sscl_exempt", False)),
+                    }
+            if category_id is None:
+                p_cat_id = getattr(product, "category_id", None)
+                if isinstance(p_cat_id, int):
+                    category_id = p_cat_id
+        else:
+            category_id = state.dict.get("category_id")
+            if category_id is None and "category" not in state.unloaded:
+                cat = state.dict.get("category")
+                if cat is not None:
+                    category_id = getattr(cat, "id", None)
+            if category_id is None and state.identity:
+                with Database().get_session() as s:
+                    category_id = s.scalar(select(Product.category_id).where(Product.id == state.identity[0]))
 
-        if "category" not in state.unloaded:
-            category = state.dict.get("category")
-            if category is None:
-                return False
-            if "tax_exempt" not in sa_inspect(category).unloaded:
-                return bool(category.tax_exempt)
+        if not isinstance(category_id, int):
+            return {"vat_exempt": False, "sscl_exempt": False}
 
-        return CartService._load_tax_exempt(state)
+        return CategoryService.effective_flags(category_id)
+
+    @staticmethod
+    def _resolve_tax_exempt(product: Any) -> bool:
+        """Return whether ``product``'s category is tax exempt (#701, #797)."""
+        return CartService._resolve_effective_flags(product)["vat_exempt"]
 
     @staticmethod
     def _load_tax_exempt(state: Any) -> bool:
-        """Read a product's category ``tax_exempt`` flag from the database.
-
-        Args:
-            state: SQLAlchemy ``InstanceState`` of the product.
-
-        Returns:
-            The category's flag, or False if the product has no category.
-        """
+        """Read a product's category ``tax_exempt`` flag from the database."""
         from cbpos.core.database import Database
+        from cbpos.core.services.category_service import CategoryService
 
         if state.identity:
-            stmt = (
-                select(Category.tax_exempt)
-                .join(Product, Product.category_id == Category.id)
-                .where(Product.id == state.identity[0])
-            )
+            with Database().get_session() as session:
+                cat_id = session.scalar(select(Product.category_id).where(Product.id == state.identity[0]))
+                return CategoryService.effective_flags(cat_id)["vat_exempt"]
         else:
             category_id = state.dict.get("category_id")
-            if category_id is None:
-                return False
-            stmt = select(Category.tax_exempt).where(Category.id == category_id)
-
-        with Database().get_session() as session:
-            return bool(session.scalar(stmt))
+            return CategoryService.effective_flags(category_id)["vat_exempt"]
 
     def get_totals(self, loyalty_points: int | None = None, has_customer: bool | None = None) -> dict[str, Any]:
         """Return the cart totals."""
@@ -414,6 +413,7 @@ class CartService:
 
         # 3. Split into taxable vs exempt amounts when item-level exemptions enabled
         taxable_amount = None
+        exempt_amount = Decimal("0.00")
         if ConfigService.get("item_tax_exemptions") and subtotal > Decimal("0"):
             taxable_sub = Decimal("0.00")
             exempt_sub = Decimal("0.00")
@@ -429,8 +429,14 @@ class CartService:
                 discount_ratio = total_discount_amt / subtotal
                 taxable_discount = round_money(taxable_sub * discount_ratio)
                 taxable_amount = round_money(taxable_sub - taxable_discount)
+                exempt_discount = round_money(exempt_sub * discount_ratio)
+                exempt_amount = round_money(exempt_sub - exempt_discount)
             else:
                 taxable_amount = round_money(taxable_sub)
+                exempt_amount = round_money(exempt_sub)
+        else:
+            taxable_amount = round_money(final_total)
+            exempt_amount = Decimal("0.00")
 
         # Calculate tax breakdown from the final (post-discount) amount
         tax_info = TaxService.calculate_taxes(
@@ -446,11 +452,13 @@ class CartService:
             "loyalty_discount": round_money(loyalty_discount_amt),
             "loyalty_points_redeemed": points_to_redeem,
             "final_total": round_money(final_total),
+            "taxable_amount": taxable_amount,
             "tax_vat": tax_info["vat"],
             "tax_sscl": tax_info["sscl"],
             "tax": tax_info["vat"] + tax_info["sscl"],
             "net_revenue": tax_info["net"],
-            "exempt_amount": tax_info.get("exempt_amount", Decimal("0.00")),
+            "exempt_amount": tax_info.get("exempt_amount", exempt_amount),
+            "sscl_base": tax_info.get("sscl_base", Decimal("0.00")),
             "count": len(self.items),
             "item_count": sum(item["qty"] for item in self.items),
         }

@@ -23,7 +23,6 @@ def test_no_float_on_money_in_reports():
     # financial_reports.py is remediated in Batch 6.3 (#798) and must have NO float() calls.
     ALLOWED_LEGACY_FILES = {
         "audit_reports.py",
-        "cash_flow_report.py",  # Batch 6.3 #844
         "credit_report.py",
         "inventory_reports.py",
         "overdue_report.py",

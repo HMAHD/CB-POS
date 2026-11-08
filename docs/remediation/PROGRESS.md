@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 6 · Batch: 6.3 · Branch: fix/p6-b3-profit-cash-sales-reports · PR: none · Last session: 2026-11-08
+- Phase: 6 · Batch: 6.3 · Branch: fix/p6-b3-profit-cash-sales-reports · PR: #1004 · Last session: 2026-11-08
 
 ## Issues
 
@@ -151,10 +151,10 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #795 | Tax Liability Report includes voided sales and hard-codes "VAT (18%)" / "SSCL… | high | 6.2 | done | #1003 | eb6112b · completed_sales/refund_documents filters exclude voids, separate refund section with net totals, dynamic VAT/SSCL headers, per-rate breakdown table |
 | #796 | Tax Filing Summary: period selector not wired, Total Discounts always 0, SSCL… | high | 6.2 | done | #1003 | eb6112b · interactive monthly/quarterly/custom period resolution in FilterWidget, discounts computed from lines/bill/loyalty, reconciled SSCL liable turnover and quarterly liability section, method_kind grouping |
 | #811 | Invoice reprint shows the current tax % next to amounts stored at the old rate | low | 6.2 | done | #1003 | eb6112b · resolve_historical_vat_rate snapshot fallback, format_rate cleanly, receipt and invoice PDF use sale rate, receipt_strings.vat_with_rate translation |
-| #798 | Profit & Loss report uses VAT-inclusive revenue, current cost and float math | high | 6.3 | in-progress | | commit 09e47e7 · P&L uses VAT-exclusive turnover, stored SaleItem.unit_cost, SSCL expense line, Decimal arithmetic, and AST guardrail |
-| #843 | Refunds never appear in the Void/Refund report | high | 6.3 | in-progress | | Report queries or_(voided(), refund_documents()), shows negative refund amount, original receipt, approver from AuditLog, Part/Full scope, pure Decimal |
-| #844 | Cash Flow report adds refunds back (net too high by 2× refunds) | high | 6.3 | in-progress | | Cash flow from SalePayment grouped by PaymentMethodKind, drawer CashMovement, Decimal math |
-| #845 | Daily Sales, Cashier Performance, Sales by Category, Dashboard and the auto-e… | high | 6.3 | in-progress | | commit pending · Unified sale_filters across Daily Sales, Cashier, Category, Dashboard, and Scheduler |
+| #798 | Profit & Loss report uses VAT-inclusive revenue, current cost and float math | high | 6.3 | pr-open | #1004 | 09e47e7 · P&L uses VAT-exclusive turnover (net_revenue + tax_sscl), stored SaleItem.unit_cost, SSCL expense line, Decimal arithmetic, AST guardrail |
+| #843 | Refunds never appear in the Void/Refund report | high | 6.3 | pr-open | #1004 | 4148a70 · Report queries or_(voided(), refund_documents()), shows negative refund amount, original receipt, approver from AuditLog, Part/Full scope, pure Decimal |
+| #844 | Cash Flow report adds refunds back (net too high by 2× refunds) | high | 6.3 | pr-open | #1004 | dad0755 · Cash flow from SalePayment grouped by PaymentMethodKind, legacy cash-back attributed to CASH, drawer movements reconciled, Decimal math |
+| #845 | Daily Sales, Cashier Performance, Sales by Category, Dashboard and the auto-e… | high | 6.3 | pr-open | #1004 | dccec60 · Unified sale_filters across Daily Sales, Cashier, Category, Dashboard, and Scheduler; txn_count counts non-refunds only; voids excluded |
 | #883 | Overdue Customers report resets the clock on every new credit sale | medium | 6.4 | todo | | |
 | #897 | "Overdue suppliers" measures days since the last ledger entry of any type, so… | medium | 6.4 | todo | | |
 | #907 | The thermal customer statement shows today's debt as both opening and closing… | low | 6.4 | todo | | |
@@ -305,5 +305,5 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #911 | Physical thermal print of duplicate receipt (SalesReceiptBuilder & RefundReceiptBuilder duplicate markers) | pending |
 
 ## Handoff
-Phase 6, Batch 6.2 (Tax reporting and invoice history: #811, #795, #796) merged via PR #1003 (merge commit eb6112b); issues #811, #795, #796 verified closed on GitHub; Epic #832 updated. Starting Batch 6.3 (Profit, cash and sales report semantics: #798, #843, #844, #845) on branch fix/p6-b3-profit-cash-sales-reports. Preflight checks completed, sale_filters established in Batch 6.2 available for reuse.
+Phase 6, Batch 6.3 (Profit, cash and sales report semantics: #798, #843, #844, #845) PR #1004 opened on branch fix/p6-b3-profit-cash-sales-reports. Full test suite (3,297 passed), domain/guardrail suite (1,006 passed), translation validation (0 issues), and pre-commit checks all green. Awaiting merge of PR #1004. Next: Batch 6.4 (Customer statements and aging: #883, #897, #907, #909, #910, #912).
 

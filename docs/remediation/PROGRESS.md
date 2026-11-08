@@ -139,7 +139,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #898 | Excel export writes text cells starting with "=" as live formulas (CSV/formul… | medium | 5.2 | done | #999 | e8d78e6 · Prevent formula injection via XLSX_WRITER_OPTIONS and csv_safe escaping |
 | #911 | Reprint prints voided sales and credit notes as ordinary "Cash Receipt" dupli… | low | 5.3 | done | #1000 | d9bf172 · ReceiptReprintService, sales.reprint permission & migration, refund document receipt truth, part-refunded note, void disable & tooltip (⚠️ Windows print pending) |
 | #917 | PIN login runs one bcrypt check per active user on the UI thread, freezing th… | low | 5.4 | done | | PinCheckWorker off UI thread for login/override/profile, disable UI with checking label, generation counter, no duplicate runs |
-| #918 | Three places use the segfault-prone `destroyed` pattern that CLAUDE.md forbid… | low | 5.4 | todo | | |
+| #918 | Three places use the segfault-prone `destroyed` pattern that CLAUDE.md forbid… | low | 5.4 | done | | Eliminated destroyed.connect outside destroy_hooks, call_on_destroyed with ID dict in ModalDimmerManager, AST guardrails |
 
 ### Phase 6 — [spec](phases/phase-06-tax-reports.md)
 

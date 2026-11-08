@@ -2118,6 +2118,7 @@
     "total": "එකතුව",
     "tax_breakdown": "බදු විස්තරය",
     "vat": "වැට්",
+    "vat_with_rate": "වැට් ({rate}%)",
     "sscl": "SSCL",
     "quotation": "*** කෝටේෂන් ***",
     "customer": "පාරිභෝගිකයා",

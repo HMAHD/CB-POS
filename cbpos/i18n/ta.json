@@ -2118,6 +2118,7 @@
     "total": "மொத்தம்",
     "tax_breakdown": "வரி விவரம்",
     "vat": "VAT",
+    "vat_with_rate": "VAT ({rate}%)",
     "sscl": "SSCL",
     "quotation": "*** மேற்கோள் ***",
     "customer": "வாடிக்கையாளர்",

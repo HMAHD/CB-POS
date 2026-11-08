@@ -452,3 +452,85 @@ class TestIssue831IndependentSSCL:
         receipt_text = " ".join(str(cmd.get("val", "")) for cmd in receipt)
         assert "SSCL" not in receipt_text
         assert "sscl" not in receipt_text.lower()
+
+
+class TestIssue811HistoricalVatRateOnReprint:
+    """Issue #811: Reprints must use the stored historical VAT rate from the sale snapshot."""
+
+    @patch("cbpos.core.services.loyalty_service.LoyaltyService.get_sale_loyalty_figures", return_value=None)
+    def test_issue_811_reprint_uses_sale_rate_after_setting_change(self, _mock_loyalty, monkeypatch):
+        from unittest.mock import MagicMock
+
+        from cbpos.core.services.config_service import ConfigService
+        from cbpos.core.services.sales_receipt_builder import SalesReceiptBuilder
+
+        mock_sale = MagicMock()
+        mock_sale.document_number = "REC-00811"
+        mock_sale.total_amount = Decimal("1180.00")
+        mock_sale.tax_vat = Decimal("180.00")
+        mock_sale.tax_sscl = Decimal("0.00")
+        mock_sale.net_revenue = Decimal("1000.00")
+        mock_sale.vat_exempt_amount = Decimal("0.00")
+        mock_sale.taxable_amount = Decimal("1180.00")
+        mock_sale.vat_rate = Decimal("18.00")
+        mock_sale.sscl_rate = Decimal("2.50")
+        mock_sale.payments = []
+        mock_sale.items = []
+        mock_sale.customer = None
+        mock_sale.cashier = None
+        mock_sale.cashier_name = None
+        mock_sale.additional_discount_type = "NONE"
+        mock_sale.additional_discount_value = Decimal("0.00")
+
+        # Now simulate setting changed to 15%
+        monkeypatch.setattr(
+            ConfigService, "get", lambda k, *a: 15.0 if k == "tax_vat_rate" else ConfigService.DEFAULTS.get(k)
+        )
+
+        # Shared rate resolver must return stored 18.00
+        resolved_rate = TaxService.resolve_historical_vat_rate(mock_sale)
+        assert resolved_rate == Decimal("18.00")
+
+        # Thermal receipt must display 18%
+        receipt = SalesReceiptBuilder.build_receipt(mock_sale, config_override={"show_tax_breakdown": True})
+        receipt_text = " ".join(str(cmd.get("val", "")) for cmd in receipt)
+        assert "VAT (18%):" in receipt_text or "VAT (18%)" in receipt_text
+        assert "15%" not in receipt_text
+        assert "SSCL" not in receipt_text
+
+    def test_stored_zero_percent_remains_zero_percent(self, monkeypatch):
+        from unittest.mock import MagicMock
+
+        from cbpos.core.services.config_service import ConfigService
+
+        mock_sale = MagicMock()
+        mock_sale.document_number = "REC-ZERO"
+        mock_sale.vat_rate = Decimal("0.00")
+
+        monkeypatch.setattr(
+            ConfigService, "get", lambda k, *a: 18.0 if k == "tax_vat_rate" else ConfigService.DEFAULTS.get(k)
+        )
+
+        resolved = TaxService.resolve_historical_vat_rate(mock_sale)
+        assert resolved == Decimal("0.00")
+
+    def test_null_legacy_rate_falls_back_and_logs_warning(self, monkeypatch, caplog):
+        import logging
+        from unittest.mock import MagicMock
+
+        from cbpos.core.services.config_service import ConfigService
+
+        mock_sale = MagicMock()
+        mock_sale.document_number = "REC-LEGACY"
+        mock_sale.vat_rate = None
+
+        monkeypatch.setattr(
+            ConfigService, "get", lambda k, *a: 18.0 if k == "tax_vat_rate" else ConfigService.DEFAULTS.get(k)
+        )
+
+        with caplog.at_level(logging.WARNING):
+            resolved = TaxService.resolve_historical_vat_rate(mock_sale)
+
+        assert resolved == Decimal("18.0")
+        assert "REC-LEGACY" in caplog.text
+        assert "falling back to current setting" in caplog.text

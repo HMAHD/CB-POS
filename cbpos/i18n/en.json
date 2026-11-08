@@ -2153,6 +2153,7 @@
     "total": "Total",
     "tax_breakdown": "Tax Breakdown",
     "vat": "VAT",
+    "vat_with_rate": "VAT ({rate}%)",
     "sscl": "SSCL",
     "quotation": "*** QUOTATION ***",
     "customer": "Customer",

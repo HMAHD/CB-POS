@@ -150,7 +150,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #831 | SSCL: not calculated for non-VAT-registered liable shops (Rs 36M threshold fr… | high | 6.1 | done | #1002 | 7d3ce6e · Independent sscl_registered config and migration, turnover presets (Retail 50%, Manufacturer 85%, Distributor 25%, Custom), VAT-exclusive SSCL base, SSCL removed from receipts & invoices, settings UI split, D25 |
 | #795 | Tax Liability Report includes voided sales and hard-codes "VAT (18%)" / "SSCL… | high | 6.2 | todo | | |
 | #796 | Tax Filing Summary: period selector not wired, Total Discounts always 0, SSCL… | high | 6.2 | todo | | |
-| #811 | Invoice reprint shows the current tax % next to amounts stored at the old rate | low | 6.2 | todo | | |
+| #811 | Invoice reprint shows the current tax % next to amounts stored at the old rate | low | 6.2 | done | | resolve_historical_vat_rate snapshot fallback, format_rate cleanly, receipt and invoice PDF use sale rate, receipt_strings.vat_with_rate translation |
 | #798 | Profit & Loss report uses VAT-inclusive revenue, current cost and float math | high | 6.3 | todo | | |
 | #843 | Refunds never appear in the Void/Refund report | high | 6.3 | todo | | |
 | #844 | Cash Flow report adds refunds back (net too high by 2× refunds) | high | 6.3 | todo | | |

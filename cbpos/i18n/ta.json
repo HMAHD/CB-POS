@@ -82,7 +82,8 @@
     "bill_held": "திறந்த பில் நிலுவை பில் #{id} ஆக சேமிக்கப்பட்டது. அதை F7 மூலம் மீண்டும் எடுக்கலாம்.",
     "logo_fallback": "CB POS",
     "version_footer": "வெர்ஷன் {version} | © 2026 Ceylon Byte",
-    "enter_pin": "PIN போடுங்க"
+    "enter_pin": "PIN போடுங்க",
+    "checking": "சரிபார்க்கிறோம்…"
   },
   "activity": {
     "terminal": "டெர்மினல்",

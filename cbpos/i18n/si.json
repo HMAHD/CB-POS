@@ -82,7 +82,8 @@
     "bill_held": "විවෘත බිල රඳවාගත් බිල්පත් #{id} ලෙස සුරකින ලදී. F7 මඟින් එය නැවත ලබාගන්න.",
     "logo_fallback": "CB POS",
     "version_footer": "වර්ෂන් {version} | © 2026 Ceylon Byte",
-    "enter_pin": "PIN එක දාන්න"
+    "enter_pin": "PIN එක දාන්න",
+    "checking": "පරීක්ෂා කරමින්…"
   },
   "activity": {
     "terminal": "ටර්මිනල්",

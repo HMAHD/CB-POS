@@ -40,7 +40,7 @@ def test_login_view_lockout_disables_controls_and_counts_down(monkeypatch):
     assert view.lbl_error.isHidden()
 
 
-def test_login_view_shows_attempts_left_when_near_lockout(monkeypatch):
+def test_login_view_shows_attempts_left_when_near_lockout(qtbot, monkeypatch):
     """When wrong PIN is entered and attempts remaining <= 2, attempts_left message is shown."""
     view = LoginView()
     view.show()
@@ -52,7 +52,7 @@ def test_login_view_shows_attempts_left_when_near_lockout(monkeypatch):
     view.pin_input.setText("1234")
     view.attempt_login()
 
-    assert not view.lbl_error.isHidden()
+    qtbot.waitUntil(lambda: not view.lbl_error.isHidden(), timeout=2000)
     assert "2" in view.lbl_error.text()
 
 

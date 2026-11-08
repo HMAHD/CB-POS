@@ -13,6 +13,7 @@ from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.user_service import UserService
 from cbpos.core.utils.error_messages import translate_error
 from cbpos.i18n import _t
+from cbpos.ui.workers import PinCheckWorker, start_background_job
 
 
 class ProfileDialog(QDialog):
@@ -25,6 +26,8 @@ class ProfileDialog(QDialog):
         self.setMinimumSize(400, 300)
         self.resize(400, 300)
         self.setObjectName("ProfileDialog")
+        self._pin_worker: PinCheckWorker | None = None
+        self._pin_check_gen: int = 0
         self.init_ui()
         self.load_user()
 
@@ -70,8 +73,19 @@ class ProfileDialog(QDialog):
         if user:
             self.input_name.setText(user.username)
 
+    def _set_checking_state(self, checking: bool):
+        """Enable or disable dialog controls while background verification runs."""
+        self.input_name.setEnabled(not checking)
+        self.input_current_pin.setEnabled(not checking)
+        self.input_new_pin.setEnabled(not checking)
+        self.btn_update.setEnabled(not checking)
+        self.btn_update.setText(_t("login.checking") if checking else _t("profile.btn_update"))
+
     def update_profile(self):
-        """Verify the current PIN, then update the display name and optionally the PIN."""
+        """Verify the current PIN asynchronously, then update the display name and optionally the PIN."""
+        if self._pin_worker is not None and self._pin_worker.isRunning():
+            return
+
         user = AuthService.get_current_user()
         if not user:
             return
@@ -89,7 +103,32 @@ class ProfileDialog(QDialog):
             QMessageBox.warning(self, _t("common.error"), _t("login.locked", seconds=lockout_secs))
             return
 
-        if not AuthService.check_own_pin(user.id, current_pin):
+        self._set_checking_state(True)
+        self._pin_check_gen += 1
+        gen = self._pin_check_gen
+        self._pin_worker = PinCheckWorker(mode="check_own", pin=current_pin, user_id=user.id)
+        self._pin_worker.result.connect(
+            lambda res, g=gen, u_id=user.id, dn=display_name, np=new_pin: self._on_profile_pin_result(
+                res, g, u_id, dn, np
+            )
+        )
+        start_background_job(self._pin_worker)
+
+    def _on_profile_pin_result(
+        self,
+        matched: bool,
+        gen: int,
+        user_id: int,
+        display_name: str,
+        new_pin: str,
+    ):
+        """Handle worker verification result and proceed with profile update if PIN is valid."""
+        if gen != self._pin_check_gen:
+            return
+        self._pin_worker = None
+        self._set_checking_state(False)
+
+        if not matched:
             lockout_secs = AuthService.get_terminal_lockout_seconds()
             if lockout_secs > 0:
                 QMessageBox.warning(self, _t("common.error"), _t("login.locked", seconds=lockout_secs))
@@ -98,7 +137,7 @@ class ProfileDialog(QDialog):
             return
 
         try:
-            success = UserService.update_user_profile(user.id, display_name, new_pin if new_pin else None)
+            success = UserService.update_user_profile(user_id, display_name, new_pin if new_pin else None)
         except ValueError as e:
             err_code = str(e)
             msg = _t("users.pin_in_use") if err_code == "pin_in_use" else translate_error(err_code)
@@ -112,3 +151,15 @@ class ProfileDialog(QDialog):
             self.accept()
         else:
             QMessageBox.critical(self, _t("common.error"), _t("profile.update_failed"))
+
+    def reject(self):
+        """Cancel any running worker and reject the dialog."""
+        self._pin_check_gen += 1
+        self._pin_worker = None
+        super().reject()
+
+    def closeEvent(self, event):
+        """Cancel any running worker and close the dialog."""
+        self._pin_check_gen += 1
+        self._pin_worker = None
+        super().closeEvent(event)

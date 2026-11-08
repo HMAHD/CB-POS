@@ -82,7 +82,8 @@
     "bill_held": "The open bill was saved as Held Bill #{id}. Recall it with F7.",
     "logo_fallback": "CB POS",
     "version_footer": "Version {version} | © 2026 Ceylon Byte",
-    "enter_pin": "Enter PIN"
+    "enter_pin": "Enter PIN",
+    "checking": "Checking…"
   },
   "activity": {
     "terminal": "Till",

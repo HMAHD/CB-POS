@@ -180,11 +180,12 @@ class FilterWidget(QWidget):
         if not period_data or "month_combo" not in period_data:
             return
 
-        date_input = None
-        for inp in self.inputs.values():
-            if inp.get("type") == "date_range":
-                date_input = inp
-                break
+        date_input = self.inputs.get("date_range")
+        if not date_input:
+            for inp in self.inputs.values():
+                if inp.get("type") == "date_range":
+                    date_input = inp
+                    break
 
         period_type = period_data["widget"].currentData()
         month_combo = period_data["month_combo"]
@@ -203,10 +204,15 @@ class FilterWidget(QWidget):
             end_d = date(year, month, last_day)
 
             if date_input:
-                date_input["picker"].set_range(start_d, end_d)
-                date_input["start"].setReadOnly(True)
-                date_input["end"].setReadOnly(True)
-                date_input["picker"].preset_combo.setEnabled(False)
+                picker = date_input.get("picker")
+                if picker and hasattr(picker, "set_range"):
+                    picker.set_range(start_d, end_d)
+                if "start" in date_input:
+                    date_input["start"].setReadOnly(True)
+                if "end" in date_input:
+                    date_input["end"].setReadOnly(True)
+                if picker and hasattr(picker, "preset_combo"):
+                    picker.preset_combo.setEnabled(False)
 
         elif period_type == "quarter":
             month_combo.setVisible(False)
@@ -230,10 +236,15 @@ class FilterWidget(QWidget):
                 end_d = date(year, 12, 31)
 
             if date_input:
-                date_input["picker"].set_range(start_d, end_d)
-                date_input["start"].setReadOnly(True)
-                date_input["end"].setReadOnly(True)
-                date_input["picker"].preset_combo.setEnabled(False)
+                picker = date_input.get("picker")
+                if picker and hasattr(picker, "set_range"):
+                    picker.set_range(start_d, end_d)
+                if "start" in date_input:
+                    date_input["start"].setReadOnly(True)
+                if "end" in date_input:
+                    date_input["end"].setReadOnly(True)
+                if picker and hasattr(picker, "preset_combo"):
+                    picker.preset_combo.setEnabled(False)
 
         else:  # custom
             month_combo.setVisible(False)
@@ -241,9 +252,13 @@ class FilterWidget(QWidget):
             year_combo.setVisible(False)
 
             if date_input:
-                date_input["start"].setReadOnly(False)
-                date_input["end"].setReadOnly(False)
-                date_input["picker"].preset_combo.setEnabled(True)
+                picker = date_input.get("picker")
+                if "start" in date_input:
+                    date_input["start"].setReadOnly(False)
+                if "end" in date_input:
+                    date_input["end"].setReadOnly(False)
+                if picker and hasattr(picker, "preset_combo"):
+                    picker.preset_combo.setEnabled(True)
 
     def get_filter_values(self) -> dict[str, Any]:
         """

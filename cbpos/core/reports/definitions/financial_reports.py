@@ -316,12 +316,14 @@ class TaxLiabilityReport(BaseReport):
                 )
 
             # Input VAT from completed purchases
-            purchase_query = session.query(Purchase).filter(Purchase.status == "COMPLETED")
+            input_vat_query = session.query(func.coalesce(func.sum(Purchase.input_vat), Decimal("0"))).filter(
+                Purchase.status == "COMPLETED"
+            )
             if start_dt:
-                purchase_query = purchase_query.filter(Purchase.date >= start_dt)
+                input_vat_query = input_vat_query.filter(Purchase.date >= start_dt)
             if end_dt:
-                purchase_query = purchase_query.filter(Purchase.date < end_dt)
-            input_vat_total = sum((p.input_vat for p in purchase_query.all()), Decimal("0"))
+                input_vat_query = input_vat_query.filter(Purchase.date < end_dt)
+            input_vat_total = input_vat_query.scalar() or Decimal("0")
 
             output_vat_net = sales_vat + refunds_vat
 
@@ -476,13 +478,15 @@ class TaxFilingSummaryReport(BaseReport):
             # Discounts over completed sales (line discounts + bill discount + loyalty discount)
             total_discounts = Decimal("0.00")
             for s in completed:
-                line_disc = sum(
-                    max(Decimal("0.00"), ((it.original_price or it.unit_price) * it.qty) - it.subtotal)
-                    for it in s.items
-                )
+                line_disc = Decimal("0.00")
+                for it in s.items:
+                    orig_price = it.original_price if it.original_price is not None else it.unit_price
+                    if orig_price is not None and it.qty is not None and it.subtotal is not None:
+                        line_disc += max(Decimal("0.00"), (orig_price * it.qty) - it.subtotal)
+
                 bill_disc = Decimal("0.00")
                 if s.additional_discount_type == "PERCENTAGE" and s.additional_discount_value:
-                    items_subtotal = sum(it.subtotal for it in s.items)
+                    items_subtotal = sum((it.subtotal or Decimal("0.00")) for it in s.items)
                     bill_disc = round_money(items_subtotal * (s.additional_discount_value / Decimal("100")))
                 elif s.additional_discount_type == "FIXED" and s.additional_discount_value:
                     bill_disc = s.additional_discount_value

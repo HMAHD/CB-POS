@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from cbpos.core.services.config_service import ConfigService
@@ -77,8 +77,9 @@ class TaxService:
             d = Decimal(str(rate))
             if d == d.to_integral():
                 return f"{int(d)}"
-            return f"{d.normalize():f}"
-        except Exception:
+            s = f"{d:f}".rstrip("0").rstrip(".")
+            return s if s else "0"
+        except (InvalidOperation, TypeError, ValueError):
             return str(rate)
 
     @staticmethod

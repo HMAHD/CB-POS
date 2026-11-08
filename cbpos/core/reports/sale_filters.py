@@ -50,7 +50,7 @@ def completed_sales() -> Any:
     return and_(
         Sale.status == DocumentStatus.COMPLETED,
         Sale.refund_of_sale_id.is_(None),
-        Sale.payment_method != "REFUND",
+        or_(Sale.payment_method.is_(None), Sale.payment_method != "REFUND"),
     )
 
 

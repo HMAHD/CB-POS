@@ -484,7 +484,9 @@ class TestIssue811HistoricalVatRateOnReprint:
 
         # Now simulate setting changed to 15%
         monkeypatch.setattr(
-            ConfigService, "get", lambda k, *a: 15.0 if k == "tax_vat_rate" else ConfigService.DEFAULTS.get(k)
+            ConfigService,
+            "get",
+            lambda k, *a: 15.0 if k in ("tax_vat_rate", "vat_rate") else ConfigService.DEFAULTS.get(k),
         )
 
         # Shared rate resolver must return stored 18.00
@@ -508,7 +510,9 @@ class TestIssue811HistoricalVatRateOnReprint:
         mock_sale.vat_rate = Decimal("0.00")
 
         monkeypatch.setattr(
-            ConfigService, "get", lambda k, *a: 18.0 if k == "tax_vat_rate" else ConfigService.DEFAULTS.get(k)
+            ConfigService,
+            "get",
+            lambda k, *a: 18.0 if k in ("tax_vat_rate", "vat_rate") else ConfigService.DEFAULTS.get(k),
         )
 
         resolved = TaxService.resolve_historical_vat_rate(mock_sale)
@@ -525,7 +529,9 @@ class TestIssue811HistoricalVatRateOnReprint:
         mock_sale.vat_rate = None
 
         monkeypatch.setattr(
-            ConfigService, "get", lambda k, *a: 18.0 if k == "tax_vat_rate" else ConfigService.DEFAULTS.get(k)
+            ConfigService,
+            "get",
+            lambda k, *a: 18.0 if k in ("tax_vat_rate", "vat_rate") else ConfigService.DEFAULTS.get(k),
         )
 
         with caplog.at_level(logging.WARNING):
@@ -534,3 +540,13 @@ class TestIssue811HistoricalVatRateOnReprint:
         assert resolved == Decimal("18.0")
         assert "REC-LEGACY" in caplog.text
         assert "falling back to current setting" in caplog.text
+
+    def test_format_rate_clean_labels_and_edge_cases(self):
+        assert TaxService.format_rate(None) == ""
+        assert TaxService.format_rate(18) == "18"
+        assert TaxService.format_rate("18.00") == "18"
+        assert TaxService.format_rate(Decimal("18.5")) == "18.5"
+        assert TaxService.format_rate(0) == "0"
+        assert TaxService.format_rate(Decimal("0.00")) == "0"
+        assert TaxService.format_rate(Decimal("0.0000001")) == "0.0000001"
+        assert TaxService.format_rate("invalid") == "invalid"

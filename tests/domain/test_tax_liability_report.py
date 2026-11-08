@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from decimal import Decimal
 
@@ -9,14 +10,10 @@ from cbpos.core.reports.definitions.financial_reports import TaxLiabilityReport
 from cbpos.core.services.purchase_service import PurchaseService
 from cbpos.i18n import _t
 
-_counter = 0
-
 
 @pytest.fixture
 def test_user(db_session):
-    global _counter
-    _counter += 1
-    suffix = str(_counter)
+    suffix = uuid.uuid4().hex[:8]
     permission = Permission(code=f"tax_liab_test_{suffix}")
     role = Role(name=f"TaxLiabRole_{suffix}", permissions=[permission])
     user = User(username=f"tax_liab_user_{suffix}", pin_hash="hash", role=role)
@@ -27,9 +24,8 @@ def test_user(db_session):
 
 @pytest.fixture
 def test_supplier(db_session):
-    global _counter
-    _counter += 1
-    supplier = Supplier(company_name=f"Tax Supplier {_counter}")
+    suffix = uuid.uuid4().hex[:8]
+    supplier = Supplier(company_name=f"Tax Supplier {suffix}")
     db_session.add(supplier)
     db_session.flush()
     return supplier
@@ -37,11 +33,10 @@ def test_supplier(db_session):
 
 @pytest.fixture
 def test_product(db_session):
-    global _counter
-    _counter += 1
+    suffix = uuid.uuid4().hex[:8]
     product = Product(
-        name_en=f"TaxProduct_{_counter}",
-        barcode=f"TXP{_counter:04d}",
+        name_en=f"TaxProduct_{suffix}",
+        barcode=f"TXP{suffix}",
         price=Decimal("100.00"),
         cost=Decimal("50.00"),
         stock_qty=Decimal("100"),

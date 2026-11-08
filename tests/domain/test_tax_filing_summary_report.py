@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from decimal import Decimal
 
@@ -8,14 +9,10 @@ from cbpos.core.models import Permission, Product, Role, Sale, SaleItem, SalePay
 from cbpos.core.reports.definitions.financial_reports import TaxFilingSummaryReport
 from cbpos.core.utils.money import round_money
 
-_counter = 0
-
 
 @pytest.fixture
 def test_user(db_session):
-    global _counter
-    _counter += 1
-    suffix = str(_counter)
+    suffix = uuid.uuid4().hex[:8]
     permission = Permission(code=f"tax_filing_test_{suffix}")
     role = Role(name=f"TaxFilingRole_{suffix}", permissions=[permission])
     user = User(username=f"tax_filing_user_{suffix}", pin_hash="hash", role=role)
@@ -26,11 +23,10 @@ def test_user(db_session):
 
 @pytest.fixture
 def test_product(db_session):
-    global _counter
-    _counter += 1
+    suffix = uuid.uuid4().hex[:8]
     product = Product(
-        name_en=f"FilingProduct_{_counter}",
-        barcode=f"FP{_counter:04d}",
+        name_en=f"FilingProduct_{suffix}",
+        barcode=f"FP{suffix}",
         price=Decimal("100.00"),
         cost=Decimal("50.00"),
         stock_qty=Decimal("100"),
@@ -90,17 +86,17 @@ class TestTaxFilingSummaryReportIssue796:
 
     def test_issue_796_sscl_liable_turnover_reconciles_with_stored_sscl(self, db_session, test_user, test_product):
         # Liable turnover = sscl_base * (turnover_pct / 100)
-        # With sscl_base = 1000.00, turnover_pct = 50%, rate = 2.50%
-        # Liable turnover = 500.00, SSCL = 12.50
-        # Reconciles: 500.00 * 0.025 = 12.50
+        # With sscl_base = 800.00 (distinct from net_revenue = 1000.00), turnover_pct = 50%, rate = 2.50%
+        # Liable turnover = 400.00, SSCL = 10.00
+        # Reconciles: 400.00 * 0.025 = 10.00
         sale = Sale(
             document_number="REC-796-SSCL",
             date=datetime(2026, 2, 12, 10, 0, 0),
             total_amount=Decimal("1180.00"),
             net_revenue=Decimal("1000.00"),
             tax_vat=Decimal("180.00"),
-            tax_sscl=Decimal("12.50"),
-            sscl_base=Decimal("1000.00"),
+            tax_sscl=Decimal("10.00"),
+            sscl_base=Decimal("800.00"),
             sscl_turnover_pct=Decimal("50.00"),
             sscl_rate=Decimal("2.50"),
             sscl_registered=True,
@@ -124,8 +120,8 @@ class TestTaxFilingSummaryReportIssue796:
         sscl_turnover_row = df[df["Description"].str.contains("Liable Turnover", na=False)].iloc[0]
         sscl_liability_row = df[df["Description"] == "SSCL Liability"].iloc[0]
 
-        assert sscl_turnover_row["Amount"] == Decimal("500.00"), "Liable turnover must be sscl_base * 50% = 500.00"
-        assert sscl_liability_row["Amount"] == Decimal("12.50")
+        assert sscl_turnover_row["Amount"] == Decimal("400.00"), "Liable turnover must be sscl_base * 50% = 400.00"
+        assert sscl_liability_row["Amount"] == Decimal("10.00")
         assert round_money(sscl_turnover_row["Amount"] * Decimal("0.025")) == sscl_liability_row["Amount"]
 
     def test_issue_796_quarterly_sscl_view_present(self, db_session, test_user):
@@ -148,8 +144,10 @@ class TestTaxFilingSummaryReportIssue796:
         db_session.commit()
 
         df = TaxFilingSummaryReport().generate({"date_range": {"start": "2026-02-01", "end": "2026-02-28"}})
-        sections = set(df["Section"])
-        assert any("QUARTER" in s or "quarter" in s.lower() for s in sections), "Quarterly SSCL section must be present"
+        qtr_rows = df[df["Section"].str.contains("QUARTER", na=False)]
+        assert not qtr_rows.empty, "Quarterly SSCL section must be present"
+        qtr_turnover = qtr_rows[qtr_rows["Description"].str.contains("Liable Turnover", na=False)].iloc[0]
+        assert qtr_turnover["Amount"] == Decimal("1000.00")
 
     def test_issue_796_payment_summary_uses_method_kind(self, db_session, test_user):
         sale = Sale(
@@ -179,7 +177,8 @@ class TestTaxFilingSummaryReportIssue796:
         db_session.commit()
 
         df = TaxFilingSummaryReport().generate({"date_range": {"start": "2026-02-01", "end": "2026-02-28"}})
-        # Check descriptions across entire report (section header only appears on first payment row)
-        descriptions = list(df["Description"])
-        assert any("Cash" in d for d in descriptions)
-        assert any("Card" in d for d in descriptions)
+        # Check descriptions and aggregated amounts across entire report
+        cash_row = df[df["Description"] == "Cash"].iloc[0]
+        card_row = df[df["Description"] == "Card"].iloc[0]
+        assert cash_row["Amount"] == Decimal("100.00")
+        assert card_row["Amount"] == Decimal("200.00")

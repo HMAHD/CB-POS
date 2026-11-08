@@ -1,5 +1,6 @@
 """Report filter widget for building dynamic date-range and combo-box filter inputs."""
 
+import calendar
 from datetime import date
 from typing import Any
 
@@ -47,6 +48,10 @@ class FilterWidget(QWidget):
             # Add spacing
             self.layout.addSpacing(10)
 
+        # Initialize linked period preset if present (#796)
+        if "period" in self.inputs:
+            self._on_period_changed("period")
+
         # No trailing stretch: the filter bar puts Run Report right after
         # these filters and stretches *after* it (#611).
 
@@ -91,6 +96,7 @@ class FilterWidget(QWidget):
         container = QWidget()
         layout = QHBoxLayout(container)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
 
         lbl = QLabel(f"{label}:")
         lbl.setObjectName("ReportFilterLabel")
@@ -99,7 +105,6 @@ class FilterWidget(QWidget):
 
         options = definition.get("options", [])
         for opt in options:
-            # Assuming options are dicts {'id': ..., 'label': ...} or tuples
             if isinstance(opt, dict):
                 combo.addItem(opt.get("label"), opt.get("id"))
             else:
@@ -108,8 +113,137 @@ class FilterWidget(QWidget):
         layout.addWidget(lbl)
         layout.addWidget(combo)
 
+        if name == "period":
+            month_combo = QComboBox()
+            month_combo.setObjectName("ReportMonthCombo")
+            month_names = [
+                "January",
+                "February",
+                "March",
+                "April",
+                "May",
+                "June",
+                "July",
+                "August",
+                "September",
+                "October",
+                "November",
+                "December",
+            ]
+            for m in range(1, 13):
+                month_combo.addItem(month_names[m - 1], m)
+            month_combo.setCurrentIndex(date.today().month - 1)
+
+            quarter_combo = QComboBox()
+            quarter_combo.setObjectName("ReportQuarterCombo")
+            quarters = [
+                (1, "Q1 (Jan - Mar)"),
+                (2, "Q2 (Apr - Jun)"),
+                (3, "Q3 (Jul - Sep)"),
+                (4, "Q4 (Oct - Dec)"),
+            ]
+            for q_id, q_label in quarters:
+                quarter_combo.addItem(q_label, q_id)
+            cur_quarter = (date.today().month - 1) // 3 + 1
+            quarter_combo.setCurrentIndex(cur_quarter - 1)
+
+            year_combo = QComboBox()
+            year_combo.setObjectName("ReportYearCombo")
+            cur_year = date.today().year
+            for y in range(cur_year - 5, cur_year + 2):
+                year_combo.addItem(str(y), y)
+            year_combo.setCurrentIndex(year_combo.findData(cur_year))
+
+            layout.addWidget(month_combo)
+            layout.addWidget(quarter_combo)
+            layout.addWidget(year_combo)
+
+            self.inputs[name] = {
+                "type": "combo",
+                "widget": combo,
+                "month_combo": month_combo,
+                "quarter_combo": quarter_combo,
+                "year_combo": year_combo,
+            }
+
+            combo.currentIndexChanged.connect(lambda: self._on_period_changed(name))
+            month_combo.currentIndexChanged.connect(lambda: self._on_period_changed(name))
+            quarter_combo.currentIndexChanged.connect(lambda: self._on_period_changed(name))
+            year_combo.currentIndexChanged.connect(lambda: self._on_period_changed(name))
+        else:
+            self.inputs[name] = {"type": "combo", "widget": combo}
+
         self.layout.addWidget(container)
-        self.inputs[name] = {"type": "combo", "widget": combo}
+
+    def _on_period_changed(self, name: str):
+        period_data = self.inputs.get(name)
+        if not period_data or "month_combo" not in period_data:
+            return
+
+        date_input = None
+        for inp in self.inputs.values():
+            if inp.get("type") == "date_range":
+                date_input = inp
+                break
+
+        period_type = period_data["widget"].currentData()
+        month_combo = period_data["month_combo"]
+        quarter_combo = period_data["quarter_combo"]
+        year_combo = period_data["year_combo"]
+
+        if period_type == "month":
+            month_combo.setVisible(True)
+            quarter_combo.setVisible(False)
+            year_combo.setVisible(True)
+
+            month = month_combo.currentData() or date.today().month
+            year = year_combo.currentData() or date.today().year
+            _, last_day = calendar.monthrange(year, month)
+            start_d = date(year, month, 1)
+            end_d = date(year, month, last_day)
+
+            if date_input:
+                date_input["picker"].set_range(start_d, end_d)
+                date_input["start"].setReadOnly(True)
+                date_input["end"].setReadOnly(True)
+                date_input["picker"].preset_combo.setEnabled(False)
+
+        elif period_type == "quarter":
+            month_combo.setVisible(False)
+            quarter_combo.setVisible(True)
+            year_combo.setVisible(True)
+
+            q = quarter_combo.currentData() or 1
+            year = year_combo.currentData() or date.today().year
+
+            if q == 1:
+                start_d = date(year, 1, 1)
+                end_d = date(year, 3, 31)
+            elif q == 2:
+                start_d = date(year, 4, 1)
+                end_d = date(year, 6, 30)
+            elif q == 3:
+                start_d = date(year, 7, 1)
+                end_d = date(year, 9, 30)
+            else:
+                start_d = date(year, 10, 1)
+                end_d = date(year, 12, 31)
+
+            if date_input:
+                date_input["picker"].set_range(start_d, end_d)
+                date_input["start"].setReadOnly(True)
+                date_input["end"].setReadOnly(True)
+                date_input["picker"].preset_combo.setEnabled(False)
+
+        else:  # custom
+            month_combo.setVisible(False)
+            quarter_combo.setVisible(False)
+            year_combo.setVisible(False)
+
+            if date_input:
+                date_input["start"].setReadOnly(False)
+                date_input["end"].setReadOnly(False)
+                date_input["picker"].preset_combo.setEnabled(True)
 
     def get_filter_values(self) -> dict[str, Any]:
         """

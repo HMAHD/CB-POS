@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 5 · Batch: 5.4 · Branch: fix/p5-b4-auth-perf-qt-lifecycle · PR: none · Last session: 2026-11-08
+- Phase: 6 · Batch: 6.1 · Branch: fix/p6-b1-tax-configuration · PR: none · Last session: 2026-11-08
 
 ## Issues
 
@@ -138,8 +138,8 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #809 | Settings encryption key is derived from hostname when missing (predictable) | medium | 5.2 | done | #999 | e8d78e6 · Random Fernet key, DPAPI/raw protection at rest, atomic legacy migration, unwrap quarantine |
 | #898 | Excel export writes text cells starting with "=" as live formulas (CSV/formul… | medium | 5.2 | done | #999 | e8d78e6 · Prevent formula injection via XLSX_WRITER_OPTIONS and csv_safe escaping |
 | #911 | Reprint prints voided sales and credit notes as ordinary "Cash Receipt" dupli… | low | 5.3 | done | #1000 | d9bf172 · ReceiptReprintService, sales.reprint permission & migration, refund document receipt truth, part-refunded note, void disable & tooltip (⚠️ Windows print pending) |
-| #917 | PIN login runs one bcrypt check per active user on the UI thread, freezing th… | low | 5.4 | done | | PinCheckWorker off UI thread for login/override/profile, disable UI with checking label, generation counter, no duplicate runs |
-| #918 | Three places use the segfault-prone `destroyed` pattern that CLAUDE.md forbid… | low | 5.4 | done | | Eliminated destroyed.connect outside destroy_hooks, call_on_destroyed with ID dict in ModalDimmerManager, AST guardrails |
+| #917 | PIN login runs one bcrypt check per active user on the UI thread, freezing th… | low | 5.4 | done | #1001 | e83346c · PinCheckWorker off UI thread for login/override/profile, disable UI with checking label, generation counter, no duplicate runs |
+| #918 | Three places use the segfault-prone `destroyed` pattern that CLAUDE.md forbid… | low | 5.4 | done | #1001 | e83346c · Eliminated destroyed.connect outside destroy_hooks, call_on_destroyed with ID dict in ModalDimmerManager, AST guardrails |
 
 ### Phase 6 — [spec](phases/phase-06-tax-reports.md)
 
@@ -305,5 +305,5 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #911 | Physical thermal print of duplicate receipt (SalesReceiptBuilder & RefundReceiptBuilder duplicate markers) | pending |
 
 ## Handoff
-Phase 5.3 (Reprint authorisation and document truth: #911) is merged (PR #1000, d9bf172). ReceiptReprintService enforces sales.reprint, blocks void reprints, routes credit notes to RefundReceiptBuilder, writes REPRINT_RECEIPT audit log, and duplicate markers are set. #911 remains open with ready-for-human for physical thermal receipt verification on Windows. Ready to start Batch 5.4 (Authentication performance and Qt lifecycle guardrails: #917, #918) on branch `fix/p5-b4-auth-perf-qt-lifecycle`.
+Phase 5 (Permissions, Audit, Export Safety, Qt Lifecycle) is complete and merged to `main` across PRs #998 (8e4ed10), #999 (e8d78e6), #1000 (d9bf172), and #1001 (e83346c). All 11 issues implemented; #911 remains open with `ready-for-human` exclusively for Windows thermal printer check. Phase 5 exit gate passed. Ready to begin Phase 6 (Tax, Reports, Financial Integrity) starting with Batch 6.1 (Tax configuration: #797, #810, #831) on branch `fix/p6-b1-tax-configuration`.
 

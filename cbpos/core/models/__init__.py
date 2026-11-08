@@ -201,6 +201,14 @@ class Sale(Document):
     tax_vat: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     tax_sscl: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     net_revenue: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+    vat_rate: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    sscl_rate: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    sscl_turnover_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    vat_registered: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    sscl_registered: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    taxable_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    vat_exempt_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    sscl_base: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     additional_discount_type: Mapped[str] = mapped_column(String(20), default="NONE")
     additional_discount_value: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     loyalty_points_redeemed: Mapped[int] = mapped_column(Integer, default=0)
@@ -356,6 +364,7 @@ class Category(Base):
     color: Mapped[str] = mapped_column(String(7), default="#FFFFFF")
     parent_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id"), nullable=True)
     tax_exempt: Mapped[bool] = mapped_column(Boolean, default=False)
+    sscl_exempt: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     last_modified: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, index=True)
 
     products: Mapped[list["Product"]] = relationship(back_populates="category")
@@ -537,6 +546,9 @@ class SaleItem(Base):
     refunded_qty: Mapped[Decimal] = mapped_column(
         Numeric(10, 3), nullable=False, default=Decimal("0.000"), server_default="0.000"
     )
+    vat_exempt: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    sscl_exempt: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    unit_cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
 
     sale: Mapped["Sale"] = relationship(back_populates="items")
     product: Mapped["Product"] = relationship("Product")

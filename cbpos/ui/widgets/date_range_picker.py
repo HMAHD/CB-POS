@@ -29,7 +29,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.i18n import _t, register_language_callback
 
 PRESET_TODAY = "today"
 PRESET_YESTERDAY = "yesterday"
@@ -148,8 +148,7 @@ class DateRangePicker(QWidget):
         self.end_date_edit.dateChanged.connect(self._on_date_manually_edited)
 
         # Wire language switching
-        register_language_callback(self.retranslate_ui)
-        self.destroyed.connect(self._on_destroyed)
+        register_language_callback(self.retranslate_ui, owner=self)
 
         # Initialize dates and selected preset
         if default_start is not None and default_end is not None:
@@ -158,12 +157,6 @@ class DateRangePicker(QWidget):
             self.set_preset(default_preset)
         else:
             self.set_preset(PRESET_TODAY)
-
-    def _on_destroyed(self):
-        try:
-            unregister_language_callback(self.retranslate_ui)
-        except Exception:
-            pass
 
     def retranslate_ui(self):
         """Populate preset combo items with current language translations."""

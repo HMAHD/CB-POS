@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.permission_service import PermissionService
 from cbpos.i18n import _t
+from cbpos.ui.workers import PinCheckWorker, start_background_job
 
 
 class ManagerOverrideDialog(QDialog):
@@ -22,6 +23,8 @@ class ManagerOverrideDialog(QDialog):
         super().__init__(parent)
         self.permission_required = permission_required
         self.authorized_user = None
+        self._pin_worker: PinCheckWorker | None = None
+        self._pin_check_gen: int = 0
 
         self.setWindowTitle(_t("manager_override.title"))
         self.setMinimumSize(300, 200)
@@ -39,23 +42,33 @@ class ManagerOverrideDialog(QDialog):
         self.pin_input.returnPressed.connect(self.verify_pin)
         layout.addWidget(self.pin_input)
 
-        btn_verify = QPushButton(_t("manager_override.verify"))
-        btn_verify.setProperty("class", "accent")
-        btn_verify.clicked.connect(self.verify_pin)
-        layout.addWidget(btn_verify)
+        self.btn_verify = QPushButton(_t("manager_override.verify"))
+        self.btn_verify.setProperty("class", "accent")
+        self.btn_verify.clicked.connect(self.verify_pin)
+        layout.addWidget(self.btn_verify)
 
-        btn_cancel = QPushButton(_t("common.cancel"))
-        btn_cancel.setProperty("class", "secondary")
-        btn_cancel.clicked.connect(self.reject)
-        layout.addWidget(btn_cancel)
+        self.btn_cancel = QPushButton(_t("common.cancel"))
+        self.btn_cancel.setProperty("class", "secondary")
+        self.btn_cancel.clicked.connect(self.reject)
+        layout.addWidget(self.btn_cancel)
 
     def showEvent(self, event):
         """Focus the PIN input when the dialog is shown."""
         super().showEvent(event)
         self.pin_input.setFocus()
 
+    def _set_checking_state(self, checking: bool):
+        """Enable or disable dialog controls while background verification runs."""
+        self.pin_input.setEnabled(not checking)
+        self.btn_verify.setEnabled(not checking)
+        self.btn_cancel.setEnabled(not checking)
+        self.btn_verify.setText(_t("login.checking") if checking else _t("manager_override.verify"))
+
     def verify_pin(self):
-        """Verify the entered PIN and, if the user holds the required permission, accept the dialog."""
+        """Verify the entered PIN asynchronously and, if the user holds the required permission, accept the dialog."""
+        if self._pin_worker is not None and self._pin_worker.isRunning():
+            return
+
         pin = self.pin_input.text()
         if not pin:
             return
@@ -66,7 +79,20 @@ class ManagerOverrideDialog(QDialog):
             self.pin_input.clear()
             return
 
-        user = AuthService.authenticate_pin(pin)
+        self._set_checking_state(True)
+        self._pin_check_gen += 1
+        gen = self._pin_check_gen
+        self._pin_worker = PinCheckWorker(mode="authenticate", pin=pin)
+        self._pin_worker.result.connect(lambda res, g=gen: self._on_verify_result(res, g))
+        start_background_job(self._pin_worker)
+
+    def _on_verify_result(self, user, gen: int):
+        """Handle worker verification result on the main thread."""
+        if gen != self._pin_check_gen:
+            return
+        self._pin_worker = None
+        self._set_checking_state(False)
+
         if user:
             if PermissionService.user_has_permission(user, self.permission_required):
                 self.authorized_user = user
@@ -85,3 +111,15 @@ class ManagerOverrideDialog(QDialog):
             else:
                 QMessageBox.warning(self, _t("manager_override.invalid_pin"), _t("manager_override.invalid_pin_msg"))
             self.pin_input.clear()
+
+    def reject(self):
+        """Cancel any running worker and reject the dialog."""
+        self._pin_check_gen += 1
+        self._pin_worker = None
+        super().reject()
+
+    def closeEvent(self, event):
+        """Cancel any running worker and close the dialog."""
+        self._pin_check_gen += 1
+        self._pin_worker = None
+        super().closeEvent(event)

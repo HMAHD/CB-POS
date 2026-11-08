@@ -13,7 +13,7 @@ from cbpos.ui.dialogs.profile_dialog import ProfileDialog
 pytestmark = pytest.mark.usefixtures("qapp")
 
 
-def test_manager_override_dialog_authenticates_without_session_switch(monkeypatch):
+def test_manager_override_dialog_authenticates_without_session_switch(qtbot, monkeypatch):
     """ManagerOverrideDialog calls authenticate_pin and preserves current user."""
     cashier = SimpleNamespace(id=1, username="cashier")
     manager = SimpleNamespace(id=2, username="manager")
@@ -35,7 +35,7 @@ def test_manager_override_dialog_authenticates_without_session_switch(monkeypatc
 
     with patch.object(dialog, "accept") as mock_accept:
         dialog.verify_pin()
-        assert mock_accept.called
+        qtbot.waitUntil(lambda: mock_accept.called, timeout=2000)
         assert dialog.authorized_user == manager
         # Session is still cashier
         assert AuthService.get_current_user() == cashier
@@ -43,7 +43,7 @@ def test_manager_override_dialog_authenticates_without_session_switch(monkeypatc
     AuthService._current_user = None
 
 
-def test_manager_override_dialog_denies_unauthorized_user(monkeypatch):
+def test_manager_override_dialog_denies_unauthorized_user(qtbot, monkeypatch):
     """ManagerOverrideDialog refuses PIN if user lacks required permission."""
     other_user = SimpleNamespace(id=3, username="other")
     monkeypatch.setattr(AuthService, "authenticate_pin", lambda pin: other_user)
@@ -58,12 +58,13 @@ def test_manager_override_dialog_denies_unauthorized_user(monkeypatch):
 
     with patch.object(dialog, "accept") as mock_accept:
         dialog.verify_pin()
+        qtbot.waitUntil(lambda: dialog.pin_input.text() == "", timeout=2000)
         assert not mock_accept.called
         assert dialog.authorized_user is None
         assert dialog.pin_input.text() == ""
 
 
-def test_profile_dialog_checks_own_pin_without_session_switch(monkeypatch):
+def test_profile_dialog_checks_own_pin_without_session_switch(qtbot, monkeypatch):
     """ProfileDialog uses check_own_pin and does not switch session on wrong/other user's PIN."""
     cashier = SimpleNamespace(id=1, username="cashier")
     AuthService._current_user = cashier
@@ -89,6 +90,7 @@ def test_profile_dialog_checks_own_pin_without_session_switch(monkeypatch):
     dialog.input_current_pin.setText("5678")
     dialog.update_profile()
 
+    qtbot.waitUntil(lambda: len(check_own_pin_called_with) > 0, timeout=2000)
     assert check_own_pin_called_with == [(1, "5678")]
     assert not mock_update_profile.called
     assert AuthService.get_current_user() == cashier
@@ -99,6 +101,7 @@ def test_profile_dialog_checks_own_pin_without_session_switch(monkeypatch):
     dialog.input_name.setText("Updated Cashier")
     with patch.object(dialog, "accept") as mock_accept:
         dialog.update_profile()
+        qtbot.waitUntil(lambda: mock_accept.called, timeout=2000)
         assert check_own_pin_called_with == [(1, "0000")]
         assert mock_update_profile.called
         assert mock_accept.called

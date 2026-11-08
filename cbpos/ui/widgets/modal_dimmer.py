@@ -11,7 +11,9 @@ Provides:
 from __future__ import annotations
 
 import logging
+from typing import Any
 
+from PyQt6 import sip
 from PyQt6.QtCore import QEvent, QObject, Qt
 from PyQt6.QtGui import QColor, QPainter
 from PyQt6.QtWidgets import (
@@ -24,6 +26,8 @@ from PyQt6.QtWidgets import (
     QTreeWidget,
     QWidget,
 )
+
+from cbpos.core.utils.destroy_hooks import call_on_destroyed
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +75,28 @@ class ModalDimmer(QWidget):
         painter.fillRect(self.rect(), color)
 
 
+class _IdKeyedDict(dict):
+    """Dictionary that transparently normalizes QWidget/QObject keys to id(widget).
+
+    Prevents keeping strong Python references to widgets in process-wide manager dicts (#918).
+    """
+
+    def __getitem__(self, key: Any) -> Any:
+        return super().__getitem__(id(key) if not isinstance(key, int) else key)
+
+    def __setitem__(self, key: Any, value: Any) -> None:
+        super().__setitem__(id(key) if not isinstance(key, int) else key, value)
+
+    def __contains__(self, key: Any) -> bool:
+        return super().__contains__(id(key) if not isinstance(key, int) else key)
+
+    def get(self, key: Any, default: Any = None) -> Any:
+        return super().get(id(key) if not isinstance(key, int) else key, default)
+
+    def pop(self, key: Any, *args: Any) -> Any:
+        return super().pop(id(key) if not isinstance(key, int) else key, *args)
+
+
 class ModalDimmerManager(QObject):
     """Application-wide event filter managing modal dimmers and dialog alternating row colors."""
 
@@ -78,8 +104,11 @@ class ModalDimmerManager(QObject):
 
     def __init__(self):
         super().__init__()
-        self._dimmers: dict[QWidget, ModalDimmer] = {}
-        self._active_modals: dict[QWidget, set[QDialog]] = {}
+        self._dimmers: _IdKeyedDict = _IdKeyedDict()
+        self._active_modals: _IdKeyedDict = _IdKeyedDict()
+        self._modal_to_target: dict[int, int] = {}
+        self._connected_targets: set[int] = set()
+        self._connected_modals: set[int] = set()
 
     @classmethod
     def instance(cls) -> ModalDimmerManager:
@@ -125,41 +154,74 @@ class ModalDimmerManager(QObject):
         if not target or target == dialog or not target.isVisible():
             return
 
-        if target not in self._active_modals:
-            self._active_modals[target] = set()
+        target_id = id(target)
+        dialog_id = id(dialog)
+
+        if target_id not in self._active_modals:
+            self._active_modals[target_id] = set()
+
+        if target_id not in self._connected_targets:
+            self._connected_targets.add(target_id)
             try:
-                target.destroyed.connect(lambda: self._on_target_destroyed(target))
+                call_on_destroyed(target, self._on_target_destroyed_by_id, target_id)
             except Exception:
                 pass
 
-        self._active_modals[target].add(dialog)
-        try:
-            dialog.destroyed.connect(lambda: self._on_modal_hidden(dialog))
-        except Exception:
-            pass
+        self._active_modals[target_id].add(dialog_id)
+        self._modal_to_target[dialog_id] = target_id
 
-        dimmer = self._dimmers.get(target)
-        if not dimmer or dimmer.parent() != target:
+        if dialog_id not in self._connected_modals:
+            self._connected_modals.add(dialog_id)
+            try:
+                call_on_destroyed(dialog, self._on_modal_hidden_by_id, dialog_id)
+            except Exception:
+                pass
+
+        dimmer = self._dimmers.get(target_id)
+        if not dimmer or sip.isdeleted(dimmer) or dimmer.parent() != target:
             dimmer = ModalDimmer(target)
-            self._dimmers[target] = dimmer
+            self._dimmers[target_id] = dimmer
 
         dimmer.setGeometry(target.rect())
         dimmer.show()
         dimmer.raise_()
 
     def _on_modal_hidden(self, dialog: QDialog):
-        for target, dialogs in list(self._active_modals.items()):
-            if dialog in dialogs:
-                dialogs.discard(dialog)
+        self._on_modal_hidden_by_id(id(dialog))
+
+    def _on_modal_hidden_by_id(self, dialog_id: int):
+        self._connected_modals.discard(dialog_id)
+        target_id = self._modal_to_target.pop(dialog_id, None)
+        if target_id is not None:
+            dialogs = self._active_modals.get(target_id)
+            if dialogs:
+                dialogs.discard(dialog_id)
                 if not dialogs:
-                    dimmer = self._dimmers.get(target)
-                    if dimmer:
+                    dimmer = self._dimmers.get(target_id)
+                    if dimmer and not sip.isdeleted(dimmer):
                         dimmer.hide()
-                    self._active_modals.pop(target, None)
+                    self._active_modals.pop(target_id, None)
+        else:
+            for t_id, dialogs in list(self._active_modals.items()):
+                if dialog_id in dialogs:
+                    dialogs.discard(dialog_id)
+                    if not dialogs:
+                        dimmer = self._dimmers.get(t_id)
+                        if dimmer and not sip.isdeleted(dimmer):
+                            dimmer.hide()
+                        self._active_modals.pop(t_id, None)
 
     def _on_target_destroyed(self, target: QWidget):
-        self._dimmers.pop(target, None)
-        self._active_modals.pop(target, None)
+        self._on_target_destroyed_by_id(id(target))
+
+    def _on_target_destroyed_by_id(self, target_id: int):
+        self._connected_targets.discard(target_id)
+        dimmer = self._dimmers.pop(target_id, None)
+        if dimmer and not sip.isdeleted(dimmer):
+            dimmer.hide()
+        dialog_ids = self._active_modals.pop(target_id, set())
+        for d_id in dialog_ids:
+            self._modal_to_target.pop(d_id, None)
 
     @staticmethod
     def _enable_alternating_colors(widget: QWidget):

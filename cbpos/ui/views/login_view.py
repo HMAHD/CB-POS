@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
 from cbpos.config import Config
 from cbpos.core.services.auth_service import AuthService
 from cbpos.i18n import _t, register_language_callback
+from cbpos.ui.workers import PinCheckWorker, start_background_job
 
 # Numpad geometry constants
 _BTN_SIZE = 90  # Default/initial button width/height — _fit_keypad() adjusts this
@@ -61,6 +62,9 @@ class LoginView(QWidget):
         self._logo_source: QPixmap | None = None
         self._logo_side: int | None = None
         self._btn_size: int | None = _BTN_SIZE
+        self._held_bill_id: int | None = None
+        self._pin_worker: PinCheckWorker | None = None
+        self._pin_check_gen: int = 0
         self.init_ui()
 
         # Register theme callback to update logo
@@ -411,6 +415,8 @@ class LoginView(QWidget):
 
     def append_pin(self, digit: str) -> None:
         """Append digit to PIN input (called by numpad buttons)."""
+        if self._pin_worker is not None and self._pin_worker.isRunning():
+            return
         self.lbl_error.setVisible(False)
         current_text = self.pin_input.text()
         if len(current_text) < 6:
@@ -418,12 +424,17 @@ class LoginView(QWidget):
 
     def clear_pin(self) -> None:
         """Clear the PIN input (called by the numpad's C button)."""
+        if self._pin_worker is not None and self._pin_worker.isRunning():
+            return
         self.lbl_error.setVisible(False)
         self.pin_input.clear()
         self.pin_input.setFocus()
 
     def attempt_login(self) -> None:
-        """Verify the entered PIN and emit `login_success`, or show an error."""
+        """Verify the entered PIN asynchronously off the UI thread (#917)."""
+        if self._pin_worker is not None and self._pin_worker.isRunning():
+            return
+
         pin = self.pin_input.text()
         if not pin:
             return
@@ -433,7 +444,34 @@ class LoginView(QWidget):
             self._set_locked_state(True, lockout_secs)
             return
 
-        user = AuthService.login(pin)
+        self._set_checking_state(True)
+        self._pin_check_gen += 1
+        worker = PinCheckWorker(mode="login", pin=pin)
+        self._pin_worker = worker
+        worker.result.connect(self._on_login_result)
+        worker.finished.connect(self._on_login_worker_finished)
+        start_background_job(worker)
+
+    def _set_checking_state(self, checking: bool) -> None:
+        """Toggle controls and display 'Checking...' during async verification (#917)."""
+        self.pin_input.setEnabled(not checking)
+        for btn in self._numpad_buttons:
+            btn.setEnabled(not checking)
+        if checking:
+            self.lbl_info.setText(_t("login.checking"))
+            self.lbl_info.setVisible(True)
+        else:
+            if self._held_bill_id:
+                self.show_held_bill_notice(self._held_bill_id)
+            else:
+                self.lbl_info.setVisible(False)
+
+    def _on_login_result(self, user) -> None:
+        """Handle login worker result on the UI thread (#917)."""
+        if self.sender() is not self._pin_worker:
+            return
+
+        self._set_checking_state(False)
         if user:
             self.clear_held_bill_notice()
             self.lbl_error.setVisible(False)
@@ -451,6 +489,14 @@ class LoginView(QWidget):
                     self.lbl_error.setText(_t("login.invalid_pin"))
                 self.lbl_error.setVisible(True)
                 self.pin_input.setFocus()
+
+    def _on_login_worker_finished(self) -> None:
+        """Clean up finished login worker instance (#917)."""
+        worker = self.sender()
+        if self._pin_worker is worker:
+            self._pin_worker = None
+        if worker is not None:
+            worker.deleteLater()
 
     def update_logo(self):
         """Update logo for login view (uses 02.png for both themes - navy background)."""

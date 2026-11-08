@@ -25,7 +25,7 @@ from PyQt6.QtCore import QObject, Qt
 from PyQt6.QtWidgets import QHeaderView, QTableView, QTableWidget, QTableWidgetItem
 
 from cbpos.core.utils.formatters import format_datetime, format_relative_time
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
 from cbpos.ui.widgets.status_pill_delegate import (
     STATUS_MEANING_ROLE,
@@ -99,17 +99,6 @@ def attach_table_empty_state(
 
     _retranslate()
     register_language_callback(_retranslate, owner=empty_widget)
-
-    def _cleanup() -> None:
-        try:
-            unregister_language_callback(_retranslate)
-        except Exception:
-            pass
-
-    try:
-        table.destroyed.connect(_cleanup)
-    except (RuntimeError, AttributeError):
-        pass
 
     def update_visibility(*_args) -> None:
         try:

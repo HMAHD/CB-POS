@@ -72,7 +72,7 @@ def test_user_dialog_reactivation_requires_pin(monkeypatch):
         assert "Enter a new PIN to turn this user back on" in warning_box[0][1]
 
 
-def test_profile_dialog_duplicate_pin_shows_warning(monkeypatch):
+def test_profile_dialog_duplicate_pin_shows_warning(qtbot, monkeypatch):
     """ProfileDialog shows warning and keeps dialog open when new PIN is already in use."""
     user = SimpleNamespace(id=2, username="cashier")
     AuthService._current_user = user
@@ -96,6 +96,7 @@ def test_profile_dialog_duplicate_pin_shows_warning(monkeypatch):
 
     with patch.object(dialog, "accept") as mock_accept:
         dialog.update_profile()
+        qtbot.waitUntil(lambda: len(warning_box) == 1, timeout=2000)
         assert not mock_accept.called
         assert len(warning_box) == 1
         assert "That PIN can't be used" in warning_box[0][1]

@@ -14,7 +14,7 @@ import re
 import shutil
 import tempfile
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 from PyQt6 import sip
@@ -761,6 +761,53 @@ class ReloadCatalogWorker(QThread):
         except Exception as e:
             logger.error("ReloadCatalogWorker failed: %s", e)
             self.finished_result.emit(False, str(e))
+
+
+class PinCheckWorker(QThread):
+    """Background worker thread for asynchronous bcrypt PIN verification (#917).
+
+    Executes CPU-intensive bcrypt hashing off the Qt UI thread for:
+    - mode="login": calls AuthService.login(pin)
+    - mode="authenticate": calls AuthService.authenticate_pin(pin)
+    - mode="check_own": calls AuthService.check_own_pin(user_id, pin)
+
+    Emits `result` with the outcome (User | None, or bool).
+    """
+
+    result = pyqtSignal(object)
+
+    def __init__(
+        self,
+        mode: str,
+        pin: str,
+        user_id: int | None = None,
+        parent: QObject | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.mode = mode
+        self.pin = pin
+        self.user_id = user_id
+        self.output: Any = None
+
+    def run(self) -> None:
+        """Run the PIN verification off the UI thread."""
+        from cbpos.core.services.auth_service import AuthService
+
+        try:
+            if self.mode == "login":
+                self.output = AuthService.login(self.pin)
+            elif self.mode == "authenticate":
+                self.output = AuthService.authenticate_pin(self.pin)
+            elif self.mode == "check_own":
+                if self.user_id is None:
+                    raise ValueError("user_id required for check_own mode")
+                self.output = AuthService.check_own_pin(self.user_id, self.pin)
+            else:
+                raise ValueError(f"Unknown PIN check mode: {self.mode}")
+        except Exception as e:
+            logger.exception("PinCheckWorker failed in mode %s: %s", self.mode, e)
+            self.output = False if self.mode == "check_own" else None
+        self.result.emit(self.output)
 
 
 # Alias PrintWorker as ReceiptWorker for backwards/audit naming compatibility

@@ -31,17 +31,19 @@ def _require_inventory_edit(session, acting_user_id: int | None) -> None:
             raise PermissionError("Permission denied: inventory.edit required")
 
 
-def _require_admin_settings(session, acting_user_id: int | None) -> int | None:
+def _require_admin_settings(session, acting_user_id: int | None) -> int:
     effective_actor_id = acting_user_id
     if effective_actor_id is None:
         curr = AuthService.get_current_user()
         if curr:
             effective_actor_id = curr.id
 
-    if effective_actor_id is not None:
-        user = session.get(User, effective_actor_id, options=[joinedload(User.role).joinedload(Role.permissions)])
-        if not user or not PermissionService.user_has_permission(user, Permissions.ADMIN_SETTINGS):
-            raise PermissionError("Permission denied: admin.settings required")
+    if effective_actor_id is None:
+        raise PermissionError("Permission denied: admin.settings required")
+
+    user = session.get(User, effective_actor_id, options=[joinedload(User.role).joinedload(Role.permissions)])
+    if not user or not PermissionService.user_has_permission(user, Permissions.ADMIN_SETTINGS):
+        raise PermissionError("Permission denied: admin.settings required")
     return effective_actor_id
 
 

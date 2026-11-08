@@ -2,6 +2,8 @@
 Unit tests for CategoryService — CRUD operations and hierarchy.
 """
 
+import json
+
 import pytest
 
 from cbpos.core.models import Category, Product
@@ -191,7 +193,8 @@ def test_issue_797_category_flag_settable_and_audited(db_session):
     )
     assert audit is not None
     assert audit.user_id == admin_user.id
-    assert f'"category_id": {cat_exempt.id}' in audit.details
+    details = json.loads(audit.details)
+    assert details["category_id"] == cat_exempt.id
 
     # Test inheritance: child inherits parent flags when child has None / default
     subcat = CategoryService.create(

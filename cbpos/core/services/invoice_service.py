@@ -446,6 +446,7 @@ class InvoiceService:
             if exempt > 0:
                 rows.append((t("taxable"), format_currency(taxable)))
                 rows.append((t("exempt"), format_currency(exempt)))
+            # SSCL is a business levy hidden from customer invoices (D9/D25, #831); customer net value is gross minus customer-facing VAT
             net_val = total - _dec(sale.tax_vat)
             rows.append((t("net_value"), format_currency(net_val)))
             vat_rate_str = _pct(sale.vat_rate if sale.vat_rate is not None else ConfigService.get("tax_vat_rate"), "18")

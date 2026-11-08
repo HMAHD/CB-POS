@@ -390,22 +390,14 @@ class TransactionService:
         Returns:
             Sale: The new header, without a document number.
         """
-        config = ConfigService.get_all()
-        vat_registered = bool(config.get("vat_registered", False))
-        sscl_registered_val = config.get("sscl_registered")
-        sscl_registered = bool(vat_registered if sscl_registered_val is None else sscl_registered_val)
-        try:
-            vat_rate_val = Decimal(str(config.get("tax_vat_rate", 18.0)))
-        except Exception:
-            vat_rate_val = Decimal("18.00")
-        try:
-            sscl_rate_val = Decimal(str(config.get("tax_sscl_rate", 2.5)))
-        except Exception:
-            sscl_rate_val = Decimal("2.50")
-        try:
-            sscl_turnover_pct_val = Decimal(str(config.get("tax_sscl_turnover_pct", 50.0)))
-        except Exception:
-            sscl_turnover_pct_val = Decimal("50.00")
+        from cbpos.core.services.tax_service import TaxService
+
+        vat_registered = TaxService.is_vat_active()
+        sscl_registered = TaxService.is_sscl_active()
+        vat_rate_dec, sscl_rate_dec, turnover_rate_dec = TaxService._get_rates()
+        vat_rate_val = vat_rate_dec * Decimal("100")
+        sscl_rate_val = sscl_rate_dec * Decimal("100")
+        sscl_turnover_pct_val = turnover_rate_dec * Decimal("100")
 
         taxable_amt = totals.get("taxable_amount")
         if taxable_amt is None:

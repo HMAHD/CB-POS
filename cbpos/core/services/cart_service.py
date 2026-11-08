@@ -359,25 +359,6 @@ class CartService:
 
         return CategoryService.effective_flags(category_id)
 
-    @staticmethod
-    def _resolve_tax_exempt(product: Any) -> bool:
-        """Return whether ``product``'s category is tax exempt (#701, #797)."""
-        return CartService._resolve_effective_flags(product)["vat_exempt"]
-
-    @staticmethod
-    def _load_tax_exempt(state: Any) -> bool:
-        """Read a product's category ``tax_exempt`` flag from the database."""
-        from cbpos.core.database import Database
-        from cbpos.core.services.category_service import CategoryService
-
-        if state.identity:
-            with Database().get_session() as session:
-                cat_id = session.scalar(select(Product.category_id).where(Product.id == state.identity[0]))
-                return CategoryService.effective_flags(cat_id)["vat_exempt"]
-        else:
-            category_id = state.dict.get("category_id")
-            return CategoryService.effective_flags(category_id)["vat_exempt"]
-
     def get_totals(self, loyalty_points: int | None = None, has_customer: bool | None = None) -> dict[str, Any]:
         """Return the cart totals."""
         from cbpos.core.services.tax_service import TaxService
@@ -427,7 +408,7 @@ class CartService:
                 else False,
                 sscl_exempt=bool(item.get("sscl_exempt", False)) if tax_exemptions_enabled else False,
             )
-            for item, amt in zip(self.items, line_discounted_amounts, strict=False)
+            for item, amt in zip(self.items, line_discounted_amounts, strict=True)
         ]
 
         # Calculate tax breakdown from the final (post-discount) amount
@@ -435,6 +416,9 @@ class CartService:
             total_mrp=round_money(final_total),
             lines=tax_lines,
         )
+
+        vat = tax_info.get("vat", Decimal("0.00"))
+        sscl = tax_info.get("sscl", Decimal("0.00"))
 
         return {
             "subtotal": round_money(subtotal),
@@ -444,13 +428,13 @@ class CartService:
             "loyalty_discount": round_money(loyalty_discount_amt),
             "loyalty_points_redeemed": points_to_redeem,
             "final_total": round_money(final_total),
-            "taxable_amount": tax_info["taxable_amount"],
-            "tax_vat": tax_info["vat"],
-            "tax_sscl": tax_info["sscl"],
-            "tax": tax_info["vat"] + tax_info["sscl"],
-            "net_revenue": tax_info["net"],
-            "exempt_amount": tax_info["exempt_amount"],
-            "sscl_base": tax_info["sscl_base"],
+            "taxable_amount": tax_info.get("taxable_amount", Decimal("0.00")),
+            "tax_vat": vat,
+            "tax_sscl": sscl,
+            "tax": vat + sscl,
+            "net_revenue": tax_info.get("net", Decimal("0.00")),
+            "exempt_amount": tax_info.get("exempt_amount", Decimal("0.00")),
+            "sscl_base": tax_info.get("sscl_base", Decimal("0.00")),
             "count": len(self.items),
             "item_count": sum(item["qty"] for item in self.items),
         }

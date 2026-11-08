@@ -204,7 +204,7 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
                 commands.append(
                     cls._split_row("  {}:".format(cls._rt("vat")), format_currency(sale.tax_vat), line_chars)
                 )
-            # SSCL is a business levy, not charged to customers: omitted from receipts (#831)
+            # SSCL is a business levy hidden from customer receipts (D9/D25, #831); customer net total is gross minus customer-facing VAT
             net_val = sale.total_amount - (sale.tax_vat or Decimal("0.00"))
             if net_val and net_val > 0:
                 commands.append(

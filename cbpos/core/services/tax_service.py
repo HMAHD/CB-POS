@@ -137,11 +137,11 @@ class TaxService:
                 exempt_base = mrp_val - taxable_amount
                 lines = [
                     TaxLine(amount=tax_base, vat_exempt=False, sscl_exempt=False),
-                    TaxLine(amount=exempt_base, vat_exempt=True, sscl_exempt=False),
+                    TaxLine(amount=exempt_base, vat_exempt=True, sscl_exempt=True),
                 ]
             else:
                 lines = [TaxLine(amount=mrp_val, vat_exempt=False, sscl_exempt=False)]
-        elif total_mrp is None:
+        else:
             total_mrp = sum((line.amount for line in lines), Decimal("0.00"))
 
         total_mrp_rounded = round_money(total_mrp)

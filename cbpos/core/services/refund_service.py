@@ -333,12 +333,18 @@ class RefundService:
         sscl_base_amt = Decimal("0.00")
 
         if sale.total_amount > Decimal("0.00") and total_value > Decimal("0.00"):
-            has_line_facts = any(items_map[req.sale_item_id].vat_exempt is not None for req in lines)
+            has_line_facts = all(
+                items_map[req.sale_item_id].vat_exempt is not None
+                and items_map[req.sale_item_id].sscl_exempt is not None
+                for req in lines
+            )
 
             if has_line_facts:
-                vat_r = (sale.vat_rate or Decimal("18.00")) / Decimal("100")
-                sscl_r = (sale.sscl_rate or Decimal("2.50")) / Decimal("100")
-                sscl_t = (sale.sscl_turnover_pct or Decimal("50.00")) / Decimal("100")
+                vat_r = (sale.vat_rate if sale.vat_rate is not None else Decimal("18.00")) / Decimal("100")
+                sscl_r = (sale.sscl_rate if sale.sscl_rate is not None else Decimal("2.50")) / Decimal("100")
+                sscl_t = (sale.sscl_turnover_pct if sale.sscl_turnover_pct is not None else Decimal("50.00")) / Decimal(
+                    "100"
+                )
                 is_vat_reg = (
                     sale.vat_registered if sale.vat_registered is not None else (sale.tax_vat and sale.tax_vat > 0)
                 )
@@ -367,8 +373,8 @@ class RefundService:
                 if is_final_refund:
                     prev_vat = sum((abs(r.tax_vat or Decimal("0.00")) for r in prev_refunds), Decimal("0.00"))
                     prev_sscl = sum((abs(r.tax_sscl or Decimal("0.00")) for r in prev_refunds), Decimal("0.00"))
-                    refund_vat = (sale.tax_vat or Decimal("0.00")) - prev_vat
-                    refund_sscl = (sale.tax_sscl or Decimal("0.00")) - prev_sscl
+                    refund_vat = max(Decimal("0.00"), (sale.tax_vat or Decimal("0.00")) - prev_vat)
+                    refund_sscl = max(Decimal("0.00"), (sale.tax_sscl or Decimal("0.00")) - prev_sscl)
                 else:
                     refund_vat = vat_acc
                     refund_sscl = sscl_acc
@@ -378,8 +384,8 @@ class RefundService:
                 if is_final_refund:
                     prev_vat = sum((abs(r.tax_vat or Decimal("0.00")) for r in prev_refunds), Decimal("0.00"))
                     prev_sscl = sum((abs(r.tax_sscl or Decimal("0.00")) for r in prev_refunds), Decimal("0.00"))
-                    refund_vat = (sale.tax_vat or Decimal("0.00")) - prev_vat
-                    refund_sscl = (sale.tax_sscl or Decimal("0.00")) - prev_sscl
+                    refund_vat = max(Decimal("0.00"), (sale.tax_vat or Decimal("0.00")) - prev_vat)
+                    refund_sscl = max(Decimal("0.00"), (sale.tax_sscl or Decimal("0.00")) - prev_sscl)
                     refund_net = total_value - refund_vat - refund_sscl
                 else:
                     refund_vat = round_money((sale.tax_vat or Decimal("0.00")) * total_value / sale.total_amount)
@@ -387,11 +393,27 @@ class RefundService:
                     refund_net = total_value - refund_vat - refund_sscl
 
                 if sale.taxable_amount is not None:
-                    taxable_amt = round_money(sale.taxable_amount * total_value / sale.total_amount)
-                    exempt_amt = round_money(
-                        (sale.vat_exempt_amount or Decimal("0.00")) * total_value / sale.total_amount
-                    )
-                    sscl_base_amt = round_money((sale.sscl_base or Decimal("0.00")) * total_value / sale.total_amount)
+                    if is_final_refund:
+                        prev_taxable = sum(
+                            (abs(r.taxable_amount or Decimal("0.00")) for r in prev_refunds), Decimal("0.00")
+                        )
+                        prev_exempt = sum(
+                            (abs(r.vat_exempt_amount or Decimal("0.00")) for r in prev_refunds), Decimal("0.00")
+                        )
+                        prev_sscl_base = sum(
+                            (abs(r.sscl_base or Decimal("0.00")) for r in prev_refunds), Decimal("0.00")
+                        )
+                        taxable_amt = max(Decimal("0.00"), sale.taxable_amount - prev_taxable)
+                        exempt_amt = max(Decimal("0.00"), (sale.vat_exempt_amount or Decimal("0.00")) - prev_exempt)
+                        sscl_base_amt = max(Decimal("0.00"), (sale.sscl_base or Decimal("0.00")) - prev_sscl_base)
+                    else:
+                        taxable_amt = round_money(sale.taxable_amount * total_value / sale.total_amount)
+                        exempt_amt = round_money(
+                            (sale.vat_exempt_amount or Decimal("0.00")) * total_value / sale.total_amount
+                        )
+                        sscl_base_amt = round_money(
+                            (sale.sscl_base or Decimal("0.00")) * total_value / sale.total_amount
+                        )
                 else:
                     taxable_amt = total_value if (sale.tax_vat and sale.tax_vat > 0) else Decimal("0.00")
         else:

@@ -1542,6 +1542,7 @@
     "col_net_revenue": "ශුද්ධ ආදායම",
     "col_vat": "VAT",
     "col_sscl": "SSCL",
+    "col_sscl_expense": "SSCL වියදම",
     "col_total_tax": "මුළු බදු",
     "col_barcode": "බාර්කෝඩ්",
     "col_name": "නම",

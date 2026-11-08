@@ -1542,6 +1542,7 @@
     "col_net_revenue": "நிகர வருமானம்",
     "col_vat": "VAT",
     "col_sscl": "SSCL",
+    "col_sscl_expense": "SSCL செலவு",
     "col_total_tax": "மொத்த வரி",
     "col_barcode": "பார்கோட்",
     "col_name": "பேர்",

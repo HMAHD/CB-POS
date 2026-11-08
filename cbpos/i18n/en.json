@@ -1577,6 +1577,7 @@
     "col_net_revenue": "Net Revenue",
     "col_vat": "VAT",
     "col_sscl": "SSCL",
+    "col_sscl_expense": "SSCL Expense",
     "col_total_tax": "Total Tax",
     "col_barcode": "Barcode",
     "col_name": "Name",

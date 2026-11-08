@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal
 from typing import Any
 
@@ -7,14 +8,16 @@ from sqlalchemy.orm import joinedload
 
 from cbpos.core.constants.status import PaymentMethodKind
 from cbpos.core.database import get_db_session
-from cbpos.core.models import Product, Purchase, Sale, SaleItem
+from cbpos.core.models import Purchase, Sale
 from cbpos.core.reports.base_report import CATEGORY_FINANCIAL, DATE, MONEY, PERCENT, TEXT, BaseReport, report_columns
-from cbpos.core.reports.sale_filters import completed_sales, date_bounds, refund_documents
+from cbpos.core.reports.sale_filters import completed_sales, date_bounds, refund_documents, revenue_documents
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.payment_service import classify_method_name
 from cbpos.core.services.tax_service import TaxService
 from cbpos.core.utils.money import round_money
 from cbpos.i18n import _t
+
+logger = logging.getLogger(__name__)
 
 
 class ProfitLossReport(BaseReport):
@@ -47,7 +50,7 @@ class ProfitLossReport(BaseReport):
         return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]
 
     def get_render_hints(self) -> dict[str, Any]:
-        """Declare column types: Revenue, Cost (COGS) and Gross Profit are money."""
+        """Declare column types: Revenue, Cost (COGS), SSCL Expense and Gross Profit are money."""
         return {
             "columns": report_columns(
                 {
@@ -55,65 +58,96 @@ class ProfitLossReport(BaseReport):
                     "Invoice #": TEXT,
                     "Revenue": MONEY,
                     "Cost (COGS)": MONEY,
+                    "SSCL Expense": MONEY,
                     "Gross Profit": MONEY,
                     "Margin %": PERCENT,
                 }
-            )
+            ),
+            "total_row_column": "Invoice #",
+            "total_row_values": ["TOTAL"],
         }
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
-        """List revenue/cost/profit per sale item, one row per (sale, line item).
+        """List revenue, cost (COGS), SSCL expense, gross profit and margin per completed revenue document.
 
-        COGS uses the product's *current* cost as a proxy — it is not the
-        historical AVCO cost at the time of sale, so margins for products
-        whose cost has since changed will be approximate.
+        Uses stored historical SaleItem.unit_cost for COGS (never product's current cost),
+        revenue net of VAT (net_revenue + tax_sscl), SSCL as an explicit expense,
+        and excludes voided transactions.
         """
         with get_db_session() as session:
-            date_range = filters.get("date_range", {})
-            start_date = date_range.get("start")
-            end_date = date_range.get("end")
+            start_dt, end_dt = date_bounds(filters.get("date_range"))
 
-            # Query Sale Items with Product Cost
-            query = (
-                session.query(
-                    Sale.date,
-                    Sale.document_number,
-                    SaleItem.qty,
-                    SaleItem.unit_price,
-                    Product.cost.label("unit_cost"),
-                )
-                .join(Sale, SaleItem.sale_id == Sale.id)
-                .join(Product, SaleItem.product_id == Product.id)
-            )
+            query = session.query(Sale).options(joinedload(Sale.items)).filter(revenue_documents())
+            if start_dt:
+                query = query.filter(Sale.date >= start_dt)
+            if end_dt:
+                query = query.filter(Sale.date < end_dt)
 
-            if start_date:
-                query = query.filter(func.date(Sale.date) >= start_date)
-            if end_date:
-                query = query.filter(func.date(Sale.date) <= end_date)
-
-            results = query.all()
+            sales = query.order_by(Sale.date.asc()).all()
 
             data = []
-            for row in results:
-                qty = float(row.qty or 0)
-                revenue = qty * float(row.unit_price or 0)
-                # Using current product cost as proxy for COGS
-                cogs = qty * float(row.unit_cost or 0)
-                gross_profit = revenue - cogs
-                margin_pct = (gross_profit / revenue * 100) if revenue else 0
+            total_rev = Decimal("0.00")
+            total_cogs = Decimal("0.00")
+            total_sscl = Decimal("0.00")
+
+            for sale in sales:
+                rev = round_money((sale.net_revenue or Decimal("0.00")) + (sale.tax_sscl or Decimal("0.00")))
+                sscl = round_money(sale.tax_sscl or Decimal("0.00"))
+
+                cogs = Decimal("0.00")
+                for item in sale.items:
+                    if item.unit_cost is not None:
+                        line_cost = item.unit_cost
+                    else:
+                        logger.warning("SaleItem %s has null unit_cost; using 0.00 to preserve history", item.id)
+                        line_cost = Decimal("0.00")
+                    cogs += round_money(line_cost * (item.qty or Decimal("0.000")))
+
+                cogs = round_money(cogs)
+                gp = rev - cogs - sscl
+                margin = round_money(gp / rev * Decimal("100")) if rev != Decimal("0.00") else Decimal("0.00")
 
                 data.append(
                     {
-                        "Date": row.date.strftime("%Y-%m-%d"),
-                        "Invoice #": row.document_number,
-                        "Revenue": revenue,
+                        "Date": sale.date.strftime("%Y-%m-%d") if sale.date else "",
+                        "Invoice #": sale.document_number or "",
+                        "Revenue": rev,
                         "Cost (COGS)": cogs,
-                        "Gross Profit": gross_profit,
-                        "Margin %": f"{margin_pct:.2f}%",
+                        "SSCL Expense": sscl,
+                        "Gross Profit": gp,
+                        "Margin %": f"{margin:.2f}%",
                     }
                 )
 
-            return pd.DataFrame(data)
+                total_rev += rev
+                total_cogs += cogs
+                total_sscl += sscl
+
+            if data:
+                total_gp = total_rev - total_cogs - total_sscl
+                total_margin = (
+                    round_money(total_gp / total_rev * Decimal("100"))
+                    if total_rev != Decimal("0.00")
+                    else Decimal("0.00")
+                )
+                data.append(
+                    {
+                        "Date": "",
+                        "Invoice #": "TOTAL",
+                        "Revenue": total_rev,
+                        "Cost (COGS)": total_cogs,
+                        "SSCL Expense": total_sscl,
+                        "Gross Profit": total_gp,
+                        "Margin %": f"{total_margin:.2f}%",
+                    }
+                )
+                df = pd.DataFrame(data)
+            else:
+                df = pd.DataFrame(
+                    columns=["Date", "Invoice #", "Revenue", "Cost (COGS)", "SSCL Expense", "Gross Profit", "Margin %"]
+                )
+
+            return df
 
 
 class TaxLiabilityReport(BaseReport):

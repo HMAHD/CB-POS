@@ -151,8 +151,8 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #795 | Tax Liability Report includes voided sales and hard-codes "VAT (18%)" / "SSCL… | high | 6.2 | done | #1003 | eb6112b · completed_sales/refund_documents filters exclude voids, separate refund section with net totals, dynamic VAT/SSCL headers, per-rate breakdown table |
 | #796 | Tax Filing Summary: period selector not wired, Total Discounts always 0, SSCL… | high | 6.2 | done | #1003 | eb6112b · interactive monthly/quarterly/custom period resolution in FilterWidget, discounts computed from lines/bill/loyalty, reconciled SSCL liable turnover and quarterly liability section, method_kind grouping |
 | #811 | Invoice reprint shows the current tax % next to amounts stored at the old rate | low | 6.2 | done | #1003 | eb6112b · resolve_historical_vat_rate snapshot fallback, format_rate cleanly, receipt and invoice PDF use sale rate, receipt_strings.vat_with_rate translation |
-| #798 | Profit & Loss report uses VAT-inclusive revenue, current cost and float math | high | 6.3 | in-progress | | P&L uses VAT-exclusive turnover, stored SaleItem.unit_cost, SSCL expense line, Decimal arithmetic, and AST guardrail |
-| #843 | Refunds never appear in the Void/Refund report | high | 6.3 | todo | | |
+| #798 | Profit & Loss report uses VAT-inclusive revenue, current cost and float math | high | 6.3 | in-progress | | commit 09e47e7 · P&L uses VAT-exclusive turnover, stored SaleItem.unit_cost, SSCL expense line, Decimal arithmetic, and AST guardrail |
+| #843 | Refunds never appear in the Void/Refund report | high | 6.3 | in-progress | | Report queries or_(voided(), refund_documents()), shows negative refund amount, original receipt, approver from AuditLog, Part/Full scope, pure Decimal |
 | #844 | Cash Flow report adds refunds back (net too high by 2× refunds) | high | 6.3 | todo | | |
 | #845 | Daily Sales, Cashier Performance, Sales by Category, Dashboard and the auto-e… | high | 6.3 | todo | | |
 | #883 | Overdue Customers report resets the clock on every new credit sale | medium | 6.4 | todo | | |

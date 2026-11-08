@@ -305,5 +305,5 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #911 | Physical thermal print of duplicate receipt (SalesReceiptBuilder & RefundReceiptBuilder duplicate markers) | pending |
 
 ## Handoff
-Phase 6, Batch 6.2 (Tax reporting and invoice history: #811, #795, #796) PR #1003 is open and CI is passing (full suite 3280 passed). Awaiting user merge approval. Once merged, verify #811, #795, #796 are closed and proceed to Batch 6.3.
+Phase 6, Batch 6.2 (Tax reporting and invoice history: #811, #795, #796) PR #1003 is open with all review findings resolved via commit `cb43f11` (full suite and focused tests passing, translations valid, pre-commit clean). Awaiting user merge approval. Once merged, verify #811, #795, #796 are closed and proceed to Batch 6.3.
 

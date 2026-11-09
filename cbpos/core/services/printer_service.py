@@ -106,7 +106,10 @@ class PrinterService:
             True if the receipt was queued, False if auto-print is off.
         """
         commands = ReceiptBuilder.build_receipt(sale, is_reprint=is_reprint)
-        return PrinterService.auto_print(commands)
+        if not PrinterService.auto_print(commands):
+            return False
+        PrinterService.maybe_print_b2b_invoice(sale)
+        return True
 
     @staticmethod
     def print_receipt(sale: Sale, is_reprint: bool = False, copies: int | None = None) -> None:
@@ -239,12 +242,11 @@ class PrinterService:
 
     @staticmethod
     def _print_a4_invoice(sale: Sale) -> None:
-        """Generate and print A4 Tax Invoice for B2B customers.
+        """Queue A4 Tax Invoice job for B2B customers off the UI thread (#879).
 
-        A failure (the PDF won't build, or can't be handed to the printer)
-        goes out on the print worker's ``error_occurred`` -- the Sales
-        screen shows it -- so the cashier knows the buyer has no tax
-        invoice. No A4 printer set up is not a failure.
+        A failure goes out on the print worker's ``job_result`` and
+        ``error_occurred`` so the cashier knows if printing failed.
+        No A4 printer set up is not a failure.
 
         Args:
             sale: The sale transaction.
@@ -254,16 +256,10 @@ class PrinterService:
             logger.warning("[PrinterService] A4 printer not configured. Skipping invoice print.")
             return
 
-        try:
-            pdf_path = PrinterService.get_spool_path(sale.document_number)
-            InvoiceService.generate_pdf(sale, str(pdf_path))
-            logger.info("[PrinterService] Generated A4 invoice: %s", pdf_path)
-            PrinterService._send_pdf_to_printer(str(pdf_path), a4_printer)
-        except Exception as e:
-            logger.exception("[PrinterService] Error printing A4 invoice for %s", sale.document_number)
-            PrintWorker.instance().error_occurred.emit(
-                _t("printer.a4_invoice_failed", document=sale.document_number or "", error=str(e))
-            )
+        from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+
+        job_data = sale.id if getattr(sale, "id", None) else sale
+        PrintWorker.instance().add_job("a4_invoice", job_data)
 
     @staticmethod
     def _validate_printer_name(printer_name: str | None) -> None:

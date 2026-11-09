@@ -2,7 +2,6 @@
 
 import logging
 import weakref
-from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
 from PyQt6.QtCore import (
@@ -41,6 +40,7 @@ from cbpos.core.constants.status import DocumentStatus, Precision
 from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.stock_count_service import StockCountService, VarianceTotals
 from cbpos.core.services.theme_service import ThemeService
+from cbpos.core.utils.date_ranges import range_for
 from cbpos.core.utils.destroy_hooks import call_on_destroyed
 from cbpos.core.utils.formatters import (
     format_currency,
@@ -1028,11 +1028,9 @@ class StockTakeView(QWidget, Activatable):
         """Refresh the stock count history table."""
         status = self.hist_status_combo.currentData()
 
-        qd_from = self.hist_date_from.date()
-        date_from = datetime(qd_from.year(), qd_from.month(), qd_from.day())
-
-        qd_to = self.hist_date_to.date()
-        date_to = datetime(qd_to.year(), qd_to.month(), qd_to.day(), 23, 59, 59)
+        qd_from = self.hist_date_from.date().toPyDate()
+        qd_to = self.hist_date_to.date().toPyDate()
+        date_from, date_to = range_for(qd_from, qd_to)
 
         counts = StockCountService.get_all_stock_counts(status=status, date_from=date_from, date_to=date_to)
 

@@ -1,5 +1,6 @@
 import logging
-from datetime import datetime
+from collections import defaultdict
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -9,6 +10,8 @@ from sqlalchemy.orm import Session
 from cbpos.core.constants.status import PaymentMethodKind, PaymentMethodType
 from cbpos.core.database import Database
 from cbpos.core.models import AuditLog, Customer, CustomerLedgerEntry, CustomerPayment, Sale, SalePayment, User
+from cbpos.core.utils.aging import oldest_open_charge
+from cbpos.core.utils.date_ranges import range_for
 from cbpos.core.utils.money import round_money
 
 logger = logging.getLogger(__name__)
@@ -440,14 +443,15 @@ class CustomerCreditService:
         Returns:
             List of CustomerLedgerEntry ordered by timestamp.
         """
+        start_dt, end_dt = range_for(date_from, date_to)
         db = Database()
         with db.get_session() as session:
             query = session.query(CustomerLedgerEntry).filter(CustomerLedgerEntry.customer_id == customer_id)
 
-            if date_from:
-                query = query.filter(CustomerLedgerEntry.timestamp >= date_from)
-            if date_to:
-                query = query.filter(CustomerLedgerEntry.timestamp <= date_to)
+            if start_dt:
+                query = query.filter(CustomerLedgerEntry.timestamp >= start_dt)
+            if end_dt:
+                query = query.filter(CustomerLedgerEntry.timestamp < end_dt)
 
             entries = []
             for entry in query.order_by(CustomerLedgerEntry.timestamp.asc()).yield_per(500):
@@ -456,12 +460,61 @@ class CustomerCreditService:
             return entries
 
     @staticmethod
+    def balance_at(customer_id: int, at: datetime | date, session: Any = None) -> Decimal:
+        """Get the customer's ledger balance as of a given timestamp or date (#907).
+
+        Returns balance_after of the last ledger entry strictly before `at`
+        (or before start-of-day if `at` is date), or Decimal("0.00") if none.
+        """
+        if isinstance(at, datetime):
+            at_dt = at
+        elif isinstance(at, date):
+            from datetime import time
+
+            at_dt = datetime.combine(at, time.min)
+        else:
+            raise TypeError(f"Expected datetime or date, got {type(at).__name__}")
+
+        def _query(s: Any) -> Decimal:
+            last_entry = (
+                s.query(CustomerLedgerEntry)
+                .filter(
+                    CustomerLedgerEntry.customer_id == customer_id,
+                    CustomerLedgerEntry.timestamp < at_dt,
+                )
+                .order_by(CustomerLedgerEntry.timestamp.desc())
+                .first()
+            )
+            if last_entry and last_entry.balance_after is not None:
+                return last_entry.balance_after
+            return Decimal("0.00")
+
+        if session is not None:
+            return _query(session)
+
+        db = Database()
+        with db.get_session() as s:
+            return _query(s)
+
+    @staticmethod
+    def oldest_unpaid_charge_date(customer_id: int) -> date | None:
+        """Find the date of the customer's oldest unpaid charge using FIFO allocation (#883)."""
+        entries = CustomerCreditService.get_ledger(customer_id)
+        return oldest_open_charge(
+            entries,
+            charge_types={"SALE", "OPENING", "ADJUSTMENT"},
+            credit_types={"PAYMENT", "REFUND", "VOID", "ADJUSTMENT"},
+        )
+
+    @staticmethod
     def get_overdue_customers() -> list[dict[str, Any]]:
         """
         Get customers with outstanding debt who are overdue based on payment_terms.
 
+        Uses FIFO matching of charges against credits so new sales do not reset the aging clock.
+
         Returns:
-            List of dicts with customer info and days since last activity.
+            List of dicts with customer info and days overdue.
         """
         db = Database()
         with db.get_session() as session:
@@ -469,39 +522,42 @@ class CustomerCreditService:
             customers = (
                 session.query(Customer)
                 .filter(Customer.current_debt > 0, Customer.payment_terms > 0, Customer.is_active.is_(True))
-                .yield_per(500)
+                .all()
             )
+            if not customers:
+                return []
+
+            customer_ids = [c.id for c in customers]
+
+            # Batch fetch all ledger entries for active debtors in one query to avoid N+1 (#883)
+            all_entries = (
+                session.query(CustomerLedgerEntry)
+                .filter(CustomerLedgerEntry.customer_id.in_(customer_ids))
+                .order_by(CustomerLedgerEntry.timestamp.asc())
+                .all()
+            )
+            entries_by_customer: dict[int, list[CustomerLedgerEntry]] = defaultdict(list)
+            last_payment_map: dict[int, datetime] = {}
+            for entry in all_entries:
+                entries_by_customer[entry.customer_id].append(entry)
+                if entry.entry_type == "PAYMENT":
+                    last_payment_map[entry.customer_id] = entry.timestamp
 
             results = []
-            now = datetime.now()
+            today = date.today()
 
             for customer in customers:
-                # Find the most recent ledger entry (last activity)
-                last_entry = (
-                    session.query(CustomerLedgerEntry)
-                    .filter(CustomerLedgerEntry.customer_id == customer.id)
-                    .order_by(CustomerLedgerEntry.timestamp.desc())
-                    .first()
+                entries = entries_by_customer.get(customer.id, [])
+                oldest_charge_date = oldest_open_charge(
+                    entries,
+                    charge_types={"SALE", "OPENING", "ADJUSTMENT"},
+                    credit_types={"PAYMENT", "REFUND", "VOID", "ADJUSTMENT"},
                 )
+                if oldest_charge_date is None:
+                    continue
 
-                if last_entry:
-                    days_since = (now - last_entry.timestamp).days
-                else:
-                    days_since = 999  # No ledger entries, treat as very overdue
-
-                # Overdue if days_since > payment_terms
+                days_since = (today - oldest_charge_date).days
                 if days_since > customer.payment_terms:
-                    # Find last payment date specifically
-                    last_payment = (
-                        session.query(CustomerLedgerEntry)
-                        .filter(
-                            CustomerLedgerEntry.customer_id == customer.id,
-                            CustomerLedgerEntry.entry_type == "PAYMENT",
-                        )
-                        .order_by(CustomerLedgerEntry.timestamp.desc())
-                        .first()
-                    )
-
                     results.append(
                         {
                             "id": customer.id,
@@ -511,7 +567,7 @@ class CustomerCreditService:
                             "credit_limit": customer.credit_limit,
                             "payment_terms": customer.payment_terms,
                             "days_overdue": days_since - customer.payment_terms,
-                            "last_payment_date": last_payment.timestamp if last_payment else None,
+                            "last_payment_date": last_payment_map.get(customer.id),
                         }
                     )
 

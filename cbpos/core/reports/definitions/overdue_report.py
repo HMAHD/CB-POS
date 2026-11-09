@@ -57,8 +57,8 @@ class OverdueCustomersReport(BaseReport):
                 {
                     "Customer": item["name"],
                     "Phone": item["phone"],
-                    "Outstanding": float(item["outstanding"]),
-                    "Credit Limit": float(item["credit_limit"]),
+                    "Outstanding": item["outstanding"],
+                    "Credit Limit": item["credit_limit"],
                     "Days Overdue": item["days_overdue"],
                     "Last Payment": (
                         item["last_payment_date"].strftime("%Y-%m-%d") if item["last_payment_date"] else "Never"

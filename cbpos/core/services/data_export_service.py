@@ -14,6 +14,7 @@ from sqlalchemy.orm import joinedload
 
 from cbpos.core.database import Database
 from cbpos.core.models import Customer, Product, Sale
+from cbpos.core.utils.date_ranges import range_for
 
 logger = logging.getLogger(__name__)
 
@@ -102,10 +103,11 @@ class DataExportService:
         def _stream_rows(session):
             query = session.query(Sale).options(joinedload(Sale.customer)).order_by(Sale.date.desc())
 
-            if start_date:
-                query = query.filter(Sale.date >= start_date)
-            if end_date:
-                query = query.filter(Sale.date <= end_date)
+            start_dt, end_dt = range_for(start_date, end_date)
+            if start_dt:
+                query = query.filter(Sale.date >= start_dt)
+            if end_dt:
+                query = query.filter(Sale.date < end_dt)
 
             for s in query.yield_per(500):
                 yield {

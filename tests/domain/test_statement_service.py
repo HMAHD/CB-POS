@@ -153,3 +153,57 @@ class TestStatementService:
                 date_from=datetime.now() - timedelta(days=10),
                 date_to=datetime.now(),
             )
+
+    def test_issue_907_past_period_without_entries_uses_balance_before_period(self, db_session):
+        """With an entry after period_to and none inside, opening and closing come from before period (#907)."""
+        from cbpos.core.services.customer_credit_service import CustomerCreditService
+        from cbpos.core.services.statement_receipt_builder import StatementReceiptBuilder
+
+        customer = self._create_customer(db_session, debt=Decimal("750.00"))
+        user = self._create_user(db_session)
+        now = datetime.now()
+
+        # Prior entry: 40 days ago (+250)
+        e_prior = CustomerLedgerEntry(
+            customer_id=customer.id,
+            entry_type="SALE",
+            amount=Decimal("250.00"),
+            balance_after=Decimal("250.00"),
+            user_id=user.id,
+            timestamp=now - timedelta(days=40),
+            reference_doc="SALE-OLD",
+        )
+        # Future entry: today (+500, making total current debt 750)
+        e_future = CustomerLedgerEntry(
+            customer_id=customer.id,
+            entry_type="SALE",
+            amount=Decimal("500.00"),
+            balance_after=Decimal("750.00"),
+            user_id=user.id,
+            timestamp=now,
+            reference_doc="SALE-NEW",
+        )
+        db_session.add_all([e_prior, e_future])
+        db_session.flush()
+
+        period_from = now - timedelta(days=30)
+        period_to = now - timedelta(days=10)
+
+        # 1. CustomerCreditService.balance_at
+        assert CustomerCreditService.balance_at(customer.id, period_from) == Decimal("250.00")
+        assert CustomerCreditService.balance_at(customer.id, period_to) == Decimal("250.00")
+        assert CustomerCreditService.balance_at(customer.id, now + timedelta(days=1)) == Decimal("750.00")
+
+        # 2. Thermal statement builder
+        commands = StatementReceiptBuilder.build_customer_statement(
+            customer=customer,
+            entries=[],
+            period_from=period_from,
+            period_to=period_to,
+        )
+        texts = [c["val"] for c in commands if c.get("type") == "text"]
+        full_text = "\n".join(texts)
+
+        # Must show 250.00, NOT today's 750.00
+        assert "750" not in full_text
+        assert "250.00" in full_text

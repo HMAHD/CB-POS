@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
@@ -8,6 +8,7 @@ from sqlalchemy import case, desc, extract, func, select
 from cbpos.core.constants.status import DocumentStatus
 from cbpos.core.database import Database
 from cbpos.core.models import Product, Sale, SaleItem, SalePayment
+from cbpos.core.utils.date_ranges import day_range
 
 if TYPE_CHECKING:
     from cbpos.core.reports.base_report import BaseReport
@@ -27,8 +28,7 @@ class ReportService:
         """
         with self.db.get_session() as session:
             # Filter by date
-            start_dt = datetime.combine(report_date, datetime.min.time())
-            end_dt = datetime.combine(report_date, datetime.max.time())
+            start_dt, end_dt = day_range(report_date)
 
             # Total Sales
             total_sales = session.scalar(
@@ -41,7 +41,7 @@ class ReportService:
                     )
                 ).where(
                     Sale.date >= start_dt,
-                    Sale.date <= end_dt,
+                    Sale.date < end_dt,
                     Sale.status == DocumentStatus.COMPLETED,
                 )
             ) or Decimal("0.00")
@@ -50,7 +50,7 @@ class ReportService:
             total_tax = session.scalar(
                 select(func.sum(Sale.tax_vat + Sale.tax_sscl)).where(
                     Sale.date >= start_dt,
-                    Sale.date <= end_dt,
+                    Sale.date < end_dt,
                     Sale.status == DocumentStatus.COMPLETED,
                 )
             ) or Decimal("0.00")
@@ -69,7 +69,7 @@ class ReportService:
                 .join(Sale)
                 .where(
                     Sale.date >= start_dt,
-                    Sale.date <= end_dt,
+                    Sale.date < end_dt,
                     Sale.status == DocumentStatus.COMPLETED,
                 )
                 .group_by(SalePayment.method_kind)
@@ -109,8 +109,7 @@ class ReportService:
     def get_hourly_sales(self, report_date: date) -> list[dict[str, Any]]:
         """Return sales totals for every hour (0-23) of one calendar day, zero-filled for gaps."""
         with self.db.get_session() as session:
-            start_dt = datetime.combine(report_date, datetime.min.time())
-            end_dt = datetime.combine(report_date, datetime.max.time())
+            start_dt, end_dt = day_range(report_date)
 
             # Extract hour from timestamp
             results = session.execute(
@@ -125,7 +124,7 @@ class ReportService:
                 )
                 .where(
                     Sale.date >= start_dt,
-                    Sale.date <= end_dt,
+                    Sale.date < end_dt,
                     Sale.status == DocumentStatus.COMPLETED,
                 )
                 .group_by("hour")

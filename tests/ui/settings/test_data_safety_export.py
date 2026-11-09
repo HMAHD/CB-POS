@@ -135,7 +135,8 @@ def test_sales_export_uses_the_whole_chosen_days(view, fetched, out_dir, qtbot):
 
     _export(view, qtbot)
 
-    assert fetched == [("sales", datetime(2026, 3, 1, 0, 0, 0), datetime(2026, 3, 31, 23, 59, 59))]
+    # Under half-open boundary semantics (#912), the end boundary is exclusive start of next day
+    assert fetched == [("sales", datetime(2026, 3, 1, 0, 0, 0), datetime(2026, 4, 1, 0, 0, 0))]
 
 
 def test_sales_with_from_after_to_warns_and_exports_nothing(view, fetched, monkeypatch):

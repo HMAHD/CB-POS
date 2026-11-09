@@ -25,7 +25,6 @@ def test_no_float_on_money_in_reports():
         "definitions/audit_reports.py",
         "definitions/credit_report.py",
         "definitions/inventory_reports.py",
-        "definitions/overdue_report.py",
         "definitions/shift_variance_report.py",
     }
 

@@ -1,6 +1,5 @@
 import contextlib
 import logging
-from datetime import datetime
 
 from PyQt6.QtCore import QDate, Qt
 from PyQt6.QtWidgets import (
@@ -23,6 +22,7 @@ from cbpos.core.services.printer_service import PrinterService
 from cbpos.core.services.refund_service import RefundService
 from cbpos.core.services.sale_query_service import SaleQueryService
 from cbpos.core.services.transaction_service import TransactionService
+from cbpos.core.utils.date_ranges import range_for
 from cbpos.core.utils.error_messages import translate_error
 from cbpos.core.utils.formatters import format_currency, format_datetime, format_relative_time
 from cbpos.i18n import _t, register_language_callback
@@ -237,9 +237,10 @@ class HistoryView(QWidget):
         to_date = self.to_date.date().toPyDate()
         search_term = self.search_input.text().strip() or None
 
+        start_dt, end_dt = range_for(from_date, to_date)
         sales = SaleQueryService.get_sales_history(
-            from_date=datetime.combine(from_date, datetime.min.time()),
-            to_date=datetime.combine(to_date, datetime.max.time()),
+            from_date=start_dt,
+            to_date=end_dt,
             search_term=search_term,
         )
 

@@ -4,7 +4,6 @@ Dialog for viewing and printing customer account statements.
 
 import contextlib
 import logging
-from datetime import datetime
 
 from PyQt6.QtCore import QDate, QSize, Qt
 from PyQt6.QtGui import QIcon, QPainter, QPixmap
@@ -26,6 +25,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.customer_credit_service import CustomerCreditService
 from cbpos.core.services.receipt_builder import ReceiptBuilder
 from cbpos.core.services.statement_service import StatementService
+from cbpos.core.utils.date_ranges import range_for
 from cbpos.core.utils.error_messages import translate_error
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
@@ -284,12 +284,9 @@ class CustomerStatementDialog(QDialog):
         self._load_statement()
 
     def _get_date_range(self) -> tuple:
-        d_from = self.date_from.date()
-        d_to = self.date_to.date()
-        return (
-            datetime(d_from.year(), d_from.month(), d_from.day()),
-            datetime(d_to.year(), d_to.month(), d_to.day(), 23, 59, 59),
-        )
+        d_from = self.date_from.date().toPyDate()
+        d_to = self.date_to.date().toPyDate()
+        return range_for(d_from, d_to)
 
     def _load_statement(self) -> None:
         """Load statement data and populate the table."""

@@ -8,6 +8,7 @@ from cbpos.core.database import Database
 from cbpos.core.models import AuditLog, Role, User
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.role_service import ADMIN_ROLE_NAME
+from cbpos.core.utils.date_ranges import range_for
 from cbpos.core.utils.terminal_guard import require_catalog_writable
 
 
@@ -99,11 +100,11 @@ class UserService:
                 if event_type is not None:
                     query = query.filter(AuditLog.event_type == event_type)
 
-                if date_from is not None:
-                    query = query.filter(AuditLog.timestamp >= date_from)
-
-                if date_to is not None:
-                    query = query.filter(AuditLog.timestamp <= date_to)
+                start_dt, end_dt = range_for(date_from, date_to)
+                if start_dt is not None:
+                    query = query.filter(AuditLog.timestamp >= start_dt)
+                if end_dt is not None:
+                    query = query.filter(AuditLog.timestamp < end_dt)
 
                 if terminal_id is not None:
                     query = query.filter(AuditLog.terminal_id == terminal_id)

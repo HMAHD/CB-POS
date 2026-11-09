@@ -14,6 +14,7 @@ from cbpos.core.models import (
     Sale,
     SaleItem,
 )
+from cbpos.core.utils.date_ranges import range_for
 from cbpos.core.utils.formatters import escape_like
 
 logger = logging.getLogger(__name__)
@@ -62,10 +63,11 @@ class DocumentBrowserService:
                 query = query.filter(Document.status == status)
 
             # Date range
-            if date_from:
-                query = query.filter(Document.date >= date_from)
-            if date_to:
-                query = query.filter(Document.date <= date_to)
+            start_dt, end_dt = range_for(date_from, date_to)
+            if start_dt:
+                query = query.filter(Document.date >= start_dt)
+            if end_dt:
+                query = query.filter(Document.date < end_dt)
 
             # Search term — search document_number
             if search_term:

@@ -3,14 +3,15 @@ Service for generating customer account statements.
 """
 
 import logging
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
 from cbpos.core.database import Database
-from cbpos.core.models import Customer, CustomerLedgerEntry
+from cbpos.core.models import Customer
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.customer_credit_service import CustomerCreditService
+from cbpos.core.utils.date_ranges import range_for
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +22,8 @@ class StatementService:
     @staticmethod
     def generate_statement(
         customer_id: int,
-        date_from: datetime,
-        date_to: datetime,
+        date_from: datetime | date,
+        date_to: datetime | date,
     ) -> dict[str, Any]:
         """
         Generate statement data for a customer within a date range.
@@ -35,6 +36,8 @@ class StatementService:
         Returns:
             Dictionary with customer info, entries, totals.
         """
+        start_dt, end_dt = range_for(date_from, date_to)
+
         db = Database()
         with db.get_session() as session:
             customer = session.get(Customer, customer_id)
@@ -52,8 +55,8 @@ class StatementService:
 
         entries = CustomerCreditService.get_ledger(
             customer_id,
-            date_from=date_from,
-            date_to=date_to,
+            date_from=start_dt,
+            date_to=end_dt,
         )
 
         # Calculate totals
@@ -68,7 +71,9 @@ class StatementService:
             closing_balance = entries[-1].balance_after
         else:
             # No transactions in period — find the last known balance before start date
-            opening_balance = StatementService._get_balance_before(db, customer_id, date_from)
+            opening_balance = StatementService._get_balance_before(
+                db, customer_id, start_dt or datetime.min, session=session
+            )
             closing_balance = opening_balance
 
         rows: list[dict[str, Any]] = []
@@ -114,20 +119,6 @@ class StatementService:
         }
 
     @staticmethod
-    def _get_balance_before(db: Database, customer_id: int, date: datetime) -> Decimal:
+    def _get_balance_before(db: Database, customer_id: int, date: datetime, session: Any = None) -> Decimal:
         """Get the last known balance before a given date."""
-        with db.get_session() as session:
-            last_entry = (
-                session.query(CustomerLedgerEntry)
-                .filter(
-                    CustomerLedgerEntry.customer_id == customer_id,
-                    CustomerLedgerEntry.timestamp < date,
-                )
-                .order_by(CustomerLedgerEntry.timestamp.desc())
-                .first()
-            )
-            if last_entry:
-                balance = last_entry.balance_after
-                session.expunge(last_entry)
-                return balance
-            return Decimal("0")
+        return CustomerCreditService.balance_at(customer_id, date, session=session)

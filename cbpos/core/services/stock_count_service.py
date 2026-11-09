@@ -16,6 +16,7 @@ from cbpos.core.models import Product, Role, StockCount, StockCountItem, User
 from cbpos.core.services.document_service import DocumentService
 from cbpos.core.services.permission_service import PermissionService
 from cbpos.core.services.stock_service import StockService
+from cbpos.core.utils.date_ranges import range_for
 from cbpos.core.utils.money import round_money, round_qty
 
 logger = logging.getLogger(__name__)
@@ -494,10 +495,11 @@ class StockCountService:
 
             if status:
                 query = query.filter(StockCount.status == status)
-            if date_from:
-                query = query.filter(StockCount.date >= date_from)
-            if date_to:
-                query = query.filter(StockCount.date <= date_to)
+            start_dt, end_dt = range_for(date_from, date_to)
+            if start_dt:
+                query = query.filter(StockCount.date >= start_dt)
+            if end_dt:
+                query = query.filter(StockCount.date < end_dt)
 
             counts = query.order_by(StockCount.date.desc()).all()
             for c in counts:

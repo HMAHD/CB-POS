@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -59,3 +60,49 @@ def test_issue_920_adjustment_ledger_sum_equals_payable(db_session, test_user):
     )
     assert ledger_sum == Decimal("-1280.00"), f"Expected ledger_sum to be -1280.00, got {ledger_sum}"
     assert supplier.current_payable == ledger_sum
+
+
+def test_issue_897_old_unpaid_purchase_plus_new_purchase_still_overdue(db_session, test_user):
+    """An old unpaid purchase plus a new purchase is still reported as overdue (#897)."""
+    now = datetime.now()
+    supplier = Supplier(
+        company_name="Acme Overdue Wholesale",
+        phone="0118970001",
+        current_payable=Decimal("300000.00"),
+        payment_terms=30,
+        is_active=True,
+    )
+    db_session.add(supplier)
+    db_session.commit()
+
+    # Purchase 1: 90 days ago (Rs 200,000)
+    p1 = SupplierLedgerEntry(
+        supplier_id=supplier.id,
+        entry_type="PURCHASE",
+        amount=Decimal("200000.00"),
+        balance_after=Decimal("200000.00"),
+        user_id=test_user.id,
+        timestamp=now - timedelta(days=90),
+        reference_doc="GRN-897-001",
+    )
+    # Purchase 2: yesterday (Rs 100,000)
+    p2 = SupplierLedgerEntry(
+        supplier_id=supplier.id,
+        entry_type="PURCHASE",
+        amount=Decimal("100000.00"),
+        balance_after=Decimal("300000.00"),
+        user_id=test_user.id,
+        timestamp=now - timedelta(days=1),
+        reference_doc="GRN-897-002",
+    )
+    db_session.add_all([p1, p2])
+    db_session.commit()
+
+    # Call oldest_unpaid_charge_date
+    oldest_date = SupplierPayableService.oldest_unpaid_charge_date(supplier.id)
+    assert oldest_date == (now - timedelta(days=90)).date()
+
+    overdue = SupplierPayableService.get_overdue_suppliers()
+    matching = [s for s in overdue if s["id"] == supplier.id]
+    assert len(matching) == 1
+    assert matching[0]["days_overdue"] >= 59  # 90 - 30 days

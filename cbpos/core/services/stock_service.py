@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 from cbpos.core.constants.status import MovementType
 from cbpos.core.database import Database
 from cbpos.core.models import Product, StockMovement
+from cbpos.core.services.product_service import ProductService
 
 logger = logging.getLogger(__name__)
 
@@ -186,7 +187,7 @@ class StockService:
                 select(Product)
                 .where(
                     Product.is_active.is_(True),
-                    Product.is_service.is_(False),
+                    ProductService.stock_tracked(),
                     Product.stock_qty <= Product.reorder_point,
                 )
                 .options(
@@ -221,7 +222,7 @@ class StockService:
                 select(Product)
                 .where(
                     Product.is_active.is_(True),
-                    Product.is_service.is_(False),
+                    ProductService.stock_tracked(),
                     Product.stock_qty <= Product.reorder_point,
                 )
                 .options(

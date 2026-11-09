@@ -1,7 +1,8 @@
 """Service for managing supplier payables: payments, ledger entries, overdue tracking."""
 
 import logging
-from datetime import datetime
+from collections import defaultdict
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -9,6 +10,8 @@ from sqlalchemy import func
 
 from cbpos.core.database import Database
 from cbpos.core.models import Supplier, SupplierLedgerEntry, SupplierPayment
+from cbpos.core.utils.aging import oldest_open_charge
+from cbpos.core.utils.date_ranges import range_for
 
 logger = logging.getLogger(__name__)
 
@@ -198,14 +201,15 @@ class SupplierPayableService:
         Returns:
             List of SupplierLedgerEntry ordered by timestamp.
         """
+        start_dt, end_dt = range_for(date_from, date_to)
         db = Database()
         with db.get_session() as session:
             query = session.query(SupplierLedgerEntry).filter(SupplierLedgerEntry.supplier_id == supplier_id)
 
-            if date_from:
-                query = query.filter(SupplierLedgerEntry.timestamp >= date_from)
-            if date_to:
-                query = query.filter(SupplierLedgerEntry.timestamp <= date_to)
+            if start_dt:
+                query = query.filter(SupplierLedgerEntry.timestamp >= start_dt)
+            if end_dt:
+                query = query.filter(SupplierLedgerEntry.timestamp < end_dt)
 
             entries = query.order_by(SupplierLedgerEntry.timestamp.asc()).all()
             for entry in entries:
@@ -213,9 +217,21 @@ class SupplierPayableService:
             return entries
 
     @staticmethod
+    def oldest_unpaid_charge_date(supplier_id: int) -> date | None:
+        """Find the date of the supplier's oldest unpaid purchase using FIFO allocation (#897)."""
+        entries = SupplierPayableService.get_ledger(supplier_id)
+        return oldest_open_charge(
+            entries,
+            charge_types={"PURCHASE", "ADJUSTMENT"},
+            credit_types={"PAYMENT", "REFUND", "ADJUSTMENT"},
+        )
+
+    @staticmethod
     def get_overdue_suppliers() -> list[dict[str, Any]]:
         """
         Get suppliers with outstanding payable who are overdue based on payment_terms.
+
+        Uses FIFO matching of purchases against credits so new purchases do not reset the aging clock.
 
         Returns:
             List of dicts with supplier info and overdue days.
@@ -232,42 +248,39 @@ class SupplierPayableService:
                 .all()
             )
 
-            results = []
-            now = datetime.now()
+            if not suppliers:
+                return []
 
-            # Pre-fetch latest ledger entries per supplier to avoid N+1 queries
             supplier_ids = [s.id for s in suppliers]
 
-            # Latest entry timestamp per supplier (single query)
-            latest_entries_subq = (
-                session.query(
-                    SupplierLedgerEntry.supplier_id,
-                    func.max(SupplierLedgerEntry.timestamp).label("last_timestamp"),
-                )
+            # Batch fetch all ledger entries for active suppliers to avoid N+1 queries (#897)
+            all_entries = (
+                session.query(SupplierLedgerEntry)
                 .filter(SupplierLedgerEntry.supplier_id.in_(supplier_ids))
-                .group_by(SupplierLedgerEntry.supplier_id)
+                .order_by(SupplierLedgerEntry.timestamp.asc())
                 .all()
             )
-            last_entry_map = {row.supplier_id: row.last_timestamp for row in latest_entries_subq}
+            entries_by_supplier: dict[int, list[SupplierLedgerEntry]] = defaultdict(list)
+            last_payment_map: dict[int, datetime] = {}
+            for entry in all_entries:
+                entries_by_supplier[entry.supplier_id].append(entry)
+                if entry.entry_type == "PAYMENT":
+                    last_payment_map[entry.supplier_id] = entry.timestamp
 
-            # Latest payment timestamp per supplier (single query)
-            latest_payments_subq = (
-                session.query(
-                    SupplierLedgerEntry.supplier_id,
-                    func.max(SupplierLedgerEntry.timestamp).label("last_payment"),
-                )
-                .filter(
-                    SupplierLedgerEntry.supplier_id.in_(supplier_ids),
-                    SupplierLedgerEntry.entry_type == "PAYMENT",
-                )
-                .group_by(SupplierLedgerEntry.supplier_id)
-                .all()
-            )
-            last_payment_map = {row.supplier_id: row.last_payment for row in latest_payments_subq}
+            results = []
+            today = date.today()
 
             for supplier in suppliers:
-                last_ts = last_entry_map.get(supplier.id)
-                days_since = (now - last_ts).days if last_ts else 999
+                entries = entries_by_supplier.get(supplier.id, [])
+                oldest_charge_date = oldest_open_charge(
+                    entries,
+                    charge_types={"PURCHASE", "ADJUSTMENT"},
+                    credit_types={"PAYMENT", "REFUND", "ADJUSTMENT"},
+                )
+                if oldest_charge_date is None:
+                    continue
+
+                days_since = (today - oldest_charge_date).days
 
                 if days_since > supplier.payment_terms:
                     results.append(

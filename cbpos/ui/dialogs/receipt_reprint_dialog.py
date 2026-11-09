@@ -283,7 +283,7 @@ class ReceiptReprintDialog(QDialog):
             return today_start, now
         elif self._active_filter == "yesterday":
             yesterday = today_start - timedelta(days=1)
-            return yesterday, today_start - timedelta(seconds=1)
+            return yesterday, today_start
         elif self._active_filter == "this_week":
             week_start = today_start - timedelta(days=today_start.weekday())
             return week_start, now

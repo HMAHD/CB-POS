@@ -239,9 +239,15 @@ class InventoryService:
             return True
 
     def get_low_stock_items(self) -> list[Product]:
-        """Get products where stock is at or below reorder level."""
+        """Get products where stock is at or below reorder level (excluding services & bundles #909)."""
+        from cbpos.core.services.product_service import ProductService
+
         with self.db.get_session() as session:
-            stmt = select(Product).where(Product.is_active.is_(True), Product.stock_qty <= Product.reorder_level)
+            stmt = select(Product).where(
+                Product.is_active.is_(True),
+                ProductService.stock_tracked(),
+                Product.stock_qty <= Product.reorder_point,
+            )
             return list(session.scalars(stmt).all())
 
     def adjust_stock(
@@ -418,7 +424,10 @@ class InventoryService:
         if category_id is not None:
             conditions.append(Product.category_id == category_id)
         if low_stock:
+            from cbpos.core.services.product_service import ProductService
+
             conditions.append(Product.stock_qty <= Product.reorder_point)
+            conditions.append(ProductService.stock_tracked())
 
         page_num = max(0, page)
         offset = page_num * page_size

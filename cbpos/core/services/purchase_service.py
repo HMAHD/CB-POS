@@ -23,6 +23,7 @@ from cbpos.core.services.document_service import DocumentService
 from cbpos.core.services.permission_service import PermissionService
 from cbpos.core.services.stock_service import StockService
 from cbpos.core.services.supplier_payable_service import SupplierPayableService
+from cbpos.core.utils.date_ranges import range_for
 from cbpos.core.utils.money import round_money
 
 
@@ -403,10 +404,11 @@ class PurchaseService:
                 query = query.filter(Purchase.status == status)
             if supplier_id:
                 query = query.filter(Purchase.supplier_id == supplier_id)
-            if date_from:
-                query = query.filter(Purchase.date >= date_from)
-            if date_to:
-                query = query.filter(Purchase.date <= date_to)
+            start_dt, end_dt = range_for(date_from, date_to)
+            if start_dt:
+                query = query.filter(Purchase.date >= start_dt)
+            if end_dt:
+                query = query.filter(Purchase.date < end_dt)
 
             purchases = query.order_by(Purchase.date.desc()).limit(limit).all()
             for p in purchases:

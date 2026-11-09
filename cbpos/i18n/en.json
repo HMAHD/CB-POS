@@ -1538,6 +1538,7 @@
     "period_quarterly": "Quarterly",
     "period_custom": "Custom Date Range",
     "all_categories": "All Categories",
+    "uncategorized": "Uncategorized",
     "profit_loss": "Profit & Loss Statement",
     "tax_liability": "Tax Liability Report",
     "tax_filing_summary": "Tax Filing Summary",
@@ -2355,6 +2356,9 @@
     "print_sent": "Statement sent to printer.",
     "print_failed": "Failed to print statement. Check the printer connection in Settings > Hardware.",
     "load_failed": "Failed to load statement: {error}"
+  },
+  "statement": {
+    "period_range": "{from} to {to}"
   },
   "adjust_balance": {
     "title": "Adjust Customer Balance",

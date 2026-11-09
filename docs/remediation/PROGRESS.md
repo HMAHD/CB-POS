@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 7 · Batch: 7.1 · Branch: fix/p7-b1-printer-selection-transport · PR: none · Last session: 2026-11-09
+- Phase: 7 · Batch: 7.1 · Branch: fix/p7-b1-printer-selection-transport · PR: #1008 · Last session: 2026-11-09
 
 ## Issues
 
@@ -166,10 +166,10 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 | # | Title | Sev | Batch | Status | PR | Notes |
 |---|---|---|---|---|---|---|
-| #876 | `_validate_name` rejects common Windows printer names and 8.3 temp paths, and… | medium | 7.1 | todo | | |
-| #803 | Configured A4 printer is ignored; invoices go to the Windows default printer | medium | 7.1 | todo | | |
-| #879 | The A4 tax invoice PDF is built synchronously on the UI thread inside checkout | medium | 7.1 | todo | | |
-| #731 | Verify report printing from the background thread on real Windows printers | medium | 7.1 | todo | | |
+| #876 | `_validate_name` rejects common Windows printer names and 8.3 temp paths, and… | medium | 7.1 | pr-open | #1008 | 681c8ee/35297a0 · Print worker job identity, validate printer name by EnumPrinters, ShellExecute/lp with quoted args, spool dir cleanup |
+| #803 | Configured A4 printer is ignored; invoices go to the Windows default printer | medium | 7.1 | pr-open | #1008 | 9a8cc00 · _resolve_a4_printer routes A4 invoice to configured printer or falls back to default |
+| #879 | The A4 tax invoice PDF is built synchronously on the UI thread inside checkout | medium | 7.1 | pr-open | #1008 | b08a23f/82dff26 · a4_invoice background worker job, eager relationship loading, queue via _print_a4_invoice in print_transaction |
+| #731 | Verify report printing from the background thread on real Windows printers | medium | 7.1 | pr-open (ready-for-human) | #1008 | 190d202 · report_print_main_thread_final setting, queued main-thread print fallback, offline/cancel error checks, Windows matrix pending |
 | #840 | Product labels print without a barcode, because python-escpos rejects CODE128… | high | 7.2 | todo | | |
 | #877 | Sinhala/Tamil lines that the builders don't wrap (shop address, customer name… | medium | 7.2 | todo | | |
 | #878 | The receipt's CODE39 invoice barcode is wider than the paper at python-escpos… | medium | 7.2 | todo | | |
@@ -303,8 +303,8 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | Issue | What to verify | Result |
 |---|---|---|
 | #911 | Physical thermal print of duplicate receipt (SalesReceiptBuilder & RefundReceiptBuilder duplicate markers) | pending |
-| #731 | Real printer matrix (58mm, 80mm, A4, Microsoft Print to PDF) with Inventory Valuation & Tax Filing Summary | pending |
+| #731 | Real printer matrix with Inventory Valuation & Tax Filing Summary: <br>• 58 mm thermal: [ ] Sinhala/Tamil [ ] UI responsive [ ] Cancel/offline error<br>• 80 mm thermal: [ ] Sinhala/Tamil [ ] UI responsive [ ] Cancel/offline error<br>• A4 laser/inkjet: [ ] Sinhala/Tamil [ ] UI responsive [ ] Cancel/offline error<br>• Microsoft Print to PDF: [ ] Sinhala/Tamil [ ] UI responsive [ ] Cancel/offline error | pending |
 
 ## Handoff
-Phase 6 complete (PR #1005 merged, SHA a370b2d). All Phase 6 issues closed. Starting Phase 7, Batch 7.1 (Printer selection and output transport: #876, #803, #879, #731) on branch fix/p7-b1-printer-selection-transport.
+Batch 7.1 implemented and verified locally (126 print tests green, full test suite clean). PR #1008 opened for Batch 7.1 (#876, #803, #879, #731). Issue #731 remains open with `ready-for-human` for real Windows printer verification. Batch 7.1 PR awaits human approval and GitHub Actions CI green once billing lock is resolved. Next batch is Batch 7.2 (Thermal barcodes and receipt layout: #840, #877, #878, #908).
 

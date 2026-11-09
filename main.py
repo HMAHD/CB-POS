@@ -293,6 +293,12 @@ def main():
     # Set up file-based error logging
     setup_logging()
     _flush_early_log()
+    try:
+        from cbpos.core.services.printer_service import cleanup_print_spool
+
+        cleanup_print_spool()
+    except Exception as e:
+        logging.getLogger("cbpos.bootstrap").warning("[BOOTSTRAP] Failed to clean up print spool: %s", e)
 
     # Route uncaught exceptions to the log + a crash dialog instead of a
     # stdout that doesn't exist on the packaged (console=False) build.
@@ -402,8 +408,6 @@ def main():
     try:
         needs_db_setup = DatabaseSetupService.needs_setup()
     except DatabaseUnavailableError as e:
-        import logging
-
         from PyQt6.QtWidgets import QMessageBox
 
         from cbpos.i18n import _t

@@ -4,7 +4,7 @@ Provides ALL, BARCODE, CODE, and NAME search capabilities.
 """
 
 import logging
-from typing import Any
+from typing import Any, overload
 
 from sqlalchemy import and_, func, or_, select
 
@@ -35,13 +35,26 @@ class ProductService:
     SEARCH_MODE_NAME = "NAME"
 
     @staticmethod
+    def is_stock_tracked(product: Product) -> bool:
+        """Check if a specific product instance is stock-tracked (not a service or bundle)."""
+        return not bool(product.is_service) and not bool(product.is_composite)
+
+    @overload
+    @staticmethod
+    def stock_tracked(product: None = None) -> Any: ...
+
+    @overload
+    @staticmethod
+    def stock_tracked(product: Product) -> bool: ...
+
+    @staticmethod
     def stock_tracked(product: Product | None = None) -> Any:
         """SQLAlchemy criteria or boolean check matching stock-tracked products (#909).
 
         Excludes service items (is_service=True) and composite bundles (is_composite=True).
         """
         if product is not None:
-            return not bool(product.is_service) and not bool(product.is_composite)
+            return ProductService.is_stock_tracked(product)
         return and_(
             or_(Product.is_service.is_(False), Product.is_service.is_(None)),
             or_(Product.is_composite.is_(False), Product.is_composite.is_(None)),

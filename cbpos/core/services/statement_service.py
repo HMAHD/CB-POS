@@ -71,7 +71,9 @@ class StatementService:
             closing_balance = entries[-1].balance_after
         else:
             # No transactions in period — find the last known balance before start date
-            opening_balance = StatementService._get_balance_before(db, customer_id, start_dt or datetime.min)
+            opening_balance = StatementService._get_balance_before(
+                db, customer_id, start_dt or datetime.min, session=session
+            )
             closing_balance = opening_balance
 
         rows: list[dict[str, Any]] = []
@@ -117,6 +119,6 @@ class StatementService:
         }
 
     @staticmethod
-    def _get_balance_before(db: Database, customer_id: int, date: datetime) -> Decimal:
+    def _get_balance_before(db: Database, customer_id: int, date: datetime, session: Any = None) -> Decimal:
         """Get the last known balance before a given date."""
-        return CustomerCreditService.balance_at(customer_id, date)
+        return CustomerCreditService.balance_at(customer_id, date, session=session)

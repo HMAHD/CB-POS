@@ -49,7 +49,7 @@ def oldest_open_charge(
         elif isinstance(ts, date):
             entry_date = ts
         else:
-            entry_date = date.today()
+            raise ValueError(f"Ledger entry {entry!r} has invalid timestamp: {ts!r}")
 
         if is_charge:
             charge_rem = amt

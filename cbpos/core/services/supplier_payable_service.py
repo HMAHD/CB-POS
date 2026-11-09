@@ -1,6 +1,7 @@
 """Service for managing supplier payables: payments, ledger entries, overdue tracking."""
 
 import logging
+from collections import defaultdict
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
@@ -247,28 +248,35 @@ class SupplierPayableService:
                 .all()
             )
 
+            if not suppliers:
+                return []
+
+            supplier_ids = [s.id for s in suppliers]
+
+            # Batch fetch all ledger entries for active suppliers to avoid N+1 queries (#897)
+            all_entries = (
+                session.query(SupplierLedgerEntry)
+                .filter(SupplierLedgerEntry.supplier_id.in_(supplier_ids))
+                .order_by(SupplierLedgerEntry.timestamp.asc())
+                .all()
+            )
+            entries_by_supplier: dict[int, list[SupplierLedgerEntry]] = defaultdict(list)
+            last_payment_map: dict[int, datetime] = {}
+            for entry in all_entries:
+                entries_by_supplier[entry.supplier_id].append(entry)
+                if entry.entry_type == "PAYMENT":
+                    last_payment_map[entry.supplier_id] = entry.timestamp
+
             results = []
             today = date.today()
 
-            # Pre-fetch latest payment timestamp per supplier to avoid N+1 queries
-            supplier_ids = [s.id for s in suppliers]
-
-            latest_payments_subq = (
-                session.query(
-                    SupplierLedgerEntry.supplier_id,
-                    func.max(SupplierLedgerEntry.timestamp).label("last_payment"),
-                )
-                .filter(
-                    SupplierLedgerEntry.supplier_id.in_(supplier_ids),
-                    SupplierLedgerEntry.entry_type == "PAYMENT",
-                )
-                .group_by(SupplierLedgerEntry.supplier_id)
-                .all()
-            )
-            last_payment_map = {row.supplier_id: row.last_payment for row in latest_payments_subq}
-
             for supplier in suppliers:
-                oldest_charge_date = SupplierPayableService.oldest_unpaid_charge_date(supplier.id)
+                entries = entries_by_supplier.get(supplier.id, [])
+                oldest_charge_date = oldest_open_charge(
+                    entries,
+                    charge_types={"PURCHASE", "ADJUSTMENT"},
+                    credit_types={"PAYMENT", "REFUND", "ADJUSTMENT"},
+                )
                 if oldest_charge_date is None:
                     continue
 
@@ -286,9 +294,6 @@ class SupplierPayableService:
                             "last_payment_date": last_payment_map.get(supplier.id),
                         }
                     )
-
-            results.sort(key=lambda x: x["days_overdue"], reverse=True)
-            return results
 
             results.sort(key=lambda x: x["days_overdue"], reverse=True)
             return results

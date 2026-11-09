@@ -1,6 +1,6 @@
 """Customer statement receipt builder — generates receipt commands for credit statements."""
 
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
@@ -50,10 +50,15 @@ class StatementReceiptBuilder(BaseReceiptBuilder):
 
         # Period
         from_str = period_from.strftime("%Y-%m-%d")
-        if period_to.time() == time.min and period_to > period_from:
-            to_date = (period_to - timedelta(days=1)).date()
+        if isinstance(period_to, datetime):
+            if period_to.time() == time.min and period_to > period_from:
+                to_date = (period_to - timedelta(days=1)).date()
+            else:
+                to_date = period_to.date()
+        elif isinstance(period_to, date):
+            to_date = period_to
         else:
-            to_date = period_to.date()
+            to_date = period_to
         to_str = to_date.strftime("%Y-%m-%d")
 
         period_text = translate_in(

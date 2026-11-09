@@ -555,7 +555,7 @@ class PrintWorker(QThread):
                     # printer, no drawer. Stay silent -- every cash sale
                     # queues one, and nothing waits on it.
                     logger.debug("No receipt printer configured — skipping drawer kick.")
-                    self.job_result.emit(job_id, True, "")
+                    self.job_result.emit(job_id, False, "drawer_skipped:no_printer")
                     continue
                 logger.warning("No receipt printer configured — skipping %s job.", job_type)
                 err_msg = printer_not_configured_message()
@@ -564,7 +564,7 @@ class PrintWorker(QThread):
                 continue
 
             if job_type == "kick_drawer" and not self._drawer_wanted(data):
-                self.job_result.emit(job_id, True, "")
+                self.job_result.emit(job_id, False, "drawer_skipped:not_cash")
                 continue
 
             try:

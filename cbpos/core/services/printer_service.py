@@ -184,6 +184,19 @@ class PrinterService:
         return None
 
     @staticmethod
+    def _generate_and_send_a4(sale: Sale, doc_num: str, a4_printer: str) -> None:
+        """Helper to build PDF and send to A4 printer with unified error annotation."""
+        cleanup_print_spool()
+        pdf_path = PrinterService.get_spool_path(doc_num)
+        try:
+            InvoiceService.generate_pdf(sale, str(pdf_path))
+            logger.info("[PrinterService] Worker generated A4 invoice: %s", pdf_path)
+            PrinterService._send_pdf_to_printer(str(pdf_path), a4_printer)
+        except Exception as exc:
+            exc.document_number = doc_num
+            raise
+
+    @staticmethod
     def process_a4_invoice_job(sale_or_id: Any) -> None:
         """Worker-side execution of an A4 Tax Invoice job (#879).
 
@@ -199,14 +212,7 @@ class PrinterService:
         if isinstance(sale_or_id, Sale):
             sale = sale_or_id
             doc_num = sale.document_number or f"REC-{sale.id}"
-            pdf_path = PrinterService.get_spool_path(doc_num)
-            try:
-                InvoiceService.generate_pdf(sale, str(pdf_path))
-                logger.info("[PrinterService] Worker generated A4 invoice: %s", pdf_path)
-                PrinterService._send_pdf_to_printer(str(pdf_path), a4_printer)
-            except Exception as exc:
-                exc.document_number = doc_num
-                raise
+            PrinterService._generate_and_send_a4(sale, doc_num, a4_printer)
             return
 
         from sqlalchemy.orm import joinedload, selectinload
@@ -231,14 +237,7 @@ class PrinterService:
                 raise err
 
             doc_num = sale.document_number or f"REC-{sale.id}"
-            pdf_path = PrinterService.get_spool_path(doc_num)
-            try:
-                InvoiceService.generate_pdf(sale, str(pdf_path))
-                logger.info("[PrinterService] Worker generated A4 invoice: %s", pdf_path)
-                PrinterService._send_pdf_to_printer(str(pdf_path), a4_printer)
-            except Exception as exc:
-                exc.document_number = doc_num
-                raise
+            PrinterService._generate_and_send_a4(sale, doc_num, a4_printer)
 
     @staticmethod
     def _print_a4_invoice(sale: Sale) -> None:
@@ -263,11 +262,13 @@ class PrinterService:
 
     @staticmethod
     def _validate_printer_name(printer_name: str | None) -> None:
-        """Validate printer name: reject control characters and verify membership on Windows."""
+        """Validate printer name: reject control characters, quotes, and verify membership on Windows."""
         if not printer_name:
             return
         if any(ord(c) < 32 for c in printer_name):
             raise ValueError("Invalid printer name: contains control characters")
+        if '"' in printer_name:
+            raise ValueError("Invalid printer name: contains quotes")
 
         if sys.platform == "win32" or "win32print" in sys.modules:
             try:
@@ -292,8 +293,10 @@ class PrinterService:
 
     @staticmethod
     def _validate_name(value: str, label: str) -> str:
-        """Legacy helper: validate a value contains no control characters."""
+        """Legacy helper: validate a value contains no control characters or quotes."""
         if any(ord(c) < 32 for c in value):
+            raise ValueError(f"Invalid {label}: contains disallowed characters")
+        if '"' in value:
             raise ValueError(f"Invalid {label}: contains disallowed characters")
         return value
 
@@ -335,13 +338,17 @@ class PrinterService:
                     logger.info("[PrinterService] Sent PDF to printer via ShellExecute: %s", printer_name or "default")
                     return
             except ImportError:
-                pass
+                if sys.platform == "win32":
+                    raise RuntimeError("Windows printing requires pywin32 (win32api)")
             except Exception as e:
                 err_str = str(e).lower()
                 winerror = getattr(e, "winerror", None)
                 if winerror == 31 or "no application is associated" in err_str or "se_err_noassoc" in err_str:
                     raise RuntimeError(_t("printer.no_pdf_handler")) from e
                 raise
+
+        if sys.platform == "win32":
+            raise RuntimeError("Windows printing failed: ShellExecute not available")
 
         # Non-Windows fallback (lp)
         cmd = ["lp"]

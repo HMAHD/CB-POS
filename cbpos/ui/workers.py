@@ -535,6 +535,17 @@ def report_print_html(df: pd.DataFrame, title: str, generated_on_label: str) -> 
     )
 
 
+def _parse_bool(val: Any) -> bool:
+    """Safely parse boolean configuration values."""
+    if isinstance(val, bool):
+        return val
+    if isinstance(val, (int, float)):
+        return bool(val)
+    if isinstance(val, str):
+        return val.strip().lower() in ("true", "1", "yes", "on")
+    return bool(val)
+
+
 class ReportPrintWorker(QThread):
     """Lays out a report and prints it in a background thread (#643, #731).
 
@@ -573,12 +584,13 @@ class ReportPrintWorker(QThread):
         if main_thread_final is None:
             from cbpos.core.services.config_service import ConfigService
 
-            self.main_thread_final = bool(ConfigService.get("report_print_main_thread_final"))
+            self.main_thread_final = _parse_bool(ConfigService.get("report_print_main_thread_final"))
         else:
-            self.main_thread_final = bool(main_thread_final)
+            self.main_thread_final = _parse_bool(main_thread_final)
 
         self._request_main_thread_print.connect(self._do_main_thread_print)
         self._main_thread_done = threading.Event()
+        self._main_thread_failed = False
         self._main_thread_err: str | None = None
         self._doc: QTextDocument | None = None
 
@@ -596,12 +608,14 @@ class ReportPrintWorker(QThread):
             if self.main_thread_final:
                 self._doc = document
                 document.moveToThread(self.thread())
+                self._main_thread_failed = False
                 self._main_thread_err = None
                 self._main_thread_done.clear()
                 self._request_main_thread_print.emit(document)
-                self._main_thread_done.wait()
-                if self._main_thread_err:
-                    raise RuntimeError(self._main_thread_err)
+                if not self._main_thread_done.wait(timeout=30):
+                    raise RuntimeError("Timed out waiting for main-thread report printing")
+                if self._main_thread_failed:
+                    raise RuntimeError(self._main_thread_err or "Main thread report printing failed")
             else:
                 document.print(self.printer)
                 if hasattr(self.printer, "printerState") and self.printer.printerState() in (
@@ -628,7 +642,8 @@ class ReportPrintWorker(QThread):
             ):
                 raise RuntimeError(f"printer state {self.printer.printerState().name}")
         except Exception as e:
-            self._main_thread_err = str(e)
+            self._main_thread_failed = True
+            self._main_thread_err = str(e) or type(e).__name__
         finally:
             self._main_thread_done.set()
 

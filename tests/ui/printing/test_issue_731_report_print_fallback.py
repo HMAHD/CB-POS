@@ -39,7 +39,7 @@ def _make_pdf_printer(path) -> QPrinter:
 
 
 class TestIssue731ReportPrintFallback:
-    def test_background_mode_prints_on_worker_thread(self, qtbot, tmp_path):
+    def test_background_mode_prints_on_worker_thread(self, qtbot, tmp_path, monkeypatch):
         out = tmp_path / "bg_report.pdf"
         printer = _make_pdf_printer(out)
         worker = ReportPrintWorker(
@@ -50,20 +50,19 @@ class TestIssue731ReportPrintFallback:
             main_thread_final=False,
         )
 
-        print_threads = []
-        orig_print = worker.printer
+        from PyQt6.QtGui import QTextDocument
 
-        # Wrap to record thread during print execution
-        def _check_print(painter):
+        print_threads = []
+        orig_print = QTextDocument.print
+
+        def _check_print(doc, p):
             print_threads.append(threading.current_thread())
-            return orig_print
+            return orig_print(doc, p)
+
+        monkeypatch.setattr(QTextDocument, "print", _check_print)
 
         worker.result_received = False
-
-        def _on_result():
-            worker.result_received = True
-
-        worker.result.connect(_on_result)
+        worker.result.connect(lambda: setattr(worker, "result_received", True))
 
         with qtbot.waitSignal(worker.result, timeout=10000):
             worker.start()
@@ -72,10 +71,22 @@ class TestIssue731ReportPrintFallback:
         assert worker.result_received
         assert out.exists()
         assert out.stat().st_size > 0
+        assert len(print_threads) == 1
+        assert print_threads[0] != threading.main_thread()
 
-    def test_main_thread_fallback_prints_on_main_thread(self, qtbot, tmp_path):
+    def test_main_thread_fallback_prints_on_main_thread(self, qtbot, tmp_path, monkeypatch):
         out = tmp_path / "main_report.pdf"
         printer = _make_pdf_printer(out)
+
+        print_thread_ids = []
+        orig_do_main = ReportPrintWorker._do_main_thread_print
+
+        def _spy_main_thread_print(self, doc):
+            print_thread_ids.append(threading.get_ident())
+            return orig_do_main(self, doc)
+
+        monkeypatch.setattr(ReportPrintWorker, "_do_main_thread_print", _spy_main_thread_print)
+
         worker = ReportPrintWorker(
             printer,
             _DF_TRILINGUAL,
@@ -84,21 +95,8 @@ class TestIssue731ReportPrintFallback:
             main_thread_final=True,
         )
 
-        print_thread_ids = []
-        orig_do_main = worker._do_main_thread_print
-
-        def _spy_main_thread_print(doc):
-            print_thread_ids.append(threading.get_ident())
-            orig_do_main(doc)
-
-        worker._request_main_thread_print.disconnect()
-        worker._request_main_thread_print.connect(_spy_main_thread_print)
         worker.result_received = False
-
-        def _on_result():
-            worker.result_received = True
-
-        worker.result.connect(_on_result)
+        worker.result.connect(lambda: setattr(worker, "result_received", True))
 
         with qtbot.waitSignal(worker.result, timeout=10000):
             worker.start()
@@ -114,13 +112,15 @@ class TestIssue731ReportPrintFallback:
         out = tmp_path / "cfg.pdf"
         printer = _make_pdf_printer(out)
 
-        with patch.object(ConfigService, "get", return_value=True):
-            worker_true = ReportPrintWorker(printer, _DF_TRILINGUAL, "Report", "Gen:")
-            assert worker_true.main_thread_final is True
+        for true_val in (True, "true", "True", "1", "yes"):
+            with patch.object(ConfigService, "get", return_value=true_val):
+                worker_true = ReportPrintWorker(printer, _DF_TRILINGUAL, "Report", "Gen:")
+                assert worker_true.main_thread_final is True
 
-        with patch.object(ConfigService, "get", return_value=False):
-            worker_false = ReportPrintWorker(printer, _DF_TRILINGUAL, "Report", "Gen:")
-            assert worker_false.main_thread_final is False
+        for false_val in (False, "false", "False", "0", "no", None):
+            with patch.object(ConfigService, "get", return_value=false_val):
+                worker_false = ReportPrintWorker(printer, _DF_TRILINGUAL, "Report", "Gen:")
+                assert worker_false.main_thread_final is False
 
     def test_invalid_printer_emits_error_in_background_mode(self, qtbot, tmp_path):
         out = tmp_path / "invalid_bg.pdf"
@@ -199,3 +199,60 @@ class TestIssue731ReportPrintFallback:
         assert len(results) == 0
         assert len(errors) == 1
         assert "printer state error" in errors[0].lower()
+
+    def test_printer_aborted_or_cancelled_emits_error(self, qtbot, tmp_path):
+        out = tmp_path / "cancel_state.pdf"
+        printer = _make_pdf_printer(out)
+        printer.printerState = MagicMock(return_value=QPrinter.PrinterState.Aborted)
+
+        worker = ReportPrintWorker(
+            printer,
+            _DF_TRILINGUAL,
+            "Report",
+            "Gen:",
+            main_thread_final=False,
+        )
+
+        results = []
+        errors = []
+        worker.result.connect(lambda: results.append(True))
+        worker.error.connect(errors.append)
+
+        with qtbot.waitSignal(worker.error, timeout=10000):
+            worker.start()
+        worker.wait()
+
+        assert len(results) == 0
+        assert len(errors) == 1
+        assert "printer state aborted" in errors[0].lower()
+
+    def test_main_thread_empty_exception_still_emits_error(self, qtbot, tmp_path, monkeypatch):
+        from PyQt6.QtGui import QTextDocument
+
+        out = tmp_path / "empty_exc.pdf"
+        printer = _make_pdf_printer(out)
+
+        def _raise_empty_exc(doc, p):
+            raise RuntimeError()
+
+        monkeypatch.setattr(QTextDocument, "print", _raise_empty_exc)
+
+        worker = ReportPrintWorker(
+            printer,
+            _DF_TRILINGUAL,
+            "Report",
+            "Gen:",
+            main_thread_final=True,
+        )
+
+        results = []
+        errors = []
+        worker.result.connect(lambda: results.append(True))
+        worker.error.connect(errors.append)
+
+        with qtbot.waitSignal(worker.error, timeout=10000):
+            worker.start()
+        worker.wait()
+
+        assert len(results) == 0
+        assert len(errors) == 1

@@ -1,4 +1,7 @@
-"""Tests for printer name validation, ShellExecute printing, spool directory, and A4 routing (#876, #803)."""
+"""Tests for printer name validation, ShellExecute printing, and spool directory (#876).
+
+Note: A4 printer routing (#803) is covered in test_issue_803_configured_printer.py.
+"""
 
 import sys
 import time
@@ -41,6 +44,11 @@ def test_issue_876_names_with_parentheses_accepted_when_installed(fake_win32):
 def test_issue_876_name_not_installed_rejected(fake_win32):
     with pytest.raises(ValueError, match="isn't installed"):
         PrinterService._validate_printer_name("Nonexistent Printer (PCL 6)")
+
+
+def test_issue_876_quotes_in_printer_name_rejected():
+    with pytest.raises(ValueError, match="contains quotes"):
+        PrinterService._validate_printer_name('Printer "Injection" Name')
 
 
 def test_issue_876_control_chars_rejected():

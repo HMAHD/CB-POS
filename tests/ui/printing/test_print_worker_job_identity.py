@@ -94,4 +94,18 @@ def test_job_result_emitted_for_skipped_drawer_kick(qtbot, worker, printer, monk
     job_id = worker.add_job("kick_drawer", ["CARD"])
     qtbot.waitUntil(lambda: len(results) == 1, timeout=5000)
 
-    assert results == [(job_id, True, "")]
+    assert results == [(job_id, False, "drawer_skipped:not_cash")]
+
+
+def test_job_result_emitted_for_skipped_drawer_kick_no_printer(qtbot, monkeypatch):
+    w = PrintWorker(printer=None)
+    monkeypatch.setattr("cbpos.infrastructure.hardware.escpos_driver.receipt_printer_configured", lambda: False)
+    results = []
+    w.job_result.connect(lambda jid, ok, msg: results.append((jid, ok, msg)))
+
+    job_id = w.add_job("kick_drawer", ["CASH"])
+    qtbot.waitUntil(lambda: len(results) == 1, timeout=5000)
+
+    assert results == [(job_id, False, "drawer_skipped:no_printer")]
+    w.stop()
+    w.wait(5000)

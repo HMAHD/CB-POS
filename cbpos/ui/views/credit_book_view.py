@@ -1,5 +1,4 @@
 import logging
-from datetime import datetime
 from decimal import Decimal
 
 from PyQt6.QtCore import QDate, QSize, Qt
@@ -25,6 +24,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.customer_credit_service import CustomerCreditService
 from cbpos.core.services.customer_service import CustomerService
+from cbpos.core.utils.date_ranges import range_for
 from cbpos.core.utils.formatters import format_currency, format_date, format_datetime, format_number, money_header
 from cbpos.i18n import _t, register_language_callback, t_or
 from cbpos.ui.components.activation import Activatable
@@ -893,18 +893,9 @@ class CreditBookView(QWidget, Activatable):
             return
 
         self._showing_all_dates = False
-        date_from = datetime(
-            self.date_from.date().year(),
-            self.date_from.date().month(),
-            self.date_from.date().day(),
-        )
-        date_to = datetime(
-            self.date_to.date().year(),
-            self.date_to.date().month(),
-            self.date_to.date().day(),
-            23,
-            59,
-            59,
+        date_from, date_to = range_for(
+            self.date_from.date().toPyDate(),
+            self.date_to.date().toPyDate(),
         )
 
         entries = CustomerCreditService.get_ledger(

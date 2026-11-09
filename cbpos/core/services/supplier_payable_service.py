@@ -9,6 +9,7 @@ from sqlalchemy import func
 
 from cbpos.core.database import Database
 from cbpos.core.models import Supplier, SupplierLedgerEntry, SupplierPayment
+from cbpos.core.utils.date_ranges import range_for
 
 logger = logging.getLogger(__name__)
 
@@ -198,14 +199,15 @@ class SupplierPayableService:
         Returns:
             List of SupplierLedgerEntry ordered by timestamp.
         """
+        start_dt, end_dt = range_for(date_from, date_to)
         db = Database()
         with db.get_session() as session:
             query = session.query(SupplierLedgerEntry).filter(SupplierLedgerEntry.supplier_id == supplier_id)
 
-            if date_from:
-                query = query.filter(SupplierLedgerEntry.timestamp >= date_from)
-            if date_to:
-                query = query.filter(SupplierLedgerEntry.timestamp <= date_to)
+            if start_dt:
+                query = query.filter(SupplierLedgerEntry.timestamp >= start_dt)
+            if end_dt:
+                query = query.filter(SupplierLedgerEntry.timestamp < end_dt)
 
             entries = query.order_by(SupplierLedgerEntry.timestamp.asc()).all()
             for entry in entries:

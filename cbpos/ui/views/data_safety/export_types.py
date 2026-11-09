@@ -6,11 +6,12 @@ format. Adding an export means adding an entry here, nothing else.
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date, datetime, time
+from datetime import date
 
 import pandas as pd
 
 from cbpos.core.services.data_export_service import DataExportService
+from cbpos.core.utils.date_ranges import range_for
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,10 +41,9 @@ class ExportFormat:
 
 
 def _fetch_sales(start: date, end: date) -> pd.DataFrame:
-    """Sales from the start of *start* to the last second of *end*."""
-    return DataExportService.get_sales_dataframe(
-        datetime.combine(start, time.min), datetime.combine(end, time(23, 59, 59))
-    )
+    """Sales from the start of *start* to the end of *end* (exclusive next-day start)."""
+    start_dt, end_dt = range_for(start, end)
+    return DataExportService.get_sales_dataframe(start_dt, end_dt)
 
 
 # Display order is the dict order. Fetchers look DataExportService up at

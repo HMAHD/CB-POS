@@ -9,6 +9,7 @@ from cbpos.core.models import (
     Sale,
     SaleItem,
 )
+from cbpos.core.utils.date_ranges import range_for
 from cbpos.core.utils.formatters import escape_like
 
 logger = logging.getLogger(__name__)
@@ -64,13 +65,14 @@ class SaleQueryService:
         Returns:
             List of detached Sale objects with eager-loaded relationships
         """
+        start_dt, end_dt = range_for(from_date, to_date)
         db = Database()
         with db.get_session() as session:
             query = session.query(Sale)
-            if from_date is not None:
-                query = query.filter(Sale.date >= from_date)
-            if to_date is not None:
-                query = query.filter(Sale.date <= to_date)
+            if start_dt is not None:
+                query = query.filter(Sale.date >= start_dt)
+            if end_dt is not None:
+                query = query.filter(Sale.date < end_dt)
 
             if search_term:
                 term = f"%{escape_like(search_term)}%"

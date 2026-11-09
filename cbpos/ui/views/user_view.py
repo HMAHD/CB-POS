@@ -1,7 +1,5 @@
 """User management view: accounts, roles, permissions, and activity log."""
 
-from datetime import datetime, time
-
 from PyQt6.QtCore import QDate
 from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
@@ -21,6 +19,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.user_service import UserService
 from cbpos.core.utils.audit_format import format_audit_action, format_audit_details, format_log_time
+from cbpos.core.utils.date_ranges import range_for
 from cbpos.core.utils.display_labels import display_role_name, event_type_label
 from cbpos.core.utils.terminal_guard import catalog_is_read_only
 from cbpos.i18n import _t, register_language_callback
@@ -372,8 +371,10 @@ class UserView(QWidget, Activatable):
             self.log_terminal_filter.setCurrentIndex(idx if idx != -1 else 0)
             self.log_terminal_filter.blockSignals(False)
 
-        date_from = datetime.combine(self.log_date_from.date().toPyDate(), time.min)
-        date_to = datetime.combine(self.log_date_to.date().toPyDate(), time.max)
+        date_from, date_to = range_for(
+            self.log_date_from.date().toPyDate(),
+            self.log_date_to.date().toPyDate(),
+        )
 
         logs = UserService.get_recent_activity(
             event_type=self.log_event_filter.currentData(),

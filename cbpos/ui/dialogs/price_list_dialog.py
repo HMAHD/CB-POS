@@ -1,7 +1,5 @@
 """Dialog for creating or editing a price list's name and validity dates."""
 
-from datetime import datetime
-
 from PyQt6.QtCore import QDate, Qt
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -14,6 +12,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
+from cbpos.core.utils.date_ranges import range_for
 from cbpos.i18n import _t
 from cbpos.ui.widgets.dialog_footer import make_dialog_footer
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
@@ -119,6 +118,5 @@ class PriceListDialog(QDialog):
 
     def get_data(self):
         """Return the entered (name, start, end, is_active)."""
-        start = datetime.combine(self.start_date.date().toPyDate(), datetime.min.time())
-        end = datetime.combine(self.end_date.date().toPyDate(), datetime.max.time())
+        start, end = range_for(self.start_date.date().toPyDate(), self.end_date.date().toPyDate())
         return self.name_input.text().strip(), start, end, self.active_check.isChecked()

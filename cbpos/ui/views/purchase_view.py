@@ -37,6 +37,7 @@ from cbpos.core.services.purchase_order_service import PurchaseOrderService
 from cbpos.core.services.purchase_service import GrnLine, GrnRequest, PurchaseService
 from cbpos.core.services.supplier_payable_service import SupplierPayableService
 from cbpos.core.services.supplier_service import SupplierService
+from cbpos.core.utils.date_ranges import range_for
 from cbpos.core.utils.error_messages import translate_error
 from cbpos.core.utils.formatters import (
     format_currency,
@@ -684,11 +685,9 @@ class PurchaseView(QWidget, Activatable):
         supplier_id = self.history_supplier_combo.currentData()
         status = self.history_status_combo.currentData()
 
-        qd_from = self.history_date_from.date()
-        date_from = datetime(qd_from.year(), qd_from.month(), qd_from.day())
-
-        qd_to = self.history_date_to.date()
-        date_to = datetime(qd_to.year(), qd_to.month(), qd_to.day(), 23, 59, 59)
+        qd_from = self.history_date_from.date().toPyDate()
+        qd_to = self.history_date_to.date().toPyDate()
+        date_from, date_to = range_for(qd_from, qd_to)
 
         purchases = PurchaseService.get_all_purchases(
             status=status,
@@ -1507,18 +1506,9 @@ class PurchaseView(QWidget, Activatable):
         if not self.selected_payable_supplier:
             return
 
-        date_from = datetime(
-            self.pay_date_from.date().year(),
-            self.pay_date_from.date().month(),
-            self.pay_date_from.date().day(),
-        )
-        date_to = datetime(
-            self.pay_date_to.date().year(),
-            self.pay_date_to.date().month(),
-            self.pay_date_to.date().day(),
-            23,
-            59,
-            59,
+        date_from, date_to = range_for(
+            self.pay_date_from.date().toPyDate(),
+            self.pay_date_to.date().toPyDate(),
         )
 
         entries = SupplierPayableService.get_ledger(

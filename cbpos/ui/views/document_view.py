@@ -1,7 +1,7 @@
 import contextlib
 import html
 import logging
-from datetime import date, datetime
+from datetime import date
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
@@ -34,6 +34,7 @@ from cbpos.core.services.refund_service import RefundService
 from cbpos.core.services.sale_query_service import SaleQueryService
 from cbpos.core.services.tax_service import TaxService
 from cbpos.core.services.transaction_service import TransactionService
+from cbpos.core.utils.date_ranges import range_for
 from cbpos.core.utils.error_messages import translate_error
 from cbpos.core.utils.formatters import (
     format_currency,
@@ -523,11 +524,12 @@ class DocumentBrowserView(QWidget, Activatable):
 
         search = self.search_input.text().strip() or None
 
+        start_dt, end_dt = range_for(from_date, to_date)
         result = DocumentBrowserService.search_documents(
             doc_type=doc_type,
             status=status,
-            date_from=datetime.combine(from_date, datetime.min.time()),
-            date_to=datetime.combine(to_date, datetime.max.time()),
+            date_from=start_dt,
+            date_to=end_dt,
             search_term=search,
             page=self.current_page,
             per_page=50,

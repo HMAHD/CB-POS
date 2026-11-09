@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from cbpos.core.constants.status import PaymentMethodKind, PaymentMethodType
 from cbpos.core.database import Database
 from cbpos.core.models import AuditLog, Customer, CustomerLedgerEntry, CustomerPayment, Sale, SalePayment, User
+from cbpos.core.utils.date_ranges import range_for
 from cbpos.core.utils.money import round_money
 
 logger = logging.getLogger(__name__)
@@ -440,14 +441,15 @@ class CustomerCreditService:
         Returns:
             List of CustomerLedgerEntry ordered by timestamp.
         """
+        start_dt, end_dt = range_for(date_from, date_to)
         db = Database()
         with db.get_session() as session:
             query = session.query(CustomerLedgerEntry).filter(CustomerLedgerEntry.customer_id == customer_id)
 
-            if date_from:
-                query = query.filter(CustomerLedgerEntry.timestamp >= date_from)
-            if date_to:
-                query = query.filter(CustomerLedgerEntry.timestamp <= date_to)
+            if start_dt:
+                query = query.filter(CustomerLedgerEntry.timestamp >= start_dt)
+            if end_dt:
+                query = query.filter(CustomerLedgerEntry.timestamp < end_dt)
 
             entries = []
             for entry in query.order_by(CustomerLedgerEntry.timestamp.asc()).yield_per(500):

@@ -32,6 +32,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.data_export_service import DataExportService
 from cbpos.core.services.export_service import ExportService
+from cbpos.core.utils.date_ranges import range_for
 from cbpos.core.utils.error_messages import translate_error
 from cbpos.i18n import _t
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
@@ -191,8 +192,7 @@ class DataExportDialog(QDialog):
             if self.chk_sales.isChecked():
                 start = self.date_start.date().toPyDate()
                 end = self.date_end.date().toPyDate()
-                start_dt = datetime(start.year, start.month, start.day, 0, 0, 0)
-                end_dt = datetime(end.year, end.month, end.day, 23, 59, 59)
+                start_dt, end_dt = range_for(start, end)
                 df = DataExportService.get_sales_dataframe(start_dt, end_dt)
                 filepath = f"{output_dir}/sales_{timestamp}{ext}"
                 self._write_export(export_svc, df, filepath, _t("data_export.sales"), fmt)

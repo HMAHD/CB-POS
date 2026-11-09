@@ -8,41 +8,21 @@ Provides reusable query criteria:
 - voided(): voided documents (status == VOID)
 """
 
-from datetime import date, datetime, time, timedelta
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import and_, or_
 
 from cbpos.core.constants.status import DocumentStatus
 from cbpos.core.models import Sale
+from cbpos.core.utils.date_ranges import range_for
 
 
 def date_bounds(date_range: dict[str, Any] | None) -> tuple[datetime | None, datetime | None]:
     """Resolve start/end date filter to half-open datetime bounds [start, end)."""
     if not date_range:
         return None, None
-    raw_start = date_range.get("start")
-    raw_end = date_range.get("end")
-
-    start_dt = None
-    if raw_start:
-        if isinstance(raw_start, datetime):
-            start_dt = raw_start
-        elif isinstance(raw_start, date):
-            start_dt = datetime.combine(raw_start, time.min)
-        elif isinstance(raw_start, str):
-            start_dt = datetime.combine(date.fromisoformat(raw_start), time.min)
-
-    end_dt = None
-    if raw_end:
-        if isinstance(raw_end, datetime):
-            end_dt = raw_end
-        elif isinstance(raw_end, date):
-            end_dt = datetime.combine(raw_end + timedelta(days=1), time.min)
-        elif isinstance(raw_end, str):
-            end_dt = datetime.combine(date.fromisoformat(raw_end) + timedelta(days=1), time.min)
-
-    return start_dt, end_dt
+    return range_for(date_range.get("start"), date_range.get("end"))
 
 
 def completed_sales() -> Any:

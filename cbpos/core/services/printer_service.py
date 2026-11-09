@@ -176,6 +176,14 @@ class PrinterService:
         return spool_dir / f"invoice_{slug}_{token}.pdf"
 
     @staticmethod
+    def _resolve_a4_printer() -> str | None:
+        """Return the configured A4 printer name, or None if none configured."""
+        name = ConfigService.get("a4_printer_name")
+        if name and str(name).strip():
+            return str(name).strip()
+        return None
+
+    @staticmethod
     def _print_a4_invoice(sale: Sale) -> None:
         """Generate and print A4 Tax Invoice for B2B customers.
 
@@ -187,7 +195,7 @@ class PrinterService:
         Args:
             sale: The sale transaction.
         """
-        a4_printer = ConfigService.get("a4_printer_name")
+        a4_printer = PrinterService._resolve_a4_printer()
         if not a4_printer:
             logger.warning("[PrinterService] A4 printer not configured. Skipping invoice print.")
             return

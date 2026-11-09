@@ -71,6 +71,9 @@ Format: `D<n> — <date> — #<issue> — <decision>`. New decisions go at the b
 
 **D25 — 2026-11-08 — #831 — Independent SSCL registration and presets.** `sscl_registered` is independent of `vat_registered` (defaulting on config load to current `vat_registered` if unset). Support turnover presets: RETAIL (50%), MANUFACTURER (85%), DISTRIBUTOR (25%), CUSTOM. SSCL base is VAT-exclusive turnover: `amount / (1 + vat_rate/100)` for VAT-taxable lines in VAT-registered shops; full `amount` for lines where no VAT was charged (VAT-exempt or shop not VAT-registered); 0.00 for SSCL-exempt lines. SSCL is removed from customer receipts and invoices, shown in tax reports only.
 
+**D26 — 2026-11-09 — #810, #831 — Accountant review packet for Tax Filing Summary and Profit & Loss.** Tax Filing Summary and P&L report outputs for the reconciliation day (incorporating VAT/SSCL combinations, voids, partial/full refunds, discounts and loyalty redemptions) are exported and reconciled. The accountant review packet is attached to the PR with the reconciliation artifacts confirming exact tie-out across gross revenue, net revenue, input VAT, output VAT, SSCL liable turnover, and net cash flow.
+
+
 
 
 

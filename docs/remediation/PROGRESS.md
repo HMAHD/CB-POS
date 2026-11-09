@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 6 · Batch: 6.4 · Branch: fix/p6-b4-aging-statements-coverage · PR: none · Last session: 2026-11-09
+- Phase: 6 · Batch: 6.4 · Branch: fix/p6-b4-aging-statements-coverage · PR: #1005 (ready) · Last session: 2026-11-09
 
 ## Issues
 
@@ -155,12 +155,12 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #843 | Refunds never appear in the Void/Refund report | high | 6.3 | done | #1004 | 4148a70 · Report queries or_(voided(), refund_documents()), shows negative refund amount, original receipt, approver from AuditLog, Part/Full scope, pure Decimal |
 | #844 | Cash Flow report adds refunds back (net too high by 2× refunds) | high | 6.3 | done | #1004 | dad0755 · Cash flow from SalePayment grouped by PaymentMethodKind, legacy cash-back attributed to CASH, drawer movements reconciled, Decimal math |
 | #845 | Daily Sales, Cashier Performance, Sales by Category, Dashboard and the auto-e… | high | 6.3 | done | #1004 | dccec60 · Unified sale_filters across Daily Sales, Cashier, Category, Dashboard, and Scheduler; txn_count counts non-refunds only; voids excluded |
-| #883 | Overdue Customers report resets the clock on every new credit sale | medium | 6.4 | in-progress | | 6ae5bd3 · cbpos/core/utils/aging.py oldest_open_charge FIFO matching, oldest_unpaid_charge_date on CustomerCreditService, float removed from overdue_report |
-| #897 | "Overdue suppliers" measures days since the last ledger entry of any type, so… | medium | 6.4 | in-progress | | 812c7f6 · SupplierPayableService.oldest_unpaid_charge_date via shared oldest_open_charge, FIFO aging in get_overdue_suppliers |
-| #907 | The thermal customer statement shows today's debt as both opening and closing… | low | 6.4 | in-progress | | CustomerCreditService.balance_at historical lookup, StatementReceiptBuilder opening/closing derived from period facts, statement.period_range i18n |
-| #909 | Low Stock report and dashboard count list every service item and bundle | low | 6.4 | in-progress | | ProductService.stock_tracked helper excluding services & bundles applied to LowStockReport, DashboardService, StockService, and InventoryService |
-| #910 | Sales by Category and the dashboard category chart drop uncategorized products | low | 6.4 | in-progress | | outerjoin(Category) in SalesByCategoryReport and DashboardService, None returned by service and reports.uncategorized translated at presentation |
-| #912 | Date filters ending at 23:59:59 or "midnight − 1s" drop sales in the last sec… | low | 6.4 | in-progress | | e7733aa · cbpos/core/utils/date_ranges.py with day_range/range_for, half-open date boundaries across services & UI, 23:59:59 & timedelta(seconds=1) eliminated |
+| #883 | Overdue Customers report resets the clock on every new credit sale | medium | 6.4 | pr-open | #1005 | 6ae5bd3 · cbpos/core/utils/aging.py oldest_open_charge FIFO matching, oldest_unpaid_charge_date on CustomerCreditService, float removed from overdue_report |
+| #897 | "Overdue suppliers" measures days since the last ledger entry of any type, so… | medium | 6.4 | pr-open | #1005 | 812c7f6 · SupplierPayableService.oldest_unpaid_charge_date via shared oldest_open_charge, FIFO aging in get_overdue_suppliers |
+| #907 | The thermal customer statement shows today's debt as both opening and closing… | low | 6.4 | pr-open | #1005 | f7ee132 · CustomerCreditService.balance_at historical lookup, StatementReceiptBuilder opening/closing derived from period facts, statement.period_range i18n |
+| #909 | Low Stock report and dashboard count list every service item and bundle | low | 6.4 | pr-open | #1005 | b09b500 · ProductService.stock_tracked helper excluding services & bundles applied to LowStockReport, DashboardService, StockService, and InventoryService |
+| #910 | Sales by Category and the dashboard category chart drop uncategorized products | low | 6.4 | pr-open | #1005 | aabf22f · outerjoin(Category) in SalesByCategoryReport and DashboardService, None returned by service and reports.uncategorized translated at presentation |
+| #912 | Date filters ending at 23:59:59 or "midnight − 1s" drop sales in the last sec… | low | 6.4 | pr-open | #1005 | e7733aa · cbpos/core/utils/date_ranges.py with day_range/range_for, half-open date boundaries across services & UI, 23:59:59 & timedelta(seconds=1) eliminated |
 
 ### Phase 7 — [spec](phases/phase-07-printing-i18n-hardware.md)
 
@@ -278,7 +278,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | Q# | Issue | Question | Asked | Answer → D# |
 |---|---|---|---|---|
 | Q1 | #914 | D11's unique index on `refund_of_sale_id` would block partial refunds (D5). Replace it with row locks plus a CHECK on `sale_items.refunded_qty`? (Recommended: yes; record as the next free D-number) | 2026-10-28 (plan) | 2026-11-04 → D23 |
-| Q2 | #812 | Partial-refund VAT proportional to value now, switching to line-level once #797 stores the per-line taxable flag? (Recommended: yes) | 2026-10-28 (plan) | 2026-11-05 → D24 |
+| Q2 | #812 | Partial-refund VAT proportional to value now, switching to line-level once #797 stores the per-line taxable flag? (Recommended: yes) | 2026-10-28 (plan) | 2026-11-05 → D24 (resolved in Phase 6.1 by #797) |
 | Q3 | #817 | D8 says GPLv3 (publish source) but product notes say free + closed code. Choose GPLv3 / PyQt6 commercial licence / PySide6 migration (lawyer review) | 2026-10-28 (plan) | |
 | Q4 | #831 | VAT-exempt items: SSCL on full MRP unless the category is also SSCL-exempt? (Recommended: yes, independent flags; accountant to confirm) | 2026-10-28 (plan) | 2026-11-08 → D25 |
 
@@ -305,5 +305,5 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #911 | Physical thermal print of duplicate receipt (SalesReceiptBuilder & RefundReceiptBuilder duplicate markers) | pending |
 
 ## Handoff
-Phase 6, Batch 6.3 (Profit, cash and sales report semantics: #798, #843, #844, #845) PR #1004 merged into main at 503ba8f; all 4 issues verified closed on GitHub. GitHub Actions billing lock flagged as external infrastructure blocker. Starting Phase 6, Batch 6.4 (Aging, statements and coverage: #912, #883, #897, #907, #909, #910) on branch fix/p6-b4-aging-statements-coverage.
+Phase 6, Batch 6.4 (Aging, statements and coverage: #912, #883, #897, #907, #909, #910) completed on branch fix/p6-b4-aging-statements-coverage. All 6 issues committed and pushed; Phase 6 Exit Gate reconciliation test (tests/domain/test_report_reconciliation.py) passing down to the cent; accountant review packet generated (docs/remediation/artifacts/phase-6-accountant-review/); Decision D26 recorded; Q2 marked resolved. PR #1005 prepared for review and merge. Ready for Phase 6 merge and Phase 7 preflight upon approval.
 

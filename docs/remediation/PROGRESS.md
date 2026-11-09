@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 6 · Batch: 6.4 · Branch: fix/p6-b4-aging-statements-coverage · PR: #1005 (ready) · Last session: 2026-11-09
+- Phase: 7 · Batch: 7.1 · Branch: fix/p7-b1-printer-selection-transport · PR: none · Last session: 2026-11-09
 
 ## Issues
 
@@ -155,20 +155,21 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #843 | Refunds never appear in the Void/Refund report | high | 6.3 | done | #1004 | 4148a70 · Report queries or_(voided(), refund_documents()), shows negative refund amount, original receipt, approver from AuditLog, Part/Full scope, pure Decimal |
 | #844 | Cash Flow report adds refunds back (net too high by 2× refunds) | high | 6.3 | done | #1004 | dad0755 · Cash flow from SalePayment grouped by PaymentMethodKind, legacy cash-back attributed to CASH, drawer movements reconciled, Decimal math |
 | #845 | Daily Sales, Cashier Performance, Sales by Category, Dashboard and the auto-e… | high | 6.3 | done | #1004 | dccec60 · Unified sale_filters across Daily Sales, Cashier, Category, Dashboard, and Scheduler; txn_count counts non-refunds only; voids excluded |
-| #883 | Overdue Customers report resets the clock on every new credit sale | medium | 6.4 | pr-open | #1005 | 6ae5bd3 · cbpos/core/utils/aging.py oldest_open_charge FIFO matching, oldest_unpaid_charge_date on CustomerCreditService, float removed from overdue_report |
-| #897 | "Overdue suppliers" measures days since the last ledger entry of any type, so… | medium | 6.4 | pr-open | #1005 | 812c7f6 · SupplierPayableService.oldest_unpaid_charge_date via shared oldest_open_charge, FIFO aging in get_overdue_suppliers |
-| #907 | The thermal customer statement shows today's debt as both opening and closing… | low | 6.4 | pr-open | #1005 | f7ee132 · CustomerCreditService.balance_at historical lookup, StatementReceiptBuilder opening/closing derived from period facts, statement.period_range i18n |
-| #909 | Low Stock report and dashboard count list every service item and bundle | low | 6.4 | pr-open | #1005 | b09b500 · ProductService.stock_tracked helper excluding services & bundles applied to LowStockReport, DashboardService, StockService, and InventoryService |
-| #910 | Sales by Category and the dashboard category chart drop uncategorized products | low | 6.4 | pr-open | #1005 | aabf22f · outerjoin(Category) in SalesByCategoryReport and DashboardService, None returned by service and reports.uncategorized translated at presentation |
-| #912 | Date filters ending at 23:59:59 or "midnight − 1s" drop sales in the last sec… | low | 6.4 | pr-open | #1005 | e7733aa · cbpos/core/utils/date_ranges.py with day_range/range_for, half-open date boundaries across services & UI, 23:59:59 & timedelta(seconds=1) eliminated |
+| #883 | Overdue Customers report resets the clock on every new credit sale | medium | 6.4 | done | #1005 | a370b2d · cbpos/core/utils/aging.py oldest_open_charge FIFO matching, oldest_unpaid_charge_date on CustomerCreditService, float removed from overdue_report |
+| #897 | "Overdue suppliers" measures days since the last ledger entry of any type, so… | medium | 6.4 | done | #1005 | a370b2d · SupplierPayableService.oldest_unpaid_charge_date via shared oldest_open_charge, FIFO aging in get_overdue_suppliers |
+| #907 | The thermal customer statement shows today's debt as both opening and closing… | low | 6.4 | done | #1005 | a370b2d · CustomerCreditService.balance_at historical lookup, StatementReceiptBuilder opening/closing derived from period facts, statement.period_range i18n |
+| #909 | Low Stock report and dashboard count list every service item and bundle | low | 6.4 | done | #1005 | a370b2d · ProductService.stock_tracked helper excluding services & bundles applied to LowStockReport, DashboardService, StockService, and InventoryService |
+| #910 | Sales by Category and the dashboard category chart drop uncategorized products | low | 6.4 | done | #1005 | a370b2d · outerjoin(Category) in SalesByCategoryReport and DashboardService, None returned by service and reports.uncategorized translated at presentation |
+| #912 | Date filters ending at 23:59:59 or "midnight − 1s" drop sales in the last sec… | low | 6.4 | done | #1005 | a370b2d · cbpos/core/utils/date_ranges.py with day_range/range_for, half-open date boundaries across services & UI, 23:59:59 & timedelta(seconds=1) eliminated |
 
 ### Phase 7 — [spec](phases/phase-07-printing-i18n-hardware.md)
 
 | # | Title | Sev | Batch | Status | PR | Notes |
 |---|---|---|---|---|---|---|
-| #731 | Verify report printing from the background thread on real Windows printers | medium | 7.1 | todo | | |
-| #803 | Configured A4 printer is ignored; invoices go to the Windows default printer | medium | 7.1 | todo | | |
 | #876 | `_validate_name` rejects common Windows printer names and 8.3 temp paths, and… | medium | 7.1 | todo | | |
+| #803 | Configured A4 printer is ignored; invoices go to the Windows default printer | medium | 7.1 | todo | | |
+| #879 | The A4 tax invoice PDF is built synchronously on the UI thread inside checkout | medium | 7.1 | todo | | |
+| #731 | Verify report printing from the background thread on real Windows printers | medium | 7.1 | todo | | |
 | #840 | Product labels print without a barcode, because python-escpos rejects CODE128… | high | 7.2 | todo | | |
 | #877 | Sinhala/Tamil lines that the builders don't wrap (shop address, customer name… | medium | 7.2 | todo | | |
 | #878 | The receipt's CODE39 invoice barcode is wider than the paper at python-escpos… | medium | 7.2 | todo | | |
@@ -179,7 +180,6 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #805 | Thermal receipts always print English item names, whatever the receipt language | medium | 7.4 | todo | | |
 | #806 | Report PDF export cannot render Sinhala/Tamil (Helvetica only) | medium | 7.4 | todo | | |
 | #807 | Hard-coded English: crash dialog, daily report email, and 16 missing Tamil keys | low | 7.4 | todo | | |
-| #879 | The A4 tax invoice PDF is built synchronously on the UI thread inside checkout | medium | 7.4 | todo | | |
 
 ### Phase 8 — [spec](phases/phase-08-release-legal-docs.md)
 
@@ -303,7 +303,8 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | Issue | What to verify | Result |
 |---|---|---|
 | #911 | Physical thermal print of duplicate receipt (SalesReceiptBuilder & RefundReceiptBuilder duplicate markers) | pending |
+| #731 | Real printer matrix (58mm, 80mm, A4, Microsoft Print to PDF) with Inventory Valuation & Tax Filing Summary | pending |
 
 ## Handoff
-Phase 6, Batch 6.4 (Aging, statements and coverage: #912, #883, #897, #907, #909, #910) completed on branch fix/p6-b4-aging-statements-coverage. All 6 issues committed and pushed; Phase 6 Exit Gate reconciliation test (tests/domain/test_report_reconciliation.py) passing down to the cent; accountant review packet generated (docs/remediation/artifacts/phase-6-accountant-review/); Decision D26 recorded; Q2 marked resolved. PR #1005 prepared for review and merge. Ready for Phase 6 merge and Phase 7 preflight upon approval.
+Phase 6 complete (PR #1005 merged, SHA a370b2d). All Phase 6 issues closed. Starting Phase 7, Batch 7.1 (Printer selection and output transport: #876, #803, #879, #731) on branch fix/p7-b1-printer-selection-transport.
 

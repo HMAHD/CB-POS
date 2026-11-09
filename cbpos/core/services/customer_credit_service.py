@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from cbpos.core.constants.status import PaymentMethodKind, PaymentMethodType
 from cbpos.core.database import Database
 from cbpos.core.models import AuditLog, Customer, CustomerLedgerEntry, CustomerPayment, Sale, SalePayment, User
+from cbpos.core.utils.aging import oldest_open_charge
 from cbpos.core.utils.date_ranges import range_for
 from cbpos.core.utils.money import round_money
 
@@ -458,12 +459,24 @@ class CustomerCreditService:
             return entries
 
     @staticmethod
+    def oldest_unpaid_charge_date(customer_id: int) -> date | None:
+        """Find the date of the customer's oldest unpaid charge using FIFO allocation (#883)."""
+        entries = CustomerCreditService.get_ledger(customer_id)
+        return oldest_open_charge(
+            entries,
+            charge_types={"SALE", "OPENING", "ADJUSTMENT"},
+            credit_types={"PAYMENT", "REFUND", "VOID", "ADJUSTMENT"},
+        )
+
+    @staticmethod
     def get_overdue_customers() -> list[dict[str, Any]]:
         """
         Get customers with outstanding debt who are overdue based on payment_terms.
 
+        Uses FIFO matching of charges against credits so new sales do not reset the aging clock.
+
         Returns:
-            List of dicts with customer info and days since last activity.
+            List of dicts with customer info and days overdue.
         """
         db = Database()
         with db.get_session() as session:
@@ -475,23 +488,14 @@ class CustomerCreditService:
             )
 
             results = []
-            now = datetime.now()
+            today = date.today()
 
             for customer in customers:
-                # Find the most recent ledger entry (last activity)
-                last_entry = (
-                    session.query(CustomerLedgerEntry)
-                    .filter(CustomerLedgerEntry.customer_id == customer.id)
-                    .order_by(CustomerLedgerEntry.timestamp.desc())
-                    .first()
-                )
+                oldest_charge_date = CustomerCreditService.oldest_unpaid_charge_date(customer.id)
+                if oldest_charge_date is None:
+                    continue
 
-                if last_entry:
-                    days_since = (now - last_entry.timestamp).days
-                else:
-                    days_since = 999  # No ledger entries, treat as very overdue
-
-                # Overdue if days_since > payment_terms
+                days_since = (today - oldest_charge_date).days
                 if days_since > customer.payment_terms:
                     # Find last payment date specifically
                     last_payment = (

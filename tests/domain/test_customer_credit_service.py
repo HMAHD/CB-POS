@@ -2,6 +2,7 @@
 Unit tests for CustomerCreditService — credit payments, adjustments, and ledger.
 """
 
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -284,3 +285,142 @@ def test_issue_888_adjustment_keeps_negative_balance(db_session, test_user):
     assert len(entries) == 1
     assert entries[0].amount == Decimal("50.00")
     assert entries[0].balance_after == Decimal("-950.00")
+
+
+def test_issue_883_old_debt_plus_new_sale_still_overdue(db_session, test_user):
+    """A 60-day debt plus a new credit sale today is still overdue (#883)."""
+    now = datetime.now()
+    customer = Customer(
+        name="Habitual Debtor",
+        phone="0778830001",
+        credit_limit=Decimal("10000.00"),
+        current_debt=Decimal("1500.00"),
+        payment_terms=30,
+        is_active=True,
+    )
+    db_session.add(customer)
+    db_session.commit()
+
+    # Sale 1: 60 days ago (Rs 1,000)
+    e1 = CustomerLedgerEntry(
+        customer_id=customer.id,
+        entry_type="SALE",
+        amount=Decimal("1000.00"),
+        balance_after=Decimal("1000.00"),
+        user_id=test_user.id,
+        timestamp=now - timedelta(days=60),
+        reference_doc="INV-883-001",
+    )
+    # Sale 2: today (Rs 500)
+    e2 = CustomerLedgerEntry(
+        customer_id=customer.id,
+        entry_type="SALE",
+        amount=Decimal("500.00"),
+        balance_after=Decimal("1500.00"),
+        user_id=test_user.id,
+        timestamp=now,
+        reference_doc="INV-883-002",
+    )
+    db_session.add_all([e1, e2])
+    db_session.commit()
+
+    overdue = CustomerCreditService.get_overdue_customers()
+    matching = [c for c in overdue if c["id"] == customer.id]
+    assert len(matching) == 1
+    assert matching[0]["days_overdue"] >= 29  # 60 - 30 days overdue
+
+
+def test_issue_883_paid_off_customer_not_overdue(db_session, test_user):
+    """Paid off customer or customer without open charges is never overdue (#883)."""
+    now = datetime.now()
+    customer = Customer(
+        name="Paid Off Customer",
+        phone="0778830002",
+        credit_limit=Decimal("10000.00"),
+        current_debt=Decimal("0.00"),
+        payment_terms=30,
+        is_active=True,
+    )
+    db_session.add(customer)
+    db_session.commit()
+
+    e1 = CustomerLedgerEntry(
+        customer_id=customer.id,
+        entry_type="SALE",
+        amount=Decimal("1000.00"),
+        balance_after=Decimal("1000.00"),
+        user_id=test_user.id,
+        timestamp=now - timedelta(days=60),
+        reference_doc="INV-883-PAID-001",
+    )
+    e2 = CustomerLedgerEntry(
+        customer_id=customer.id,
+        entry_type="PAYMENT",
+        amount=Decimal("-1000.00"),
+        balance_after=Decimal("0.00"),
+        user_id=test_user.id,
+        timestamp=now - timedelta(days=40),
+        reference_doc="PAY-883-001",
+    )
+    db_session.add_all([e1, e2])
+    db_session.commit()
+
+    overdue = CustomerCreditService.get_overdue_customers()
+    matching = [c for c in overdue if c["id"] == customer.id]
+    assert len(matching) == 0
+
+
+def test_issue_883_partial_payment_ages_remaining(db_session, test_user):
+    """Partial payment clears part of the oldest debt; remaining balance keeps original age (#883)."""
+    now = datetime.now()
+    customer = Customer(
+        name="Partial Payer",
+        phone="0778830003",
+        credit_limit=Decimal("10000.00"),
+        current_debt=Decimal("1100.00"),
+        payment_terms=30,
+        is_active=True,
+    )
+    db_session.add(customer)
+    db_session.commit()
+
+    # Sale 1: 60 days ago for 1000
+    e1 = CustomerLedgerEntry(
+        customer_id=customer.id,
+        entry_type="SALE",
+        amount=Decimal("1000.00"),
+        balance_after=Decimal("1000.00"),
+        user_id=test_user.id,
+        timestamp=now - timedelta(days=60),
+        reference_doc="INV-883-PART-001",
+    )
+    # Payment: 10 days ago for 400 (leaves 600 of the 60-day debt)
+    e2 = CustomerLedgerEntry(
+        customer_id=customer.id,
+        entry_type="PAYMENT",
+        amount=Decimal("-400.00"),
+        balance_after=Decimal("600.00"),
+        user_id=test_user.id,
+        timestamp=now - timedelta(days=10),
+        reference_doc="PAY-883-PART-001",
+    )
+    # Sale 2: today for 500 (total debt 1100)
+    e3 = CustomerLedgerEntry(
+        customer_id=customer.id,
+        entry_type="SALE",
+        amount=Decimal("500.00"),
+        balance_after=Decimal("1100.00"),
+        user_id=test_user.id,
+        timestamp=now,
+        reference_doc="INV-883-PART-002",
+    )
+    db_session.add_all([e1, e2, e3])
+    db_session.commit()
+
+    oldest_date = CustomerCreditService.oldest_unpaid_charge_date(customer.id)
+    assert oldest_date == (now - timedelta(days=60)).date()
+
+    overdue = CustomerCreditService.get_overdue_customers()
+    matching = [c for c in overdue if c["id"] == customer.id]
+    assert len(matching) == 1
+    assert matching[0]["days_overdue"] >= 29

@@ -459,6 +459,39 @@ class CustomerCreditService:
             return entries
 
     @staticmethod
+    def balance_at(customer_id: int, at: datetime | date) -> Decimal:
+        """Get the customer's ledger balance as of a given timestamp or date (#907).
+
+        Returns balance_after of the last ledger entry strictly before `at`
+        (or before start-of-day if `at` is date), or Decimal("0.00") if none.
+        """
+        if isinstance(at, datetime):
+            at_dt = at
+        elif isinstance(at, date):
+            from datetime import time
+
+            at_dt = datetime.combine(at, time.min)
+        else:
+            at_dt = datetime.min
+
+        db = Database()
+        with db.get_session() as session:
+            last_entry = (
+                session.query(CustomerLedgerEntry)
+                .filter(
+                    CustomerLedgerEntry.customer_id == customer_id,
+                    CustomerLedgerEntry.timestamp < at_dt,
+                )
+                .order_by(CustomerLedgerEntry.timestamp.desc())
+                .first()
+            )
+            if last_entry:
+                bal = last_entry.balance_after
+                session.expunge(last_entry)
+                return bal if bal is not None else Decimal("0.00")
+            return Decimal("0.00")
+
+    @staticmethod
     def oldest_unpaid_charge_date(customer_id: int) -> date | None:
         """Find the date of the customer's oldest unpaid charge using FIFO allocation (#883)."""
         entries = CustomerCreditService.get_ledger(customer_id)

@@ -8,7 +8,7 @@ from decimal import Decimal
 from typing import Any
 
 from cbpos.core.database import Database
-from cbpos.core.models import Customer, CustomerLedgerEntry
+from cbpos.core.models import Customer
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.customer_credit_service import CustomerCreditService
 from cbpos.core.utils.date_ranges import range_for
@@ -119,18 +119,4 @@ class StatementService:
     @staticmethod
     def _get_balance_before(db: Database, customer_id: int, date: datetime) -> Decimal:
         """Get the last known balance before a given date."""
-        with db.get_session() as session:
-            last_entry = (
-                session.query(CustomerLedgerEntry)
-                .filter(
-                    CustomerLedgerEntry.customer_id == customer_id,
-                    CustomerLedgerEntry.timestamp < date,
-                )
-                .order_by(CustomerLedgerEntry.timestamp.desc())
-                .first()
-            )
-            if last_entry:
-                balance = last_entry.balance_after
-                session.expunge(last_entry)
-                return balance
-            return Decimal("0")
+        return CustomerCreditService.balance_at(customer_id, date)

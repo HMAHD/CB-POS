@@ -155,12 +155,12 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #843 | Refunds never appear in the Void/Refund report | high | 6.3 | done | #1004 | 4148a70 · Report queries or_(voided(), refund_documents()), shows negative refund amount, original receipt, approver from AuditLog, Part/Full scope, pure Decimal |
 | #844 | Cash Flow report adds refunds back (net too high by 2× refunds) | high | 6.3 | done | #1004 | dad0755 · Cash flow from SalePayment grouped by PaymentMethodKind, legacy cash-back attributed to CASH, drawer movements reconciled, Decimal math |
 | #845 | Daily Sales, Cashier Performance, Sales by Category, Dashboard and the auto-e… | high | 6.3 | done | #1004 | dccec60 · Unified sale_filters across Daily Sales, Cashier, Category, Dashboard, and Scheduler; txn_count counts non-refunds only; voids excluded |
-| #883 | Overdue Customers report resets the clock on every new credit sale | medium | 6.4 | todo | | |
-| #897 | "Overdue suppliers" measures days since the last ledger entry of any type, so… | medium | 6.4 | todo | | |
-| #907 | The thermal customer statement shows today's debt as both opening and closing… | low | 6.4 | todo | | |
+| #883 | Overdue Customers report resets the clock on every new credit sale | medium | 6.4 | in-progress | | 6ae5bd3 · cbpos/core/utils/aging.py oldest_open_charge FIFO matching, oldest_unpaid_charge_date on CustomerCreditService, float removed from overdue_report |
+| #897 | "Overdue suppliers" measures days since the last ledger entry of any type, so… | medium | 6.4 | in-progress | | 812c7f6 · SupplierPayableService.oldest_unpaid_charge_date via shared oldest_open_charge, FIFO aging in get_overdue_suppliers |
+| #907 | The thermal customer statement shows today's debt as both opening and closing… | low | 6.4 | in-progress | | CustomerCreditService.balance_at historical lookup, StatementReceiptBuilder opening/closing derived from period facts, statement.period_range i18n |
 | #909 | Low Stock report and dashboard count list every service item and bundle | low | 6.4 | todo | | |
 | #910 | Sales by Category and the dashboard category chart drop uncategorized products | low | 6.4 | todo | | |
-| #912 | Date filters ending at 23:59:59 or "midnight − 1s" drop sales in the last sec… | low | 6.4 | todo | | |
+| #912 | Date filters ending at 23:59:59 or "midnight − 1s" drop sales in the last sec… | low | 6.4 | in-progress | | e7733aa · cbpos/core/utils/date_ranges.py with day_range/range_for, half-open date boundaries across services & UI, 23:59:59 & timedelta(seconds=1) eliminated |
 
 ### Phase 7 — [spec](phases/phase-07-printing-i18n-hardware.md)
 

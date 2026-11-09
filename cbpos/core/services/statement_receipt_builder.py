@@ -1,11 +1,12 @@
 """Customer statement receipt builder — generates receipt commands for credit statements."""
 
-from datetime import datetime
+from datetime import datetime, time, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 from cbpos.core.services.base_receipt_builder import BaseReceiptBuilder
 from cbpos.core.utils.formatters import format_currency
+from cbpos.i18n import translate_in
 
 if TYPE_CHECKING:
     from cbpos.core.models import Customer, CustomerLedgerEntry
@@ -49,15 +50,27 @@ class StatementReceiptBuilder(BaseReceiptBuilder):
 
         # Period
         from_str = period_from.strftime("%Y-%m-%d")
-        to_str = period_to.strftime("%Y-%m-%d")
-        commands.append({"type": "text", "val": f"{cls._rt('period')}: {from_str} to {to_str}", "align": "left"})
+        if period_to.time() == time.min and period_to > period_from:
+            to_date = (period_to - timedelta(days=1)).date()
+        else:
+            to_date = period_to.date()
+        to_str = to_date.strftime("%Y-%m-%d")
+
+        period_text = translate_in(
+            cls._receipt_lang or "en",
+            "statement.period_range",
+            **{"from": from_str, "to": to_str},
+        )
+        commands.append({"type": "text", "val": f"{cls._rt('period')}: {period_text}", "align": "left"})
         commands.append({"type": "text", "val": "-" * line_chars, "align": "center"})
 
         # Opening Balance
         if entries:
             opening = entries[0].balance_after - entries[0].amount
         else:
-            opening = customer.current_debt
+            from cbpos.core.services.customer_credit_service import CustomerCreditService
+
+            opening = CustomerCreditService.balance_at(customer.id, period_from)
 
         commands.append(
             {"type": "text", "val": f"{cls._rt('opening_balance')}: {format_currency(opening)}", "align": "left"}
@@ -91,7 +104,7 @@ class StatementReceiptBuilder(BaseReceiptBuilder):
         )
 
         # Closing Balance
-        closing = entries[-1].balance_after if entries else customer.current_debt
+        closing = entries[-1].balance_after if entries else opening
         commands.append({"type": "feed", "lines": 1})
         commands.append(
             {"type": "text", "val": f"{cls._rt('closing_balance')}: {format_currency(closing)}", "align": "right"}

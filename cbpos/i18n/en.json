@@ -2356,6 +2356,9 @@
     "print_failed": "Failed to print statement. Check the printer connection in Settings > Hardware.",
     "load_failed": "Failed to load statement: {error}"
   },
+  "statement": {
+    "period_range": "{from} to {to}"
+  },
   "adjust_balance": {
     "title": "Adjust Customer Balance",
     "current_debt": "Current Outstanding Debt:",

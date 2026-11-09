@@ -1,9 +1,13 @@
 import logging
-import os
 import re
-import tempfile
+import subprocess
+import sys
+import time
+import uuid
+from pathlib import Path
 from typing import Any
 
+from cbpos.config import Config
 from cbpos.core.models import Sale
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.invoice_service import InvoiceService
@@ -15,6 +19,23 @@ from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 logger = logging.getLogger(__name__)
 
 _MAX_COPIES = 5  # Settings > Hardware caps receipt copies at 5
+
+
+def cleanup_print_spool(max_age_seconds: int = 86400) -> int:
+    """Delete spool files older than *max_age_seconds* (default 1 day) from Config.DATA_DIR / 'print_spool'."""
+    spool_dir = Config.DATA_DIR / "print_spool"
+    if not spool_dir.exists():
+        return 0
+    cutoff = time.time() - max_age_seconds
+    removed = 0
+    for path in spool_dir.glob("invoice_*.pdf"):
+        try:
+            if path.stat().st_mtime < cutoff:
+                path.unlink(missing_ok=True)
+                removed += 1
+        except OSError as e:
+            logger.warning("[PrinterService] Failed to remove old spool file %s: %s", path, e)
+    return removed
 
 
 class PrinterService:
@@ -146,71 +167,193 @@ class PrinterService:
             PrinterService._print_a4_invoice(sale)
 
     @staticmethod
-    def _print_a4_invoice(sale: Sale) -> None:
-        """
-        Generate and print A4 Tax Invoice for B2B customers.
+    def get_spool_path(doc_number: str | None = None) -> Path:
+        """Create and return a unique print spool path in Config.DATA_DIR / 'print_spool'."""
+        spool_dir = Config.DATA_DIR / "print_spool"
+        spool_dir.mkdir(parents=True, exist_ok=True)
+        slug = re.sub(r"[^\w\-.]", "_", doc_number or "doc")
+        token = uuid.uuid4().hex[:8]
+        return spool_dir / f"invoice_{slug}_{token}.pdf"
 
-        A failure (the PDF won't build, or can't be handed to the printer)
-        goes out on the print worker's ``error_occurred`` -- the Sales
-        screen shows it -- so the cashier knows the buyer has no tax
-        invoice. No A4 printer set up is not a failure.
+    @staticmethod
+    def _resolve_a4_printer() -> str | None:
+        """Return the configured A4 printer name, or None if none configured."""
+        name = ConfigService.get("a4_printer_name")
+        if name and str(name).strip():
+            return str(name).strip()
+        return None
+
+    @staticmethod
+    def _generate_and_send_a4(sale: Sale, doc_num: str, a4_printer: str) -> None:
+        """Helper to build PDF and send to A4 printer with unified error annotation."""
+        cleanup_print_spool()
+        pdf_path = PrinterService.get_spool_path(doc_num)
+        try:
+            InvoiceService.generate_pdf(sale, str(pdf_path))
+            logger.info("[PrinterService] Worker generated A4 invoice: %s", pdf_path)
+            PrinterService._send_pdf_to_printer(str(pdf_path), a4_printer)
+        except Exception as exc:
+            exc.document_number = doc_num
+            raise
+
+    @staticmethod
+    def process_a4_invoice_job(sale_or_id: Any) -> None:
+        """Worker-side execution of an A4 Tax Invoice job (#879).
+
+        Loads the sale with relationships in a fresh database session on the
+        worker thread, generates the PDF, and sends it to the configured
+        A4 printer.
+        """
+        a4_printer = PrinterService._resolve_a4_printer()
+        if not a4_printer:
+            logger.warning("[PrinterService] A4 printer not configured. Skipping A4 invoice print.")
+            return
+
+        if isinstance(sale_or_id, Sale):
+            sale = sale_or_id
+            doc_num = sale.document_number or f"REC-{sale.id}"
+            PrinterService._generate_and_send_a4(sale, doc_num, a4_printer)
+            return
+
+        from sqlalchemy.orm import joinedload, selectinload
+
+        from cbpos.core.database import Database
+
+        sale_id = int(sale_or_id)
+        with Database().get_session() as session:
+            sale = (
+                session.query(Sale)
+                .options(
+                    joinedload(Sale.customer),
+                    selectinload(Sale.items),
+                    selectinload(Sale.payments),
+                )
+                .filter(Sale.id == sale_id)
+                .first()
+            )
+            if not sale:
+                err = ValueError(f"Sale {sale_id} not found")
+                err.document_number = f"ID-{sale_id}"
+                raise err
+
+            doc_num = sale.document_number or f"REC-{sale.id}"
+            PrinterService._generate_and_send_a4(sale, doc_num, a4_printer)
+
+    @staticmethod
+    def _print_a4_invoice(sale: Sale) -> None:
+        """Queue A4 Tax Invoice job for B2B customers off the UI thread (#879).
+
+        A failure goes out on the print worker's ``job_result`` and
+        ``error_occurred`` so the cashier knows if printing failed.
+        No A4 printer set up is not a failure.
 
         Args:
             sale: The sale transaction.
         """
-        a4_printer = ConfigService.get("a4_printer_name")
+        a4_printer = PrinterService._resolve_a4_printer()
         if not a4_printer:
             logger.warning("[PrinterService] A4 printer not configured. Skipping invoice print.")
             return
 
-        try:
-            pdf_path = os.path.join(tempfile.gettempdir(), f"invoice_{sale.id}.pdf")
-            InvoiceService.generate_pdf(sale, pdf_path)
-            logger.info("[PrinterService] Generated A4 invoice: %s", pdf_path)
-            PrinterService._send_pdf_to_printer(pdf_path, a4_printer)
-        except Exception as e:
-            logger.exception("[PrinterService] Error printing A4 invoice for %s", sale.document_number)
-            PrintWorker.instance().error_occurred.emit(
-                _t("printer.a4_invoice_failed", document=sale.document_number or "", error=str(e))
-            )
+        from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 
-    # Only allow safe characters in printer names and file paths
-    _SAFE_NAME_RE = re.compile(r"^[a-zA-Z0-9_\-\.\s\\/:]+$")
+        job_data = sale.id if getattr(sale, "id", None) else sale
+        PrintWorker.instance().add_job("a4_invoice", job_data)
+
+    @staticmethod
+    def _validate_printer_name(printer_name: str | None) -> None:
+        """Validate printer name: reject control characters, quotes, and verify membership on Windows."""
+        if not printer_name:
+            return
+        if any(ord(c) < 32 for c in printer_name):
+            raise ValueError("Invalid printer name: contains control characters")
+        if '"' in printer_name:
+            raise ValueError("Invalid printer name: contains quotes")
+
+        if sys.platform == "win32" or "win32print" in sys.modules:
+            try:
+                import win32print
+
+                if hasattr(win32print, "EnumPrinters"):
+                    flags = getattr(win32print, "PRINTER_ENUM_LOCAL", 2) | getattr(
+                        win32print, "PRINTER_ENUM_CONNECTIONS", 4
+                    )
+                    printers = win32print.EnumPrinters(flags)
+                    installed = {p[2] for p in printers if len(p) > 2}
+                    if printer_name not in installed:
+                        raise ValueError(_t("printer.not_installed", name=printer_name))
+            except ImportError:
+                pass
+
+    @staticmethod
+    def _validate_pdf_path(pdf_path: str) -> None:
+        """Validate PDF path contains no control characters."""
+        if any(ord(c) < 32 for c in pdf_path):
+            raise ValueError("Invalid PDF path: contains control characters")
 
     @staticmethod
     def _validate_name(value: str, label: str) -> str:
-        """Validate a printer name or path contains no shell-injection characters."""
-        if not PrinterService._SAFE_NAME_RE.match(value):
+        """Legacy helper: validate a value contains no control characters or quotes."""
+        if any(ord(c) < 32 for c in value):
+            raise ValueError(f"Invalid {label}: contains disallowed characters")
+        if '"' in value:
             raise ValueError(f"Invalid {label}: contains disallowed characters")
         return value
 
     @staticmethod
-    def _send_pdf_to_printer(pdf_path: str, printer_name: str) -> None:
-        """Send PDF file to system printer (Windows) without blocking the UI.
+    def _send_pdf_to_printer(pdf_path: str | Path, printer_name: str | None = None) -> None:
+        """Send PDF file to system printer without building a PowerShell command string.
 
-        Uses ``subprocess.Popen`` so the calling thread is not blocked while
-        the print spooler processes the document.
+        On Windows: invokes win32api.ShellExecute with 'printto' (if printer_name given)
+        or 'print' (Windows default printer).
+        On non-Windows: invokes 'lp' via subprocess with an argv list.
 
         Args:
             pdf_path: Path to PDF file.
-            printer_name: System printer name.
+            printer_name: System printer name, or None for system default printer.
 
         Raises:
             ValueError: If the path or printer name has disallowed characters.
+            RuntimeError: If ShellExecute fails or no PDF handler is registered.
             OSError: If the print command can't be started.
         """
-        import subprocess
+        path_str = str(pdf_path)
+        PrinterService._validate_pdf_path(path_str)
+        if printer_name:
+            PrinterService._validate_printer_name(printer_name)
 
-        PrinterService._validate_name(pdf_path, "PDF path")
-        PrinterService._validate_name(printer_name, "printer name")
+        if sys.platform == "win32" or "win32api" in sys.modules:
+            try:
+                import win32api
 
-        subprocess.Popen(
-            [
-                "powershell",
-                "-Command",
-                f'Start-Process -FilePath "{pdf_path}" -Verb Print -WindowStyle Hidden',
-            ],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        logger.info("[PrinterService] Sent PDF to printer: %s", printer_name)
+                if hasattr(win32api, "ShellExecute"):
+                    if printer_name:
+                        ret = win32api.ShellExecute(0, "printto", path_str, f'"{printer_name}"', ".", 0)
+                    else:
+                        ret = win32api.ShellExecute(0, "print", path_str, None, ".", 0)
+                    if isinstance(ret, int) and ret <= 32:
+                        if ret == 31:  # SE_ERR_NOASSOC
+                            raise RuntimeError(_t("printer.no_pdf_handler"))
+                        raise RuntimeError(f"ShellExecute failed with error code {ret}")
+                    logger.info("[PrinterService] Sent PDF to printer via ShellExecute: %s", printer_name or "default")
+                    return
+            except ImportError:
+                if sys.platform == "win32":
+                    raise RuntimeError("Windows printing requires pywin32 (win32api)")
+            except Exception as e:
+                err_str = str(e).lower()
+                winerror = getattr(e, "winerror", None)
+                if winerror == 31 or "no application is associated" in err_str or "se_err_noassoc" in err_str:
+                    raise RuntimeError(_t("printer.no_pdf_handler")) from e
+                raise
+
+        if sys.platform == "win32":
+            raise RuntimeError("Windows printing failed: ShellExecute not available")
+
+        # Non-Windows fallback (lp)
+        cmd = ["lp"]
+        if printer_name:
+            cmd.extend(["-d", printer_name])
+        cmd.append(path_str)
+        subprocess.run(cmd, check=True, timeout=60, capture_output=True)
+        logger.info("[PrinterService] Sent PDF to printer via lp: %s", printer_name or "default")

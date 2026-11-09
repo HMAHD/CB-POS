@@ -26,6 +26,7 @@ cbpos.db
 *.log
 settings.json
 settings.json.bak
+print_spool/
 runtime_error.txt
 flake8_output.txt
 flake8_report.txt

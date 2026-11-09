@@ -1,6 +1,7 @@
 import logging
 import queue
 import time
+import uuid
 from typing import Any
 
 from escpos import printer as escpos_printer
@@ -394,6 +395,7 @@ class PrintWorker(QThread):
 
     error_occurred = pyqtSignal(str)  # Emitted when a print job fails
     job_completed = pyqtSignal()  # Emitted when a print job succeeds
+    job_result = pyqtSignal(str, bool, str)  # (job_id, ok, message)
 
     _instance: "PrintWorker | None" = None
 
@@ -407,7 +409,7 @@ class PrintWorker(QThread):
         """
         super().__init__()
         self.printer = printer
-        self._queue: queue.Queue[tuple[str, Any]] = queue.Queue()
+        self._queue: queue.Queue[tuple[str, str, Any]] = queue.Queue()
         self.running = True
 
     @classmethod
@@ -436,21 +438,27 @@ class PrintWorker(QThread):
             cls._instance.wait(5000)
             cls._instance = None
 
-    def add_job(self, job_type: str, data: Any = None) -> None:
+    def add_job(self, job_type: str, data: Any = None) -> str:
         """Queue a print job. Starts the thread if not already running.
 
         Args:
             job_type: One of `PRINT_JOB_TYPES` ('print_receipt' /
                 'print_commands', both a builder command list) or
                 'kick_drawer'. Any other type is reported via
-                error_occurred when it is processed -- never as completed.
+                error_occurred and job_result when it is processed -- never
+                as completed.
             data: Command list for print jobs; for kick_drawer, optionally
                   a list of payment method strings (e.g. ['CASH']) to allow
                   drawer_on_cash_only filtering.
+
+        Returns:
+            Unique 32-character hex job identifier (UUID4 hex).
         """
-        self._queue.put((job_type, data))
+        job_id = uuid.uuid4().hex
+        self._queue.put((job_id, job_type, data))
         if not self.isRunning():
             self.start()
+        return job_id
 
     def stop(self) -> None:
         """Signal the worker to stop after current job completes."""
@@ -499,20 +507,45 @@ class PrintWorker(QThread):
         """
         while self.running:
             try:
-                job_type, data = self._queue.get(timeout=1)
+                item = self._queue.get(timeout=1)
             except queue.Empty:
                 if not self.running:
                     break
                 continue
 
+            if len(item) == 3:
+                job_id, job_type, data = item
+            else:
+                job_id = uuid.uuid4().hex
+                job_type, data = item
+
+            if job_type == "a4_invoice":
+                try:
+                    from cbpos.core.services.printer_service import PrinterService
+
+                    PrinterService.process_a4_invoice_job(data)
+                    self.job_completed.emit()
+                    self.job_result.emit(job_id, True, "")
+                except Exception as e:
+                    logger.error("A4 invoice print job failed for %r: %s", data, e)
+                    doc = getattr(e, "document_number", str(data))
+                    err_msg = _t("printer.a4_invoice_failed", document=doc, error=str(e))
+                    self.error_occurred.emit(err_msg)
+                    self.job_result.emit(job_id, False, err_msg)
+                continue
+
             is_print = job_type in PRINT_JOB_TYPES
             if not is_print and job_type != "kick_drawer":
                 logger.error("Unknown print job type %r — nothing printed.", job_type)
-                self.error_occurred.emit(_t("printer.job_unsupported"))
+                err_msg = _t("printer.job_unsupported")
+                self.error_occurred.emit(err_msg)
+                self.job_result.emit(job_id, False, err_msg)
                 continue
             if is_print and not isinstance(data, list):
                 logger.error("Print job %r has no command list (%s) — nothing printed.", job_type, type(data).__name__)
-                self.error_occurred.emit(_t("printer.job_unsupported"))
+                err_msg = _t("printer.job_unsupported")
+                self.error_occurred.emit(err_msg)
+                self.job_result.emit(job_id, False, err_msg)
                 continue
 
             current_printer = self._resolve_printer()
@@ -522,19 +555,25 @@ class PrintWorker(QThread):
                     # printer, no drawer. Stay silent -- every cash sale
                     # queues one, and nothing waits on it.
                     logger.debug("No receipt printer configured — skipping drawer kick.")
+                    self.job_result.emit(job_id, False, "drawer_skipped:no_printer")
                     continue
                 logger.warning("No receipt printer configured — skipping %s job.", job_type)
-                self.error_occurred.emit(printer_not_configured_message())
+                err_msg = printer_not_configured_message()
+                self.error_occurred.emit(err_msg)
+                self.job_result.emit(job_id, False, err_msg)
                 continue
 
             if job_type == "kick_drawer" and not self._drawer_wanted(data):
+                self.job_result.emit(job_id, False, "drawer_skipped:not_cash")
                 continue
 
             try:
                 if not current_printer.connect():
                     msg = "Printer not available — skipping %s job. Check printer settings in Settings > Hardware."
                     logger.warning(msg, job_type)
-                    self.error_occurred.emit(_t("printer.not_available"))
+                    err_msg = _t("printer.not_available")
+                    self.error_occurred.emit(err_msg)
+                    self.job_result.emit(job_id, False, err_msg)
                     continue
 
                 if job_type == "kick_drawer":
@@ -544,11 +583,14 @@ class PrintWorker(QThread):
 
                 current_printer.disconnect()
                 self.job_completed.emit()
+                self.job_result.emit(job_id, True, "")
 
             except Exception as e:
                 logger.error("Print job '%s' failed: %s", job_type, e)
                 current_printer.disconnect()
-                self.error_occurred.emit(str(e))
+                err_msg = str(e)
+                self.error_occurred.emit(err_msg)
+                self.job_result.emit(job_id, False, err_msg)
 
             time.sleep(0.1)
 

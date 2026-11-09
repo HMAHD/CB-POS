@@ -45,6 +45,7 @@ class PrintWorkerPeripherals:
                 PrinterService.print_transaction(event.sale)
             except Exception as e:
                 logger.error("Auto-print of %s failed: %s", event.sale.document_number, e)
+
         from cbpos.core.services.payment_service import classify_method_name
 
         method_kinds = [classify_method_name(m) for m in event.payment_methods]

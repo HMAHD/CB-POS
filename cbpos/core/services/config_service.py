@@ -87,6 +87,7 @@ class ConfigService:
         "font_size": 12,
         # Reports
         "favorite_reports": [],
+        "report_print_main_thread_final": False,  # Defensive fallback for Windows report printing (#731)
         # Document Numbering
         "doc_format_sale": "INV-{Y}-{seq:05d}",
         "doc_format_purchase": "GRN-{Y}-{seq:05d}",

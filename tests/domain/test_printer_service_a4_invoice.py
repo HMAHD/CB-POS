@@ -7,12 +7,14 @@ worker's ``error_occurred`` -- the path the Sales screen already shows
 print failures from.
 """
 
+import contextlib
 from datetime import datetime
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from cbpos.core.database import Database
 from cbpos.core.models import Customer, Product, Sale, SaleItem
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.invoice_service import InvoiceService
@@ -33,6 +35,18 @@ def settings(monkeypatch):
 @pytest.fixture
 def worker():
     mock = MagicMock()
+
+    def _execute_job(job_type, data=None):
+        if job_type == "a4_invoice":
+            try:
+                PrinterService.process_a4_invoice_job(data)
+                mock.job_completed.emit()
+            except Exception as e:
+                doc = getattr(e, "document_number", getattr(data, "document_number", str(data)))
+                mock.error_occurred.emit(translate_in("en", "printer.a4_invoice_failed", document=doc, error=str(e)))
+        return "test-job-id"
+
+    mock.add_job.side_effect = _execute_job
     with patch.object(PrintWorker, "instance", return_value=mock):
         yield mock
 
@@ -58,6 +72,15 @@ def _b2b_sale() -> Sale:
             subtotal=Decimal("2360.00"),
         )
     ]
+    return sale
+
+
+@pytest.fixture(autouse=True)
+def mock_db_sale(monkeypatch):
+    sale = _b2b_sale()
+    mock_session = MagicMock()
+    mock_session.query.return_value.options.return_value.filter.return_value.first.return_value = sale
+    monkeypatch.setattr(Database, "get_session", lambda self: contextlib.nullcontext(mock_session))
     return sale
 
 
@@ -89,7 +112,7 @@ class TestA4InvoiceAutoPrint:
         assert _reported(worker) == [expected]
 
     def test_invoice_that_fails_to_reach_the_printer_is_reported(self, worker):
-        with patch("subprocess.Popen", side_effect=FileNotFoundError("powershell")):
+        with patch.object(PrinterService, "_send_pdf_to_printer", side_effect=RuntimeError("printer unreachable")):
             PrinterService.maybe_print_b2b_invoice(_b2b_sale())
 
         (message,) = _reported(worker)

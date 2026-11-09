@@ -158,7 +158,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #883 | Overdue Customers report resets the clock on every new credit sale | medium | 6.4 | in-progress | | 6ae5bd3 · cbpos/core/utils/aging.py oldest_open_charge FIFO matching, oldest_unpaid_charge_date on CustomerCreditService, float removed from overdue_report |
 | #897 | "Overdue suppliers" measures days since the last ledger entry of any type, so… | medium | 6.4 | in-progress | | 812c7f6 · SupplierPayableService.oldest_unpaid_charge_date via shared oldest_open_charge, FIFO aging in get_overdue_suppliers |
 | #907 | The thermal customer statement shows today's debt as both opening and closing… | low | 6.4 | in-progress | | CustomerCreditService.balance_at historical lookup, StatementReceiptBuilder opening/closing derived from period facts, statement.period_range i18n |
-| #909 | Low Stock report and dashboard count list every service item and bundle | low | 6.4 | todo | | |
+| #909 | Low Stock report and dashboard count list every service item and bundle | low | 6.4 | in-progress | | ProductService.stock_tracked helper excluding services & bundles applied to LowStockReport, DashboardService, StockService, and InventoryService |
 | #910 | Sales by Category and the dashboard category chart drop uncategorized products | low | 6.4 | todo | | |
 | #912 | Date filters ending at 23:59:59 or "midnight − 1s" drop sales in the last sec… | low | 6.4 | in-progress | | e7733aa · cbpos/core/utils/date_ranges.py with day_range/range_for, half-open date boundaries across services & UI, 23:59:59 & timedelta(seconds=1) eliminated |
 

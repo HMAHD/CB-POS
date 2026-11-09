@@ -5,6 +5,7 @@ import pandas as pd
 from cbpos.core.database import get_db_session
 from cbpos.core.models import Category, Product
 from cbpos.core.reports.base_report import CATEGORY_INVENTORY, MONEY, QTY, TEXT, BaseReport, report_columns
+from cbpos.core.services.product_service import ProductService
 from cbpos.i18n import _t
 
 
@@ -213,10 +214,11 @@ class LowStockReport(BaseReport):
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
         """List products where stock <= reorder point, with their default supplier."""
         with get_db_session() as session:
-            # Filter products where stock <= reorder_point
+            # Filter products where stock <= reorder_point (excluding services and bundles #909)
             products = (
                 session.query(Product)
                 .filter(Product.is_active)
+                .filter(ProductService.stock_tracked())
                 .filter(Product.stock_qty <= Product.reorder_point)
                 .all()
             )

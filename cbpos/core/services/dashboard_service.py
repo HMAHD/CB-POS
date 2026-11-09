@@ -18,6 +18,7 @@ from cbpos.core.models import (
     SalePayment,
     Shift,
 )
+from cbpos.core.services.product_service import ProductService
 
 MONTH_NAMES = [
     "January",
@@ -105,6 +106,7 @@ class DashboardService:
             low_stock_count = (
                 session.query(func.count(Product.id))
                 .filter(Product.is_active)
+                .filter(ProductService.stock_tracked())
                 .filter(Product.stock_qty <= Product.reorder_point)
                 .scalar()
                 or 0

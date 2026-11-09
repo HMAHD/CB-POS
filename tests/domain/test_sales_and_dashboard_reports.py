@@ -581,3 +581,89 @@ class TestSalesAndDashboardIssue845:
         assert kpis["items_sold"] == Decimal("3.000")
         assert kpis["txn_count"] == 1
         assert kpis["avg_sale"] == Decimal("300.00")
+
+
+def test_issue_910_uncategorized_sale_appears(db_session, sdr_user, sdr_category):
+    """Sales of products without a category must appear in SalesByCategoryReport
+
+    under 'Uncategorized' and in DashboardService.get_top_categories with name=None (#910).
+    """
+    from cbpos.i18n import _t
+
+    test_date = date.today()
+    now_dt = datetime.now()
+
+    uncat_prod = Product(
+        name_en="Uncategorized Prod",
+        barcode="UNCAT-P1",
+        price=Decimal("150.00"),
+        cost=Decimal("100.00"),
+        stock_qty=Decimal("10.000"),
+        category_id=None,
+        is_active=True,
+    )
+    cat_prod = Product(
+        name_en="Categorized Prod",
+        barcode="CAT-P1",
+        price=Decimal("200.00"),
+        cost=Decimal("120.00"),
+        stock_qty=Decimal("10.000"),
+        category_id=sdr_category.id,
+        is_active=True,
+    )
+    db_session.add_all([uncat_prod, cat_prod])
+    db_session.flush()
+
+    sale = Sale(
+        document_number="SALE-UNCAT-910",
+        date=now_dt,
+        user_id=sdr_user.id,
+        total_amount=Decimal("350.00"),
+        payment_method="CASH",
+        status=DocumentStatus.COMPLETED,
+        net_revenue=Decimal("350.00"),
+    )
+    db_session.add(sale)
+    db_session.flush()
+
+    item_uncat = SaleItem(
+        sale_id=sale.id,
+        product_id=uncat_prod.id,
+        qty=Decimal("1.000"),
+        unit_price=Decimal("150.00"),
+        original_price=Decimal("150.00"),
+        subtotal=Decimal("150.00"),
+    )
+    item_cat = SaleItem(
+        sale_id=sale.id,
+        product_id=cat_prod.id,
+        qty=Decimal("1.000"),
+        unit_price=Decimal("200.00"),
+        original_price=Decimal("200.00"),
+        subtotal=Decimal("200.00"),
+    )
+    db_session.add_all([item_uncat, item_cat])
+    db_session.commit()
+
+    today_str = test_date.strftime("%Y-%m-%d")
+
+    # 1. SalesByCategoryReport
+    cat_report = SalesByCategoryReport()
+    df_cat = cat_report.generate({"date_range": {"start": today_str, "end": today_str}})
+    assert not df_cat.empty
+
+    categories_in_report = set(df_cat["Category"].tolist())
+    uncat_label = _t("reports.uncategorized")
+    assert uncat_label in categories_in_report
+    assert sdr_category.name in categories_in_report
+
+    uncat_row = df_cat[df_cat["Category"] == uncat_label].iloc[0]
+    assert uncat_row["Qty Sold"] == Decimal("1.000")
+    assert uncat_row["Gross Revenue"] == Decimal("150.00")
+
+    # 2. DashboardService.get_top_categories
+    top_cats = DashboardService.get_top_categories(test_date, test_date)
+    # The service returns None for uncategorized products per spec
+    uncat_cat = next((c for c in top_cats if c["name"] is None), None)
+    assert uncat_cat is not None, f"Expected uncategorized entry with name=None, got: {top_cats}"
+    assert uncat_cat["total"] == Decimal("150.00")

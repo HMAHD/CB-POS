@@ -71,8 +71,9 @@ class SalesByCategoryReport(BaseReport):
                         )
                     ).label("gross_revenue"),
                 )
+                .select_from(SaleItem)
                 .join(Product, SaleItem.product_id == Product.id)
-                .join(Category, Product.category_id == Category.id)
+                .outerjoin(Category, Product.category_id == Category.id)
                 .join(Sale, SaleItem.sale_id == Sale.id)
                 .where(Sale.status == DocumentStatus.COMPLETED)
             )
@@ -88,7 +89,7 @@ class SalesByCategoryReport(BaseReport):
             for row in results:
                 data.append(
                     {
-                        "Category": row.category_name,
+                        "Category": row.category_name or _t("reports.uncategorized"),
                         "Qty Sold": row.qty_sold if row.qty_sold is not None else Decimal("0"),
                         "Gross Revenue": row.gross_revenue if row.gross_revenue is not None else Decimal("0.00"),
                     }

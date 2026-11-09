@@ -690,7 +690,9 @@ class DashboardView(QWidget):
         self.lbl_txn_count.setText(f"{stats['txn_count']:,}")
 
         # Categories donut
-        self.category_chart.set_data([{"label": c["name"], "value": c["total"]} for c in categories])
+        self.category_chart.set_data(
+            [{"label": c["name"] or _t("reports.uncategorized"), "value": c["total"]} for c in categories]
+        )
 
         # Top Customers
         self.customer_chart.set_data([{"label": c["name"], "value": c["total"]} for c in customers])

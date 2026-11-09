@@ -415,15 +415,16 @@ class DashboardService:
                         )
                     ).label("total"),
                 )
-                .join(Product, Product.category_id == Category.id)
-                .join(SaleItem, SaleItem.product_id == Product.id)
+                .select_from(SaleItem)
+                .join(Product, SaleItem.product_id == Product.id)
+                .outerjoin(Category, Product.category_id == Category.id)
                 .join(Sale, SaleItem.sale_id == Sale.id)
                 .filter(
                     func.date(Sale.date) >= start_date,
                     func.date(Sale.date) <= end_date,
                     Sale.status == DocumentStatus.COMPLETED,
                 )
-                .group_by(Category.id)
+                .group_by(Category.name)
                 .order_by(
                     func.sum(
                         case(
@@ -436,7 +437,7 @@ class DashboardService:
                 .all()
             )
 
-            return [{"name": r[0] or "Uncategorized", "total": _decimal(r[1])} for r in rows]
+            return [{"name": r[0], "total": _decimal(r[1])} for r in rows]
 
     @staticmethod
     def get_top_customers(start_date: date, end_date: date, limit: int = 5) -> list[dict]:

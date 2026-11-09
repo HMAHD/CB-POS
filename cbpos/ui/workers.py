@@ -13,6 +13,7 @@ import os
 import re
 import shutil
 import tempfile
+import threading
 import time
 from typing import TYPE_CHECKING, Any
 
@@ -535,11 +536,16 @@ def report_print_html(df: pd.DataFrame, title: str, generated_on_label: str) -> 
 
 
 class ReportPrintWorker(QThread):
-    """Lays out a report and prints it in a background thread (#643).
+    """Lays out a report and prints it in a background thread (#643, #731).
 
     Building the HTML and laying out a large report froze the window when
     it ran on the UI thread. Qt supports painting on a QPrinter from a
     worker thread; the print dialog itself stays on the UI thread.
+
+    When ``report_print_main_thread_final`` is enabled, layout and document
+    preparation still happen in the background thread, but the final
+    ``print()`` invocation is dispatched to the main thread via a queued
+    signal (#731 defensive fallback).
 
     ``result`` fires only once the whole document went to the printer
     without the printer reporting an error -- never on a guess.
@@ -547,8 +553,16 @@ class ReportPrintWorker(QThread):
 
     result = pyqtSignal()
     error = pyqtSignal(str)
+    _request_main_thread_print = pyqtSignal(object)
 
-    def __init__(self, printer: "QPrinter", df: pd.DataFrame, title: str, generated_on_label: str) -> None:
+    def __init__(
+        self,
+        printer: "QPrinter",
+        df: pd.DataFrame,
+        title: str,
+        generated_on_label: str,
+        main_thread_final: bool | None = None,
+    ) -> None:
         """Set up the print job for a printer already chosen in the print dialog."""
         super().__init__()
         self.finished.connect(self.deleteLater)
@@ -556,21 +570,67 @@ class ReportPrintWorker(QThread):
         self.df = df
         self.title = title
         self.generated_on_label = generated_on_label
+        if main_thread_final is None:
+            from cbpos.core.services.config_service import ConfigService
+
+            self.main_thread_final = bool(ConfigService.get("report_print_main_thread_final"))
+        else:
+            self.main_thread_final = bool(main_thread_final)
+
+        self._request_main_thread_print.connect(self._do_main_thread_print)
+        self._main_thread_done = threading.Event()
+        self._main_thread_err: str | None = None
+        self._doc: QTextDocument | None = None
 
     def run(self) -> None:
         """Build the HTML, print it, and emit result -- or error if anything failed."""
         from PyQt6.QtPrintSupport import QPrinter
 
         try:
+            if hasattr(self.printer, "isValid") and not self.printer.isValid():
+                raise RuntimeError("printer is invalid or offline")
+
             document = QTextDocument()
             document.setHtml(report_print_html(self.df, self.title, self.generated_on_label))
-            document.print(self.printer)
-            if self.printer.printerState() in (QPrinter.PrinterState.Error, QPrinter.PrinterState.Aborted):
-                raise RuntimeError(f"printer state {self.printer.printerState().name}")
+
+            if self.main_thread_final:
+                self._doc = document
+                document.moveToThread(self.thread())
+                self._main_thread_err = None
+                self._main_thread_done.clear()
+                self._request_main_thread_print.emit(document)
+                self._main_thread_done.wait()
+                if self._main_thread_err:
+                    raise RuntimeError(self._main_thread_err)
+            else:
+                document.print(self.printer)
+                if hasattr(self.printer, "printerState") and self.printer.printerState() in (
+                    QPrinter.PrinterState.Error,
+                    QPrinter.PrinterState.Aborted,
+                ):
+                    raise RuntimeError(f"printer state {self.printer.printerState().name}")
+
             self.result.emit()
         except Exception as e:
             logger.error("Report print failed: %s", e)
             self.error.emit(str(e))
+
+    def _do_main_thread_print(self, document: QTextDocument) -> None:
+        from PyQt6.QtPrintSupport import QPrinter
+
+        try:
+            if hasattr(self.printer, "isValid") and not self.printer.isValid():
+                raise RuntimeError("printer is invalid or offline")
+            document.print(self.printer)
+            if hasattr(self.printer, "printerState") and self.printer.printerState() in (
+                QPrinter.PrinterState.Error,
+                QPrinter.PrinterState.Aborted,
+            ):
+                raise RuntimeError(f"printer state {self.printer.printerState().name}")
+        except Exception as e:
+            self._main_thread_err = str(e)
+        finally:
+            self._main_thread_done.set()
 
 
 class ReportEmailWorker(QThread):

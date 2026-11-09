@@ -519,6 +519,21 @@ class PrintWorker(QThread):
                 job_id = uuid.uuid4().hex
                 job_type, data = item
 
+            if job_type == "a4_invoice":
+                try:
+                    from cbpos.core.services.printer_service import PrinterService
+
+                    PrinterService.process_a4_invoice_job(data)
+                    self.job_completed.emit()
+                    self.job_result.emit(job_id, True, "")
+                except Exception as e:
+                    logger.error("A4 invoice print job failed for %r: %s", data, e)
+                    doc = getattr(e, "document_number", str(data))
+                    err_msg = _t("printer.a4_invoice_failed", document=doc, error=str(e))
+                    self.error_occurred.emit(err_msg)
+                    self.job_result.emit(job_id, False, err_msg)
+                continue
+
             is_print = job_type in PRINT_JOB_TYPES
             if not is_print and job_type != "kick_drawer":
                 logger.error("Unknown print job type %r — nothing printed.", job_type)

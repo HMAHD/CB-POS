@@ -106,10 +106,7 @@ class PrinterService:
             True if the receipt was queued, False if auto-print is off.
         """
         commands = ReceiptBuilder.build_receipt(sale, is_reprint=is_reprint)
-        if not PrinterService.auto_print(commands):
-            return False
-        PrinterService.maybe_print_b2b_invoice(sale)
-        return True
+        return PrinterService.auto_print(commands)
 
     @staticmethod
     def print_receipt(sale: Sale, is_reprint: bool = False, copies: int | None = None) -> None:
@@ -182,6 +179,63 @@ class PrinterService:
         if name and str(name).strip():
             return str(name).strip()
         return None
+
+    @staticmethod
+    def process_a4_invoice_job(sale_or_id: Any) -> None:
+        """Worker-side execution of an A4 Tax Invoice job (#879).
+
+        Loads the sale with relationships in a fresh database session on the
+        worker thread, generates the PDF, and sends it to the configured
+        A4 printer.
+        """
+        a4_printer = PrinterService._resolve_a4_printer()
+        if not a4_printer:
+            logger.warning("[PrinterService] A4 printer not configured. Skipping A4 invoice print.")
+            return
+
+        if isinstance(sale_or_id, Sale):
+            sale = sale_or_id
+            doc_num = sale.document_number or f"REC-{sale.id}"
+            pdf_path = PrinterService.get_spool_path(doc_num)
+            try:
+                InvoiceService.generate_pdf(sale, str(pdf_path))
+                logger.info("[PrinterService] Worker generated A4 invoice: %s", pdf_path)
+                PrinterService._send_pdf_to_printer(str(pdf_path), a4_printer)
+            except Exception as exc:
+                exc.document_number = doc_num
+                raise
+            return
+
+        from sqlalchemy.orm import joinedload, selectinload
+
+        from cbpos.core.database import Database
+
+        sale_id = int(sale_or_id)
+        with Database().get_session() as session:
+            sale = (
+                session.query(Sale)
+                .options(
+                    joinedload(Sale.customer),
+                    selectinload(Sale.items),
+                    selectinload(Sale.payments),
+                )
+                .filter(Sale.id == sale_id)
+                .first()
+            )
+            if not sale:
+                err = ValueError(f"Sale {sale_id} not found")
+                err.document_number = f"ID-{sale_id}"
+                raise err
+
+            doc_num = sale.document_number or f"REC-{sale.id}"
+            pdf_path = PrinterService.get_spool_path(doc_num)
+            try:
+                InvoiceService.generate_pdf(sale, str(pdf_path))
+                logger.info("[PrinterService] Worker generated A4 invoice: %s", pdf_path)
+                PrinterService._send_pdf_to_printer(str(pdf_path), a4_printer)
+            except Exception as exc:
+                exc.document_number = doc_num
+                raise
 
     @staticmethod
     def _print_a4_invoice(sale: Sale) -> None:

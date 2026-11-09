@@ -45,6 +45,11 @@ class PrintWorkerPeripherals:
                 PrinterService.print_transaction(event.sale)
             except Exception as e:
                 logger.error("Auto-print of %s failed: %s", event.sale.document_number, e)
+
+        if event.sale.customer and getattr(event.sale.customer, "vat_number", None):
+            if PrinterService._resolve_a4_printer():
+                PrintWorker.instance().add_job("a4_invoice", event.sale.id)
+
         from cbpos.core.services.payment_service import classify_method_name
 
         method_kinds = [classify_method_name(m) for m in event.payment_methods]

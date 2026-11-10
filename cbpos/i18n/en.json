@@ -171,7 +171,8 @@
     },
     "a4_invoice_failed": "The tax invoice for {document} didn't print: {error}",
     "not_installed": "The A4 printer \"{name}\" isn't installed on this computer. Choose another in Settings → Hardware.",
-    "no_pdf_handler": "Windows has no app set up to print PDFs. Install Adobe Acrobat Reader or set a PDF app that supports printing, then try again."
+    "no_pdf_handler": "Windows has no app set up to print PDFs. Install Adobe Acrobat Reader or set a PDF app that supports printing, then try again.",
+    "barcode_failed": "The barcode \"{code}\" couldn't be printed."
   },
   "pos": {
     "no_cash_method": "There's no active cash payment type. Turn one on in Settings → Payment Methods.",

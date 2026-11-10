@@ -170,7 +170,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #803 | Configured A4 printer is ignored; invoices go to the Windows default printer | medium | 7.1 | done | #1008 | 9a8cc00 · _resolve_a4_printer routes A4 invoice to configured printer or falls back to default |
 | #879 | The A4 tax invoice PDF is built synchronously on the UI thread inside checkout | medium | 7.1 | done | #1008 | b08a23f/82dff26/41e2854 · a4_invoice background worker job, eager relationship loading, queue via _print_a4_invoice in print_transaction |
 | #731 | Verify report printing from the background thread on real Windows printers | medium | 7.1 | ready-for-human | #1008 | 190d202 · report_print_main_thread_final setting, queued main-thread print fallback, offline/cancel error checks; real Windows hardware verification matrix pending |
-| #840 | Product labels print without a barcode, because python-escpos rejects CODE128… | high | 7.2 | todo | | |
+| #840 | Product labels print without a barcode, because python-escpos rejects CODE128… | high | 7.2 | in-progress | | choose_barcode helper (EAN13 / CODE128 {C / {B), driver barcode command error handling fails job with job_result and error_occurred, GS k verified on Dummy |
 | #877 | Sinhala/Tamil lines that the builders don't wrap (shop address, customer name… | medium | 7.2 | todo | | |
 | #878 | The receipt's CODE39 invoice barcode is wider than the paper at python-escpos… | medium | 7.2 | todo | | |
 | #908 | With "Merge items" on, merged receipt lines print the first line's unit price… | low | 7.2 | todo | | |

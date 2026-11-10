@@ -58,6 +58,33 @@ def parse_usb_id(value: str) -> tuple[int, int] | None:
     return vid, pid
 
 
+def is_valid_ean13(code: str) -> bool:
+    """Check if code is a valid 13-digit EAN-13 string with correct check digit."""
+    if not (isinstance(code, str) and len(code) == 13 and code.isdigit()):
+        return False
+    digits = [int(d) for d in code]
+    checksum = sum(digits[i] for i in range(0, 12, 2)) + sum(digits[i] * 3 for i in range(1, 12, 2))
+    check_digit = (10 - (checksum % 10)) % 10
+    return digits[12] == check_digit
+
+
+def choose_barcode(data: str | None) -> tuple[str, str]:
+    """Select the optimal barcode symbology and payload format for python-escpos.
+
+    - Valid EAN-13 (13 digits with valid checksum) -> ("EAN13", data)
+    - Even-length all-digit non-EAN -> ("CODE128", "{C" + data)
+    - Other valid data -> ("CODE128", "{B" + data)
+    """
+    s = str(data or "").strip()
+    if s.startswith(("{A", "{B", "{C")):
+        return "CODE128", s
+    if is_valid_ean13(s):
+        return "EAN13", s
+    if s.isdigit() and len(s) % 2 == 0 and len(s) > 0:
+        return "CODE128", "{C" + s
+    return "CODE128", "{B" + s
+
+
 def drawer_pin_setting() -> int:
     """Return the saved cash drawer kick pin (2 or 5), defaulting to 2."""
     try:
@@ -312,10 +339,10 @@ class ESCPOSDriver(IPrinter):
                         # Sinhala/Tamil has no printer code page -- as text it
                         # prints "????", so draw the line as an image instead.
                         paper_width = ConfigService.get("paper_width") or "80mm"
-                        self.printer.set(align="LEFT", bold=False)
+                        self.printer.set(align="left", bold=False)
                         self.printer.image(render_text_line(cmd, paper_width))
                         continue
-                    align = cmd.get("align", "left").upper()
+                    align = cmd.get("align", "left").lower()
                     bold = cmd.get("bold", False)
                     self.printer.set(align=align, bold=bold)
                     self.printer.text(val + "\n")
@@ -334,19 +361,41 @@ class ESCPOSDriver(IPrinter):
 
                 elif c_type == "barcode":
                     code = cmd.get("val")
-                    bc_type = cmd.get("code", "CODE39")
+                    bc_type = cmd.get("code")
+                    align = cmd.get("align", "left").lower()
+                    try:
+                        self.printer.set(align=align)
+                    except Exception:
+                        pass
                     try:
                         if bc_type == "QR":
                             # QR is 2D and needs its own ESC/POS command --
                             # printer.barcode() only knows 1D symbologies
                             # (CODE39/CODE128/EAN/etc).
-                            self.printer.qr(code, center=(cmd.get("align", "left") == "center"))
+                            self.printer.qr(code, center=(align == "center"))
                         else:
-                            self.printer.barcode(code, bc_type, function_type="B")
+                            if (
+                                not bc_type
+                                or bc_type == "AUTO"
+                                or (
+                                    bc_type == "CODE128"
+                                    and not (isinstance(code, str) and code.startswith(("{A", "{B", "{C")))
+                                )
+                            ):
+                                chosen_type, payload = choose_barcode(code)
+                            else:
+                                chosen_type, payload = bc_type, code
+                            kwargs: dict[str, Any] = {"function_type": "B"}
+                            if "width" in cmd:
+                                kwargs["width"] = cmd["width"]
+                            if "height" in cmd:
+                                kwargs["height"] = cmd["height"]
+                            self.printer.barcode(payload, chosen_type, **kwargs)
                     except Exception as e:
                         if is_connection_error(e):
                             raise
-                        logger.error("Failed to print barcode: %s", e)
+                        logger.error("Failed to print barcode %r: %s", code, e)
+                        raise RuntimeError(_t("printer.barcode_failed", code=str(code or ""))) from e
 
                 elif c_type == "feed":
                     lines = cmd.get("lines", 1)
@@ -360,8 +409,8 @@ class ESCPOSDriver(IPrinter):
                         self.printer.cut(mode="FULL")
 
             except Exception as e:
-                # A lost printer must fail the job, not print "nothing" as success.
-                if is_connection_error(e):
+                # A lost printer or barcode failure must fail the job, not print "nothing" as success.
+                if is_connection_error(e) or isinstance(e, RuntimeError):
                     raise
                 logger.error("Error processing print command %s: %s", cmd.get("type"), e)
 

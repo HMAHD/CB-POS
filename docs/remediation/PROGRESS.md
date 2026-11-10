@@ -173,7 +173,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #840 | Product labels print without a barcode, because python-escpos rejects CODE128… | high | 7.2 | done | | fee23fd · choose_barcode helper (EAN13 / CODE128 {C / {B), driver barcode command error handling fails job with job_result and error_occurred, GS k verified on Dummy |
 | #877 | Sinhala/Tamil lines that the builders don't wrap (shop address, customer name… | medium | 7.2 | done | | _draw_wrapped shared helper in text_raster.py, wrap overflowing lines with TextWordWrap, dynamic QFontMetrics height, preserve grapheme clusters |
 | #878 | The receipt's CODE39 invoice barcode is wider than the paper at python-escpos… | medium | 7.2 | ready-for-human | | D10 · Pure barcode utilities (barcode.py), calculate_barcode_width, CODE128 {B scaling to paper dot width, height 60, omit if exceeds dots; physical print-and-scan pending |
-| #908 | With "Merge items" on, merged receipt lines print the first line's unit price… | low | 7.2 | todo | | |
+| #908 | With "Merge items" on, merged receipt lines print the first line's unit price… | low | 7.2 | done | | _merge_items groups by (product_id, unit_price, original_price, is_manual_price), honest printed unit price, accurate per-line savings ((original_price - unit_price) * qty) |
 | #841 | The scanner filter counts each keystroke once per widget the key propagates t… | high | 7.3 | todo | | |
 | #842 | After one reprint from Management → Documents, the hidden Document view shows… | high | 7.3 | todo | | |
 | #846 | Dashboard aborts the app (SIGABRT) when re-shown while a load is still running | high | 7.3 | todo | | |

@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class ItemDisplay:
     """Helper class for merged items display."""
 
-    __slots__ = ("name", "original_price", "product", "qty", "subtotal", "unit_price")
+    __slots__ = ("is_manual_price", "name", "original_price", "product", "qty", "subtotal", "unit_price")
 
     def __init__(
         self,
@@ -30,6 +30,7 @@ class ItemDisplay:
         subtotal: Any,
         name: str,
         original_price: Any = None,
+        is_manual_price: bool = False,
     ) -> None:
         """Store the fields needed to render one (possibly merged) receipt line."""
         self.product = product
@@ -38,6 +39,7 @@ class ItemDisplay:
         self.subtotal = subtotal
         self.name = name
         self.original_price = original_price
+        self.is_manual_price = is_manual_price
 
 
 class SalesReceiptBuilder(BaseReceiptBuilder):
@@ -312,23 +314,32 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
     @staticmethod
     def _merge_items(items: list[SaleItem]) -> list[Any]:
         """
-        Merges SaleItems with the same product_id.
+        Merges SaleItems with the same (product_id, unit_price, original_price, is_manual_price).
+        Lines with different prices stay separate (#908).
         Returns a list of objects with product, qty, unit_price, subtotal attributes.
         """
-        merged: dict[Any, ItemDisplay] = {}
+        merged: dict[tuple[Any, ...], ItemDisplay] = {}
         for item in items:
             pid = item.product_id if item.product_id is not None else id(item.product)
-            if pid in merged:
-                merged[pid].qty += item.qty
-                merged[pid].subtotal += item.subtotal
+            u_price = item.unit_price
+            orig_price = getattr(item, "original_price", None)
+            is_manual = bool(getattr(item, "is_manual_price", False))
+            key = (pid, u_price, orig_price, is_manual)
+            if key in merged:
+                merged[key].qty += item.qty
+                merged[key].subtotal += item.subtotal
             else:
-                merged[pid] = ItemDisplay(
+                p_name = (
+                    item.product.name_en if hasattr(item, "product") and item.product else getattr(item, "name", "")
+                )
+                merged[key] = ItemDisplay(
                     product=item.product,
                     qty=item.qty,
-                    unit_price=item.unit_price,
+                    unit_price=u_price,
                     subtotal=item.subtotal,
-                    name=item.product.name_en,
-                    original_price=getattr(item, "original_price", None),
+                    name=p_name,
+                    original_price=orig_price,
+                    is_manual_price=is_manual,
                 )
         return list(merged.values())
 

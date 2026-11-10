@@ -112,11 +112,11 @@ class TestSaleHistoryDialogReprintTiming:
         dlg._selected_sale = sale
 
         with (
-            patch.object(PrintWorker, "add_job"),
+            patch.object(PrintWorker, "add_job", return_value="job_sale_1"),
             patch("cbpos.ui.dialogs.sale_history_dialog.QMessageBox") as mock_box,
         ):
             dlg._reprint_receipt()
-            PrintWorker.instance().job_completed.emit()
+            PrintWorker.instance().job_result.emit("job_sale_1", True, "")
             mock_box.information.assert_called_once()
             mock_box.critical.assert_not_called()
 
@@ -127,11 +127,11 @@ class TestSaleHistoryDialogReprintTiming:
         dlg._selected_sale = sale
 
         with (
-            patch.object(PrintWorker, "add_job"),
+            patch.object(PrintWorker, "add_job", return_value="job_sale_1"),
             patch("cbpos.ui.dialogs.sale_history_dialog.QMessageBox") as mock_box,
         ):
             dlg._reprint_receipt()
-            PrintWorker.instance().error_occurred.emit("Printer not available.")
+            PrintWorker.instance().job_result.emit("job_sale_1", False, "Printer not available.")
 
             mock_box.critical.assert_called_once()
             shown_text = mock_box.critical.call_args[0][2]
@@ -147,7 +147,7 @@ class TestReceiptReprintDialogTiming:
         dlg.results = [sale]
 
         with (
-            patch.object(PrintWorker, "add_job"),
+            patch.object(PrintWorker, "add_job", return_value="job_rcpt_1"),
             patch("cbpos.ui.dialogs.receipt_reprint_dialog.QMessageBox") as mock_box,
         ):
             dlg.results_table.insertRow(0)
@@ -162,13 +162,13 @@ class TestReceiptReprintDialogTiming:
         dlg.results = [sale]
 
         with (
-            patch.object(PrintWorker, "add_job"),
+            patch.object(PrintWorker, "add_job", return_value="job_rcpt_1"),
             patch("cbpos.ui.dialogs.receipt_reprint_dialog.QMessageBox") as mock_box,
         ):
             dlg.results_table.insertRow(0)
             dlg.results_table.selectRow(0)
             dlg.reprint_selected()
-            PrintWorker.instance().job_completed.emit()
+            PrintWorker.instance().job_result.emit("job_rcpt_1", True, "")
             mock_box.information.assert_called_once()
 
         dlg.deleteLater()

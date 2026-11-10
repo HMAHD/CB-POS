@@ -1,4 +1,3 @@
-import contextlib
 import logging
 
 from PyQt6.QtCore import QDate, Qt
@@ -50,6 +49,8 @@ class HistoryView(QWidget):
         """Build the UI and load today's transactions."""
         super().__init__()
         self.current_sale = None
+        self._reprint_job_id: str | None = None
+        PrintWorker.instance().job_result.connect(self._on_reprint_job_result)
         self.init_ui()
         self.load_today()
 
@@ -419,49 +420,32 @@ class HistoryView(QWidget):
             return
 
         try:
-            worker = PrintWorker.instance()
-            self._print_worker = worker
-            # PrintWorker.add_job() only queues the job -- the print itself
-            # happens later, asynchronously, on the worker thread. Showing
-            # "success" right after add_job() (the old behavior) meant the
-            # user was told the reprint worked even when the printer wasn't
-            # configured at all. Wait for the real outcome instead. Guard
-            # against reconnecting on every call the same way
-            # ReceiptOptionsDialog.print_thermal() does.
-            try:
-                worker.error_occurred.disconnect(self._on_reprint_error)
-            except TypeError as e:
-                logger.debug("Signal not connected yet: %s", e)
-            with contextlib.suppress(TypeError):
-                worker.job_completed.disconnect(self._on_reprint_finished)
-            worker.error_occurred.connect(self._on_reprint_error)
-            worker.job_completed.connect(self._on_reprint_finished)
-
             if hasattr(self, "reprint_btn"):
                 self.reprint_btn.setEnabled(False)
-            PrinterService.print_receipt(self.current_sale, is_reprint=True)
+            self._reprint_job_id = PrinterService.print_receipt(self.current_sale, is_reprint=True)
         except Exception as e:
             if hasattr(self, "reprint_btn"):
                 self.reprint_btn.setEnabled(True)
             logger.error("Reprint failed: %s", e)
             QMessageBox.critical(self, _t("common.error"), _t("history.reprint_failed"))
 
-    def _on_reprint_finished(self) -> None:
-        """Called once the queued print job actually completes."""
+    def _on_reprint_job_result(self, job_id: str, ok: bool, message: str) -> None:
+        """Called when a print job completes. Ignores jobs other than this view's reprint (#842)."""
+        if not self._reprint_job_id or job_id != self._reprint_job_id:
+            return
+        self._reprint_job_id = None
         if hasattr(self, "reprint_btn"):
             self.reprint_btn.setEnabled(True)
-        QMessageBox.information(
-            self,
-            _t("common.success"),
-            _t("history.receipt_sent", receipt=self.current_sale.document_number),
-        )
-
-    def _on_reprint_error(self, message: str) -> None:
-        """Called if the queued print job actually fails (e.g. no printer configured)."""
-        if hasattr(self, "reprint_btn"):
-            self.reprint_btn.setEnabled(True)
-        logger.error("Reprint failed: %s", message)
-        QMessageBox.critical(self, _t("common.error"), _t("history.reprint_failed"))
+        if ok:
+            doc_num = self.current_sale.document_number if self.current_sale else ""
+            QMessageBox.information(
+                self,
+                _t("common.success"),
+                _t("history.receipt_sent", receipt=doc_num),
+            )
+        else:
+            logger.error("Reprint failed: %s", message)
+            QMessageBox.critical(self, _t("common.error"), _t("history.reprint_failed"))
 
     def process_refund(self):
         """Process a refund for the selected sale"""

@@ -309,5 +309,5 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #877 | Physical 58 mm thermal receipt print of wrapped Sinhala and Tamil lines (shop address, item names) | pending |
 
 ## Handoff
-Batch 7.2 merged in PR #1010 (merge commit dfe1306dc481aae85cf4cef58b025146e5803bfa) and follow-up PR #1011 (merge commit d311f62dd7ac158724b63974b8d23fd1da23c380). #840, #877, and #908 verified CLOSED on GitHub. #878 remains OPEN with `ready-for-human` for physical 58 mm / 80 mm thermal print-and-scan verification on Windows alongside #731. Starting Batch 7.3: Scanner, signal and dashboard lifecycle (#841, #842, #846).
+Batch 7.2 merged in PR #1010 (merge commit dfe1306dc481aae85cf4cef58b025146e5803bfa) and follow-up PR #1011 (merge commit d311f62dd7ac158724b63974b8d23fd1da23c380). #840, #877, and #908 verified CLOSED on GitHub. #878 remains OPEN with `ready-for-human` for physical 58 mm / 80 mm thermal print-and-scan verification on Windows alongside #731. In Batch 7.3: #841 completed and pushed; #842 completed (all print result listeners migrated to job_result with job ID filtering); proceeding to #846.
 

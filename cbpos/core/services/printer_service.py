@@ -64,17 +64,21 @@ class PrinterService:
         return min(max(copies, 1), _MAX_COPIES)
 
     @staticmethod
-    def queue_commands(commands: list[dict[str, Any]], copies: int = 1) -> None:
+    def queue_commands(commands: list[dict[str, Any]], copies: int = 1) -> str:
         """Queue *copies* receipts as ONE print job on the shared PrintWorker.
 
         One job (not one per copy) so screens waiting on the worker's
-        job_completed/error_occurred hear about the print exactly once.
-        Each copy ends with the builder's own feed + cut.
+        job_result hear about the print exactly once. Each copy ends with
+        the builder's own feed + cut.
+
+        Returns:
+            job_id: The unique identifier for the queued print job.
         """
         copies = max(int(copies), 1)
         job = [cmd for _ in range(copies) for cmd in commands]
-        PrintWorker.instance().add_job("print_receipt", job)
+        job_id = PrintWorker.instance().add_job("print_receipt", job)
         logger.info("[PrinterService] Queued receipt job (%d cop%s)", copies, "y" if copies == 1 else "ies")
+        return job_id
 
     @staticmethod
     def auto_print(commands: list[dict[str, Any]]) -> bool:
@@ -112,7 +116,7 @@ class PrinterService:
         return True
 
     @staticmethod
-    def print_receipt(sale: Sale, is_reprint: bool = False, copies: int | None = None) -> None:
+    def print_receipt(sale: Sale, is_reprint: bool = False, copies: int | None = None) -> str:
         """Print a receipt the user asked for (Print / Reprint buttons).
 
         Ignores auto_print_receipt -- the user explicitly clicked Print.
@@ -123,35 +127,42 @@ class PrinterService:
             copies: Number of copies; None means the configured count
                 for a first print and one for a reprint.
 
+        Returns:
+            job_id: The unique identifier for the queued print job.
+
         Raises:
             Exception: If the receipt can't be built; the caller reports it.
         """
         if copies is None:
             copies = 1 if is_reprint else PrinterService.receipt_copies()
         commands = ReceiptBuilder.build_receipt(sale, is_reprint=is_reprint)
-        PrinterService.queue_commands(commands, copies)
+        return PrinterService.queue_commands(commands, copies)
 
     @staticmethod
-    def print_shift_report(summary: dict[str, Any], x_read: bool = False) -> None:
+    def print_shift_report(summary: dict[str, Any], x_read: bool = False) -> str:
         """Print the shift Z-Report (at close) or the mid-shift X-Read (#682).
 
         Queued as one job on the shared PrintWorker, like a receipt, so the
-        caller hears the real outcome on job_completed / error_occurred --
-        including the translated "no printer set up" message. Always one
-        copy: receipt_copies is for customer receipts.
+        caller hears the real outcome on job_result -- including the translated
+        "no printer set up" message. Always one copy: receipt_copies is for
+        customer receipts.
 
         Args:
             summary: ``ShiftService`` summary (``close_shift`` output for a Z-Report).
             x_read: True for the mid-shift X-Read.
 
+        Returns:
+            job_id: The unique identifier for the queued print job.
+
         Raises:
             Exception: If the report can't be built; the caller reports it.
         """
         commands = ShiftReportBuilder.build_shift_report(summary, x_read=x_read)
-        PrintWorker.instance().add_job("print_receipt", commands)
+        job_id = PrintWorker.instance().add_job("print_receipt", commands)
         logger.info(
             "[PrinterService] Queued %s for shift %s", "X-Read" if x_read else "Z-Report", summary.get("shift_id")
         )
+        return job_id
 
     @staticmethod
     def maybe_print_b2b_invoice(sale: Sale) -> None:

@@ -1,6 +1,5 @@
 """One place for everything about the cashier's open shift (#605)."""
 
-import contextlib
 import logging
 from datetime import datetime
 from decimal import Decimal
@@ -79,6 +78,8 @@ class ShiftManagementDialog(QDialog):
         self.shift_ended = False
         self.value_labels: dict[str, QLabel] = {}
         self._summary: dict[str, Any] = {}
+        self._print_job_id: str | None = None
+        PrintWorker.instance().job_result.connect(self._on_x_read_job_result)
 
         self._init_ui()
         self.retranslate_ui()
@@ -281,30 +282,31 @@ class ShiftManagementDialog(QDialog):
 
     def _print_x_read(self) -> None:
         """Print the current figures as an X-Read; report the printer's real outcome."""
-        worker = PrintWorker.instance()
-        self._disconnect_print_signals(worker)
-        worker.job_completed.connect(self._on_x_read_printed)
-        worker.error_occurred.connect(self._on_x_read_error)
         self.btn_print_x_read.setEnabled(False)
         try:
-            PrinterService.print_shift_report(self._summary, x_read=True)
+            self._print_job_id = PrinterService.print_shift_report(self._summary, x_read=True)
         except Exception as e:
             logger.error("X-Read could not be built: %s", e)
             self._on_x_read_error(str(e))
 
     def _disconnect_print_signals(self, worker: PrintWorker) -> None:
-        with contextlib.suppress(TypeError):
-            worker.job_completed.disconnect(self._on_x_read_printed)
-        with contextlib.suppress(TypeError):
-            worker.error_occurred.disconnect(self._on_x_read_error)
+        pass
+
+    def _on_x_read_job_result(self, job_id: str, ok: bool, message: str) -> None:
+        """Called once the queued print job actually finishes."""
+        if self._print_job_id is None or job_id != self._print_job_id:
+            return
+        self._print_job_id = None
+        if ok:
+            self._on_x_read_printed()
+        else:
+            self._on_x_read_error(message)
 
     def _on_x_read_printed(self) -> None:
-        self._disconnect_print_signals(PrintWorker.instance())
         self.btn_print_x_read.setEnabled(True)
         QMessageBox.information(self, _t("common.success"), _t("shift_management.x_read_printed"))
 
     def _on_x_read_error(self, message: str) -> None:
-        self._disconnect_print_signals(PrintWorker.instance())
         self.btn_print_x_read.setEnabled(True)
         logger.error("X-Read print failed: %s", message)
         QMessageBox.warning(self, _t("common.warning"), _t("shift_management.x_read_failed", error=message))

@@ -2,7 +2,6 @@
 Dialog for viewing and printing customer account statements.
 """
 
-import contextlib
 import logging
 
 from PyQt6.QtCore import QDate, QSize, Qt
@@ -66,6 +65,8 @@ class CustomerStatementDialog(QDialog):
         super().__init__(parent)
         self.customer = customer
         self.statement_data = None
+        self._print_job_id: str | None = None
+        PrintWorker.instance().job_result.connect(self._on_print_job_result)
 
         self.setWindowTitle(_t("customer_statement.title", name=customer.name))
         self.setMinimumSize(840, 620)
@@ -388,15 +389,17 @@ class CustomerStatementDialog(QDialog):
         )
 
         worker = PrintWorker.instance()
-        try:
-            worker.error_occurred.disconnect(self._on_print_error)
-        except TypeError as e:
-            logger.debug("Signal not connected yet: %s", e)
-        with contextlib.suppress(TypeError):
-            worker.job_completed.disconnect(self._on_print_finished)
-        worker.error_occurred.connect(self._on_print_error)
-        worker.job_completed.connect(self._on_print_finished)
-        worker.add_job("print_commands", commands)
+        self._print_job_id = worker.add_job("print_commands", commands)
+
+    def _on_print_job_result(self, job_id: str, ok: bool, message: str) -> None:
+        """Called once the queued print job actually completes."""
+        if self._print_job_id is None or job_id != self._print_job_id:
+            return
+        self._print_job_id = None
+        if ok:
+            self._on_print_finished()
+        else:
+            self._on_print_error(message)
 
     def _on_print_finished(self) -> None:
         """Called once the queued print job actually completes."""

@@ -1,4 +1,3 @@
-import contextlib
 import logging
 from decimal import Decimal
 
@@ -44,6 +43,8 @@ class ShiftClosingDialog(QDialog):
         self.counted_cash = Decimal(0)
         self.summary = None
         self._final_summary: dict | None = None  # set once the shift is closed
+        self._print_job_id: str | None = None
+        PrintWorker.instance().job_result.connect(self._on_z_report_job_result)
 
         self.setWindowTitle(_t("shift_closing.title"))
         self.setMinimumSize(800, 600)
@@ -193,38 +194,33 @@ class ShiftClosingDialog(QDialog):
     # ── Z-Report printing (#682) ─────────────────────────────────
 
     def _print_z_report(self) -> None:
-        """Queue the Z-Report and wait for the printer's real outcome.
-
-        PrintWorker.add_job() only queues the job; success is shown on
-        job_completed, and error_occurred (including "no printer set up")
-        offers Retry or Continue -- never a false "printed" (#669).
-        """
+        """Queue the Z-Report and wait for the printer's real outcome."""
         self.btn_next.setEnabled(False)
         self.btn_next.setText(_t("shift_closing.printing_z_report"))
-        worker = PrintWorker.instance()
-        self._disconnect_print_signals(worker)
-        # Connect before queueing so a fast job can't finish unheard.
-        worker.job_completed.connect(self._on_z_report_printed)
-        worker.error_occurred.connect(self._on_z_report_error)
         try:
-            PrinterService.print_shift_report(self._final_summary)
+            self._print_job_id = PrinterService.print_shift_report(self._final_summary)
         except Exception as e:
             logger.error("Z-Report could not be built: %s", e)
             self._on_z_report_error(str(e))
 
     def _disconnect_print_signals(self, worker: PrintWorker) -> None:
-        with contextlib.suppress(TypeError):
-            worker.job_completed.disconnect(self._on_z_report_printed)
-        with contextlib.suppress(TypeError):
-            worker.error_occurred.disconnect(self._on_z_report_error)
+        pass
+
+    def _on_z_report_job_result(self, job_id: str, ok: bool, message: str) -> None:
+        """Called once the queued print job actually finishes."""
+        if self._print_job_id is None or job_id != self._print_job_id:
+            return
+        self._print_job_id = None
+        if ok:
+            self._on_z_report_printed()
+        else:
+            self._on_z_report_error(message)
 
     def _on_z_report_printed(self) -> None:
-        self._disconnect_print_signals(PrintWorker.instance())
         QMessageBox.information(self, _t("common.success"), _t("shift_closing.closed_success"))
         self._finish()
 
     def _on_z_report_error(self, message: str) -> None:
-        self._disconnect_print_signals(PrintWorker.instance())
         logger.error("Z-Report print failed: %s", message)
         box = QMessageBox(self)
         box.setIcon(QMessageBox.Icon.Warning)

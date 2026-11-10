@@ -112,3 +112,91 @@ def test_issue_793_manual_open_requires_permission_and_audits(qapp, db_session):
                     assert "manager793" in str(logs[0].details) or str(manager.id) in str(logs[0].details)
     finally:
         view.deleteLater()
+
+
+def test_issue_840_choose_barcode_ean13_code128c_b():
+    """choose_barcode selects EAN13 for valid 13-digit EANs, CODE128 {C for even digits, {B otherwise (#840)."""
+    from cbpos.infrastructure.hardware.escpos_driver import choose_barcode
+
+    # Valid EAN-13 -> EAN13
+    assert choose_barcode("4006381333931") == ("EAN13", "4006381333931")
+    assert choose_barcode("4791234567891") == ("EAN13", "4791234567891")
+
+    # Even-length all-digit non-EAN -> CODE128 with {C
+    assert choose_barcode("123456") == ("CODE128", "{C123456")
+    assert choose_barcode("12") == ("CODE128", "{C12")
+
+    # Odd-length all-digit non-EAN -> CODE128 with {B
+    assert choose_barcode("4791234567890") == ("CODE128", "{B4791234567890")
+    assert choose_barcode("12345") == ("CODE128", "{B12345")
+
+    # Alphanumeric -> CODE128 with {B
+    assert choose_barcode("INV-2026-0001") == ("CODE128", "{BINV-2026-0001")
+    assert choose_barcode("ABC") == ("CODE128", "{BABC")
+
+    # Already prefixed -> preserved
+    assert choose_barcode("{C123456") == ("CODE128", "{C123456")
+    assert choose_barcode("{BABC") == ("CODE128", "{BABC")
+
+
+def test_issue_840_label_sends_gs_k_to_dummy():
+    """A product label print sends real ESC/POS barcode bytes (GS k) to the printer (#840)."""
+    from decimal import Decimal
+
+    import escpos.printer
+
+    from cbpos.core.models import Product
+    from cbpos.core.services.label_service import LabelService
+    from cbpos.infrastructure.hardware.escpos_driver import ESCPOSDriver
+
+    dummy = escpos.printer.Dummy()
+    driver = ESCPOSDriver()
+    driver.printer = dummy
+
+    product = Product(
+        name_en="Ceylon Tea 100g",
+        barcode="4791234567890",
+        price=Decimal("450.00"),
+    )
+    commands = LabelService._build_single_label(product)
+    driver.print_commands(commands)
+
+    assert b"\x1dk" in dummy.output, "Dummy printer output should contain ESC/POS GS k (barcode) command"
+
+
+def test_issue_840_unencodable_barcode_fails_job(qtbot):
+    """An unencodable barcode fails the job, emitting job_result(..., False, ...) and error_occurred (#840)."""
+    import escpos.printer
+
+    from cbpos.infrastructure.hardware.escpos_driver import ESCPOSDriver
+
+    dummy = escpos.printer.Dummy()
+    driver = ESCPOSDriver()
+    driver.printer = dummy
+    driver.connect = lambda: True
+    driver.disconnect = lambda: None
+    worker = PrintWorker(printer=driver)
+    job_results = []
+    errors = []
+    completed = []
+
+    worker.job_result.connect(lambda jid, ok, msg: job_results.append((jid, ok, msg)))
+    worker.error_occurred.connect(lambda msg: errors.append(msg))
+    worker.job_completed.connect(lambda: completed.append(True))
+
+    commands = [{"type": "barcode", "val": "\u0d85\u0d9a", "code": "CODE128"}]
+    job_id = worker.add_job("print_receipt", commands)
+
+    qtbot.waitUntil(lambda: len(job_results) == 1, timeout=5000)
+    qtbot.wait(150)
+
+    assert len(job_results) == 1, "Exactly one job_result must be emitted"
+    jid, ok, msg = job_results[0]
+    assert jid == job_id
+    assert ok is False
+    assert "අක" in msg
+    assert errors == [msg]
+    assert len(completed) == 0, "A failed barcode job must not emit job_completed"
+
+    worker.stop()
+    worker.wait(5000)

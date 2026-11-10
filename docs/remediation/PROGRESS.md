@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 7 · Batch: 7.2 (Complete) · Branch: main · PR: #1010 (merged) · Last session: 2026-11-10
+- Phase: 7 · Batch: 7.3 · Branch: fix/p7-b3-scanner-signal-dashboard-lifecycle · PR: — · Last session: 2026-11-10
 
 ## Issues
 
@@ -170,10 +170,10 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #803 | Configured A4 printer is ignored; invoices go to the Windows default printer | medium | 7.1 | done | #1008 | 9a8cc00 · _resolve_a4_printer routes A4 invoice to configured printer or falls back to default |
 | #879 | The A4 tax invoice PDF is built synchronously on the UI thread inside checkout | medium | 7.1 | done | #1008 | b08a23f/82dff26/41e2854 · a4_invoice background worker job, eager relationship loading, queue via _print_a4_invoice in print_transaction |
 | #731 | Verify report printing from the background thread on real Windows printers | medium | 7.1 | ready-for-human | #1008 | 190d202 · report_print_main_thread_final setting, queued main-thread print fallback, offline/cancel error checks; real Windows hardware verification matrix pending |
-| #840 | Product labels print without a barcode, because python-escpos rejects CODE128… | high | 7.2 | done | #1010 | fee23fd · choose_barcode helper (EAN13 / CODE128 {C / {B), driver barcode command error handling fails job with job_result and error_occurred, GS k verified on Dummy |
-| #877 | Sinhala/Tamil lines that the builders don't wrap (shop address, customer name… | medium | 7.2 | done | #1010 | 504fc30 · _draw_wrapped shared helper in text_raster.py, wrap overflowing lines with TextWordWrap, dynamic QFontMetrics height, preserve grapheme clusters |
-| #878 | The receipt's CODE39 invoice barcode is wider than the paper at python-escpos… | medium | 7.2 | ready-for-human | #1010 | 1b675f9 · D10 · Pure barcode utilities (barcode.py), calculate_barcode_width, CODE128 {B scaling to paper dot width, height 60, omit if exceeds dots; physical print-and-scan pending |
-| #908 | With "Merge items" on, merged receipt lines print the first line's unit price… | low | 7.2 | done | #1010 | 46ad88b · _merge_items groups by (product_id, unit_price, original_price, is_manual_price), honest printed unit price, accurate per-line savings ((original_price - unit_price) * qty) |
+| #840 | Product labels print without a barcode, because python-escpos rejects CODE128… | high | 7.2 | done | #1010, #1011 | fee23fd/dfe1306, d311f62 · choose_barcode helper (EAN13 / CODE128 {C / {B), driver barcode command error handling fails job with job_result and error_occurred, GS k verified on Dummy |
+| #877 | Sinhala/Tamil lines that the builders don't wrap (shop address, customer name… | medium | 7.2 | done | #1010, #1011 | 504fc30/dfe1306, d311f62 · _draw_wrapped shared helper in text_raster.py, wrap overflowing lines with TextWordWrap, dynamic QFontMetrics height, preserve grapheme clusters |
+| #878 | The receipt's CODE39 invoice barcode is wider than the paper at python-escpos… | medium | 7.2 | ready-for-human | #1010, #1011 | 1b675f9/dfe1306, d311f62 · D10 · Pure barcode utilities (barcode.py), calculate_barcode_width, CODE128 {B scaling to paper dot width, height 60, omit if exceeds dots; physical print-and-scan pending |
+| #908 | With "Merge items" on, merged receipt lines print the first line's unit price… | low | 7.2 | done | #1010, #1011 | 46ad88b/dfe1306, d311f62 · _merge_items groups by (product_id, unit_price, original_price, is_manual_price), honest printed unit price, accurate per-line savings ((original_price - unit_price) * qty) |
 | #841 | The scanner filter counts each keystroke once per widget the key propagates t… | high | 7.3 | todo | | |
 | #842 | After one reprint from Management → Documents, the hidden Document view shows… | high | 7.3 | todo | | |
 | #846 | Dashboard aborts the app (SIGABRT) when re-shown while a load is still running | high | 7.3 | todo | | |
@@ -309,5 +309,5 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #877 | Physical 58 mm thermal receipt print of wrapped Sinhala and Tamil lines (shop address, item names) | pending |
 
 ## Handoff
-Batch 7.2 merged in PR #1010. #840, #877, and #908 verified CLOSED on GitHub. #878 remains OPEN with `ready-for-human` for physical 58 mm / 80 mm thermal print-and-scan verification on Windows alongside #731. Next batch is Batch 7.3 (Scanner filter, document view reprint crash, dashboard abort: #841, #842, #846).
+Batch 7.2 merged in PR #1010 (merge commit dfe1306dc481aae85cf4cef58b025146e5803bfa) and follow-up PR #1011 (merge commit d311f62dd7ac158724b63974b8d23fd1da23c380). #840, #877, and #908 verified CLOSED on GitHub. #878 remains OPEN with `ready-for-human` for physical 58 mm / 80 mm thermal print-and-scan verification on Windows alongside #731. Starting Batch 7.3: Scanner, signal and dashboard lifecycle (#841, #842, #846).
 

@@ -1,12 +1,20 @@
 """Sales receipt builder — generates receipt commands for completed sales."""
 
+import logging
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
 from cbpos.core.models import Sale, SaleItem
 from cbpos.core.services.base_receipt_builder import BaseReceiptBuilder
 from cbpos.core.services.tax_service import TaxService
+from cbpos.core.utils.barcode import (
+    calculate_barcode_width,
+    choose_barcode,
+    code128_module_count,
+)
 from cbpos.core.utils.formatters import format_currency, format_quantity
+
+logger = logging.getLogger(__name__)
 
 
 class ItemDisplay:
@@ -235,8 +243,28 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
 
         # Barcode (encodes invoice number for return scanning)
         show_barcode = gc("show_barcode", True, config_override)
-        if show_barcode:
-            commands.append({"type": "barcode", "val": doc_num, "code": "CODE39", "align": "center"})
+        if show_barcode and doc_num:
+            paper_width = gc("paper_width", "80mm", config_override)
+            bw = calculate_barcode_width(doc_num, paper_width)
+            if bw is not None:
+                chosen_type, payload = choose_barcode(doc_num)
+                commands.append(
+                    {
+                        "type": "barcode",
+                        "val": payload,
+                        "code": chosen_type,
+                        "align": "center",
+                        "width": bw,
+                        "height": 60,
+                    }
+                )
+            else:
+                logger.warning(
+                    "Invoice barcode omitted: document number %r (%d modules) exceeds %s paper width",
+                    doc_num,
+                    code128_module_count(doc_num),
+                    paper_width,
+                )
 
         # QR code (shop-configured link -- WhatsApp, website, digital receipt, etc.)
         show_qr = gc("show_qr_on_receipt", False, config_override)

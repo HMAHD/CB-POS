@@ -270,10 +270,11 @@ class ReceiptPreviewWidget(QWidget):
                 parts.append(
                     "<div align='center' style='text-align:center;padding:6px %dpx 2px;'>%s</div>" % (p, barcode_html)
                 )
+                display_val = val[2:] if isinstance(val, str) and val.startswith(("{A", "{B", "{C")) else val
                 parts.append(
                     "<div align='center' style='text-align:center;"
                     "padding:0 %dpx 4px;font-size:9px;color:#000;"
-                    "%s'>%s</div>" % (p, _FONT, escape(val))
+                    "%s'>%s</div>" % (p, _FONT, escape(display_val))
                 )
                 # This rendering is decorative bars derived from a hash of
                 # the value, not a real barcode encoding -- it can never be

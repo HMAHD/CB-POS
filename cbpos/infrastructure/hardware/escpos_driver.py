@@ -12,6 +12,18 @@ from PyQt6.QtCore import QThread, pyqtSignal
 from cbpos.core.constants.hardware import DEFAULT_DRAWER_PIN, DRAWER_PINS, PrinterError, PrinterType
 from cbpos.core.interfaces.iprinter import IPrinter
 from cbpos.core.services.config_service import ConfigService
+from cbpos.core.utils.barcode import (
+    calculate_barcode_width as calculate_barcode_width,
+)
+from cbpos.core.utils.barcode import (
+    choose_barcode as choose_barcode,
+)
+from cbpos.core.utils.barcode import (
+    code128_module_count as code128_module_count,
+)
+from cbpos.core.utils.barcode import (
+    is_valid_ean13 as is_valid_ean13,
+)
 from cbpos.core.utils.thermal_image import dither_for_thermal_print
 from cbpos.i18n import _t
 from cbpos.infrastructure.hardware.text_raster import needs_raster, render_text_line
@@ -56,33 +68,6 @@ def parse_usb_id(value: str) -> tuple[int, int] | None:
     if not (0 < vid <= 0xFFFF and 0 < pid <= 0xFFFF):
         return None
     return vid, pid
-
-
-def is_valid_ean13(code: str) -> bool:
-    """Check if code is a valid 13-digit EAN-13 string with correct check digit."""
-    if not (isinstance(code, str) and len(code) == 13 and code.isdigit()):
-        return False
-    digits = [int(d) for d in code]
-    checksum = sum(digits[i] for i in range(0, 12, 2)) + sum(digits[i] * 3 for i in range(1, 12, 2))
-    check_digit = (10 - (checksum % 10)) % 10
-    return digits[12] == check_digit
-
-
-def choose_barcode(data: str | None) -> tuple[str, str]:
-    """Select the optimal barcode symbology and payload format for python-escpos.
-
-    - Valid EAN-13 (13 digits with valid checksum) -> ("EAN13", data)
-    - Even-length all-digit non-EAN -> ("CODE128", "{C" + data)
-    - Other valid data -> ("CODE128", "{B" + data)
-    """
-    s = str(data or "").strip()
-    if s.startswith(("{A", "{B", "{C")):
-        return "CODE128", s
-    if is_valid_ean13(s):
-        return "EAN13", s
-    if s.isdigit() and len(s) % 2 == 0 and len(s) > 0:
-        return "CODE128", "{C" + s
-    return "CODE128", "{B" + s
 
 
 def drawer_pin_setting() -> int:

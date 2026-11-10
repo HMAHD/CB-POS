@@ -180,3 +180,79 @@ class TestBarcodeScannerVsEnterShortcut:
 
         assert scans == []
         assert clicks == [1]
+
+    def test_issue_841_focus_on_nested_button_emits_exact_code(self, scanner_and_field):
+        """#841: with focus on a nested QPushButton, scan keypresses propagate up
+        parent widgets. Each key must be buffered once, emitting the exact barcode."""
+        from PyQt6.QtWidgets import QVBoxLayout, QWidget
+
+        _scanner, _field, scans, _returns = scanner_and_field
+        window = QWidget()
+        outer_layout = QVBoxLayout(window)
+        panel = QWidget()
+        outer_layout.addWidget(panel)
+        inner_layout = QVBoxLayout(panel)
+        button = QPushButton("Action", panel)
+        inner_layout.addWidget(button)
+
+        window.show()
+        window.activateWindow()
+        QTest.qWaitForWindowActive(window)
+        button.setFocus()
+
+        try:
+            QTest.keyClicks(button, "4791234567890")
+            QTest.keyClick(button, Qt.Key.Key_Return)
+        finally:
+            window.hide()
+            window.deleteLater()
+
+        assert scans == ["4791234567890"]
+
+    def test_issue_841_repeated_digits_barcode_emitted_accurately(self, scanner_and_field):
+        """#841: a barcode with genuine repeated digits ('444777999') must not be
+        deduplicated into single digits."""
+        from PyQt6.QtWidgets import QVBoxLayout, QWidget
+
+        _scanner, _field, scans, _returns = scanner_and_field
+        window = QWidget()
+        outer_layout = QVBoxLayout(window)
+        panel = QWidget()
+        outer_layout.addWidget(panel)
+        inner_layout = QVBoxLayout(panel)
+        button = QPushButton("Action", panel)
+        inner_layout.addWidget(button)
+
+        window.show()
+        window.activateWindow()
+        QTest.qWaitForWindowActive(window)
+        button.setFocus()
+
+        try:
+            QTest.keyClicks(button, "444777999")
+            QTest.keyClick(button, Qt.Key.Key_Return)
+        finally:
+            window.hide()
+            window.deleteLater()
+
+        assert scans == ["444777999"]
+
+    def test_issue_841_ordinary_keyboard_typing_not_a_false_scan(self, scanner_and_field):
+        """#841: ordinary slow human typing outside a text field does not become a scan."""
+        _scanner, _field, scans, _returns = scanner_and_field
+        button = QPushButton("Action")
+        button.show()
+        button.activateWindow()
+        QTest.qWaitForWindowActive(button)
+        button.setFocus()
+
+        try:
+            for char in "1234":
+                QTest.keyClick(button, char)
+                QTest.qWait(120)  # slow human typing > 50ms buffer window
+            QTest.keyClick(button, Qt.Key.Key_Return)
+        finally:
+            button.hide()
+            button.deleteLater()
+
+        assert scans == []

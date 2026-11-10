@@ -38,6 +38,7 @@ from cbpos.ui.widgets.charts import (
     VerticalBarChart,
 )
 from cbpos.ui.widgets.table_helpers import align_numeric_headers, batch_table_update, configure_table_columns
+from cbpos.ui.workers import start_background_job
 
 logger = logging.getLogger(__name__)
 
@@ -64,22 +65,24 @@ class _DashboardWheelForwarder(QObject):
 class _YearlyWorker(QThread):
     """Fetches yearly dashboard data (monthly chart + summary) off the UI thread."""
 
-    finished = pyqtSignal(list, dict)  # monthly, summary
+    loaded = pyqtSignal(list, dict)  # monthly, summary
     error_occurred = pyqtSignal(str)
 
-    def __init__(self, year: int) -> None:
+    def __init__(self, year: int, generation: int = 0) -> None:
         """Store the year to fetch data for."""
         super().__init__()
         self._year = year
+        self.generation = generation
+        self.finished.connect(self.deleteLater)
 
     def run(self) -> None:
-        """Fetch the monthly chart and yearly summary, then emit `finished`."""
+        """Fetch the monthly chart and yearly summary, then emit `loaded`."""
         from cbpos.core.services.dashboard_service import DashboardService
 
         try:
             monthly = DashboardService.get_monthly_sales(self._year)
             summary = DashboardService.get_yearly_summary(self._year)
-            self.finished.emit(monthly, summary)
+            self.loaded.emit(monthly, summary)
         except Exception as e:
             logger.exception("Failed to load yearly dashboard data")
             self.error_occurred.emit(str(e))
@@ -88,17 +91,19 @@ class _YearlyWorker(QThread):
 class _PeriodicWorker(QThread):
     """Fetches period-scoped data (products, hourly, stats, categories, customers, tax)."""
 
-    finished = pyqtSignal(list, list, dict, list, list, dict)
+    loaded = pyqtSignal(list, list, dict, list, list, dict)
     error_occurred = pyqtSignal(str)
 
-    def __init__(self, start_date: date, end_date: date) -> None:
+    def __init__(self, start_date: date, end_date: date, generation: int = 0) -> None:
         """Store the date range to fetch data for."""
         super().__init__()
         self._start = start_date
         self._end = end_date
+        self.generation = generation
+        self.finished.connect(self.deleteLater)
 
     def run(self) -> None:
-        """Fetch products, hourly sales, stats, categories, customers, and tax data, then emit `finished`."""
+        """Fetch products, hourly sales, stats, categories, customers, and tax data, then emit `loaded`."""
         from cbpos.core.services.dashboard_service import DashboardService
 
         try:
@@ -108,7 +113,7 @@ class _PeriodicWorker(QThread):
             categories = DashboardService.get_top_categories(self._start, self._end)
             customers = DashboardService.get_top_customers(self._start, self._end)
             tax_summary = DashboardService.get_today_tax_summary()
-            self.finished.emit(products, hourly, stats, categories, customers, tax_summary)
+            self.loaded.emit(products, hourly, stats, categories, customers, tax_summary)
         except Exception as e:
             logger.exception("Failed to load periodic dashboard data")
             self.error_occurred.emit(str(e))
@@ -121,6 +126,12 @@ class DashboardView(QWidget):
         """Build the panels and set up the loading overlay for the monthly chart."""
         super().__init__()
         self._current_year = date.today().year
+        self._yearly_loading: bool = False
+        self._periodic_loading: bool = False
+        self._yearly_generation: int = 0
+        self._periodic_generation: int = 0
+        self._yearly_worker: _YearlyWorker | None = None
+        self._periodic_worker: _PeriodicWorker | None = None
         self.init_ui()
 
         from cbpos.ui.widgets.loading_overlay import LoadingOverlay
@@ -575,19 +586,30 @@ class DashboardView(QWidget):
 
     def _refresh_yearly(self) -> None:
         """Refresh yearly data (Row 1: monthly chart + summary)."""
+        if self._yearly_loading:
+            return
+        self._yearly_loading = True
+        self._yearly_generation += 1
+
         self.lbl_monthly_title.setText(_t("dashboard.monthly_sales", year=self._current_year))
         self.btn_prev_year.setEnabled(False)
         self.btn_next_year.setEnabled(False)
         self.lbl_yearly_total.setText(_t("dashboard.loading"))
         self._monthly_overlay.show_loading(_t("dashboard.loading"))
 
-        self._yearly_worker = _YearlyWorker(self._current_year)
-        self._yearly_worker.finished.connect(self._on_yearly_ready)
-        self._yearly_worker.error_occurred.connect(self._on_yearly_error)
-        self._yearly_worker.start()
+        worker = _YearlyWorker(self._current_year, generation=self._yearly_generation)
+        self._yearly_worker = worker
+        worker.loaded.connect(self._on_yearly_ready)
+        worker.error_occurred.connect(self._on_yearly_error)
+        start_background_job(worker)
 
     def refresh_periodic(self) -> None:
         """Refresh period-scoped data (Rows 3-4) based on the date range."""
+        if self._periodic_loading:
+            return
+        self._periodic_loading = True
+        self._periodic_generation += 1
+
         sd = self.date_from.date().toPyDate()
         ed = self.date_to.date().toPyDate()
 
@@ -610,17 +632,26 @@ class DashboardView(QWidget):
         self.date_to.setEnabled(False)
         self.lbl_avg_order.setText(_t("dashboard.loading"))
 
-        self._periodic_worker = _PeriodicWorker(sd, ed)
-        self._periodic_worker.finished.connect(self._on_periodic_ready)
-        self._periodic_worker.error_occurred.connect(self._on_periodic_error)
-        self._periodic_worker.start()
+        worker = _PeriodicWorker(sd, ed, generation=self._periodic_generation)
+        self._periodic_worker = worker
+        worker.loaded.connect(self._on_periodic_ready)
+        worker.error_occurred.connect(self._on_periodic_error)
+        start_background_job(worker)
 
     def _change_year(self, delta: int) -> None:
+        if self._yearly_loading:
+            return
         self._current_year += delta
         self._refresh_yearly()
 
     def _on_yearly_ready(self, monthly: list, summary: dict) -> None:
         """Handle yearly data from worker thread."""
+        sender = self.sender()
+        gen = getattr(sender, "generation", None)
+        if gen is not None and gen != self._yearly_generation:
+            return
+        self._yearly_loading = False
+
         self.btn_prev_year.setEnabled(True)
         self.btn_next_year.setEnabled(True)
         self._monthly_overlay.hide_loading()
@@ -640,6 +671,12 @@ class DashboardView(QWidget):
 
     def _on_yearly_error(self, message: str) -> None:
         """Re-enable controls left disabled mid-load when the worker fails (#270)."""
+        sender = self.sender()
+        gen = getattr(sender, "generation", None)
+        if gen is not None and gen != self._yearly_generation:
+            return
+        self._yearly_loading = False
+
         self.btn_prev_year.setEnabled(True)
         self.btn_next_year.setEnabled(True)
         self._monthly_overlay.hide_loading()
@@ -649,6 +686,12 @@ class DashboardView(QWidget):
         self, products: list, hourly: list, stats: dict, categories: list, customers: list, tax_summary: dict
     ) -> None:
         """Handle periodic data from worker thread."""
+        sender = self.sender()
+        gen = getattr(sender, "generation", None)
+        if gen is not None and gen != self._periodic_generation:
+            return
+        self._periodic_loading = False
+
         self.btn_refresh.setEnabled(True)
         self.btn_refresh.setText("\u21bb")
         self.date_from.setEnabled(True)
@@ -704,6 +747,12 @@ class DashboardView(QWidget):
 
     def _on_periodic_error(self, message: str) -> None:
         """Re-enable controls left disabled mid-load when the worker fails (#270)."""
+        sender = self.sender()
+        gen = getattr(sender, "generation", None)
+        if gen is not None and gen != self._periodic_generation:
+            return
+        self._periodic_loading = False
+
         self.btn_refresh.setEnabled(True)
         self.btn_refresh.setText("↻")
         self.date_from.setEnabled(True)

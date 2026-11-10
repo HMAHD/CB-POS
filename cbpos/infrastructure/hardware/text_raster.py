@@ -39,12 +39,50 @@ def _font(bold: bool, pixel_size: int) -> QFont:
     return font
 
 
+def _draw_wrapped(
+    text: str,
+    font: QFont,
+    width: int,
+    align: str = "left",
+    format: QImage.Format = QImage.Format.Format_Grayscale8,
+    pen_color: QColor = QColor("black"),
+    bg_color: QColor | Qt.GlobalColor = QColor("white"),
+) -> QImage:
+    """Draw *text* wrapped to *width* pixels using Qt's TextWordWrap (#877).
+
+    Calculates dynamic height using QFontMetrics.boundingRect so wrapped
+    text never clips horizontally.
+    """
+    metrics = QFontMetrics(font)
+    align_flag = {
+        "center": Qt.AlignmentFlag.AlignHCenter,
+        "right": Qt.AlignmentFlag.AlignRight,
+    }.get(str(align).lower(), Qt.AlignmentFlag.AlignLeft)
+    flags = int(align_flag | Qt.TextFlag.TextWordWrap)
+
+    bound = metrics.boundingRect(QRect(0, 0, width, 100_000), flags, text)
+    height = max(metrics.height() + 2 * _PADDING, bound.height() + 2 * _PADDING)
+
+    canvas = QImage(width, height, format)
+    canvas.fill(bg_color)
+    painter = QPainter(canvas)
+    try:
+        painter.setFont(font)
+        painter.setPen(pen_color)
+        painter.drawText(QRect(0, _PADDING, width, height - 2 * _PADDING), flags, text)
+    finally:
+        painter.end()
+
+    return canvas
+
+
 def render_text_line(command: dict, paper_width: str = "80mm") -> Image.Image:
     """Draw one builder text command as a black-on-white 1-bit image.
 
     Two-column rows (``left_val``/``right_val``) keep the label on the left
     and the amount on the right; other lines follow ``align``. Text too
-    wide for the paper is drawn smaller rather than cut off.
+    wide for the paper is drawn smaller down to _MIN_PIXEL_SIZE; if it still
+    overflows, it is wrapped onto multiple lines (#877).
 
     Args:
         command: A ``{"type": "text", ...}`` receipt command.
@@ -61,33 +99,52 @@ def render_text_line(command: dict, paper_width: str = "80mm") -> Image.Image:
 
     pixel_size = _PIXEL_SIZE
     font = _font(bold, pixel_size)
-    while pixel_size > _MIN_PIXEL_SIZE and QFontMetrics(font).horizontalAdvance(text) > width:
+    metrics = QFontMetrics(font)
+    while pixel_size > _MIN_PIXEL_SIZE and metrics.horizontalAdvance(text) > width:
         pixel_size -= 1
         font = _font(bold, pixel_size)
-    height = QFontMetrics(font).height() + 2 * _PADDING
+        metrics = QFontMetrics(font)
 
-    canvas = QImage(width, height, QImage.Format.Format_Grayscale8)
-    canvas.fill(QColor("white"))
-    painter = QPainter(canvas)
-    try:
-        painter.setFont(font)
-        painter.setPen(QColor("black"))
-        box = QRect(0, _PADDING, width, height - 2 * _PADDING)
-        vcenter = Qt.AlignmentFlag.AlignVCenter
-        if two_col:
+    align_str = str(command.get("align", "left")).lower()
+
+    if two_col:
+        height = metrics.height() + 2 * _PADDING
+        canvas = QImage(width, height, QImage.Format.Format_Grayscale8)
+        canvas.fill(QColor("white"))
+        painter = QPainter(canvas)
+        try:
+            painter.setFont(font)
+            painter.setPen(QColor("black"))
+            box = QRect(0, _PADDING, width, height - 2 * _PADDING)
+            vcenter = Qt.AlignmentFlag.AlignVCenter
             painter.drawText(box, Qt.AlignmentFlag.AlignLeft | vcenter, left)
             painter.drawText(box, Qt.AlignmentFlag.AlignRight | vcenter, right)
-        else:
+        finally:
+            painter.end()
+    elif metrics.horizontalAdvance(text) > width:
+        # Text does not fit at _MIN_PIXEL_SIZE -> wrap into multiple lines (#877)
+        canvas = _draw_wrapped(text, font, width, align=align_str)
+    else:
+        # Fits on one line
+        height = metrics.height() + 2 * _PADDING
+        canvas = QImage(width, height, QImage.Format.Format_Grayscale8)
+        canvas.fill(QColor("white"))
+        painter = QPainter(canvas)
+        try:
+            painter.setFont(font)
+            painter.setPen(QColor("black"))
+            box = QRect(0, _PADDING, width, height - 2 * _PADDING)
+            vcenter = Qt.AlignmentFlag.AlignVCenter
             align = {
                 "center": Qt.AlignmentFlag.AlignHCenter,
                 "right": Qt.AlignmentFlag.AlignRight,
-            }.get(str(command.get("align", "left")).lower(), Qt.AlignmentFlag.AlignLeft)
+            }.get(align_str, Qt.AlignmentFlag.AlignLeft)
             painter.drawText(box, align | vcenter, text)
-    finally:
-        painter.end()
+        finally:
+            painter.end()
 
     raw = canvas.constBits().asstring(canvas.sizeInBytes())
-    grey = Image.frombuffer("L", (width, height), raw, "raw", "L", canvas.bytesPerLine(), 1)
+    grey = Image.frombuffer("L", (canvas.width(), canvas.height()), raw, "raw", "L", canvas.bytesPerLine(), 1)
     return grey.point(lambda p: 255 if p > _THRESHOLD else 0).convert("1")
 
 
@@ -122,27 +179,21 @@ def render_text_png(
     scale = _PDF_DPI / 72
     font = _font(bold, max(1, round(point_size * scale)))
     metrics = QFontMetrics(font)
-    flags = {
-        "center": Qt.AlignmentFlag.AlignHCenter,
-        "right": Qt.AlignmentFlag.AlignRight,
-    }.get(align, Qt.AlignmentFlag.AlignLeft).value
     width = metrics.horizontalAdvance(text) + 2 * _PADDING
     if max_width_pt is not None and width > max_width_pt * scale:
         width = int(max_width_pt * scale)
-        flags |= Qt.TextFlag.TextWordWrap.value
-    height = metrics.boundingRect(QRect(0, 0, width, 100_000), flags, text).height() + 2 * _PADDING
 
-    canvas = QImage(width, height, QImage.Format.Format_ARGB32_Premultiplied)
-    canvas.fill(Qt.GlobalColor.transparent)
-    painter = QPainter(canvas)
-    try:
-        painter.setFont(font)
-        painter.setPen(QColor(color))
-        painter.drawText(QRect(0, _PADDING, width, height - 2 * _PADDING), flags, text)
-    finally:
-        painter.end()
+    canvas = _draw_wrapped(
+        text=text,
+        font=font,
+        width=width,
+        align=align,
+        format=QImage.Format.Format_ARGB32_Premultiplied,
+        pen_color=QColor(color),
+        bg_color=Qt.GlobalColor.transparent,
+    )
 
     buffer = QBuffer()
     buffer.open(QIODevice.OpenModeFlag.WriteOnly)
     canvas.save(buffer, "PNG")
-    return bytes(buffer.data()), width / scale, height / scale
+    return bytes(buffer.data()), canvas.width() / scale, canvas.height() / scale

@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 7 · Batch: 7.1 completed · Next: Batch 7.2 · Branch: main · PR #1008 (merged) · Last session: 2026-11-09
+- Phase: 7 · Batch: 7.2 · Branch: fix/p7-b2-thermal-barcode-layout · PR: (pending) · Last session: 2026-11-10
 
 ## Issues
 
@@ -292,6 +292,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #959 | Management screens show stale data until Refresh | medium | UI review | **done** (PR #960) |
 | #961 | Table column layouts lost on setModel (Suppliers squeezed) | medium | UI review | pr-open (#962) |
 | #948 | CI runs no tests or lint (ci.yml fully commented out) | high | writing the remediation plan (2026-10-28) | 1 / 1.0 |
+| #1009 | CodeQL workflow fails immediately because the entire workflow is commented out | medium | verifying Phase 7.1 completion (2026-11-10) | Release gate / pre-release |
 
 ## i18n review list (keys with English fallback in si/ta, §0.2)
 

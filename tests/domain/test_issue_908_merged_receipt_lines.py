@@ -134,3 +134,81 @@ def test_issue_908_identical_prices_merged():
     savings_rows = [r for r in rows if r.get("right_val", "").startswith("-")]
     assert len(savings_rows) == 1
     assert "150.00" in savings_rows[0]["right_val"]
+
+
+def test_issue_908_different_original_price_not_merged():
+    """Lines with identical unit_price but different original_price do not merge."""
+    prod = Product(id=42, name_en="Fair Trade Coffee", barcode="4791111111111", price=Decimal("400.00"))
+
+    # Line 1: unit_price 300, original_price 350 (saving 50)
+    item1 = SaleItem(
+        id=1,
+        product_id=42,
+        product=prod,
+        qty=Decimal("1"),
+        unit_price=Decimal("300.00"),
+        original_price=Decimal("350.00"),
+        subtotal=Decimal("300.00"),
+        is_manual_price=False,
+    )
+    # Line 2: unit_price 300, original_price 400 (saving 100)
+    item2 = SaleItem(
+        id=2,
+        product_id=42,
+        product=prod,
+        qty=Decimal("1"),
+        unit_price=Decimal("300.00"),
+        original_price=Decimal("400.00"),
+        subtotal=Decimal("300.00"),
+        is_manual_price=False,
+    )
+
+    sale = _make_sale_with_items([item1, item2])
+    commands = SalesReceiptBuilder.build_receipt(
+        sale,
+        config_override={"merge_items": True, "show_barcode": False},
+    )
+
+    rows = [c for c in commands if "left_val" in c]
+    qty_price_rows = [r for r in rows if "x" in r.get("left_val", "")]
+    # Must remain 2 separate lines
+    assert len(qty_price_rows) == 2, f"Expected 2 lines, got {qty_price_rows}"
+
+
+def test_issue_908_different_manual_price_flag_not_merged():
+    """Lines with same price but different is_manual_price do not merge."""
+    prod = Product(id=42, name_en="Fair Trade Coffee", barcode="4791111111111", price=Decimal("350.00"))
+
+    # Line 1: promotional discount (is_manual_price=False)
+    item1 = SaleItem(
+        id=1,
+        product_id=42,
+        product=prod,
+        qty=Decimal("1"),
+        unit_price=Decimal("300.00"),
+        original_price=Decimal("350.00"),
+        subtotal=Decimal("300.00"),
+        is_manual_price=False,
+    )
+    # Line 2: manual cashier override (is_manual_price=True)
+    item2 = SaleItem(
+        id=2,
+        product_id=42,
+        product=prod,
+        qty=Decimal("1"),
+        unit_price=Decimal("300.00"),
+        original_price=Decimal("350.00"),
+        subtotal=Decimal("300.00"),
+        is_manual_price=True,
+    )
+
+    sale = _make_sale_with_items([item1, item2])
+    commands = SalesReceiptBuilder.build_receipt(
+        sale,
+        config_override={"merge_items": True, "show_barcode": False},
+    )
+
+    rows = [c for c in commands if "left_val" in c]
+    qty_price_rows = [r for r in rows if "x" in r.get("left_val", "")]
+    # Must remain 2 separate lines
+    assert len(qty_price_rows) == 2, f"Expected 2 lines, got {qty_price_rows}"

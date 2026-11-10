@@ -270,7 +270,10 @@ class ReceiptPreviewWidget(QWidget):
                 parts.append(
                     "<div align='center' style='text-align:center;padding:6px %dpx 2px;'>%s</div>" % (p, barcode_html)
                 )
-                display_val = val[2:] if isinstance(val, str) and val.startswith(("{A", "{B", "{C")) else val
+                is_code128 = str(cmd.get("code", "")).upper() == "CODE128"
+                display_val = (
+                    val[2:] if is_code128 and isinstance(val, str) and val.startswith(("{A", "{B", "{C")) else val
+                )
                 parts.append(
                     "<div align='center' style='text-align:center;"
                     "padding:0 %dpx 4px;font-size:9px;color:#000;"

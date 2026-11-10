@@ -35,14 +35,26 @@ def choose_barcode(data: str | None) -> tuple[str, str]:
 
 
 def code128_module_count(data: str) -> int:
-    """Number of modules (dots at width 1) for CODE128 data in code set B.
+    """Number of modules (dots at width 1) for CODE128 data.
 
-    Formula: 11 * (len(data) + 3) + 2 (start, check, stop, plus 2-module terminator).
-    Strips {A, {B, {C prefix if already present.
+    In Code Set C (pairs of digits), each pair takes 11 modules.
+    In Code Set A or B, each character takes 11 modules.
+    Formula: 11 * (symbols + 3) + 2 (start, check, stop, plus 2-module terminator).
     """
     s = str(data or "").strip()
-    clean = s[2:] if s.startswith(("{A", "{B", "{C")) else s
-    return 11 * (len(clean) + 3) + 2
+    is_c = False
+    if s.startswith("{C"):
+        clean = s[2:].rstrip("}")
+        if clean.isdigit() and len(clean) % 2 == 0:
+            is_c = True
+    elif s.startswith(("{A", "{B")):
+        clean = s[2:].rstrip("}")
+    else:
+        clean = s
+        if clean.isdigit() and len(clean) % 2 == 0 and len(clean) > 0:
+            is_c = True
+    symbols = (len(clean) // 2) if is_c else len(clean)
+    return 11 * (symbols + 3) + 2
 
 
 def calculate_barcode_width(data: str, paper_width: str = "80mm") -> int | None:

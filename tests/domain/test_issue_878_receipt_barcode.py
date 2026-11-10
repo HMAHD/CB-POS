@@ -148,3 +148,35 @@ def test_issue_878_escpos_driver_prints_code128_with_dimensions():
         width=2,
         height=60,
     )
+
+
+def test_issue_878_code128_code_set_c_module_count():
+    """Code Set C encodes pairs of digits, needing fewer modules than Code Set B."""
+    # 12 digits in Code Set C takes 6 data symbols (both {C prefix formats)
+    assert code128_module_count("{C123456789012") == 11 * (6 + 3) + 2  # 101 modules
+    assert code128_module_count("{C123456789012}") == 11 * (6 + 3) + 2
+
+    # 30-digit numeric barcode without prefix is also recognized as Code Set C
+    numeric_30 = "123456789012345678901234567890"
+    mod_num = code128_module_count(numeric_30)
+    assert mod_num == 11 * (15 + 3) + 2  # 200 modules
+    # In Code Set B it would have been 11 * (30 + 3) + 2 = 365
+    assert mod_num < 365
+    # Fits on 58mm (384 dots)
+    assert calculate_barcode_width(numeric_30, "58mm") is not None
+
+
+def test_issue_878_preview_strips_prefix_only_for_code128():
+    """Prefix stripping in receipt preview applies only to CODE128 barcodes."""
+    from cbpos.ui.widgets.receipt_preview_widget import ReceiptPreviewWidget
+
+    parts_c39 = []
+    ReceiptPreviewWidget._render_command({"type": "barcode", "code": "CODE39", "val": "{ABC123"}, 48, parts_c39)
+    html_c39 = "".join(parts_c39)
+    assert "{ABC123" in html_c39
+
+    parts_c128 = []
+    ReceiptPreviewWidget._render_command({"type": "barcode", "code": "CODE128", "val": "{BINV-001"}, 48, parts_c128)
+    html_c128 = "".join(parts_c128)
+    assert "INV-001" in html_c128
+    assert "{BINV-001" not in html_c128

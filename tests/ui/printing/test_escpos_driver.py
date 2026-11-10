@@ -162,6 +162,31 @@ def test_issue_840_label_sends_gs_k_to_dummy():
     driver.print_commands(commands)
 
     assert b"\x1dk" in dummy.output, "Dummy printer output should contain ESC/POS GS k (barcode) command"
+    assert b"4791234567890" in dummy.output, "Dummy printer output should contain encoded barcode data"
+
+
+def test_issue_840_unrelated_runtime_error_does_not_abort_print_job(monkeypatch):
+    """An unrelated RuntimeError on another command logs the error and does not abort the print job."""
+    import escpos.printer
+
+    from cbpos.infrastructure.hardware.escpos_driver import ESCPOSDriver
+
+    dummy = escpos.printer.Dummy()
+    driver = ESCPOSDriver()
+    driver.printer = dummy
+
+    def bad_text(txt):
+        raise RuntimeError("simulated unexpected text renderer error")
+
+    monkeypatch.setattr(dummy, "text", bad_text)
+
+    commands = [
+        {"type": "text", "val": "hello"},
+        {"type": "cut", "partial": True},
+    ]
+    # Text error should be logged; job must not abort before executing cut
+    driver.print_commands(commands)
+    assert b"\x1dV" in dummy.output  # GS V / cut command executed
 
 
 def test_issue_840_unencodable_barcode_fails_job(qtbot):
@@ -184,19 +209,20 @@ def test_issue_840_unencodable_barcode_fails_job(qtbot):
     worker.error_occurred.connect(lambda msg: errors.append(msg))
     worker.job_completed.connect(lambda: completed.append(True))
 
-    commands = [{"type": "barcode", "val": "\u0d85\u0d9a", "code": "CODE128"}]
-    job_id = worker.add_job("print_receipt", commands)
+    try:
+        commands = [{"type": "barcode", "val": "\u0d85\u0d9a", "code": "CODE128"}]
+        job_id = worker.add_job("print_receipt", commands)
 
-    qtbot.waitUntil(lambda: len(job_results) == 1, timeout=5000)
-    qtbot.wait(150)
+        qtbot.waitUntil(lambda: len(job_results) == 1, timeout=5000)
+        qtbot.waitUntil(lambda: worker._queue.empty(), timeout=2000)
 
-    assert len(job_results) == 1, "Exactly one job_result must be emitted"
-    jid, ok, msg = job_results[0]
-    assert jid == job_id
-    assert ok is False
-    assert "අක" in msg
-    assert errors == [msg]
-    assert len(completed) == 0, "A failed barcode job must not emit job_completed"
-
-    worker.stop()
-    worker.wait(5000)
+        assert len(job_results) == 1, "Exactly one job_result must be emitted"
+        jid, ok, msg = job_results[0]
+        assert jid == job_id
+        assert ok is False
+        assert "අක" in msg
+        assert errors == [msg]
+        assert len(completed) == 0, "A failed barcode job must not emit job_completed"
+    finally:
+        worker.stop()
+        worker.wait(5000)

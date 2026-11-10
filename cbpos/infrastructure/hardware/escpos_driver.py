@@ -38,6 +38,10 @@ _NETWORK_DEFAULT_PORT = 9100
 PRINT_JOB_TYPES = frozenset({"print_receipt", "print_commands"})
 
 
+class BarcodeError(RuntimeError):
+    """Raised when a barcode cannot be encoded or printed."""
+
+
 def receipt_printer_configured() -> bool:
     """Return True if settings name a real receipt printer (Windows, Network or USB)."""
     return ConfigService.get_all().get("printer_type", PrinterType.NONE) in PrinterType.REAL
@@ -380,7 +384,7 @@ class ESCPOSDriver(IPrinter):
                         if is_connection_error(e):
                             raise
                         logger.error("Failed to print barcode %r: %s", code, e)
-                        raise RuntimeError(_t("printer.barcode_failed", code=str(code or ""))) from e
+                        raise BarcodeError(_t("printer.barcode_failed", code=str(code or ""))) from e
 
                 elif c_type == "feed":
                     lines = cmd.get("lines", 1)
@@ -395,7 +399,7 @@ class ESCPOSDriver(IPrinter):
 
             except Exception as e:
                 # A lost printer or barcode failure must fail the job, not print "nothing" as success.
-                if is_connection_error(e) or isinstance(e, RuntimeError):
+                if is_connection_error(e) or isinstance(e, BarcodeError):
                     raise
                 logger.error("Error processing print command %s: %s", cmd.get("type"), e)
 

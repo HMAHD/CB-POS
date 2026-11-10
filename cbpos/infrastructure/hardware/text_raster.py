@@ -108,22 +108,43 @@ def render_text_line(command: dict, paper_width: str = "80mm") -> Image.Image:
     align_str = str(command.get("align", "left")).lower()
 
     if two_col:
-        height = metrics.height() + 2 * _PADDING
+        right_w = metrics.horizontalAdvance(right)
+        gap = 8
+        left_w = max(1, width - right_w - gap)
+        left_flags = int(Qt.AlignmentFlag.AlignLeft | Qt.TextFlag.TextWordWrap)
+        left_bound = metrics.boundingRect(QRect(0, 0, left_w, 100_000), left_flags, left)
+        height = max(metrics.height() + 2 * _PADDING, left_bound.height() + 2 * _PADDING)
+
         canvas = QImage(width, height, QImage.Format.Format_Grayscale8)
         canvas.fill(QColor("white"))
         painter = QPainter(canvas)
         try:
             painter.setFont(font)
             painter.setPen(QColor("black"))
-            box = QRect(0, _PADDING, width, height - 2 * _PADDING)
-            vcenter = Qt.AlignmentFlag.AlignVCenter
-            painter.drawText(box, Qt.AlignmentFlag.AlignLeft | vcenter, left)
-            painter.drawText(box, Qt.AlignmentFlag.AlignRight | vcenter, right)
+            if left_bound.height() <= metrics.height():
+                # Single line: vertically center both
+                vcenter = Qt.AlignmentFlag.AlignVCenter
+                box = QRect(0, _PADDING, width, height - 2 * _PADDING)
+                painter.drawText(box, Qt.AlignmentFlag.AlignLeft | vcenter, left)
+                painter.drawText(box, Qt.AlignmentFlag.AlignRight | vcenter, right)
+            else:
+                # Multi-line wrap: draw left wrapped, align right to top line
+                painter.drawText(QRect(0, _PADDING, left_w, height - 2 * _PADDING), left_flags, left)
+                right_box = QRect(width - right_w, _PADDING, right_w, metrics.height())
+                painter.drawText(right_box, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop, right)
         finally:
             painter.end()
     elif metrics.horizontalAdvance(text) > width:
         # Text does not fit at _MIN_PIXEL_SIZE -> wrap into multiple lines (#877)
-        canvas = _draw_wrapped(text, font, width, align=align_str)
+        canvas = _draw_wrapped(
+            text=text,
+            font=font,
+            width=width,
+            align=align_str,
+            format=QImage.Format.Format_Grayscale8,
+            pen_color=QColor("black"),
+            bg_color=QColor("white"),
+        )
     else:
         # Fits on one line
         height = metrics.height() + 2 * _PADDING

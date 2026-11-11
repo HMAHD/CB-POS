@@ -1,4 +1,3 @@
-import contextlib
 import html
 import logging
 from datetime import date
@@ -98,6 +97,9 @@ class DocumentBrowserView(QWidget, Activatable):
         self.current_doc: dict | None = None
         self.current_page = 1
         self.total_docs = 0
+        self._reprint_job_id: str | None = None
+
+        PrintWorker.instance().job_result.connect(self._on_reprint_job_result)
         self.init_ui()
         self.retranslate_ui()
         register_language_callback(self.retranslate_ui, owner=self)
@@ -934,16 +936,17 @@ class DocumentBrowserView(QWidget, Activatable):
                     user_id=user_id,
                     approver_id=approver_id,
                 )
-                worker = self._connect_print_signals()
-                worker.add_job("print_receipt", job.commands)
+                from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+
+                self._reprint_job_id = PrintWorker.instance().add_job("print_receipt", job.commands)
             elif doc_type == "proforma":
                 from cbpos.core.services.receipt_builder import ReceiptBuilder
+                from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 
                 proforma = ProformaService.get_proforma_details(self.current_doc["id"])
                 if proforma:
                     commands = ReceiptBuilder.build_proforma(proforma)
-                    worker = self._connect_print_signals()
-                    worker.add_job("print_commands", commands)
+                    self._reprint_job_id = PrintWorker.instance().add_job("print_commands", commands)
                 else:
                     if hasattr(self, "reprint_btn"):
                         self.reprint_btn.setEnabled(True)
@@ -966,48 +969,25 @@ class DocumentBrowserView(QWidget, Activatable):
             )
             logger.error("Reprint failed: %s", e)
 
-    def _connect_print_signals(self) -> PrintWorker:
-        """Return the shared PrintWorker, connected to report the real
-        outcome of the job about to be queued.
-
-        PrintWorker.add_job() only queues the job -- the print itself
-        happens later, asynchronously, on the worker thread. Showing
-        "success" right after add_job() (the old behavior) meant the
-        user was told the reprint worked even when the printer wasn't
-        configured at all. Guard against reconnecting on every call the
-        same way ReceiptOptionsDialog.print_thermal() does.
-        """
-        worker = PrintWorker.instance()
-        self._print_worker = worker
-        try:
-            worker.error_occurred.disconnect(self._on_reprint_error)
-        except TypeError as e:
-            logger.debug("Signal not connected yet: %s", e)
-        with contextlib.suppress(TypeError):
-            worker.job_completed.disconnect(self._on_reprint_finished)
-        worker.error_occurred.connect(self._on_reprint_error)
-        worker.job_completed.connect(self._on_reprint_finished)
-        return worker
-
-    def _on_reprint_finished(self) -> None:
-        """Called once the queued print job actually completes."""
+    def _on_reprint_job_result(self, job_id: str, ok: bool, message: str) -> None:
+        """Called when a print job completes. Ignores jobs other than this view's reprint (#842)."""
+        if not self._reprint_job_id or job_id != self._reprint_job_id:
+            return
+        self._reprint_job_id = None
         if hasattr(self, "reprint_btn"):
             self.reprint_btn.setEnabled(True)
-        doc_type = self.current_doc.get("type", "") if self.current_doc else ""
-        key = "receipt_sent_to_printer" if doc_type == "sale" else "quotation_sent_to_printer"
-        doc_num = self.current_doc.get("document_number", "") if self.current_doc else ""
-        QMessageBox.information(
-            self,
-            _t("common.success"),
-            _t(f"document_browser.{key}", doc_number=doc_num),
-        )
-
-    def _on_reprint_error(self, message: str) -> None:
-        """Called if the queued print job actually fails (e.g. no printer configured)."""
-        if hasattr(self, "reprint_btn"):
-            self.reprint_btn.setEnabled(True)
-        logger.error("Reprint failed: %s", message)
-        QMessageBox.critical(self, _t("common.error"), _t("document_browser.reprint_failed"))
+        if ok:
+            doc_type = self.current_doc.get("type", "") if self.current_doc else ""
+            key = "receipt_sent_to_printer" if doc_type == "sale" else "quotation_sent_to_printer"
+            doc_num = self.current_doc.get("document_number", "") if self.current_doc else ""
+            QMessageBox.information(
+                self,
+                _t("common.success"),
+                _t(f"document_browser.{key}", doc_number=doc_num),
+            )
+        else:
+            logger.error("Reprint failed: %s", message)
+            QMessageBox.critical(self, _t("common.error"), _t("document_browser.reprint_failed"))
 
     def process_refund(self) -> None:
         """Process a refund for the selected sale by opening the shared RefundDialog."""

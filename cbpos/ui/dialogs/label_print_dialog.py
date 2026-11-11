@@ -5,7 +5,6 @@ Uses QStyledItemDelegate for the Qty column so that editing and rendering
 go through Qt's model/view pipeline — QSS styling applies correctly.
 """
 
-import contextlib
 import logging
 
 from PyQt6.QtCore import QStringListModel, Qt
@@ -95,6 +94,8 @@ class LabelPrintDialog(QDialog):
         self.label_items: list[dict] = []
         self.products_cache: dict = {}
         self._completer_activated = False
+        self._print_job_id: str | None = None
+        PrintWorker.instance().job_result.connect(self._on_print_job_result)
         self._init_ui()
         self._load_products()
 
@@ -425,25 +426,20 @@ class LabelPrintDialog(QDialog):
         try:
             commands = LabelService.generate_batch_commands(self.label_items)
             worker = PrintWorker.instance()
-            # PrintWorker.add_job() only queues the job -- the print itself
-            # happens later, asynchronously, on the worker thread. Showing
-            # "success" right after add_job() (the old behavior) meant the
-            # user was told printing worked even when the printer wasn't
-            # configured at all. Wait for the real outcome instead. Guard
-            # against reconnecting on every call the same way
-            # ReceiptOptionsDialog.print_thermal() does.
-            try:
-                worker.error_occurred.disconnect(self._on_print_error)
-            except TypeError as e:
-                logger.debug("Signal not connected yet: %s", e)
-            with contextlib.suppress(TypeError):
-                worker.job_completed.disconnect(self._on_print_finished)
-            worker.error_occurred.connect(self._on_print_error)
-            worker.job_completed.connect(self._on_print_finished)
-            worker.add_job("print_commands", commands)
+            self._print_job_id = worker.add_job("print_commands", commands)
         except Exception as e:
             logger.error(f"Label printing failed: {e}")
             QMessageBox.critical(self, _t("common.error"), _t("label_print.print_failed"))
+
+    def _on_print_job_result(self, job_id: str, ok: bool, message: str) -> None:
+        """Called once the queued print job actually completes."""
+        if self._print_job_id is None or job_id != self._print_job_id:
+            return
+        self._print_job_id = None
+        if ok:
+            self._on_print_finished()
+        else:
+            self._on_print_error(message)
 
     def _on_print_finished(self) -> None:
         """Called once the queued print job actually completes."""

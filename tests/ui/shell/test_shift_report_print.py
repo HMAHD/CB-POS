@@ -52,13 +52,21 @@ class _FakeWorker(QObject):
 
     error_occurred = pyqtSignal(str)
     job_completed = pyqtSignal()
+    job_result = pyqtSignal(str, bool, str)
 
     def __init__(self) -> None:
         super().__init__()
         self.jobs: list[tuple] = []
+        self._last_job_id: str | None = None
+        self._counter = 0
+        self.job_completed.connect(lambda: self.job_result.emit(self._last_job_id or "", True, ""))
+        self.error_occurred.connect(lambda msg: self.job_result.emit(self._last_job_id or "", False, msg))
 
-    def add_job(self, job_type, data=None) -> None:
+    def add_job(self, job_type, data=None) -> str:
+        self._counter += 1
+        self._last_job_id = f"job_fake_{self._counter}"
         self.jobs.append((job_type, data))
+        return self._last_job_id
 
 
 @pytest.fixture

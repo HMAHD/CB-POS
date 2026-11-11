@@ -28,9 +28,30 @@ class BarcodeScanner(QObject):
         self.timer = QTimer()
         self.timer.setSingleShot(True)
         self.timer.timeout.connect(self.clear_buffer)
+        self._last_event_ts = None
+        self._last_event_key = None
+        self._last_event_target = None
 
         # Install event filter on the application
         self.app.installEventFilter(self)
+
+    @staticmethod
+    def _is_target_widget(obj) -> bool:
+        """True only if `obj` is the initial target of the key event.
+
+        In Qt, unaccepted key events propagate from the focused widget up
+        through its parent widgets to the window (#841). The application event
+        filter sees every hop. Buffer a key only at QApplication.focusWidget()
+        (or the active window when no widget has focus, or root/unparented widget
+        in headless tests).
+        """
+        focus_widget = QApplication.focusWidget()
+        if focus_widget is not None:
+            return obj is focus_widget
+        active_window = QApplication.activeWindow()
+        if active_window is not None:
+            return obj is active_window
+        return obj.parentWidget() is None
 
     def eventFilter(self, obj, event):
         """Buffer printable keystrokes and emit ``barcode_scanned`` on Enter.
@@ -45,13 +66,18 @@ class BarcodeScanner(QObject):
         override, so an Enter shortcut on the focused widget doesn't take
         it first (#548).
         """
+        if not obj.isWidgetType():
+            return super().eventFilter(obj, event)
+
         # A scan's Enter must not fire an Enter shortcut on the focused
         # widget (Stock Take History's Enter-to-open, #548/#594): Qt offers
         # a key to shortcuts before delivering it, so claim the override
         # and let the KeyPress below route the scan. Not while a modal
         # dialog is up: its Enter shortcut (payment, quantity) keeps the
         # key rather than a scan reaching the view behind it.
-        if event.type() == QEvent.Type.ShortcutOverride and obj.isWidgetType():
+        if event.type() == QEvent.Type.ShortcutOverride:
+            if not self._is_target_widget(obj):
+                return super().eventFilter(obj, event)
             if (
                 event.key() in (Qt.Key.Key_Return.value, Qt.Key.Key_Enter.value)
                 and QApplication.activeModalWidget() is None
@@ -59,13 +85,38 @@ class BarcodeScanner(QObject):
             ):
                 event.accept()
                 return True
-        # App-level filters see each key twice (QWindow, then the focused
-        # widget); count only the widget copy or every char doubles.
-        if event.type() == QEvent.Type.KeyPress and obj.isWidgetType():
+
+        # App-level filters see unaccepted keys propagate up to each parent
+        # widget (#841). Accept only the initial target widget and guard
+        # against duplicate physical events.
+        if event.type() == QEvent.Type.KeyPress:
+            if not self._is_target_widget(obj):
+                return super().eventFilter(obj, event)
+
+            if (
+                event.timestamp() > 0
+                and self._last_event_ts == event.timestamp()
+                and self._last_event_key == event.key()
+            ):
+                return super().eventFilter(obj, event)
+
+            if (
+                self._last_event_target is not None
+                and obj is not self._last_event_target
+                and obj.isAncestorOf(self._last_event_target)
+            ):
+                return super().eventFilter(obj, event)
+
+            if event.timestamp() > 0:
+                self._last_event_ts = event.timestamp()
+                self._last_event_key = event.key()
+            self._last_event_target = obj
+
             if event.key() in (Qt.Key.Key_Return.value, Qt.Key.Key_Enter.value):
                 barcode = self.buffer.strip()
                 is_scan = self._completes_scan(obj) and QApplication.activeModalWidget() is None
                 self.buffer = ""
+                self._last_event_target = None
                 if is_scan:
                     self.barcode_scanned.emit(barcode)
                     return True
@@ -103,3 +154,4 @@ class BarcodeScanner(QObject):
     def clear_buffer(self):
         """Clear the keystroke buffer (called when the inter-key timer expires)."""
         self.buffer = ""
+        self._last_event_target = None

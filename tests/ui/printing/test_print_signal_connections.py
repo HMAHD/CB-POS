@@ -98,11 +98,11 @@ class TestNoDuplicatePrintSignalConnections:
         error_calls = []
         dialog._on_print_error = lambda message: error_calls.append(message)
 
-        with patch.object(PrintWorker, "add_job"):
+        with patch.object(PrintWorker, "add_job", return_value="job_thermal_1"):
             for _ in range(5):  # simulates 5 retries
                 dialog.print_thermal()
 
-        PrintWorker.instance().error_occurred.emit("Printer not available.")
+        PrintWorker.instance().job_result.emit("job_thermal_1", False, "Printer not available.")
 
         assert error_calls == ["Printer not available."]
 
@@ -110,10 +110,10 @@ class TestNoDuplicatePrintSignalConnections:
         finished_calls = []
         dialog._on_print_finished = lambda: finished_calls.append(True)
 
-        with patch.object(PrintWorker, "add_job"):
+        with patch.object(PrintWorker, "add_job", return_value="job_thermal_2"):
             for _ in range(5):
                 dialog.print_thermal()
 
-        PrintWorker.instance().job_completed.emit()
+        PrintWorker.instance().job_result.emit("job_thermal_2", True, "")
 
         assert finished_calls == [True]

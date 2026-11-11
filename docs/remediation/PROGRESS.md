@@ -174,7 +174,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #877 | Sinhala/Tamil lines that the builders don't wrap (shop address, customer name… | medium | 7.2 | done | #1010, #1011 | 504fc30/dfe1306, d311f62 · _draw_wrapped shared helper in text_raster.py, wrap overflowing lines with TextWordWrap, dynamic QFontMetrics height, preserve grapheme clusters |
 | #878 | The receipt's CODE39 invoice barcode is wider than the paper at python-escpos… | medium | 7.2 | ready-for-human | #1010, #1011 | 1b675f9/dfe1306, d311f62 · D10 · Pure barcode utilities (barcode.py), calculate_barcode_width, CODE128 {B scaling to paper dot width, height 60, omit if exceeds dots; physical print-and-scan pending |
 | #908 | With "Merge items" on, merged receipt lines print the first line's unit price… | low | 7.2 | done | #1010, #1011 | 46ad88b/dfe1306, d311f62 · _merge_items groups by (product_id, unit_price, original_price, is_manual_price), honest printed unit price, accurate per-line savings ((original_price - unit_price) * qty) |
-| #841 | The scanner filter counts each keystroke once per widget the key propagates t… | high | 7.3 | todo | | |
+| #841 | The scanner filter counts each keystroke once per widget the key propagates t… | high | 7.3 | in-progress | | Buffer keys only at focusWidget()/activeWindow(), guard against propagation hops, preserve repeated digits ('444777999') |
 | #842 | After one reprint from Management → Documents, the hidden Document view shows… | high | 7.3 | todo | | |
 | #846 | Dashboard aborts the app (SIGABRT) when re-shown while a load is still running | high | 7.3 | todo | | |
 | #805 | Thermal receipts always print English item names, whatever the receipt language | medium | 7.4 | todo | | |
@@ -309,5 +309,5 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #877 | Physical 58 mm thermal receipt print of wrapped Sinhala and Tamil lines (shop address, item names) | pending |
 
 ## Handoff
-Batch 7.2 merged in PR #1010 (merge commit dfe1306dc481aae85cf4cef58b025146e5803bfa) and follow-up PR #1011 (merge commit d311f62dd7ac158724b63974b8d23fd1da23c380). #840, #877, and #908 verified CLOSED on GitHub. #878 remains OPEN with `ready-for-human` for physical 58 mm / 80 mm thermal print-and-scan verification on Windows alongside #731. Starting Batch 7.3: Scanner, signal and dashboard lifecycle (#841, #842, #846).
+Batch 7.2 merged in PR #1010 (merge commit dfe1306dc481aae85cf4cef58b025146e5803bfa) and follow-up PR #1011 (merge commit d311f62dd7ac158724b63974b8d23fd1da23c380). #840, #877, and #908 verified CLOSED on GitHub. #878 remains OPEN with `ready-for-human` for physical 58 mm / 80 mm thermal print-and-scan verification on Windows alongside #731. In Batch 7.3: #841, #842, and #846 completed with full real-thread and regression evidence; ready for batch verification, code review, and PR opening.
 

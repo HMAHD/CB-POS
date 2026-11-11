@@ -1,4 +1,3 @@
-import contextlib
 import logging
 from datetime import datetime, timedelta
 
@@ -64,6 +63,10 @@ class SaleHistoryDialog(QDialog):
         self._sales: list = []
         self._selected_sale = None
         self._active_filter = "today"
+        self._reprint_job_id: str | None = None
+        from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+
+        PrintWorker.instance().job_result.connect(self._on_reprint_job_result)
 
         # Debounce timer for search
         self._search_timer = QTimer(self)
@@ -832,22 +835,7 @@ class SaleHistoryDialog(QDialog):
             from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 
             worker = PrintWorker.instance()
-            # PrintWorker.add_job() only queues the job -- the print itself
-            # happens later, asynchronously, on the worker thread. Showing
-            # "success" right after add_job() (the old behavior) meant the
-            # user was told the reprint worked even when the printer wasn't
-            # configured at all. Wait for the real outcome instead. Guard
-            # against reconnecting on every call the same way
-            # ReceiptOptionsDialog.print_thermal() does.
-            try:
-                worker.error_occurred.disconnect(self._on_reprint_error)
-            except TypeError as e:
-                logger.debug("Signal not connected yet: %s", e)
-            with contextlib.suppress(TypeError):
-                worker.job_completed.disconnect(self._on_reprint_finished)
-            worker.error_occurred.connect(self._on_reprint_error)
-            worker.job_completed.connect(self._on_reprint_finished)
-            worker.add_job("print_receipt", job.commands)
+            self._reprint_job_id = worker.add_job("print_receipt", job.commands)
         except ValueError as e:
             if str(e) == "reprint_void":
                 QMessageBox.warning(self, _t("common.warning"), _t("reprint.void_blocked"))
@@ -856,6 +844,16 @@ class SaleHistoryDialog(QDialog):
         except Exception as e:
             logger.error("Reprint failed: %s", e)
             QMessageBox.critical(self, _t("common.error"), _t("sale_history.reprint_failed"))
+
+    def _on_reprint_job_result(self, job_id: str, ok: bool, message: str) -> None:
+        """Handle print job completion for reprint."""
+        if self._reprint_job_id is None or job_id != self._reprint_job_id:
+            return
+        self._reprint_job_id = None
+        if ok:
+            self._on_reprint_finished()
+        else:
+            self._on_reprint_error(message)
 
     def _on_reprint_finished(self) -> None:
         """Called once the queued print job actually completes."""

@@ -104,7 +104,7 @@ class TestCustomerStatementDialogTiming:
     def test_no_success_before_job_completes(self, qapp, test_customer):
         dlg = CustomerStatementDialog(test_customer)
         with (
-            patch.object(PrintWorker, "add_job"),
+            patch.object(PrintWorker, "add_job", return_value="job_stmt_1"),
             patch("cbpos.ui.dialogs.customer_statement_dialog.QMessageBox") as mock_box,
         ):
             dlg._print_thermal()
@@ -114,11 +114,11 @@ class TestCustomerStatementDialogTiming:
     def test_success_shown_once_job_completes(self, qapp, test_customer):
         dlg = CustomerStatementDialog(test_customer)
         with (
-            patch.object(PrintWorker, "add_job"),
+            patch.object(PrintWorker, "add_job", return_value="job_stmt_1"),
             patch("cbpos.ui.dialogs.customer_statement_dialog.QMessageBox") as mock_box,
         ):
             dlg._print_thermal()
-            PrintWorker.instance().job_completed.emit()
+            PrintWorker.instance().job_result.emit("job_stmt_1", True, "")
             mock_box.information.assert_called_once()
         dlg.deleteLater()
 
@@ -128,7 +128,7 @@ class TestLabelPrintDialogTiming:
         dlg = LabelPrintDialog()
         dlg.label_items = [{"product": test_product, "quantity": 2}]
         with (
-            patch.object(PrintWorker, "add_job"),
+            patch.object(PrintWorker, "add_job", return_value="job_label_1"),
             patch("cbpos.ui.dialogs.label_print_dialog.QMessageBox") as mock_box,
         ):
             dlg._print_labels()
@@ -139,11 +139,11 @@ class TestLabelPrintDialogTiming:
         dlg = LabelPrintDialog()
         dlg.label_items = [{"product": test_product, "quantity": 2}]
         with (
-            patch.object(PrintWorker, "add_job"),
+            patch.object(PrintWorker, "add_job", return_value="job_label_1"),
             patch("cbpos.ui.dialogs.label_print_dialog.QMessageBox") as mock_box,
         ):
             dlg._print_labels()
-            PrintWorker.instance().job_completed.emit()
+            PrintWorker.instance().job_result.emit("job_label_1", True, "")
             mock_box.information.assert_called_once()
         dlg.deleteLater()
 
@@ -153,7 +153,7 @@ class TestDocumentBrowserViewReprintTiming:
         view = DocumentBrowserView()
         view.current_doc = {"type": "sale", "id": sale.id, "document_number": sale.document_number}
         with (
-            patch.object(PrintWorker, "add_job"),
+            patch.object(PrintWorker, "add_job", return_value="job_doc_1"),
             patch("cbpos.ui.views.document_view.QMessageBox") as mock_box,
         ):
             view.reprint_document()
@@ -164,11 +164,11 @@ class TestDocumentBrowserViewReprintTiming:
         view = DocumentBrowserView()
         view.current_doc = {"type": "sale", "id": sale.id, "document_number": sale.document_number}
         with (
-            patch.object(PrintWorker, "add_job"),
+            patch.object(PrintWorker, "add_job", return_value="job_doc_1"),
             patch("cbpos.ui.views.document_view.QMessageBox") as mock_box,
         ):
             view.reprint_document()
-            PrintWorker.instance().job_completed.emit()
+            PrintWorker.instance().job_result.emit("job_doc_1", True, "")
             mock_box.information.assert_called_once()
         view.deleteLater()
 
@@ -178,7 +178,7 @@ class TestHistoryViewReprintTiming:
         view = HistoryView()
         view.current_sale = sale
         with (
-            patch.object(PrintWorker, "add_job"),
+            patch.object(PrintWorker, "add_job", return_value="job_hist_1"),
             patch("cbpos.ui.views.history_view.QMessageBox") as mock_box,
         ):
             view.reprint_receipt()
@@ -189,10 +189,10 @@ class TestHistoryViewReprintTiming:
         view = HistoryView()
         view.current_sale = sale
         with (
-            patch.object(PrintWorker, "add_job"),
+            patch.object(PrintWorker, "add_job", return_value="job_hist_1"),
             patch("cbpos.ui.views.history_view.QMessageBox") as mock_box,
         ):
             view.reprint_receipt()
-            PrintWorker.instance().job_completed.emit()
+            PrintWorker.instance().job_result.emit("job_hist_1", True, "")
             mock_box.information.assert_called_once()
         view.deleteLater()

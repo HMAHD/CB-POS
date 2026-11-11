@@ -1,4 +1,3 @@
-import contextlib
 import logging
 
 from PyQt6.QtCore import QSize, Qt
@@ -38,6 +37,8 @@ class ReceiptOptionsDialog(QDialog):
         """Build the dialog for the given completed `sale`."""
         super().__init__(parent)
         self.sale = sale
+        self._print_job_id: str | None = None
+        PrintWorker.instance().job_result.connect(self._on_print_job_result)
         self.setWindowTitle(_t("receipt_options.title"))
         self.setMinimumSize(440, 528)
         self.resize(440, 528)
@@ -182,30 +183,10 @@ class ReceiptOptionsDialog(QDialog):
     def print_thermal(self) -> None:
         """Print receipt via thermal printer. Auto-closes on success, shows retry on failure."""
         try:
-            worker = PrintWorker.instance()
-            self._print_worker = worker
-
-            # PrintWorker.instance() is one shared, persistent object for
-            # the app's lifetime, and the Retry button on _on_print_error
-            # below calls print_thermal() again -- connecting without
-            # guarding would add another duplicate connection on every
-            # retry, so a later failure would show once per accumulated
-            # connection instead of once. Disconnect any previous
-            # connection first, and connect before add_job() so a job
-            # that finishes fast can't emit before we're listening.
-            try:
-                worker.error_occurred.disconnect(self._on_print_error)
-            except TypeError as e:
-                logger.debug("Signal not connected yet: %s", e)
-            with contextlib.suppress(TypeError):
-                worker.job_completed.disconnect(self._on_print_finished)
-            worker.error_occurred.connect(self._on_print_error)
-            worker.job_completed.connect(self._on_print_finished)
-
             self.btn_print.setEnabled(False)
             # Same ReceiptBuilder commands the Preview shows, with the
             # configured number of copies, as one job.
-            PrinterService.print_receipt(self.sale)
+            self._print_job_id = PrinterService.print_receipt(self.sale)
         except Exception as e:
             self.btn_print.setEnabled(True)
             logger.error("Receipt print failed: %s", e)
@@ -214,6 +195,16 @@ class ReceiptOptionsDialog(QDialog):
                 _t("receipt_options.print_error_title"),
                 _t("receipt_options.print_error_message", error=translate_error(str(e))),
             )
+
+    def _on_print_job_result(self, job_id: str, ok: bool, message: str) -> None:
+        """Handle print job completion for receipt options."""
+        if self._print_job_id is None or job_id != self._print_job_id:
+            return
+        self._print_job_id = None
+        if ok:
+            self._on_print_finished()
+        else:
+            self._on_print_error(message)
 
     def _on_print_finished(self) -> None:
         """Auto-close the dialog when the print job completes successfully."""

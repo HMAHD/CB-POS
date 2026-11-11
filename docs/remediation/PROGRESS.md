@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 7 · Batch: 7.3 · Branch: fix/p7-b3-scanner-signal-dashboard-lifecycle · PR: — · Last session: 2026-11-10
+- Phase: 7 · Batch: 7.4 · Branch: main · PR: — · Last session: 2026-11-11
 
 ## Issues
 
@@ -174,9 +174,9 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #877 | Sinhala/Tamil lines that the builders don't wrap (shop address, customer name… | medium | 7.2 | done | #1010, #1011 | 504fc30/dfe1306, d311f62 · _draw_wrapped shared helper in text_raster.py, wrap overflowing lines with TextWordWrap, dynamic QFontMetrics height, preserve grapheme clusters |
 | #878 | The receipt's CODE39 invoice barcode is wider than the paper at python-escpos… | medium | 7.2 | ready-for-human | #1010, #1011 | 1b675f9/dfe1306, d311f62 · D10 · Pure barcode utilities (barcode.py), calculate_barcode_width, CODE128 {B scaling to paper dot width, height 60, omit if exceeds dots; physical print-and-scan pending |
 | #908 | With "Merge items" on, merged receipt lines print the first line's unit price… | low | 7.2 | done | #1010, #1011 | 46ad88b/dfe1306, d311f62 · _merge_items groups by (product_id, unit_price, original_price, is_manual_price), honest printed unit price, accurate per-line savings ((original_price - unit_price) * qty) |
-| #841 | The scanner filter counts each keystroke once per widget the key propagates t… | high | 7.3 | in-progress | | Buffer keys only at focusWidget()/activeWindow(), guard against propagation hops, preserve repeated digits ('444777999') |
-| #842 | After one reprint from Management → Documents, the hidden Document view shows… | high | 7.3 | todo | | |
-| #846 | Dashboard aborts the app (SIGABRT) when re-shown while a load is still running | high | 7.3 | todo | | |
+| #841 | The scanner filter counts each keystroke once per widget the key propagates t… | high | 7.3 | done | #1012 | 9643662/09c6ea1 · Buffer keys only at focusWidget()/activeWindow(), deduplicate propagation hops via ancestor check and timestamp, preserve repeated digits ('444777999') |
+| #842 | After one reprint from Management → Documents, the hidden Document view shows… | high | 7.3 | done | #1012 | b2ec51d/f48b197/09c6ea1 · Migrate all UI print result listeners to job_result with job ID filtering; eliminate cross-view notification leaks |
+| #846 | Dashboard aborts the app (SIGABRT) when re-shown while a load is still running | high | 7.3 | done | #1012 | 4ef4fae/09c6ea1 · start_background_job keeps workers alive, rename finished to loaded, in-flight locks and generation counters, real-thread verified |
 | #805 | Thermal receipts always print English item names, whatever the receipt language | medium | 7.4 | todo | | |
 | #806 | Report PDF export cannot render Sinhala/Tamil (Helvetica only) | medium | 7.4 | todo | | |
 | #807 | Hard-coded English: crash dialog, daily report email, and 16 missing Tamil keys | low | 7.4 | todo | | |
@@ -309,5 +309,5 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #877 | Physical 58 mm thermal receipt print of wrapped Sinhala and Tamil lines (shop address, item names) | pending |
 
 ## Handoff
-Batch 7.2 merged in PR #1010 (merge commit dfe1306dc481aae85cf4cef58b025146e5803bfa) and follow-up PR #1011 (merge commit d311f62dd7ac158724b63974b8d23fd1da23c380). #840, #877, and #908 verified CLOSED on GitHub. #878 remains OPEN with `ready-for-human` for physical 58 mm / 80 mm thermal print-and-scan verification on Windows alongside #731. In Batch 7.3: #841, #842, and #846 completed with full real-thread and regression evidence; ready for batch verification, code review, and PR opening.
+Batch 7.3 merged in PR #1012 (merge commit 09c6ea12fa837ca74c30c4e09f583f7d2e616229). #841, #842, and #846 verified CLOSED on GitHub. #878 and #731 remain OPEN with `ready-for-human` for physical Windows printer/scanner verification. Current position set to Phase 7, Batch 7.4 (Multilingual receipt and PDF output: #805, #806, #807). Stop before Batch 7.4.
 

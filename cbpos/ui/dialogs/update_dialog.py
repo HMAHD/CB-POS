@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMessageBox,
+    QPlainTextEdit,
     QProgressBar,
     QPushButton,
     QVBoxLayout,
@@ -63,14 +64,19 @@ class _CheckThread(QThread):
 
     update_available = pyqtSignal(dict)  # manifest data
     no_update = pyqtSignal()
+    check_failed = pyqtSignal(str)  # error message
 
     def run(self) -> None:
-        """Check for an available update, emitting `update_available` or `no_update`."""
-        result = UpdateService.check_for_update()
-        if result:
-            self.update_available.emit(result)
-        else:
-            self.no_update.emit()
+        """Check for an available update, emitting `update_available`, `no_update`, or `check_failed`."""
+        try:
+            result = UpdateService.check_for_update()
+            if result:
+                self.update_available.emit(result)
+            else:
+                self.no_update.emit()
+        except Exception as e:
+            logger.info("Update check thread caught error: %s", e)
+            self.check_failed.emit(str(e))
 
 
 class UpdateDialog(QDialog):
@@ -80,13 +86,18 @@ class UpdateDialog(QDialog):
         """Build the dialog showing the new version, changelog, and download button from `manifest`."""
         super().__init__(parent)
         self._manifest = manifest
+        self._is_required = bool(manifest.get("is_required", False))
         self._download_thread: _DownloadThread | None = None
         self._init_ui()
 
     def _init_ui(self) -> None:
-        self.setWindowTitle(_t("update.title"))
-        self.setMinimumWidth(420)
-        self.setMinimumHeight(300)
+        if self._is_required:
+            self.setWindowTitle(_t("update.required_title", default="Important update"))
+        else:
+            self.setWindowTitle(_t("update.title", default="Update Available"))
+
+        self.setMinimumWidth(440)
+        self.setMinimumHeight(320)
         self.setModal(True)
 
         layout = QVBoxLayout(self)
@@ -114,11 +125,29 @@ class UpdateDialog(QDialog):
             date_lbl.setProperty("class", "muted")
             layout.addWidget(date_lbl)
 
-        # Changelog
+        # Required update notice
+        self.lbl_required_notice = QLabel(
+            _t(
+                "update.required_body",
+                default="This update fixes a serious problem. Please install it as soon as you can.",
+            )
+        )
+        self.lbl_required_notice.setWordWrap(True)
+        self.lbl_required_notice.setProperty("class", "warning")
+        self.lbl_required_notice.setVisible(self._is_required)
+        layout.addWidget(self.lbl_required_notice)
+
+        # Changelog (scrollable, read-only, plain-text)
         if changelog:
-            cl_label = QLabel(f"<b>{_t('update.whats_new')}:</b><br>{changelog}")
-            cl_label.setWordWrap(True)
-            layout.addWidget(cl_label)
+            cl_title = QLabel(f"<b>{_t('update.whats_new')}:</b>")
+            layout.addWidget(cl_title)
+
+            self._cl_edit = QPlainTextEdit()
+            self._cl_edit.setReadOnly(True)
+            self._cl_edit.setPlainText(str(changelog).strip())
+            self._cl_edit.setMinimumHeight(100)
+            self._cl_edit.setMaximumHeight(180)
+            layout.addWidget(self._cl_edit)
 
         # Progress bar (hidden until download starts)
         self._progress = QProgressBar()
@@ -140,7 +169,8 @@ class UpdateDialog(QDialog):
         self._btn_update.clicked.connect(self._start_download)
         btn_layout.addWidget(self._btn_update)
 
-        self._btn_skip = QPushButton(_t("update.remind_later"))
+        skip_text = _t("common.close") if self._is_required else _t("update.remind_later")
+        self._btn_skip = QPushButton(skip_text)
         self._btn_skip.setObjectName("BtnCancel")
         self._btn_skip.setProperty("class", "secondary")
         self._btn_skip.clicked.connect(self.reject)
@@ -159,7 +189,7 @@ class UpdateDialog(QDialog):
         self._btn_update.setEnabled(False)
         self._btn_skip.setEnabled(False)
         self._progress.setVisible(True)
-        self._progress.setValue(0)
+        self._progress.setRange(0, 0)  # Indeterminate until first progress
         self._status.setVisible(True)
         self._status.setText(_t("update.downloading"))
 
@@ -170,13 +200,20 @@ class UpdateDialog(QDialog):
         self._download_thread.start()
 
     def _on_progress(self, downloaded: int, total: int) -> None:
-        pct = int(downloaded * 100 / total) if total else 0
-        self._progress.setValue(pct)
-        mb = downloaded / (1024 * 1024)
-        total_mb = total / (1024 * 1024)
-        self._status.setText(_t("update.downloading_progress", downloaded=f"{mb:.1f}", total=f"{total_mb:.1f}"))
+        if total > 0:
+            pct = int(downloaded * 100 / total)
+            self._progress.setRange(0, 100)
+            self._progress.setValue(pct)
+            mb = downloaded / (1024 * 1024)
+            total_mb = total / (1024 * 1024)
+            self._status.setText(_t("update.downloading_progress", downloaded=f"{mb:.1f}", total=f"{total_mb:.1f}"))
+        else:
+            self._progress.setRange(0, 0)
+            mb = downloaded / (1024 * 1024)
+            self._status.setText(_t("update.downloading") + f" ({mb:.1f} MB)")
 
     def _on_download_ok(self, path: str) -> None:
+        self._progress.setRange(0, 100)
         self._progress.setValue(100)
         self._status.setText(_t("update.launching_installer"))
 
@@ -215,27 +252,55 @@ class UpdateDialog(QDialog):
         self._status.setText(_t("update.download_failed"))
         self._progress.setVisible(False)
         self._btn_update.setEnabled(True)
+        self._btn_update.setText(_t("update.retry", default="Retry"))
         self._btn_skip.setEnabled(True)
+        self._btn_skip.setText(_t("common.close"))
         QMessageBox.warning(self, _t("update.download_failed"), error)
 
 
-def check_for_updates_async(parent=None, silent: bool = True) -> _CheckThread:
+_active_check_thread: _CheckThread | None = None
+
+
+def check_for_updates_async(
+    parent=None,
+    silent: bool = True,
+    button: QPushButton | None = None,
+) -> _CheckThread | None:
     """Spawn a background update check.
 
     Args:
         parent: Parent QWidget (keeps thread alive).
         silent: If True, only show dialog when an update is found.
-                If False, also inform the user when up-to-date.
+                If False, inform the user when up-to-date or failed.
+        button: Optional QPushButton to disable and set to 'Checking...' during the check.
 
     Returns:
-        The running ``_CheckThread`` (caller must keep a reference).
+        The running ``_CheckThread``, or None if a check is already running.
     """
+    global _active_check_thread
+    if _active_check_thread is not None and _active_check_thread.isRunning():
+        logger.info("Update check already in progress, ignoring duplicate request.")
+        return None
+
+    orig_btn_text = button.text() if button is not None else ""
+    if button is not None:
+        button.setEnabled(False)
+        button.setText(_t("update.checking", default="Checking..."))
+
+    def _cleanup() -> None:
+        global _active_check_thread
+        _active_check_thread = None
+        if button is not None:
+            button.setText(orig_btn_text)
+            button.setEnabled(True)
 
     def _on_update(manifest: dict[str, Any]) -> None:
+        _cleanup()
         dlg = UpdateDialog(manifest, parent)
         dlg.exec()
 
     def _on_no_update() -> None:
+        _cleanup()
         if not silent:
             QMessageBox.information(
                 parent,
@@ -243,8 +308,23 @@ def check_for_updates_async(parent=None, silent: bool = True) -> _CheckThread:
                 _t("update.latest_version", version=Config.VERSION),
             )
 
+    def _on_failed(error_msg: str) -> None:
+        _cleanup()
+        if not silent:
+            QMessageBox.warning(
+                parent,
+                _t("common.error"),
+                _t(
+                    "update.check_failed",
+                    error=translate_error(error_msg),
+                    default=f"Could not check for updates: {error_msg}",
+                ),
+            )
+
     thread = _CheckThread(parent)
     thread.update_available.connect(_on_update)
     thread.no_update.connect(_on_no_update)
+    thread.check_failed.connect(_on_failed)
+    _active_check_thread = thread
     thread.start()
     return thread

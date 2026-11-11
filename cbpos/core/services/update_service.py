@@ -51,12 +51,26 @@ class UpdateService:
     """Check for and download application updates."""
 
     @staticmethod
+    def should_check_on_startup() -> bool:
+        """Return True if automatic update check on startup is enabled in settings."""
+        try:
+            from cbpos.core.services.config_service import ConfigService
+
+            val = ConfigService.get("auto_update_check")
+            return True if val is None else bool(val)
+        except Exception:
+            return True
+
+    @staticmethod
     def check_for_update() -> dict[str, Any] | None:
         """Check the remote manifest for a newer version.
 
         Returns:
             A dict with the manifest data if a newer version is available,
-            or ``None`` if the app is up-to-date or the check fails.
+            or ``None`` if the app is up-to-date.
+
+        Raises:
+            RuntimeError: If the remote check fails due to network or invalid manifest.
         """
         try:
             req = urllib.request.Request(_MANIFEST_URL, headers={"User-Agent": "CBPOS-Updater"})
@@ -64,15 +78,17 @@ class UpdateService:
                 data: dict[str, Any] = json.loads(resp.read().decode("utf-8"))
         except (urllib.error.URLError, json.JSONDecodeError, OSError) as e:
             logger.info("Update check failed (network): %s", e)
-            return None
+            raise RuntimeError(f"Network error: {e}") from e
 
         remote_version = _safe_version(data.get("version", ""))
         local_version = _safe_version(Config.VERSION)
         if not remote_version or not local_version:
-            return None
+            raise RuntimeError("Invalid version in update manifest or local configuration.")
 
         if remote_version > local_version:
-            logger.info("Update available: %s → %s", Config.VERSION, data["version"])
+            min_v = _safe_version(data.get("min_version", ""))
+            data["is_required"] = bool(min_v and local_version < min_v)
+            logger.info("Update available: %s → %s (required=%s)", Config.VERSION, data["version"], data["is_required"])
             return data
 
         logger.info("App is up-to-date (%s)", Config.VERSION)

@@ -1703,6 +1703,8 @@
     "reset_after_corruption": "Your settings file was damaged and no good copy was found. CB POS started with default settings. Please re-enter your shop details, printer and tax settings in Settings. The damaged file was kept as {filename}.",
     "btn_open_settings": "Open Settings",
     "secrets_reentry": "These saved passwords couldn't be read on this computer and need to be entered again: {names}. Open Settings to re-enter them.",
+    "auto_update_check": "Check for CB POS updates when it starts",
+    "auto_update_help": "CB POS only downloads a small version file from the internet. Your shop data is never sent.",
     "restart_prompt": {
       "title": "Restart CB POS?",
       "message": "Your changes are saved. Restart CB POS now to apply them, or they'll apply the next time you open it.",
@@ -1973,6 +1975,7 @@
       "tab_pos_behavior": "POS Behavior",
       "tab_features": "Features",
       "tab_backup": "Backup",
+      "tab_updates": "Updates",
       "lock_on_idle": "Lock screen when idle",
       "inactivity_timeout": "Inactivity Timeout:",
       "timeout_disabled": "Disabled (no auto-lock)",
@@ -2839,7 +2842,13 @@
     "manual_message": "Automatic installer launch is only supported on Windows.\n\nThe installer was saved to:\n{path}\nPlease run it manually.",
     "launch_failed": "Could not launch installer:\n{error}\n\nThe installer was saved to:\n{path}\nPlease run it manually.",
     "no_updates": "No Updates",
-    "latest_version": "You are running the latest version ({version})."
+    "latest_version": "You are running the latest version ({version}).",
+    "required_title": "Important update",
+    "required_body": "This update fixes a serious problem. Please install it as soon as you can.",
+    "check_now": "Check for updates now",
+    "checking": "Checking...",
+    "check_failed": "Could not check for updates: {error}",
+    "retry": "Retry"
   },
   "valuation": {
     "title": "Stock Valuation",

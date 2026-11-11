@@ -117,6 +117,26 @@ class SystemPage(SettingsPage):
 
         self.tabs.addTab(self._tab_backup, "")
 
+        # --- Tab 5: Updates ---
+        self._tab_updates, self._form_updates = self._build_form_tab()
+
+        self.chk_auto_update = QCheckBox()
+        self._form_updates.addRow("", self.chk_auto_update)
+
+        self.lbl_auto_update_help = QLabel()
+        self.lbl_auto_update_help.setWordWrap(True)
+        self.lbl_auto_update_help.setProperty("class", "muted")
+        self._form_updates.addRow("", self.lbl_auto_update_help)
+
+        self.btn_check_updates = QPushButton()
+        self.btn_check_updates.setProperty("class", "secondary")
+        self.btn_check_updates.setMinimumWidth(180)
+        self.btn_check_updates.setFixedHeight(36)
+        self.btn_check_updates.clicked.connect(self._check_for_updates)
+        self._form_updates.addRow("", self.btn_check_updates)
+
+        self.tabs.addTab(self._tab_updates, "")
+
         self.retranslate_ui()
         register_language_callback(self.retranslate_ui, owner=self)
 
@@ -130,6 +150,7 @@ class SystemPage(SettingsPage):
         self.tabs.setTabText(1, _t("settings.system.tab_pos_behavior"))
         self.tabs.setTabText(2, _t("settings.system.tab_features"))
         self.tabs.setTabText(3, _t("settings.system.tab_backup"))
+        self.tabs.setTabText(4, _t("settings.system.tab_updates", default="Updates"))
 
         # Security
         self.chk_timeout.setText(_t("settings.system.lock_on_idle"))
@@ -171,7 +192,25 @@ class SystemPage(SettingsPage):
         self._lbl_backup_folder.setText(_t("settings.system.backup_folder"))
         self.input_backup_dir.setPlaceholderText(_t("settings.system.backup_folder_placeholder"))
         self.btn_browse_backup.setText(_t("settings.system.btn_browse_backup"))
+
+        # Updates
+        self.chk_auto_update.setText(
+            _t("settings.auto_update_check", default="Check for CB POS updates when it starts")
+        )
+        self.lbl_auto_update_help.setText(
+            _t(
+                "settings.auto_update_help",
+                default="CB POS only downloads a small version file from the internet. Your shop data is never sent.",
+            )
+        )
+        self.btn_check_updates.setText(_t("update.check_now", default="Check for updates now"))
         self.equalize_form_labels()
+
+    def _check_for_updates(self) -> None:
+        """Trigger an asynchronous manual update check."""
+        from cbpos.ui.dialogs.update_dialog import check_for_updates_async
+
+        self._update_thread = check_for_updates_async(parent=self, silent=False, button=self.btn_check_updates)
 
     def _on_timeout_toggled(self, checked: bool) -> None:
         """Enable or disable inactivity timeout minutes input based on checkbox."""
@@ -210,6 +249,7 @@ class SystemPage(SettingsPage):
         self.chk_auto_backup.setChecked(settings.get("auto_backup_on_close", True))
         self.spin_retention.setValue(int(settings.get("backup_retention_count", 5)))
         self.input_backup_dir.setText(settings.get("backup_dir", ""))
+        self.chk_auto_update.setChecked(bool(settings.get("auto_update_check", True)))
 
     def save(self) -> dict:
         """Return session security, POS behavior, feature toggle and backup fields as a settings dict."""
@@ -227,6 +267,7 @@ class SystemPage(SettingsPage):
             "auto_backup_on_close": self.chk_auto_backup.isChecked(),
             "backup_retention_count": self.spin_retention.value(),
             "backup_dir": self.input_backup_dir.text(),
+            "auto_update_check": self.chk_auto_update.isChecked(),
         }
 
 

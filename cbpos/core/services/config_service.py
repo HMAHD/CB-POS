@@ -112,6 +112,7 @@ class ConfigService:
         "session_timeout_minutes": 0,  # 0 = disabled (no auto-lock), 1-60 = minutes
         "max_login_attempts": 5,  # Failed attempts before lockout
         "lockout_duration_seconds": 300,  # Lockout duration in seconds (5 min default)
+        "auto_update_check": True,  # Check for updates on startup (#808)
         # Customer Defaults
         "default_credit_limit": 0,  # Default credit limit for new customers (0 = no credit)
         # Loyalty Program

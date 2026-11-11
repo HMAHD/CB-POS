@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 8 · Batch: 8.1 · Branch: main · PR: — · Last session: 2026-11-11
+- Phase: 8 · Batch: 8.1 · Branch: fix/p8-b1-update-export-scheduler · PR: — · Last session: 2026-11-11
 
 ## Issues
 
@@ -185,7 +185,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 | # | Title | Sev | Batch | Status | PR | Notes |
 |---|---|---|---|---|---|---|
-| #808 | Update check: cannot be disabled, min_version ignored, release changelog alwa… | medium | 8.1 | todo | | |
+| #808 | Update check: cannot be disabled, min_version ignored, release changelog alwa… | medium | 8.1 | done | | auto_update_check setting on System tab 5, packaging Version comparison for min_version required dialog, changelog_section.py and release workflow, plain text changelog |
 | #881 | Exports to USB / another drive refused ("Export path outside allowed director… | medium | 8.1 | todo | | |
 | #882 | Auto-report email resent every minute while a send is in progress or failing | medium | 8.1 | todo | | |
 | #814 | Tax invoice compliance features listed in CHANGELOG are missing (serial forma… | high | 8.2 | todo | | |

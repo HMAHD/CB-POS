@@ -225,6 +225,15 @@ jobs:
         run: |
           git clone https://x-access-token:${{ secrets.RELEASES_PAT }}@github.com/ceybyte/cbpos-releases.git releases-repo
 
+      - name: Extract Changelog Section
+        id: changelog
+        shell: bash
+        run: |
+          python scripts/changelog_section.py "${{ needs.build.outputs.version }}" > changelog.txt || true
+          if [ ! -s changelog.txt ]; then
+            echo "Release notes for version ${{ needs.build.outputs.version }}" > changelog.txt
+          fi
+
       - name: Create GitHub Release on releases repo
         env:
           GH_TOKEN: ${{ secrets.RELEASES_PAT }}
@@ -232,26 +241,31 @@ jobs:
           cd releases-repo
           gh release create "v${{ needs.build.outputs.version }}" \
             --title "CB POS v${{ needs.build.outputs.version }}" \
-            --notes "## CB POS v${{ needs.build.outputs.version }}
-
-          Download and run the installer. Your existing data is preserved automatically.
-
-          **SHA-256:** \`${{ needs.build.outputs.sha256 }}\`" \
+            --notes-file ../changelog.txt \
             ../dist/${{ needs.build.outputs.installer_name }}
 
       - name: Generate latest.json
         shell: bash
         run: |
-          cat > latest.json << MANIFEST
-          {
-              "version": "${{ needs.build.outputs.version }}",
-              "release_date": "$(date -u +%Y-%m-%d)",
-              "download_url": "https://github.com/ceybyte/cbpos-releases/releases/download/v${{ needs.build.outputs.version }}/${{ needs.build.outputs.installer_name }}",
-              "changelog": "",
+          python -c '
+          import json, sys
+          with open("changelog.txt", encoding="utf-8") as f:
+              notes = f.read().strip()
+          version = sys.argv[1]
+          installer_name = sys.argv[2]
+          sha256 = sys.argv[3]
+          date_str = sys.argv[4]
+          manifest = {
+              "version": version,
+              "release_date": date_str,
+              "download_url": f"https://github.com/ceybyte/cbpos-releases/releases/download/v{version}/{installer_name}",
+              "changelog": notes,
               "min_version": "1.0.0",
-              "sha256": "${{ needs.build.outputs.sha256 }}"
+              "sha256": sha256
           }
-          MANIFEST
+          with open("latest.json", "w", encoding="utf-8") as out:
+              json.dump(manifest, out, indent=4)
+          ' "${{ needs.build.outputs.version }}" "${{ needs.build.outputs.installer_name }}" "${{ needs.build.outputs.sha256 }}" "$(date -u +%Y-%m-%d)"
           echo "Generated latest.json:"
           cat latest.json
 

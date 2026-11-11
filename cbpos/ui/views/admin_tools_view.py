@@ -146,7 +146,7 @@ class AdminToolsView(QWidget):
         """Manually trigger an update check (non-silent — shows result either way)."""
         from cbpos.ui.dialogs.update_dialog import check_for_updates_async
 
-        self._update_thread = check_for_updates_async(parent=self, silent=False)
+        self._update_thread = check_for_updates_async(parent=self, silent=False, button=self.btn_update)
 
     # ── Database Tab ─────────────────────────────────────────────────────
 

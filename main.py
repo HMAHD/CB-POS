@@ -622,16 +622,19 @@ def main():
         _splash.finish(window)
         _splash = None
 
-    # Check for updates 3 seconds after startup (non-blocking).
+    # Check for updates 3 seconds after startup if enabled in settings (non-blocking).
     # The thread reference is kept on the app object to prevent GC.
     from PyQt6.QtCore import QTimer
 
+    from cbpos.core.services.update_service import UpdateService
     from cbpos.ui.dialogs.update_dialog import check_for_updates_async
 
     def _deferred_update_check():
-        app._update_thread = check_for_updates_async(parent=window, silent=True)
+        if UpdateService.should_check_on_startup():
+            app._update_thread = check_for_updates_async(parent=window, silent=True)
 
-    QTimer.singleShot(3000, _deferred_update_check)
+    if UpdateService.should_check_on_startup():
+        QTimer.singleShot(3000, _deferred_update_check)
 
     sys.exit(app.exec())
 

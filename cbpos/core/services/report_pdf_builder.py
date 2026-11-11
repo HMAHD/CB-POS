@@ -98,7 +98,7 @@ class ReportPDFBuilder:
             title_font = font_for(title)
             title_style = ParagraphStyle(
                 name="ReportTitle",
-                fontName=f"{title_font}-Bold" if f"{title_font}-Bold" else title_font,
+                fontName=f"{title_font}-Bold",
                 fontSize=14,
                 leading=17,
                 textColor=_NAVY,
@@ -182,15 +182,18 @@ class ReportPDFBuilder:
             story.append(report_table)
 
             # 5. Build Document with Canvas Decorations
-            def _draw_decorations(canvas: Any, _doc: Any) -> None:
+            def _draw_decorations(canvas: Any, doc_template: Any) -> None:
                 canvas.saveState()
                 # Center branding at bottom
-                pw = canvas._pagesize[0]
+                pw = getattr(doc_template, "pagesize", getattr(canvas, "_pagesize", (A4[0], A4[1])))[0]
                 canvas.setFont("NotoSans", 8)
                 canvas.setFillColor(_MUTED)
                 canvas.drawCentredString(pw / 2, 8 * mm, "Powered by CB POS — ceybyte.com")
                 # Page number
-                canvas.drawRightString(pw - margin, 8 * mm, f"Page {canvas._pageNumber}")
+                page_num = (
+                    canvas.getPageNumber() if hasattr(canvas, "getPageNumber") else getattr(canvas, "_pageNumber", 1)
+                )
+                canvas.drawRightString(pw - margin, 8 * mm, f"Page {page_num}")
                 canvas.restoreState()
 
             doc.build(story, onFirstPage=_draw_decorations, onLaterPages=_draw_decorations)

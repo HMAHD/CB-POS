@@ -67,7 +67,7 @@ class ProductService:
         Picks name_si for 'si', name_ta for 'ta', falling back to name_en when
         empty or when lang is 'en' (or unsupported). If product is None, returns "".
         """
-        if not product:
+        if product is None:
             return ""
         if hasattr(product, "get_display_name"):
             return product.get_display_name(lang)

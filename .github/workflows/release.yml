@@ -174,7 +174,7 @@ jobs:
           EOF
 
       - name: Build Inno Setup installer
-        uses: Minionguyjpro/Inno-Setup-Action@v1.2.9
+        uses: Minionguyjpro/Inno-Setup-Action@v1.3.0
         env:
           FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
         with:

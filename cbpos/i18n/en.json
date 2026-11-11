@@ -3383,6 +3383,11 @@
     "daily_sales_subject": "Daily Sales Report - {date}",
     "daily_sales_title": "Daily Sales Summary - {date}",
     "daily_sales_body": "Please find attached the daily sales summary.\n\n— Sent by CB POS · {website}"
+  },
+  "auto_report": {
+    "failed_notice": "The daily report email couldn't be sent today ({reason}). Check Settings → Shop Information → Email.",
+    "notice_title": "Daily report email failed",
+    "btn_open_email_settings": "Open Email settings"
   }
 }
 

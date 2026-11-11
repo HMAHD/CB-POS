@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QMessageBox,
     QSizePolicy,
     QStackedWidget,
     QToolButton,
@@ -43,6 +44,7 @@ class ManagementView(QWidget):
     logout_requested = pyqtSignal()
     request_pos_view = pyqtSignal()
     convert_proforma_to_sale = pyqtSignal(dict)
+    open_settings_requested = pyqtSignal(int, int)
 
     def __init__(self):
         """Build the sidebar and content stack, then show the Dashboard tab."""
@@ -337,6 +339,47 @@ class ManagementView(QWidget):
         if hasattr(self, "reorder_view"):
             self.reorder_view.set_user(user)
 
+        if self.isVisible():
+            self._check_auto_report_notice()
+
+    def _check_auto_report_notice(self) -> None:
+        """Show pending notice if auto-report failed 5 times today and user can edit settings (#882)."""
+        if not self.user:
+            return
+        from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.services.config_service import ConfigService
+
+        if not PermissionService.user_has_permission(self.user, Permissions.ADMIN_SETTINGS):
+            return
+
+        notice = ConfigService.get("auto_report_pending_notice") or ""
+        if not notice:
+            return
+
+        # Clear immediately so it is only displayed once to an eligible user
+        ConfigService.set("auto_report_pending_notice", "")
+
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Warning)
+        box.setWindowTitle(_t("auto_report.notice_title", default="Daily report email failed"))
+        box.setText(
+            _t(
+                "auto_report.failed_notice",
+                reason=notice,
+                default=f"The daily report email couldn't be sent today ({notice}). Check Settings → Shop Information → Email.",
+            )
+        )
+        btn_open = box.addButton(
+            _t("auto_report.btn_open_email_settings", default="Open Email settings"),
+            QMessageBox.ButtonRole.AcceptRole,
+        )
+        box.addButton(_t("common.close", default="Close"), QMessageBox.ButtonRole.RejectRole)
+        box.exec()
+
+        if box.clickedButton() == btn_open:
+            # Shop Information is page 0, Email tab is subtab 2
+            self.open_settings_requested.emit(0, 2)
+
     def resizeEvent(self, event) -> None:
         """Auto-collapse sidebar on narrow screens and recompute layout."""
         super().resizeEvent(event)
@@ -362,6 +405,7 @@ class ManagementView(QWidget):
     def showEvent(self, event) -> None:
         """Recompute layout and refresh the visible page when switching back to this view."""
         super().showEvent(event)
+        self._check_auto_report_notice()
         activate(self.stack.currentWidget())
         w = self.width()
         if w > 0:

@@ -135,6 +135,12 @@ class ConfigService:
         # Automation / Email
         "auto_report_enabled": False,
         "auto_report_time": "22:00",
+        "auto_report_last_sent_date": "",
+        "auto_report_in_progress_since": "",
+        "auto_report_failures": 0,
+        "auto_report_failures_date": "",
+        "auto_report_next_attempt": "",
+        "auto_report_pending_notice": "",
         "admin_email": "",
         "smtp_host": "",
         "smtp_port": "587",

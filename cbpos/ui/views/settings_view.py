@@ -326,8 +326,8 @@ class SettingsView(QWidget):
                 snapshot.update(page.save())
         return snapshot
 
-    def switch_page(self, index: int) -> None:
-        """Switch the stacked widget to the given page index.
+    def switch_page(self, index: int, subtab_index: int | None = None) -> None:
+        """Switch the stacked widget to the given page index and optional subtab.
 
         Edits on other pages are kept (their sidebar items show the unsaved
         marker), so several pages can be edited and saved together.
@@ -335,6 +335,10 @@ class SettingsView(QWidget):
         self.stack.setCurrentIndex(index)
         self.sidebar.highlight(index)
         self._update_header_title()
+        if subtab_index is not None and 0 <= index < len(self.pages):
+            page = self.pages[index]
+            if hasattr(page, "tabs") and hasattr(page.tabs, "setCurrentIndex"):
+                page.tabs.setCurrentIndex(subtab_index)
 
     # ------------------------------------------------------------------
     # Unsaved-changes markers

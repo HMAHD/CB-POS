@@ -119,6 +119,7 @@ class MainWindow(QMainWindow):
         self.management_view.logout_requested.connect(self.logout)
         self.management_view.request_pos_view.connect(self._navigate_to_pos)
         self.management_view.convert_proforma_to_sale.connect(self.on_convert_proforma)
+        self.management_view.open_settings_requested.connect(self.open_settings)
         self.stack.addWidget(self.management_view)
 
         # 3. Settings View (Top Level)
@@ -308,11 +309,11 @@ class MainWindow(QMainWindow):
         # Hide side menu in sales view if open
         self.sales_view.side_menu.setVisible(False)
 
-    def open_settings(self, page_index: int = 0) -> None:
-        """Show Settings on a specific page index (#875)."""
+    def open_settings(self, page_index: int = 0, subtab_index: int | None = None) -> None:
+        """Show Settings on a specific page index and optional subtab (#875, #882)."""
         self.switch_to_settings()
         if hasattr(self, "settings_view") and hasattr(self.settings_view, "switch_page"):
-            self.settings_view.switch_page(page_index)
+            self.settings_view.switch_page(page_index, subtab_index=subtab_index)
 
     def open_hardware_settings(self) -> None:
         """Show Settings on its Hardware page (from the Sales no-printer notice)."""

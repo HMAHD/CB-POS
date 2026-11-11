@@ -187,7 +187,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 |---|---|---|---|---|---|---|
 | #808 | Update check: cannot be disabled, min_version ignored, release changelog alwa… | medium | 8.1 | done | | auto_update_check setting on System tab 5, packaging Version comparison for min_version required dialog, changelog_section.py and release workflow, plain text changelog |
 | #881 | Exports to USB / another drive refused ("Export path outside allowed director… | medium | 8.1 | done | | ensure_writable_target helper in cbpos/core/utils/paths.py, parent existence/W_OK check, format_export_error translated notice |
-| #882 | Auto-report email resent every minute while a send is in progress or failing | medium | 8.1 | todo | | |
+| #882 | Auto-report email resent every minute while a send is in progress or failing | medium | 8.1 | done | | cd523ee · AutoReportWorker off UI thread, 15m stuck recovery, 2^n*5m backoff capped at 6h, max 5 daily failures, Management notice for admin |
 | #814 | Tax invoice compliance features listed in CHANGELOG are missing (serial forma… | high | 8.2 | todo | | |
 | #816 | Add About dialog and help/report-issue links (CB POS website branding) | low | 8.3 | todo | | |
 | #817 | Add EULA, privacy notice and third-party licence notices before public release | high | 8.3 | todo | | |

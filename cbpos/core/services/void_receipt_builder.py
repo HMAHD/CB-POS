@@ -5,6 +5,7 @@ from typing import Any
 
 from cbpos.core.models import Sale
 from cbpos.core.services.base_receipt_builder import BaseReceiptBuilder
+from cbpos.core.services.product_service import ProductService
 from cbpos.core.utils.formatters import format_currency
 
 
@@ -90,7 +91,11 @@ class VoidReceiptBuilder(BaseReceiptBuilder):
 
         # Items (for reference)
         for item in sale.items:
-            product_name = item.product.name_en if hasattr(item, "product") and item.product else "Unknown"
+            product_name = (
+                ProductService.display_name(item.product, cls._receipt_lang)
+                if hasattr(item, "product") and item.product
+                else getattr(item, "name", "Unknown")
+            )
             line = (
                 f"{cls._format_item_qty(item)} x {format_currency(item.unit_price)} = {format_currency(item.subtotal)}"
             )

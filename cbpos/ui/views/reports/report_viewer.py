@@ -707,9 +707,12 @@ class ReportViewer(QWidget):
         QMessageBox.information(self, _t("common.success"), message)
 
     def _on_export_error(self, error_msg: str) -> None:
+        from cbpos.core.utils.paths import format_export_error
+
         self._overlay.hide_loading()
         self._set_export_buttons_enabled(True)
-        QMessageBox.critical(self, _t("common.error"), _t("report_viewer.export_failed", error=error_msg))
+        msg = format_export_error(error_msg)
+        QMessageBox.critical(self, _t("common.error"), _t("report_viewer.export_failed", error=msg))
 
     def _set_export_buttons_enabled(self, enabled: bool) -> None:
         self.btn_export_excel.setEnabled(enabled)

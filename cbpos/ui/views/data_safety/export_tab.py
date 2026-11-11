@@ -196,9 +196,12 @@ class ExportTabWidget(QWidget):
 
     def _on_export_error(self, error: str) -> None:
         """Handle export failure from background thread."""
+        from cbpos.core.utils.paths import format_export_error
+
         self.btn_do_export.setEnabled(True)
         self.btn_do_export.setText(_t("data_safety.export_btn"))
-        self._set_export_status("debit", _t("data_safety.export_failed", error=error))
+        msg = format_export_error(error)
+        self._set_export_status("debit", _t("data_safety.export_failed", error=msg))
 
     def _set_export_status(self, css_class: str, text: str) -> None:
         """Update the export status label with the given class and text."""

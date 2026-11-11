@@ -4,6 +4,7 @@ from pathlib import Path
 import pandas as pd
 
 from cbpos.core.services.report_pdf_builder import ReportPDFBuilder
+from cbpos.core.utils.paths import ensure_writable_target
 from cbpos.core.utils.spreadsheet_safety import XLSX_WRITER_OPTIONS, csv_safe
 
 logger = logging.getLogger(__name__)
@@ -16,17 +17,8 @@ class ExportService:
 
     @staticmethod
     def _validate_export_path(filepath: str) -> Path:
-        """Validate export path to prevent path traversal attacks."""
-        resolved = Path(filepath).resolve()
-        if ".." in Path(filepath).parts:
-            raise ValueError(f"Path traversal detected: {filepath}")
-        import tempfile
-
-        home = Path.home().resolve()
-        temp_dir = Path(tempfile.gettempdir()).resolve()
-        if not any(str(resolved).startswith(str(d)) for d in (home, temp_dir)):
-            raise ValueError(f"Export path outside allowed directories: {filepath}")
-        return resolved
+        """Validate export path to ensure parent folder exists and is writable (#881)."""
+        return ensure_writable_target(filepath)
 
     def export_to_excel(self, df: pd.DataFrame, filepath: str, title: str = "Report"):
         """

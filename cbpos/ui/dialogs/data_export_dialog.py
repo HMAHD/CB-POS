@@ -33,7 +33,6 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.data_export_service import DataExportService
 from cbpos.core.services.export_service import ExportService
 from cbpos.core.utils.date_ranges import range_for
-from cbpos.core.utils.error_messages import translate_error
 from cbpos.i18n import _t
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
@@ -212,13 +211,14 @@ class DataExportDialog(QDialog):
             )
 
         except Exception as e:
+            from cbpos.core.utils.paths import format_export_error
+
             QApplication.restoreOverrideCursor()
             self.btn_export.setEnabled(True)
             self.btn_export.setText(_t("common.export"))
             logger.exception("Export failed: %s", e)
-            QMessageBox.critical(
-                self, _t("data_export.failed_title"), _t("data_export.failed_msg", error=translate_error(str(e)))
-            )
+            msg = format_export_error(e, output_dir)
+            QMessageBox.critical(self, _t("data_export.failed_title"), _t("data_export.failed_msg", error=msg))
 
     def _write_export(self, svc: object, df, filepath: str, title: str, fmt: str) -> None:
         """Write a DataFrame to the specified format."""

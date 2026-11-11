@@ -2419,6 +2419,9 @@
     "no_data_title": "No Data",
     "no_data_msg": "No data found to export."
   },
+  "export": {
+    "not_writable": "Can't save to {folder}. Check the USB drive is plugged in and not write-protected."
+  },
   "label_preview": {
     "title": "Label Preview",
     "hint": "Preview of labels to print"

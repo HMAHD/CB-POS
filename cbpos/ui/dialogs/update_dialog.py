@@ -278,9 +278,17 @@ def check_for_updates_async(
         The running ``_CheckThread``, or None if a check is already running.
     """
     global _active_check_thread
+    thread_to_run: _CheckThread | None = None
     if _active_check_thread is not None and _active_check_thread.isRunning():
-        logger.info("Update check already in progress, ignoring duplicate request.")
-        return None
+        if silent:
+            logger.info("Silent update check already in progress, ignoring duplicate request.")
+            return None
+        logger.info("Attaching manual update check request to running check thread.")
+        thread = _active_check_thread
+    else:
+        thread = _CheckThread(parent)
+        _active_check_thread = thread
+        thread_to_run = thread
 
     orig_btn_text = button.text() if button is not None else ""
     if button is not None:
@@ -289,7 +297,8 @@ def check_for_updates_async(
 
     def _cleanup() -> None:
         global _active_check_thread
-        _active_check_thread = None
+        if _active_check_thread is thread:
+            _active_check_thread = None
         if button is not None:
             button.setText(orig_btn_text)
             button.setEnabled(True)
@@ -321,10 +330,10 @@ def check_for_updates_async(
                 ),
             )
 
-    thread = _CheckThread(parent)
     thread.update_available.connect(_on_update)
     thread.no_update.connect(_on_no_update)
     thread.check_failed.connect(_on_failed)
-    _active_check_thread = thread
-    thread.start()
+    thread.finished.connect(_cleanup)
+    if thread_to_run is not None:
+        thread_to_run.start()
     return thread

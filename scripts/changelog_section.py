@@ -19,7 +19,8 @@ def extract_changelog_section(version: str, changelog_text: str) -> str:
     Finds `## [version]` or `## [version] - date` and captures lines up to the
     next section starting with `## [`.
     """
-    escaped_v = re.escape(version.lstrip("v"))
+    norm_version = re.sub(r"^[vV]", "", version.strip())
+    escaped_v = re.escape(norm_version)
     pattern = rf"(?m)^##\s*\[{escaped_v}\](?:[^\n]*)?\n(.*?)(?=^##\s*\[|\Z)"
     match = re.search(pattern, changelog_text, re.DOTALL)
     if not match:

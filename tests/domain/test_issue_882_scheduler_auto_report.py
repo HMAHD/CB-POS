@@ -37,13 +37,21 @@ def clean_config():
         "admin_email",
     ]
     for k in keys:
-        ConfigService.set(k, "" if "failures" not in k and "enabled" not in k else (0 if "failures" in k else False))
-    SchedulerService._pending_email_result = None
+        if k == "auto_report_failures":
+            ConfigService.set(k, 0)
+        elif k == "auto_report_enabled":
+            ConfigService.set(k, False)
+        else:
+            ConfigService.set(k, "")
     SchedulerService._email_sender = None
     yield
     for k in keys:
-        ConfigService.set(k, "" if "failures" not in k and "enabled" not in k else (0 if "failures" in k else False))
-    SchedulerService._pending_email_result = None
+        if k == "auto_report_failures":
+            ConfigService.set(k, 0)
+        elif k == "auto_report_enabled":
+            ConfigService.set(k, False)
+        else:
+            ConfigService.set(k, "")
     SchedulerService._email_sender = None
 
 
@@ -171,41 +179,63 @@ def test_issue_882_max_failures_stops_and_sets_pending_notice(qapp, monkeypatch)
 
 def test_issue_882_build_runs_off_ui_thread(qapp):
     """DailySalesSummaryReport.generate and ExportService.export_to_pdf run on worker thread, off UI thread."""
-    main_thread = QThread.currentThread()
-    worker_threads = {}
+    had_inline_start = "start" in AutoReportWorker.__dict__
+    if had_inline_start:
+        del AutoReportWorker.start
 
-    class FakeReport:
-        def generate(self, filters):
-            worker_threads["generate"] = QThread.currentThread()
-            df = MagicMock()
-            df.empty = False
-            return df
+    try:
+        main_thread = QThread.currentThread()
+        worker_threads = {}
 
-    class FakeExport:
-        def export_to_pdf(self, df, path, title):
-            worker_threads["export"] = QThread.currentThread()
+        class FakeReport:
+            def generate(self, filters):
+                worker_threads["generate"] = QThread.currentThread()
+                df = MagicMock()
+                df.empty = False
+                return df
 
-    def fake_sender(email, subj, body, path):
-        worker_threads["sender"] = QThread.currentThread()
+        class FakeExport:
+            def export_to_pdf(self, df, path, title):
+                worker_threads["export"] = QThread.currentThread()
 
-    SchedulerService._email_sender = fake_sender
+        def fake_sender(email, subj, body, path):
+            worker_threads["sender"] = QThread.currentThread()
 
-    with (
-        patch("cbpos.core.services.scheduler_service.DailySalesSummaryReport", FakeReport),
-        patch("cbpos.core.services.scheduler_service.ExportService", FakeExport),
-    ):
-        worker = AutoReportWorker(
-            today_str="2026-10-15",
-            admin_email="owner@example.com",
-            receipt_lang="en",
-        )
-        worker.start()
-        worker.wait(5000)
+        SchedulerService._email_sender = fake_sender
 
-        assert worker_threads["generate"] != main_thread
-        assert worker_threads["export"] != main_thread
-        assert worker_threads["sender"] != main_thread
-        assert worker_threads["generate"] == worker_threads["export"] == worker_threads["sender"]
+        with (
+            patch("cbpos.core.services.scheduler_service.DailySalesSummaryReport", FakeReport),
+            patch("cbpos.core.services.scheduler_service.ExportService", FakeExport),
+        ):
+            worker = AutoReportWorker(
+                today_str="2026-10-15",
+                admin_email="owner@example.com",
+                receipt_lang="en",
+            )
+            worker.start()
+            assert worker.wait(5000) is True
+
+            assert worker_threads["generate"] != main_thread
+            assert worker_threads["export"] != main_thread
+            assert worker_threads["sender"] != main_thread
+            assert worker_threads["generate"] == worker_threads["export"] == worker_threads["sender"]
+    finally:
+        if had_inline_start:
+            AutoReportWorker.start = AutoReportWorker.run
+
+
+def test_issue_882_empty_report_does_not_set_last_sent_date():
+    """Empty report marks last_run so it doesn't repeat, but does NOT set last_sent_date."""
+    SchedulerService._on_worker_success("2026-10-15", is_empty=True)
+    assert ConfigService.get("auto_report_last_run") == "2026-10-15"
+    assert ConfigService.get("auto_report_last_sent_date") == ""
+
+
+def test_issue_882_non_numeric_failures_handled_gracefully():
+    """Corrupted/non-numeric auto_report_failures in config does not crash tick or failure handler."""
+    ConfigService.set("auto_report_failures", "corrupted_string")
+    SchedulerService._on_worker_failure("Error message")
+    assert ConfigService.get("auto_report_failures") == 1
 
 
 def test_issue_882_owner_notice_displayed_and_cleared_for_eligible_user(qapp, monkeypatch):
@@ -248,4 +278,7 @@ def test_issue_882_owner_notice_displayed_and_cleared_for_eligible_user(qapp, mo
     view._check_auto_report_notice()
 
     assert ConfigService.get("auto_report_pending_notice") == ""
-    assert emitted_nav == [(0, 2)]
+    from cbpos.ui.views.settings_pages.shop_info import ShopInfoPage
+    from cbpos.ui.views.settings_view import SettingsView
+
+    assert emitted_nav == [(SettingsView.SHOP_INFO_PAGE, ShopInfoPage.TAB_EMAIL)]

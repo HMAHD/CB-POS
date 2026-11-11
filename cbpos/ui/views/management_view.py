@@ -377,8 +377,10 @@ class ManagementView(QWidget):
         box.exec()
 
         if box.clickedButton() == btn_open:
-            # Shop Information is page 0, Email tab is subtab 2
-            self.open_settings_requested.emit(0, 2)
+            from cbpos.ui.views.settings_pages.shop_info import ShopInfoPage
+            from cbpos.ui.views.settings_view import SettingsView
+
+            self.open_settings_requested.emit(SettingsView.SHOP_INFO_PAGE, ShopInfoPage.TAB_EMAIL)
 
     def resizeEvent(self, event) -> None:
         """Auto-collapse sidebar on narrow screens and recompute layout."""
@@ -405,7 +407,7 @@ class ManagementView(QWidget):
     def showEvent(self, event) -> None:
         """Recompute layout and refresh the visible page when switching back to this view."""
         super().showEvent(event)
-        self._check_auto_report_notice()
+        QTimer.singleShot(0, self._check_auto_report_notice)
         activate(self.stack.currentWidget())
         w = self.width()
         if w > 0:

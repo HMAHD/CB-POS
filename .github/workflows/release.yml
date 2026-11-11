@@ -229,8 +229,7 @@ jobs:
         id: changelog
         shell: bash
         run: |
-          python scripts/changelog_section.py "${{ needs.build.outputs.version }}" > changelog.txt || true
-          if [ ! -s changelog.txt ]; then
+          if ! python scripts/changelog_section.py "${{ needs.build.outputs.version }}" > changelog.txt || [ ! -s changelog.txt ]; then
             echo "Release notes for version ${{ needs.build.outputs.version }}" > changelog.txt
           fi
 

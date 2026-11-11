@@ -29,23 +29,33 @@ def ensure_writable_target(path: str | Path) -> Path:
         PermissionError: If parent folder or existing file is not writable.
     """
     raw_p = Path(path)
+    raw_str = str(path)
     if not raw_p.is_absolute():
         raise ValueError(f"Path must be absolute: {path}")
 
-    if ".." in raw_p.parts:
+    if ".." in raw_p.parts or ".." in raw_str.split("/") or ".." in raw_str.split("\\"):
         raise ValueError(f"Path traversal detected: {path}")
 
     resolved = raw_p.resolve()
+    if ".." in resolved.parts:
+        raise ValueError(f"Path traversal detected: {path}")
+
     parent = resolved.parent
 
     if not parent.exists():
-        raise FileNotFoundError(f"Folder does not exist: {parent}")
+        err = FileNotFoundError(f"Folder does not exist: {parent}")
+        err.filename = str(parent)
+        raise err
 
     if not os.access(parent, os.W_OK):
-        raise PermissionError(f"Folder is not writable: {parent}")
+        err = PermissionError(f"Folder is not writable: {parent}")
+        err.filename = str(parent)
+        raise err
 
     if resolved.exists() and not os.access(resolved, os.W_OK):
-        raise PermissionError(f"File is not writable: {resolved}")
+        err = PermissionError(f"File is not writable: {resolved}")
+        err.filename = str(resolved)
+        raise err
 
     return resolved
 
@@ -56,6 +66,8 @@ def format_export_error(error: Exception | str, filepath: str | Path | None = No
     folder = ""
     if filepath:
         folder = str(Path(filepath).parent)
+    elif getattr(error, "filename", None):
+        folder = str(error.filename)
     elif "Folder is not writable:" in err_str:
         folder = err_str.split("Folder is not writable:", 1)[1].strip()
     elif "Folder does not exist:" in err_str:

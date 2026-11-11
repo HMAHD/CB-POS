@@ -57,9 +57,14 @@ class UpdateService:
             from cbpos.core.services.config_service import ConfigService
 
             val = ConfigService.get("auto_update_check")
-            return True if val is None else bool(val)
-        except Exception:
-            return True
+            if val is None:
+                return True
+            if isinstance(val, str):
+                return val.strip().lower() not in ("false", "0", "no", "off")
+            return bool(val)
+        except Exception as e:
+            logger.warning("Could not read auto_update_check setting: %s; failing closed.", e)
+            return False
 
     @staticmethod
     def check_for_update() -> dict[str, Any] | None:

@@ -38,6 +38,7 @@ def test_issue_808_min_version_marks_required():
 def test_issue_808_min_version_lower_than_current_is_optional():
     """Manifest min_version lower or equal to current version is not required."""
     with patch("cbpos.config.Config.VERSION", "1.2.0"):
+        # Case 1: min_version lower than current version
         manifest = {
             "version": "1.3.0",
             "min_version": "1.1.0",
@@ -50,6 +51,13 @@ def test_issue_808_min_version_lower_than_current_is_optional():
             result = UpdateService.check_for_update()
             assert result is not None
             assert result["version"] == "1.3.0"
+            assert result.get("is_required") is False
+
+        # Case 2: min_version equal to current version
+        manifest["min_version"] = "1.2.0"
+        with patch("urllib.request.urlopen", return_value=_fake_response(manifest)):
+            result = UpdateService.check_for_update()
+            assert result is not None
             assert result.get("is_required") is False
 
 
@@ -72,7 +80,7 @@ def test_issue_808_up_to_date_returns_none():
 def test_issue_808_failure_vs_up_to_date_distinct():
     """Network or JSON failure raises an exception so callers never confuse it with up-to-date."""
     with patch("urllib.request.urlopen", side_effect=urllib.error.URLError("Connection refused")):
-        with pytest.raises((RuntimeError, urllib.error.URLError, OSError)):
+        with pytest.raises(RuntimeError, match="Network error"):
             UpdateService.check_for_update()
 
 
@@ -80,8 +88,40 @@ def test_issue_808_setting_off_skips_startup_check():
     """When auto_update_check is False in settings, deferred startup check does not run."""
     from cbpos.core.services.config_service import ConfigService
 
-    with patch.object(ConfigService, "get", return_value=False):
+    def fake_get(key, *args):
+        if key == "auto_update_check":
+            return False
+        return None
+
+    with patch.object(ConfigService, "get", side_effect=fake_get):
         assert UpdateService.should_check_on_startup() is False
 
-    with patch.object(ConfigService, "get", return_value=True):
+    def fake_get_true(key, *args):
+        if key == "auto_update_check":
+            return True
+        return None
+
+    with patch.object(ConfigService, "get", side_effect=fake_get_true):
         assert UpdateService.should_check_on_startup() is True
+
+
+def test_issue_808_setting_string_boolean_parsed_properly():
+    """String booleans (e.g. 'false', '0') are parsed properly and do not enable checks."""
+    from cbpos.core.services.config_service import ConfigService
+
+    with patch.object(ConfigService, "get", return_value="false"):
+        assert UpdateService.should_check_on_startup() is False
+
+    with patch.object(ConfigService, "get", return_value="0"):
+        assert UpdateService.should_check_on_startup() is False
+
+    with patch.object(ConfigService, "get", return_value="true"):
+        assert UpdateService.should_check_on_startup() is True
+
+
+def test_issue_808_setting_fails_closed_on_error():
+    """On config read failure, should_check_on_startup fails closed (returns False)."""
+    from cbpos.core.services.config_service import ConfigService
+
+    with patch.object(ConfigService, "get", side_effect=RuntimeError("DB offline")):
+        assert UpdateService.should_check_on_startup() is False

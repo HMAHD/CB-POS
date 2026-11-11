@@ -12,10 +12,13 @@ from cbpos.core.utils.paths import ensure_writable_target, format_export_error
 
 def test_issue_881_export_to_other_drive_path_succeeds(tmp_path, monkeypatch):
     """Saving to a location outside home/temp (e.g. simulated USB drive) succeeds (#881)."""
-    # Simulate that home is a different directory entirely
+    # Simulate that home and temp are different directories entirely
     fake_home = tmp_path / "fake_home"
     fake_home.mkdir()
+    fake_temp = tmp_path / "fake_temp"
+    fake_temp.mkdir()
     monkeypatch.setattr(Path, "home", lambda: fake_home)
+    monkeypatch.setattr("tempfile.gettempdir", lambda: str(fake_temp))
 
     # Destination on a "different drive" (outside fake_home and system temp)
     usb_drive = tmp_path / "usb_drive"
@@ -67,8 +70,9 @@ def test_issue_881_missing_parent_raises(tmp_path):
 
 def test_issue_881_format_export_error():
     """format_export_error produces translated user-friendly message for unwritable destination."""
-    folder = "/Volumes/USB_DRIVE"
+    folder = "/mnt/flash_storage"
     err = PermissionError(f"Folder is not writable: {folder}")
+    err.filename = folder
     msg = format_export_error(err, f"{folder}/sales.csv")
     assert folder in msg
-    assert "USB drive" in msg or "ලිවීම" in msg or "USB" in msg
+    assert "USB drive" in msg or "ලිවීම" in msg or "write-protected" in msg

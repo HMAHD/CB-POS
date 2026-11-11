@@ -60,6 +60,7 @@ class SettingsView(QWidget):
     # it holds live (e.g. the idle-lock timeout, #641).
     settings_saved = pyqtSignal()
 
+    SHOP_INFO_PAGE = 0  # stack index of ShopInfoPage
     HARDWARE_PAGE = 3  # stack index of HardwarePage
 
     def __init__(self):

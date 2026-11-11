@@ -23,6 +23,11 @@ from cbpos.ui.widgets.help_icon_button import HelpIconButton
 class ShopInfoPage(SettingsPage):
     """Consolidated: General + Payment banking + Automation email settings."""
 
+    TAB_BUSINESS = 0
+    TAB_BANKING = 1
+    TAB_EMAIL = 2
+    TAB_APPEARANCE = 3
+
     def init_ui(self):
         """Build the Business, Banking, Email and Appearance tabs."""
         _, self.tabs = self._create_page_layout("", "")

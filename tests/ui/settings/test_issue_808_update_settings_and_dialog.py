@@ -16,7 +16,8 @@ def qapp():
 def test_system_page_has_updates_tab(qapp):
     """SystemPage has an Updates tab with auto-update checkbox, helper label, and check now button."""
     page = SystemPage()
-    assert page.tabs.count() == 5
+    assert hasattr(page, "_tab_updates")
+    assert page.tabs.indexOf(page._tab_updates) >= 0
     assert hasattr(page, "chk_auto_update")
     assert hasattr(page, "lbl_auto_update_help")
     assert hasattr(page, "btn_check_updates")

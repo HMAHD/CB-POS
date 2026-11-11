@@ -37,8 +37,11 @@ def test_extracts_version_section():
 
 
 def test_extracts_version_section_with_v_prefix():
-    section = extract_changelog_section("v1.3.0", SAMPLE_CHANGELOG)
-    assert "### Added — Multi-Terminal LAN Sync" in section
+    section_lower = extract_changelog_section("v1.3.0", SAMPLE_CHANGELOG)
+    assert "### Added — Multi-Terminal LAN Sync" in section_lower
+
+    section_upper = extract_changelog_section("V1.3.0", SAMPLE_CHANGELOG)
+    assert "### Added — Multi-Terminal LAN Sync" in section_upper
 
 
 def test_missing_version_returns_empty():

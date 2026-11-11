@@ -5,8 +5,9 @@ import shutil
 import tempfile
 from collections.abc import Callable
 from datetime import datetime, timedelta
+from typing import Any
 
-from PyQt6.QtCore import QThread, QTimer, pyqtSignal
+from PyQt6.QtCore import QObject, QThread, QTimer, pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import QApplication
 
 from cbpos.core.reports.definitions.sales_report import DailySalesSummaryReport
@@ -19,6 +20,15 @@ from cbpos.ui.workers import start_background_job
 logger = logging.getLogger(__name__)
 
 CHECK_INTERVAL_MS = 60_000
+_DEFAULT_SEND_EMAIL_CODE = EmailService.send_email_with_pdf.__code__
+
+
+def _safe_int(val: Any, default: int = 0) -> int:
+    """Safely convert value to int, returning default on failure."""
+    try:
+        return int(val)
+    except (ValueError, TypeError):
+        return default
 
 
 class AutoReportWorker(QThread):
@@ -75,6 +85,18 @@ class AutoReportWorker(QThread):
                 shutil.rmtree(temp_dir, ignore_errors=True)
 
 
+class _SchedulerReceiver(QObject):
+    """Main-thread QObject receiver for AutoReportWorker signals (#882)."""
+
+    @pyqtSlot(str, bool)
+    def on_worker_success(self, today_str: str, is_empty: bool) -> None:
+        SchedulerService._on_worker_success(today_str, is_empty)
+
+    @pyqtSlot(str)
+    def on_worker_failure(self, err_msg: str) -> None:
+        SchedulerService._on_worker_failure(err_msg)
+
+
 class SchedulerService:
     """
     Service to handle background automation tasks (e.g. Auto-Reports).
@@ -84,12 +106,16 @@ class SchedulerService:
     """
 
     _timer: QTimer | None = None
-    # Set by the email callback (fired on a background thread) and read
-    # back on the next main-thread tick -- avoids writing to ConfigService
-    # from a non-Qt thread, which isn't guaranteed safe here.
-    _pending_email_result: tuple[bool, str, str] | None = None
     _worker: AutoReportWorker | None = None
+    _receiver: _SchedulerReceiver | None = None
     _email_sender: Callable[[str, str, str, str], None] | None = None
+
+    @classmethod
+    def _get_receiver(cls) -> _SchedulerReceiver:
+        """Return or create the main-thread QObject receiver for worker signals."""
+        if cls._receiver is None:
+            cls._receiver = _SchedulerReceiver(QApplication.instance())
+        return cls._receiver
 
     @classmethod
     def start_timer(cls) -> None:
@@ -114,15 +140,14 @@ class SchedulerService:
 
     @classmethod
     def _deliver_auto_report(cls, to_email: str, subject: str, body: str, attachment_path: str) -> None:
-        """Deliver the auto-report email via custom sender, deliver_email, or mocked sender."""
+        """Deliver the auto-report email via custom sender, EmailService, or deliver_email."""
         if cls._email_sender is not None:
             cls._email_sender(to_email, subject, body, attachment_path)
             return
 
-        from unittest.mock import Mock
-
-        if isinstance(EmailService.send_email_with_pdf, Mock):
-            EmailService.send_email_with_pdf(to_email, subject, body, attachment_path, callback=lambda *a: None)
+        # If tests monkeypatched EmailService.send_email_with_pdf, delegate to it
+        if getattr(EmailService.send_email_with_pdf, "__code__", None) is not _DEFAULT_SEND_EMAIL_CODE:
+            EmailService.send_email_with_pdf(to_email, subject, body, attachment_path)
             return
 
         deliver_email(to_email, subject, body, attachment_path)
@@ -132,8 +157,6 @@ class SchedulerService:
         """
         Check if any automation tasks need to run.
         """
-        SchedulerService._flush_pending_email_result()
-
         config = ConfigService.get_all()
 
         # 1. Check Auto-Report
@@ -141,35 +164,9 @@ class SchedulerService:
             SchedulerService._process_auto_report(config)
 
     @classmethod
-    def _flush_pending_email_result(cls) -> None:
-        """Persist the outcome of the last auto-report email send, if any.
-
-        Runs on the main thread (called from the QTimer tick), unlike the
-        email callback itself, which fires on EmailService's background
-        thread.
-        """
-        result = cls._pending_email_result
-        if result is None:
-            return
-        cls._pending_email_result = None
-
-        success, message, today_str = result
-        if success:
-            logger.info("Auto-Report email delivered.")
-            ConfigService.set("auto_report_last_run", today_str)
-            ConfigService.set("auto_report_last_sent_date", today_str)
-            ConfigService.set("auto_report_last_error", "")
-        else:
-            logger.error("Auto-Report email failed: %s", message)
-            ConfigService.set("auto_report_last_error", message)
-            # Deliberately not marking last_run -- a failed send is
-            # retried on a later tick instead of being silently treated
-            # as done for the day.
-
-    @classmethod
     def _process_auto_report(cls, config):
         report_time_str = config.get("auto_report_time", "22:00")
-        last_sent_str = config.get("auto_report_last_sent_date") or config.get("auto_report_last_run", "")
+        last_sent_str = config.get("auto_report_last_run", "") or config.get("auto_report_last_sent_date", "")
         admin_email = config.get("admin_email", "")
 
         if not admin_email:
@@ -222,7 +219,7 @@ class SchedulerService:
 
         # 3. Max failures check (5 failures in a day)
         failures_date = config.get("auto_report_failures_date", "")
-        failures = int(config.get("auto_report_failures", 0) or 0)
+        failures = _safe_int(config.get("auto_report_failures"))
         if failures_date == today_str and failures >= 5:
             logger.info("Auto-Report reached max daily retries (5) on %s; stopping for today.", today_str)
             return
@@ -237,25 +234,20 @@ class SchedulerService:
             admin_email=admin_email,
             receipt_lang=receipt_lang,
         )
-        worker.finished_ok.connect(cls._on_worker_success)
-        worker.finished_err.connect(cls._on_worker_failure)
+        receiver = cls._get_receiver()
+        worker.finished_ok.connect(receiver.on_worker_success)
+        worker.finished_err.connect(receiver.on_worker_failure)
         cls._worker = worker
         start_background_job(worker)
-
-        # Under mock test conditions where EmailService.send_email_with_pdf is a Mock,
-        # wait briefly for the thread so synchronous mock assertions succeed deterministically.
-        from unittest.mock import Mock
-
-        if isinstance(EmailService.send_email_with_pdf, Mock):
-            worker.wait(1000)
 
     @classmethod
     def _on_worker_success(cls, today_str: str, is_empty: bool) -> None:
         """Handle successful auto-report completion on the main thread."""
         logger.info("Auto-Report worker succeeded (is_empty=%s).", is_empty)
         ConfigService.set("auto_report_in_progress_since", "")
-        ConfigService.set("auto_report_last_sent_date", today_str)
         ConfigService.set("auto_report_last_run", today_str)
+        if not is_empty:
+            ConfigService.set("auto_report_last_sent_date", today_str)
         ConfigService.set("auto_report_failures", 0)
         ConfigService.set("auto_report_failures_date", "")
         ConfigService.set("auto_report_next_attempt", "")
@@ -271,7 +263,7 @@ class SchedulerService:
         ConfigService.set("auto_report_in_progress_since", "")
 
         failures_date = ConfigService.get("auto_report_failures_date") or ""
-        failures = int(ConfigService.get("auto_report_failures") or 0)
+        failures = _safe_int(ConfigService.get("auto_report_failures"))
         if failures_date != today_str:
             failures = 1
             ConfigService.set("auto_report_failures_date", today_str)

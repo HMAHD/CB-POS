@@ -146,6 +146,7 @@ class DataExportDialog(QDialog):
         self.grp_dates.setVisible(checked)
 
     def _do_export(self) -> None:
+        output_dir: str | None = None
         from cbpos.core.constants.permissions import Permissions
         from cbpos.core.utils.permission_helper import check_permission_with_override
 

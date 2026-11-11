@@ -185,9 +185,9 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 | # | Title | Sev | Batch | Status | PR | Notes |
 |---|---|---|---|---|---|---|
-| #808 | Update check: cannot be disabled, min_version ignored, release changelog alwa… | medium | 8.1 | done | #1015 | 2de4530 · auto_update_check setting on System tab 5, packaging Version comparison for min_version required dialog, changelog_section.py and release workflow, plain text changelog |
-| #881 | Exports to USB / another drive refused ("Export path outside allowed director… | medium | 8.1 | done | #1015 | 37f4601 · ensure_writable_target helper in cbpos/core/utils/paths.py, parent existence/W_OK check, format_export_error translated notice |
-| #882 | Auto-report email resent every minute while a send is in progress or failing | medium | 8.1 | done | #1015 | cd523ee · AutoReportWorker off UI thread, 15m stuck recovery, 2^n*5m backoff capped at 6h, max 5 daily failures, Management notice for admin |
+| #808 | Update check: cannot be disabled, min_version ignored, release changelog alwa… | medium | 8.1 | done | #1015, #1016 | 2de4530, c116d3b · auto_update_check setting on System tab 5, packaging Version comparison for min_version required dialog, changelog_section.py and release workflow, plain text changelog |
+| #881 | Exports to USB / another drive refused ("Export path outside allowed director… | medium | 8.1 | done | #1015, #1016 | 37f4601, c116d3b · ensure_writable_target helper in cbpos/core/utils/paths.py, parent existence/W_OK check, format_export_error translated notice |
+| #882 | Auto-report email resent every minute while a send is in progress or failing | medium | 8.1 | done | #1015, #1016 | cd523ee, c116d3b, 2f565b2 · AutoReportWorker off UI thread, 15m stuck recovery, 2^n*5m backoff capped at 6h, max 5 daily failures, Management notice for admin, receiver QueuedConnection, email callback delegation |
 | #814 | Tax invoice compliance features listed in CHANGELOG are missing (serial forma… | high | 8.2 | todo | | |
 | #816 | Add About dialog and help/report-issue links (CB POS website branding) | low | 8.3 | todo | | |
 | #817 | Add EULA, privacy notice and third-party licence notices before public release | high | 8.3 | todo | | |
@@ -309,5 +309,5 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #877 | Physical 58 mm thermal receipt print of wrapped Sinhala and Tamil lines (shop address, item names) | pending |
 
 ## Handoff
-Batch 7.4 merged in PR #1014 (2a26fe366147af9b46e3e71392633c781d141ed8). #805, #806, and #807 verified CLOSED on GitHub. #878 and #731 remain OPEN with `ready-for-human` for physical Windows printer/scanner verification. Phase 7 is COMPLETE. Next is Phase 8, Batch 8.1 (#808, #881, #882). Stop before Phase 8.1.
+Batch 8.1 merged in PR #1015 (c116d3bfef40b857ca65f860a5bdd3fd7eff6e63) with follow-up PR #1016 (214570d102dbd618d36354b39b1a8d05b5fa9c17). #808, #881, and #882 verified CLOSED on GitHub. #878 and #731 remain OPEN with `ready-for-human` for physical Windows printer/scanner verification. Next is Phase 8, Batch 8.2 (#814). Stop before Phase 8.2.
 

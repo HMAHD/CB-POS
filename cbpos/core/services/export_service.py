@@ -2,10 +2,9 @@ import logging
 from pathlib import Path
 
 import pandas as pd
-from xhtml2pdf import pisa
 
+from cbpos.core.services.report_pdf_builder import ReportPDFBuilder
 from cbpos.core.utils.spreadsheet_safety import XLSX_WRITER_OPTIONS, csv_safe
-from cbpos.i18n import _t
 
 logger = logging.getLogger(__name__)
 
@@ -84,50 +83,6 @@ class ExportService:
         safe_df.to_csv(validated, index=False)
 
     def export_to_pdf(self, df: pd.DataFrame, filepath: str, title: str = "Report"):
-        """
-        Exports DataFrame to PDF using xhtml2pdf.
-        """
-        import textwrap
-
-        # Convert DataFrame to HTML
-        table_html = df.to_html(classes="table table-striped", index=False, border=0)
-
-        # Simple HTML Template
-        html_content = textwrap.dedent(
-            """
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <style>
-                    body {{ font-family: Helvetica, sans-serif; }}
-                    h1 {{ color: #001F3F; }}
-                    .table {{ width: 100%; border-collapse: collapse; margin-top: 20px; }}
-                    .table th {{ background-color: #00BCEB; color: white; padding: 8px; text-align: left; }}
-                    .table td {{ padding: 8px; border-bottom: 1px solid #ddd; }}
-                    .table tr:nth-child(even) {{ background-color: #f2f2f2; }}
-                </style>
-            </head>
-            <body>
-                <h1>{title}</h1>
-                <p>{generated_on_label} {timestamp}</p>
-                {table_html}
-                <p style="text-align: center; color: #999; font-size: 9px; margin-top: 30px;">
-                    Powered by CB POS &mdash; ceybyte.com
-                </p>
-            </body>
-            </html>
-            """
-        ).format(
-            title=title,
-            generated_on_label=_t("report_viewer.generated_on"),
-            timestamp=pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
-            table_html=table_html,
-        )
-
-        # Generate PDF
+        """Export DataFrame to a shaped trilingual PDF report using ReportPDFBuilder (#806)."""
         validated = self._validate_export_path(filepath)
-        with open(validated, "wb") as result_file:
-            pisa_status = pisa.CreatePDF(src=html_content, dest=result_file)
-
-        if pisa_status.err:
-            raise Exception(f"PDF generation failed: {pisa_status.err}")
+        ReportPDFBuilder.build(df, str(validated), title=title)

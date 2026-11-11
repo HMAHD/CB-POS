@@ -179,3 +179,68 @@ def test_issue_842_job_result_carries_id(qtbot, dummy_printer):
     qtbot.waitUntil(lambda: len(emitted) == 1, timeout=5000)
     assert emitted[0][0] == job_id
     assert emitted[0][1] is True
+
+
+def test_issue_842_document_view_doc_selection_change_during_flight(db_session, qtbot, dummy_printer):
+    """If current_doc changes while reprint is in flight, the popup must show the requested doc's number."""
+    worker = PrintWorker(printer=dummy_printer)
+    PrintWorker._instance = worker
+
+    view = DocumentBrowserView()
+    view.current_doc = {"type": "sale", "id": 1, "document_number": "REC-FIRST"}
+
+    dummy_reprint_job = MagicMock()
+    dummy_reprint_job.commands = [{"type": "text", "val": "reprint"}]
+
+    dummy_user = MagicMock(id=1)
+    with (
+        patch("cbpos.core.utils.permission_helper.check_permission_with_override", return_value=dummy_user),
+        patch(
+            "cbpos.core.services.receipt_reprint_service.ReceiptReprintService.reprint", return_value=dummy_reprint_job
+        ),
+        patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=dummy_user),
+        patch.object(QMessageBox, "information") as mock_info,
+    ):
+        view.reprint_document()
+        # User clicks another doc in the table while job is printing
+        view.current_doc = {"type": "sale", "id": 2, "document_number": "REC-CHANGED"}
+
+        qtbot.waitUntil(lambda: mock_info.call_count == 1, timeout=5000)
+        args, _ = mock_info.call_args
+        # Popup message text must contain the original doc number REC-FIRST
+        assert "REC-FIRST" in args[2]
+
+    view.deleteLater()
+
+
+def test_issue_842_document_view_reprint_none_reenables_button(db_session, qtbot):
+    """If reprint returns no job ID, the reprint button must remain enabled."""
+    view = DocumentBrowserView()
+    view.current_doc = {"type": "sale", "id": 1, "document_number": "REC-NONE"}
+
+    dummy_reprint_job = MagicMock()
+    dummy_reprint_job.commands = [{"type": "text", "val": "reprint"}]
+
+    dummy_user = MagicMock(id=1)
+    with (
+        patch("cbpos.core.utils.permission_helper.check_permission_with_override", return_value=dummy_user),
+        patch(
+            "cbpos.core.services.receipt_reprint_service.ReceiptReprintService.reprint", return_value=dummy_reprint_job
+        ),
+        patch.object(PrintWorker, "add_job", return_value=None),
+        patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=dummy_user),
+        patch.object(QMessageBox, "critical"),
+    ):
+        view.reprint_document()
+        assert view.reprint_btn.isEnabled() is True
+
+    view.deleteLater()
+
+
+def test_issue_842_document_view_global_result_before_reprint_no_error(db_session, qtbot):
+    """Global print job_result before any reprint must safely no-op without AttributeError."""
+    view = DocumentBrowserView()
+    # Emitting an unrelated job result directly
+    PrintWorker.instance().job_result.emit("other_job_id", True, "")
+    assert view._reprint_job_id is None
+    view.deleteLater()

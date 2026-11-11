@@ -248,7 +248,8 @@ class TestBarcodeScannerVsEnterShortcut:
 
         try:
             for char in "1234":
-                QTest.keyClick(button, char)
+                key = getattr(Qt.Key, f"Key_{char}")
+                QTest.keyClick(button, key)
                 QTest.qWait(120)  # slow human typing > 50ms buffer window
             QTest.keyClick(button, Qt.Key.Key_Return)
         finally:

@@ -58,15 +58,26 @@ class _FakeWorker(QObject):
         super().__init__()
         self.jobs: list[tuple] = []
         self._last_job_id: str | None = None
+        self._pending_job_ids: list[str] = []
         self._counter = 0
-        self.job_completed.connect(lambda: self.job_result.emit(self._last_job_id or "", True, ""))
-        self.error_occurred.connect(lambda msg: self.job_result.emit(self._last_job_id or "", False, msg))
+        self.job_completed.connect(self._on_completed)
+        self.error_occurred.connect(self._on_error)
+
+    def _on_completed(self) -> None:
+        job_id = self._pending_job_ids.pop(0) if self._pending_job_ids else (self._last_job_id or "")
+        self.job_result.emit(job_id, True, "")
+
+    def _on_error(self, msg: str) -> None:
+        job_id = self._pending_job_ids.pop(0) if self._pending_job_ids else (self._last_job_id or "")
+        self.job_result.emit(job_id, False, msg)
 
     def add_job(self, job_type, data=None) -> str:
         self._counter += 1
-        self._last_job_id = f"job_fake_{self._counter}"
+        job_id = f"job_fake_{self._counter}"
+        self._last_job_id = job_id
+        self._pending_job_ids.append(job_id)
         self.jobs.append((job_type, data))
-        return self._last_job_id
+        return job_id
 
 
 @pytest.fixture

@@ -6,6 +6,7 @@ from typing import Any
 
 from cbpos.core.models import Sale, SaleItem
 from cbpos.core.services.base_receipt_builder import BaseReceiptBuilder
+from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.tax_service import TaxService
 from cbpos.core.utils.barcode import (
     calculate_barcode_width,
@@ -128,10 +129,14 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
 
         # Line items with serial numbers
         merge = gc("merge_items", False, config_override)
-        display_items = cls._merge_items(sale.items) if merge else sale.items
+        display_items = cls._merge_items(sale.items, lang=cls._receipt_lang) if merge else sale.items
 
         for idx, item in enumerate(display_items, 1):
-            name = item.product.name_en if hasattr(item, "product") and item.product else item.name
+            name = (
+                ProductService.display_name(item.product, cls._receipt_lang)
+                if hasattr(item, "product") and item.product
+                else getattr(item, "name", "")
+            )
             sn = f"{idx:02d}"
             qty = item.qty
             qty_text = cls._format_item_qty(item)
@@ -312,7 +317,7 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
         return cls._rt("doc_title_cash")
 
     @staticmethod
-    def _merge_items(items: list[SaleItem]) -> list[Any]:
+    def _merge_items(items: list[SaleItem], lang: str | None = None) -> list[Any]:
         """
         Merges SaleItems with the same (product_id, unit_price, original_price, is_manual_price).
         Lines with different prices stay separate (#908).
@@ -330,7 +335,9 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
                 merged[key].subtotal += item.subtotal
             else:
                 p_name = (
-                    item.product.name_en if hasattr(item, "product") and item.product else getattr(item, "name", "")
+                    ProductService.display_name(item.product, lang)
+                    if hasattr(item, "product") and item.product
+                    else getattr(item, "name", "")
                 )
                 merged[key] = ItemDisplay(
                     product=item.product,

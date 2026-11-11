@@ -60,6 +60,36 @@ class ProductService:
             or_(Product.is_composite.is_(False), Product.is_composite.is_(None)),
         )
 
+    @staticmethod
+    def display_name(product: Any, lang: str | None = None) -> str:
+        """Return the localized product name according to the specified language (#805).
+
+        Picks name_si for 'si', name_ta for 'ta', falling back to name_en when
+        empty or when lang is 'en' (or unsupported). If product is None, returns "".
+        """
+        if product is None:
+            return ""
+        if hasattr(product, "get_display_name"):
+            return product.get_display_name(lang)
+        lang = (lang or "en").lower()
+        if lang == "si":
+            name = (getattr(product, "name_si", None) or "").strip()
+            if name:
+                return name
+        elif lang == "ta":
+            name = (getattr(product, "name_ta", None) or "").strip()
+            if name:
+                return name
+        name_en = (getattr(product, "name_en", None) or "").strip()
+        if name_en:
+            return name_en
+        return (
+            (getattr(product, "name_si", None) or "").strip()
+            or (getattr(product, "name_ta", None) or "").strip()
+            or getattr(product, "name", "")
+            or ""
+        )
+
     def __init__(self):
         """Bind this service instance to the database singleton."""
         self.db = Database()

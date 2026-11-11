@@ -179,7 +179,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #846 | Dashboard aborts the app (SIGABRT) when re-shown while a load is still running | high | 7.3 | done | #1012, #1013 | 4ef4fae/09c6ea1, e611c36 · start_background_job keeps workers alive, rename finished to loaded, in-flight locks and generation counters, real-thread verified, fixture descriptor restore & non-blocking test teardown |
 | #805 | Thermal receipts always print English item names, whatever the receipt language | medium | 7.4 | done | | 8af4a31 · ProductService.display_name single rule, wired in SalesReceiptBuilder, VoidReceiptBuilder, RefundReceiptBuilder, InvoiceService |
 | #806 | Report PDF export cannot render Sinhala/Tamil (Helvetica only) | medium | 7.4 | done | | ReportPDFBuilder Platypus template with HarfBuzz/uharfbuzz shaping, Noto font families, column-aware wrapping, atomic write |
-| #807 | Hard-coded English: crash dialog, daily report email, and 16 missing Tamil keys | low | 7.4 | in-progress | | |
+| #807 | Hard-coded English: crash dialog, daily report email, and 16 missing Tamil keys | low | 7.4 | done | | Crash dialog _t fallback to English literals, SchedulerService translate_in for receipt_language, 17 missing Tamil keys added, validate_translations --strict and key parity guardrail |
 
 ### Phase 8 — [spec](phases/phase-08-release-legal-docs.md)
 

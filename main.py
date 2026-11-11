@@ -100,10 +100,34 @@ def _report_crash(exc_type, exc_value, exc_traceback) -> None:
 
         _close_splash()
 
+        log_path = "logs"
+        try:
+            from cbpos.config import Config
+
+            log_path = str(Config.DATA_DIR / "logs")
+        except Exception:
+            pass
+
+        # Use translated crash strings when i18n is available, but fall back to
+        # English literals so an early crash before i18n initialization never crashes
+        # the unhandled exception handler itself (#807).
+        try:
+            from cbpos.i18n import _t
+
+            title = _t("crash.title")
+            body = _t("crash.body", path=log_path)
+        except Exception:
+            title = "CB POS"
+            body = (
+                f"CB POS ran into a problem and needs to close. Your sales are saved. "
+                f"Please open CB POS again. If this keeps happening, send the log file "
+                f"from {log_path} to support."
+            )
+
         QMessageBox.critical(
             None,
-            "CB POS",
-            "CB POS encountered an unexpected error and needs to close.\n\nDetails were saved to the logs folder.",
+            title,
+            body,
         )
 
 

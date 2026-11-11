@@ -10,6 +10,7 @@ from cbpos.core.reports.definitions.sales_report import DailySalesSummaryReport
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.email_service import EmailService
 from cbpos.core.services.export_service import ExportService
+from cbpos.i18n import translate_in
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +133,9 @@ class SchedulerService:
                 filename = f"AutoReport_{today_str}.pdf"
                 filepath = os.path.join(temp_dir, filename)
 
-                export_service.export_to_pdf(df, filepath, f"Daily Sales Summary - {today_str}")
+                receipt_lang = config.get("receipt_language") or "en"
+                pdf_title = translate_in(receipt_lang, "scheduler.daily_sales_title", date=today_str)
+                export_service.export_to_pdf(df, filepath, pdf_title)
 
                 # Send Email -- the send itself happens on a background
                 # thread; auto_report_last_run is only advanced once the
@@ -141,10 +144,13 @@ class SchedulerService:
                 def _on_email_done(success: bool, message: str) -> None:
                     SchedulerService._pending_email_result = (success, message, today_str)
 
+                subject = translate_in(receipt_lang, "scheduler.daily_sales_subject", date=today_str)
+                body = translate_in(receipt_lang, "scheduler.daily_sales_body", website="ceybyte.com")
+
                 EmailService.send_email_with_pdf(
                     admin_email,
-                    f"Daily Sales Report - {today_str}",
-                    "Please find attached the daily sales summary.",
+                    subject,
+                    body,
                     filepath,
                     callback=_on_email_done,
                 )

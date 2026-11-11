@@ -115,6 +115,12 @@ def check_missing_keys(en: dict, lang_code: str, trans: dict) -> list:
     return [{"type": "missing_key", "lang": lang_code, "key": k} for k in sorted(missing)]
 
 
+def check_extra_keys(en: dict, lang_code: str, trans: dict) -> list:
+    """Find keys present in translation file but absent in English."""
+    extra = set(trans.keys()) - set(en.keys())
+    return [{"type": "extra_key", "lang": lang_code, "key": k} for k in sorted(extra)]
+
+
 def main():
     strict = "--strict" in sys.argv
     en = load_flat("en")
@@ -131,8 +137,11 @@ def main():
         brace_issues = check_malformed_braces(lang, trans)
         all_issues.extend(brace_issues)
 
-        # Check missing keys
+        # Check missing & extra keys
         key_issues = check_missing_keys(en, lang, trans)
+        all_issues.extend(key_issues)
+        extra_key_issues = check_extra_keys(en, lang, trans)
+        all_issues.extend(extra_key_issues)
 
         # Translation progress
         translated = sum(1 for k in en if k in trans and trans[k] != en[k])
@@ -141,8 +150,18 @@ def main():
 
         print(f"\n{'=' * 50}")
         print(f"  {lang.upper()} — {translated}/{total} translated ({100 * translated // total}%)")
-        print(f"  {untranslated} still English, {len(key_issues)} missing keys")
+        print(f"  {untranslated} still English, {len(key_issues)} missing keys, {len(extra_key_issues)} extra keys")
         print(f"{'=' * 50}")
+
+        if key_issues:
+            print(f"\n  MISSING KEYS ({len(key_issues)}):")
+            for issue in key_issues:
+                print(f"    MISSING {issue['key']}")
+
+        if extra_key_issues:
+            print(f"\n  EXTRA KEYS ({len(extra_key_issues)}):")
+            for issue in extra_key_issues:
+                print(f"    EXTRA {issue['key']}")
 
         if param_issues:
             print(f"\n  FORMAT PARAMETER ISSUES ({len(param_issues)}):")
@@ -162,20 +181,20 @@ def main():
                 print(f"    {issue['key']}: {opens}x open vs {closes}x close")
                 print(f"      Value: {issue['value']}")
 
-        if not param_issues and not brace_issues:
-            print("\n  All format parameters OK!")
+        if not param_issues and not brace_issues and not key_issues and not extra_key_issues:
+            print("\n  All format parameters and keys OK!")
 
     # Summary
-    critical = [i for i in all_issues if i["type"] in ("missing_param", "malformed_braces")]
+    critical = [i for i in all_issues if i["type"] in ("missing_param", "malformed_braces", "missing_key", "extra_key")]
     print(f"\n{'=' * 50}")
     print(f"  TOTAL: {len(critical)} critical issues")
     print(f"{'=' * 50}")
 
     if critical and strict:
-        print("\n  FAILED (--strict mode): Fix format parameter issues above.")
+        print("\n  FAILED (--strict mode): Fix translation issues above.")
         sys.exit(1)
     elif critical:
-        print("\n  WARNING: Format parameter issues found. Run with --strict to fail.")
+        print("\n  WARNING: Translation issues found. Run with --strict to fail.")
         sys.exit(0)
     else:
         print("\n  PASSED: All translations valid.")

@@ -3362,6 +3362,15 @@
     "reason_server_error": "Main PC දත්ත ප්‍රතික්ෂේප කළා",
     "reason_connection_failed": "Main PC සම්බන්ධ කරගත නොහැක",
     "reason_bind_failed": "Port එක දැනටමත් භාවිතයේ පවතී"
+  },
+  "crash": {
+    "title": "CB POS",
+    "body": "CB POS හි ගැටලුවක් ඇති වූ බැවින් එය වැසීමට අවශ්‍ය වේ. ඔබගේ විකුණුම් සුරැකී ඇත. කරුණාකර නැවත CB POS විවෘත කරන්න. මෙය දිගටම සිදුවන්නේ නම්, {path} වෙතින් ලොග් ගොනුව සහය වෙත එවන්න."
+  },
+  "scheduler": {
+    "daily_sales_subject": "දෛනික විකුණුම් වාර්තාව - {date}",
+    "daily_sales_title": "දෛනික විකුණුම් සාරාංශය - {date}",
+    "daily_sales_body": "අමුණා ඇති දෛනික විකුණුම් සාරාංශය මෙහි ඇත.\n\n— CB POS මඟින් එවන ලදි · {website}"
   }
 }
 

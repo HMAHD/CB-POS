@@ -3362,6 +3362,15 @@
     "reason_server_error": "Main PC rejected data",
     "reason_connection_failed": "cannot reach Main PC",
     "reason_bind_failed": "port already in use"
+  },
+  "crash": {
+    "title": "CB POS",
+    "body": "CB POS ran into a problem and needs to close. Your sales are saved. Please open CB POS again. If this keeps happening, send the log file from {path} to support."
+  },
+  "scheduler": {
+    "daily_sales_subject": "Daily Sales Report - {date}",
+    "daily_sales_title": "Daily Sales Summary - {date}",
+    "daily_sales_body": "Please find attached the daily sales summary.\n\n— Sent by CB POS · {website}"
   }
 }
 

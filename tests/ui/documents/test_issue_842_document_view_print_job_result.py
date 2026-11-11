@@ -64,12 +64,13 @@ def test_issue_842_document_view_ignores_other_jobs(db_session, qtbot, dummy_pri
         assert mock_crit.call_count == 0
 
         # 2. Now queue unrelated receipt and drawer kick jobs
+        results = []
+        worker.job_result.connect(lambda jid, ok, msg: results.append(jid))
+
         receipt_id = worker.add_job("print_receipt", [{"type": "text", "val": "customer receipt"}])
         kick_id = worker.add_job("kick_drawer", {"manual": True})
 
         # Wait until the worker has processed both jobs
-        results = []
-        worker.job_result.connect(lambda jid, ok, msg: results.append(jid))
         qtbot.waitUntil(lambda: receipt_id in results and kick_id in results, timeout=5000)
 
         # Unrelated jobs must NOT trigger DocumentBrowserView popups!

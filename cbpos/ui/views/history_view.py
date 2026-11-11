@@ -50,6 +50,7 @@ class HistoryView(QWidget):
         super().__init__()
         self.current_sale = None
         self._reprint_job_id: str | None = None
+        self._pending_reprint_doc_num: str = ""
         PrintWorker.instance().job_result.connect(self._on_reprint_job_result)
         self.init_ui()
         self.load_today()
@@ -422,7 +423,10 @@ class HistoryView(QWidget):
         try:
             if hasattr(self, "reprint_btn"):
                 self.reprint_btn.setEnabled(False)
+            self._pending_reprint_doc_num = self.current_sale.document_number or ""
             self._reprint_job_id = PrinterService.print_receipt(self.current_sale, is_reprint=True)
+            if not self._reprint_job_id and hasattr(self, "reprint_btn"):
+                self.reprint_btn.setEnabled(True)
         except Exception as e:
             if hasattr(self, "reprint_btn"):
                 self.reprint_btn.setEnabled(True)
@@ -437,7 +441,7 @@ class HistoryView(QWidget):
         if hasattr(self, "reprint_btn"):
             self.reprint_btn.setEnabled(True)
         if ok:
-            doc_num = self.current_sale.document_number if self.current_sale else ""
+            doc_num = self._pending_reprint_doc_num
             QMessageBox.information(
                 self,
                 _t("common.success"),

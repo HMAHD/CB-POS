@@ -23,16 +23,24 @@ def real_dashboard_threads():
     """Ensure _YearlyWorker and _PeriodicWorker run on genuine QThreads,
     opting out of conftest's inline start-to-run override.
     """
-    # If conftest patched worker.start = worker.run, remove it so it inherits QThread.start
-    if "start" in _YearlyWorker.__dict__:
+    orig_yearly_start = _YearlyWorker.__dict__.get("start")
+    orig_periodic_start = _PeriodicWorker.__dict__.get("start")
+    if orig_yearly_start is not None:
         del _YearlyWorker.start
-    if "start" in _PeriodicWorker.__dict__:
+    if orig_periodic_start is not None:
         del _PeriodicWorker.start
     try:
         yield
     finally:
-        _YearlyWorker.start = _YearlyWorker.run
-        _PeriodicWorker.start = _PeriodicWorker.run
+        if orig_yearly_start is not None:
+            _YearlyWorker.start = orig_yearly_start
+        elif "start" in _YearlyWorker.__dict__:
+            del _YearlyWorker.start
+
+        if orig_periodic_start is not None:
+            _PeriodicWorker.start = orig_periodic_start
+        elif "start" in _PeriodicWorker.__dict__:
+            del _PeriodicWorker.start
 
 
 def test_issue_846_refresh_twice_during_slow_load_no_crash(db_session, real_dashboard_threads, qtbot):
@@ -74,22 +82,23 @@ def test_issue_846_refresh_twice_during_slow_load_no_crash(db_session, real_dash
             DashboardService, "get_today_tax_summary", return_value={"vat": 0, "sscl": 0, "net_revenue": 1000.0}
         ),
     ):
-        # 1. Trigger initial load via refresh_all
-        view.refresh_all()
+        try:
+            # 1. Trigger initial load via refresh_all
+            view.refresh_all()
 
-        # Wait until background worker actually starts
-        assert started_event.wait(timeout=5.0), "Background worker failed to start"
+            # Wait until background worker actually starts
+            assert started_event.wait(timeout=5.0), "Background worker failed to start"
 
-        # PROOF: Real background thread is running, not the main UI thread
-        assert len(worker_threads) >= 1
-        assert worker_threads[0] is not threading.main_thread(), "Must execute on a real background thread"
+            # PROOF: Real background thread is running, not the main UI thread
+            assert len(worker_threads) >= 1
+            assert worker_threads[0] is not threading.main_thread(), "Must execute on a real background thread"
 
-        # 2. While blocked in flight, trigger a second refresh / re-show
-        view.refresh_all()
-        view.showEvent(QShowEvent())
-
-        # Release worker to complete
-        release_event.set()
+            # 2. While blocked in flight, trigger a second refresh / re-show
+            view.refresh_all()
+            view.showEvent(QShowEvent())
+        finally:
+            # Release worker to complete
+            release_event.set()
 
         # Wait for all background jobs to finish
         qtbot.waitUntil(lambda: len(running_background_jobs()) == 0, timeout=5000)
@@ -125,6 +134,7 @@ def test_issue_846_error_path_clears_in_flight_state_and_permits_retry(db_sessio
     ):
         view.refresh_all()
         qtbot.waitUntil(lambda: not getattr(view, "_yearly_loading", False), timeout=5000)
+        qtbot.waitUntil(lambda: len(running_background_jobs()) == 0, timeout=5000)
         assert getattr(view, "_yearly_loading", False) is False
         assert view.btn_prev_year.isEnabled() is True
         assert view.btn_next_year.isEnabled() is True
@@ -153,5 +163,6 @@ def test_issue_846_error_path_clears_in_flight_state_and_permits_retry(db_sessio
     ):
         view.refresh_all()
         qtbot.waitUntil(lambda: not getattr(view, "_yearly_loading", False), timeout=5000)
+        qtbot.waitUntil(lambda: len(running_background_jobs()) == 0, timeout=5000)
         assert getattr(view, "_yearly_loading", False) is False
         assert "5,000" in view.lbl_yearly_total.text() or "5000" in view.lbl_yearly_total.text()

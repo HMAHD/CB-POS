@@ -98,6 +98,8 @@ class DocumentBrowserView(QWidget, Activatable):
         self.current_page = 1
         self.total_docs = 0
         self._reprint_job_id: str | None = None
+        self._pending_reprint_doc_num: str = ""
+        self._pending_reprint_doc_type: str = ""
 
         PrintWorker.instance().job_result.connect(self._on_reprint_job_result)
         self.init_ui()
@@ -884,6 +886,8 @@ class DocumentBrowserView(QWidget, Activatable):
             return
 
         doc_type = self.current_doc.get("type", "")
+        self._pending_reprint_doc_num = self.current_doc.get("document_number", "")
+        self._pending_reprint_doc_type = doc_type
 
         try:
             if hasattr(self, "reprint_btn"):
@@ -959,6 +963,9 @@ class DocumentBrowserView(QWidget, Activatable):
                     _t("document_browser.reprint_not_supported"),
                 )
 
+            if not self._reprint_job_id and hasattr(self, "reprint_btn"):
+                self.reprint_btn.setEnabled(True)
+
         except Exception as e:
             if hasattr(self, "reprint_btn"):
                 self.reprint_btn.setEnabled(True)
@@ -977,9 +984,9 @@ class DocumentBrowserView(QWidget, Activatable):
         if hasattr(self, "reprint_btn"):
             self.reprint_btn.setEnabled(True)
         if ok:
-            doc_type = self.current_doc.get("type", "") if self.current_doc else ""
+            doc_type = self._pending_reprint_doc_type
             key = "receipt_sent_to_printer" if doc_type == "sale" else "quotation_sent_to_printer"
-            doc_num = self.current_doc.get("document_number", "") if self.current_doc else ""
+            doc_num = self._pending_reprint_doc_num
             QMessageBox.information(
                 self,
                 _t("common.success"),

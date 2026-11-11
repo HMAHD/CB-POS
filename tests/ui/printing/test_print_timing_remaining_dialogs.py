@@ -10,7 +10,7 @@ nothing had actually printed.
 
 from datetime import datetime
 from decimal import Decimal
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -195,4 +195,28 @@ class TestHistoryViewReprintTiming:
             view.reprint_receipt()
             PrintWorker.instance().job_result.emit("job_hist_1", True, "")
             mock_box.information.assert_called_once()
+        view.deleteLater()
+
+    def test_history_view_doc_selection_change_during_flight(self, qapp, sale):
+        view = HistoryView()
+        view.current_sale = sale
+        other_sale = MagicMock(id=999, document_number="REC-OTHER")
+        with (
+            patch.object(PrintWorker, "add_job", return_value="job_hist_2"),
+            patch("cbpos.ui.views.history_view.QMessageBox") as mock_box,
+        ):
+            view.reprint_receipt()
+            view.current_sale = other_sale
+            PrintWorker.instance().job_result.emit("job_hist_2", True, "")
+            mock_box.information.assert_called_once()
+            args, _ = mock_box.information.call_args
+            assert sale.document_number in args[2]
+        view.deleteLater()
+
+    def test_history_view_reprint_none_reenables_button(self, qapp, sale):
+        view = HistoryView()
+        view.current_sale = sale
+        with patch("cbpos.core.services.printer_service.PrinterService.print_receipt", return_value=None):
+            view.reprint_receipt()
+            assert view.reprint_btn.isEnabled() is True
         view.deleteLater()

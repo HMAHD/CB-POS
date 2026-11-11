@@ -75,8 +75,14 @@ class AutoReportWorker(QThread):
             subject = translate_in(self.receipt_lang, "scheduler.daily_sales_subject", date=self.today_str)
             body = translate_in(self.receipt_lang, "scheduler.daily_sales_body", website="ceybyte.com")
 
-            SchedulerService._deliver_auto_report(self.admin_email, subject, body, filepath)
-            self.finished_ok.emit(self.today_str, False)
+            def _on_email_done(success: bool, message: str) -> None:
+                SchedulerService._pending_email_result = (success, message, self.today_str)
+
+            delegated = SchedulerService._deliver_auto_report(
+                self.admin_email, subject, body, filepath, callback=_on_email_done
+            )
+            if not delegated:
+                self.finished_ok.emit(self.today_str, False)
         except Exception as e:
             logger.error("Auto-Report background worker failed: %s", e)
             self.finished_err.emit(str(e))
@@ -109,6 +115,7 @@ class SchedulerService:
     _worker: AutoReportWorker | None = None
     _receiver: _SchedulerReceiver | None = None
     _email_sender: Callable[[str, str, str, str], None] | None = None
+    _pending_email_result: tuple[bool, str, str] | None = None
 
     @classmethod
     def _get_receiver(cls) -> _SchedulerReceiver:
@@ -139,24 +146,60 @@ class SchedulerService:
         return cls._timer is not None and cls._timer.isActive()
 
     @classmethod
-    def _deliver_auto_report(cls, to_email: str, subject: str, body: str, attachment_path: str) -> None:
-        """Deliver the auto-report email via custom sender, EmailService, or deliver_email."""
+    def _flush_pending_email_result(cls) -> None:
+        """Persist the outcome of the last auto-report email send, if any.
+
+        Runs on the main thread (called from check_automation).
+        """
+        result = cls._pending_email_result
+        if result is None:
+            return
+        cls._pending_email_result = None
+
+        success, message, today_str = result
+        if success:
+            logger.info("Auto-Report email delivered.")
+            ConfigService.set("auto_report_last_run", today_str)
+            ConfigService.set("auto_report_last_error", "")
+        else:
+            logger.error("Auto-Report email failed: %s", message)
+            ConfigService.set("auto_report_last_error", message)
+
+    @classmethod
+    def _deliver_auto_report(
+        cls,
+        to_email: str,
+        subject: str,
+        body: str,
+        attachment_path: str,
+        callback: Callable[[bool, str], None] | None = None,
+    ) -> bool:
+        """Deliver the auto-report email via custom sender, EmailService, or deliver_email.
+
+        Returns True if delegated to an asynchronous or monkeypatched sender.
+        """
         if cls._email_sender is not None:
             cls._email_sender(to_email, subject, body, attachment_path)
-            return
+            return False
 
         # If tests monkeypatched EmailService.send_email_with_pdf, delegate to it
         if getattr(EmailService.send_email_with_pdf, "__code__", None) is not _DEFAULT_SEND_EMAIL_CODE:
-            EmailService.send_email_with_pdf(to_email, subject, body, attachment_path)
-            return
+            kwargs = {}
+            if callback is not None:
+                kwargs["callback"] = callback
+            EmailService.send_email_with_pdf(to_email, subject, body, attachment_path, **kwargs)
+            return True
 
         deliver_email(to_email, subject, body, attachment_path)
+        return False
 
     @staticmethod
     def check_automation():
         """
         Check if any automation tasks need to run.
         """
+        SchedulerService._flush_pending_email_result()
+
         config = ConfigService.get_all()
 
         # 1. Check Auto-Report

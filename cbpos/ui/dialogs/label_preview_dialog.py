@@ -1,14 +1,13 @@
+"""Dialog and widget for previewing a barcode label before printing (#819).
+
+Renders a realistic thermal-label mockup using real barcodes from python-barcode
+and localized product names. Consumes the unified LabelLayout from LabelService.
 """
-Dialog for previewing a barcode label before printing.
 
-Renders a realistic thermal-label mockup: white card with product name,
-CODE128-style barcode bars, barcode text, and price.
-"""
+from typing import Any
 
-import hashlib
-
-from PyQt6.QtCore import QRectF, Qt
-from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPen
+from PyQt6.QtCore import QByteArray, QRectF, Qt
+from PyQt6.QtGui import QColor, QFont, QImage, QLinearGradient, QPainter, QPen, QPixmap
 from PyQt6.QtWidgets import (
     QDialog,
     QHBoxLayout,
@@ -18,191 +17,183 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from cbpos.core.models import Product
-from cbpos.core.utils.formatters import format_currency
+from cbpos.core.services.label_service import LabelLayout, LabelOptions, LabelService
 from cbpos.i18n import _t
 
-# Label card dimensions (mimics a 50x30mm thermal label at 2x)
-LABEL_W = 300
-LABEL_H = 190
+# Default preview card dimensions (aspect ratio scales with mm dimensions)
+PREVIEW_BASE_W = 280
 
 
-def _code128_bars(barcode: str) -> list[tuple[float, bool]]:
-    """Generate deterministic bar pattern from barcode string.
+class LabelCard(QWidget):
+    """Paints a realistic thermal-label preview matching the unified LabelLayout."""
 
-    Returns list of (width_ratio, is_bar) tuples that look like
-    a realistic CODE128 barcode.  Uses a hash to spread bits evenly
-    so the visual is convincing regardless of input length.
-    """
-    digest = hashlib.sha256(barcode.encode()).digest()
-    bits: list[int] = []
-    for byte in digest[:16]:
-        for shift in range(8):
-            bits.append((byte >> shift) & 1)
-
-    # Quiet zone + start pattern
-    bars: list[tuple[float, bool]] = [(4.0, False)]
-
-    # Start code (fixed pattern)
-    start = [2, 1, 1, 4, 1, 2]
-    for idx, w in enumerate(start):
-        bars.append((w * 0.7, idx % 2 == 0))
-
-    # Data bars from hash
-    for i in range(0, len(bits) - 1, 2):
-        w = 1.0 + bits[i] * 0.8
-        bars.append((w, True))
-        gap = 0.6 + bits[i + 1] * 0.5
-        bars.append((gap, False))
-
-    # Stop pattern
-    stop = [2, 3, 1, 1, 1, 2]
-    for idx, w in enumerate(stop):
-        bars.append((w * 0.7, idx % 2 == 0))
-
-    bars.append((4.0, False))  # Quiet zone
-    return bars
-
-
-class _LabelCard(QWidget):
-    """Paints a realistic thermal-label preview."""
-
-    def __init__(self, product: Product, parent=None) -> None:
-        """Initialize the label card widget for the given product."""
+    def __init__(self, layout: LabelLayout | Any = None, parent=None) -> None:
+        """Initialize the label card widget."""
         super().__init__(parent)
-        self.product = product
-        self.setFixedSize(LABEL_W, LABEL_H)
         self.setObjectName("LabelCard")
+        self._layout: LabelLayout | None = None
+        self._barcode_pixmap: QPixmap | None = None
+
+        if isinstance(layout, LabelLayout):
+            self.set_layout(layout)
+        elif layout is not None:
+            # Legacy Product passed directly
+            self.set_layout(LabelService.create_layout(layout))
+        else:
+            self.setFixedSize(PREVIEW_BASE_W, 175)
+
+    def set_layout(self, layout: LabelLayout) -> None:
+        """Update the rendered label layout and re-render barcode."""
+        self._layout = layout
+        w_mm = max(25.0, layout.options.width_mm)
+        h_mm = max(15.0, layout.options.height_mm)
+        card_w = PREVIEW_BASE_W
+        card_h = int(card_w * (h_mm / w_mm))
+        card_h = max(140, min(240, card_h))
+        self.setFixedSize(card_w, card_h)
+
+        # Generate real barcode pixmap
+        self._barcode_pixmap = None
+        if layout.barcode_value:
+            png_bytes = LabelService.render_barcode_image(layout.barcode_value, layout.barcode_symbology)
+            if png_bytes:
+                img = QImage()
+                img.loadFromData(QByteArray(png_bytes))
+                self._barcode_pixmap = QPixmap.fromImage(img)
+
+        self.update()
 
     def paintEvent(self, event) -> None:
-        """Paint the mock thermal label: product name, barcode bars, barcode text, and price."""
+        """Paint the thermal label mockup: product name, barcode, barcode text, and price."""
+        if self._layout is None:
+            return
+
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         w, h = self.width(), self.height()
+        layout = self._layout
 
         # --- White label background with subtle paper gradient ---
         grad = QLinearGradient(0, 0, 0, h)
         grad.setColorAt(0.0, QColor("#FFFFFF"))
-        grad.setColorAt(1.0, QColor("#F5F5F0"))
+        grad.setColorAt(1.0, QColor("#F8F8F5"))
         p.setBrush(grad)
         p.setPen(QPen(QColor("#D0D0D0"), 1))
-        p.drawRoundedRect(QRectF(0, 0, w, h), 4, 4)
+        p.drawRoundedRect(QRectF(1, 1, w - 2, h - 2), 6, 6)
 
         ink = QColor("#1A1A1A")
+        sub_ink = QColor("#555555")
 
-        # --- Product name (bold, centered) ---
+        # --- Product name(s) ---
+        y_cursor = 8
         name_font = QFont()
-        name_font.setPixelSize(15)
+        name_font.setPixelSize(13 if layout.secondary_name else 14)
         name_font.setWeight(QFont.Weight.Bold)
         p.setFont(name_font)
         p.setPen(ink)
 
-        name_rect = QRectF(12, 10, w - 24, 24)
-        p.drawText(
-            name_rect,
-            Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter,
-            self.product.name_en,
-        )
+        name_rect = QRectF(8, y_cursor, w - 16, 20)
+        p.drawText(name_rect, Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter, layout.product_name)
+        y_cursor += 20
 
-        # --- Thin separator ---
-        p.setPen(QPen(QColor("#E0E0E0"), 1))
-        p.drawLine(20, 38, w - 20, 38)
+        if layout.secondary_name:
+            sec_font = QFont()
+            sec_font.setPixelSize(12)
+            p.setFont(sec_font)
+            p.setPen(sub_ink)
+            sec_rect = QRectF(8, y_cursor, w - 16, 18)
+            p.drawText(sec_rect, Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter, layout.secondary_name)
+            y_cursor += 18
 
-        # --- Barcode bars ---
-        barcode = self.product.barcode or ""
-        bar_y = 46
-        bar_h = 56
+        # Separator line
+        y_cursor += 2
+        p.setPen(QPen(QColor("#E2E2E2"), 1))
+        p.drawLine(16, y_cursor, w - 16, y_cursor)
+        y_cursor += 4
 
-        if barcode:
-            bars = _code128_bars(barcode)
-            total_w = sum(bw for bw, _ in bars)
-            scale = (w - 40) / total_w
-            x = 20.0
-
-            p.setPen(Qt.PenStyle.NoPen)
-            for bw, is_bar in bars:
-                px_w = bw * scale
-                if is_bar:
-                    p.setBrush(ink)
-                    p.drawRect(QRectF(x, bar_y, px_w, bar_h))
-                x += px_w
+        # --- Barcode image ---
+        bar_h = max(30, min(55, int(h * 0.28)))
+        if self._barcode_pixmap and not self._barcode_pixmap.isNull():
+            bc_w = min(w - 32, max(120, int(w * 0.82)))
+            bc_x = (w - bc_w) / 2
+            bc_rect = QRectF(bc_x, y_cursor, bc_w, bar_h)
+            p.drawPixmap(
+                bc_rect.toRect(),
+                self._barcode_pixmap.scaled(
+                    bc_rect.size().toSize(),
+                    Qt.AspectRatioMode.IgnoreAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                ),
+            )
+        y_cursor += bar_h + 2
 
         # --- Barcode text ---
         code_font = QFont("Courier New")
         code_font.setPixelSize(11)
-        code_font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, 2.0)
+        code_font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, 1.5)
         p.setFont(code_font)
         p.setPen(QColor("#444444"))
-        p.setBrush(Qt.BrushStyle.NoBrush)
+        code_rect = QRectF(8, y_cursor, w - 16, 16)
+        p.drawText(code_rect, Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter, layout.barcode_value)
+        y_cursor += 16
 
-        code_rect = QRectF(12, bar_y + bar_h + 2, w - 24, 18)
-        p.drawText(
-            code_rect,
-            Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter,
-            barcode,
-        )
+        # Separator line
+        p.setPen(QPen(QColor("#E2E2E2"), 1))
+        p.drawLine(16, y_cursor, w - 16, y_cursor)
+        y_cursor += 3
 
-        # --- Thin separator ---
-        sep_y = bar_y + bar_h + 22
-        p.setPen(QPen(QColor("#E0E0E0"), 1))
-        p.drawLine(20, sep_y, w - 20, sep_y)
-
-        # --- Price (large, bold) ---
+        # --- Price text ---
         price_font = QFont()
-        price_font.setPixelSize(26)
+        price_font.setPixelSize(18)
         price_font.setWeight(QFont.Weight.Bold)
         p.setFont(price_font)
         p.setPen(ink)
-
-        price_text = format_currency(self.product.price)
-        price_rect = QRectF(12, sep_y + 4, w - 24, 36)
-        p.drawText(
-            price_rect,
-            Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter,
-            price_text,
-        )
+        price_rect = QRectF(8, y_cursor, w - 16, max(22, h - y_cursor - 4))
+        p.drawText(price_rect, Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter, layout.price_text)
 
         p.end()
+
+
+# Backward compatibility alias
+_LabelCard = LabelCard
 
 
 class LabelPreviewDialog(QDialog):
     """Dialog showing a realistic thermal-label preview."""
 
-    def __init__(self, product: Product, parent=None) -> None:
-        """Initialize the dialog and build the header, label preview card, and close button."""
+    def __init__(self, product: Any, options: LabelOptions | None = None, parent=None) -> None:
+        """Initialize the dialog and build header, label preview card, and close button."""
         super().__init__(parent)
         self.setWindowTitle(_t("label_preview.title"))
         self.setObjectName("LabelPreviewDialog")
-        self.setMinimumSize(360, 310)
-        self.resize(360, 310)
+        self.setMinimumSize(360, 340)
 
         layout = QVBoxLayout(self)
         layout.setSpacing(12)
         layout.setContentsMargins(20, 16, 20, 16)
 
-        # Header
-        header = QLabel(product.name_en)
+        self.label_layout = LabelService.create_layout(product, options)
+
+        header = QLabel(self.label_layout.product_name)
         header.setObjectName("LabelPreviewHeader")
         header.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(header)
 
-        # Label card
-        card = _LabelCard(product)
+        card = LabelCard(self.label_layout)
         layout.addWidget(card, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        # Footer hint
         hint = QLabel(_t("label_preview.hint"))
         hint.setObjectName("LabelPreviewHint")
         hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(hint)
 
-        # Close button
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
         btn_close = QPushButton(_t("common.close"))
         btn_close.setObjectName("BtnCancel")
         btn_close.setProperty("class", "secondary")
+        btn_close.setMinimumHeight(44)
         btn_close.clicked.connect(self.accept)
         btn_layout.addWidget(btn_close)
         btn_layout.addStretch()

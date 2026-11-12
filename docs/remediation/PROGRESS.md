@@ -192,7 +192,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #816 | Add About dialog and help/report-issue links (CB POS website branding) | low | 8.3 | done | #1018 | 482f4e0, b2f6de6 · AboutDialog, SideMenu Help tile, links.py safe URL opener, QUrl validation, trilingual support, TextViewerDialog, focus chain & Esc close |
 | #817 | Add EULA, privacy notice and third-party licence notices before public release | high | 8.3 | in-progress (ready-for-human) | #1018 | 251a37e, 395e647 · Decision D27 (GPLv3), LICENSE, PRIVACY.md, THIRD_PARTY_NOTICES.txt generator with complete shipped texts, release workflow tag & count check, legal research note; open pending final lawyer/owner review |
 | #818 | Fix documentation drift found in the pre-release audit | medium | 8.4 | todo | | |
-| #819 | Product labels: English-only names, fake barcode in preview, no label size se… | low | 8.4 | todo | | |
+| #819 | Product labels: English-only names, fake barcode in preview, no label size se… | low | 8.4 | done (ready-for-human: ⚠️ Verify on Windows) | | LabelOptions/LabelLayout models, python-barcode real CODE128/EAN13, ProductService.display_name for si/ta/bilingual, missing local name fallback warning, 50x30/40x25/58mm/custom presets & validation, live preview panel; physical print verification pending on Windows hardware |
 
 ### Phase 9 — [spec](phases/phase-09-warranty.md)
 

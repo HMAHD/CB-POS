@@ -76,6 +76,21 @@ Under GPLv3 Sections 4, 5, and 6:
 - PyInstaller must package `LICENSE`, `PRIVACY.md`, and `THIRD_PARTY_NOTICES.txt` inside the distribution bundle so that offline installations provide full legal notices.
 - The UI (About surface) must expose immediate offline access to the licence, privacy notice, third-party notices, and repository source link.
 
+### 2.4 Qt 6 LGPLv3 Compliance Analysis (NEEDS LEGAL COUNSEL REVIEW)
+CB POS utilizes Qt 6 runtime libraries through Riverbank PyQt6 bindings. Qt 6 is distributed by The Qt Company under the GNU Lesser General Public License version 3 (LGPLv3) and GNU GPLv3.
+
+1. **Combined Work Compatibility**:
+   Under LGPLv3 Section 2 and Section 3, an application that links with an LGPLv3 library may be conveyed under terms of the GNU General Public License version 3 (GPLv3). Because CB POS is licensed in its entirety under GNU GPLv3 (Decision D27), the downstream distribution model is fully compatible with LGPLv3 requirements.
+
+2. **Source Code & Notices**:
+   Prominent notice is provided in `THIRD_PARTY_NOTICES.txt` and the application's About dialog indicating that Qt 6 is licensed under LGPLv3/GPLv3 and that its complete source code and build instructions are publicly available at `https://code.qt.io`.
+
+3. **Relinking and Library Replacement**:
+   Under LGPLv3 Section 4(d), downstream users must be provided a mechanism to run the application with a modified version of the LGPL library. In the Windows PyInstaller distribution of CB POS (`cbpos.spec`), the application is built using `onedir` mode (`dist/cbpos/`). The Qt runtime libraries (e.g., `Qt6Core.dll`, `Qt6Gui.dll`, `Qt6Widgets.dll`, and Qt plugins) are distributed as discrete dynamic-link libraries (DLLs) placed in the application directory. Users can replace these DLLs with compatible custom-compiled Qt libraries without rebuilding or recompiling the application binary.
+
+4. **Reverse Engineering for Debugging**:
+   LGPLv3 Section 4 requires permitting reverse engineering for debugging modifications to the LGPL library. Because the complete corresponding source code for CB POS is publicly provided under GPLv3, this requirement is fulfilled directly by providing full source access.
+
 ---
 
 ## 3. Third-Party Notices & Dependency Closure

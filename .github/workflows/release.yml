@@ -120,17 +120,21 @@ jobs:
           from datetime import datetime, timezone
           cfg = pathlib.Path("cbpos/config.py")
           text = cfg.read_text(encoding="utf-8")
-          text = re.sub(
+          text, n_ver = re.subn(
               r'VERSION\s*=\s*"[^"]*"',
               'VERSION = "${{ steps.version.outputs.version }}"',
               text,
           )
+          if n_ver != 1:
+              raise RuntimeError(f"Expected 1 VERSION replacement, got {n_ver}")
           build_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-          text = re.sub(
-              r'BUILD_DATE\s*=\s*.*',
-              f'BUILD_DATE = "{build_date}"',
+          text, n_date = re.subn(
+              r'BUILD_DATE(?::\s*str\s*\|\s*None)?\s*=\s*.*',
+              f'BUILD_DATE: str | None = "{build_date}"',
               text,
           )
+          if n_date != 1:
+              raise RuntimeError(f"Expected 1 BUILD_DATE replacement, got {n_date}")
           cfg.write_text(text, encoding="utf-8")
           print(f"Stamped version: ${{ steps.version.outputs.version }}, build date: {build_date}")
 
@@ -225,6 +229,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Check out CB-POS repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Download installer artifact
         uses: actions/download-artifact@v7
         with:
@@ -235,10 +244,20 @@ jobs:
         run: |
           git clone https://x-access-token:${{ secrets.RELEASES_PAT }}@github.com/ceybyte/cbpos-releases.git releases-repo
 
-      - name: Extract Changelog Section
+      - name: Verify release tag and extract changelog
         id: changelog
         shell: bash
         run: |
+          tag_name="v${{ needs.build.outputs.version }}"
+          if ! git rev-parse -q --verify "refs/tags/${tag_name}" >/dev/null; then
+            echo "Error: Release tag ${tag_name} does not exist in repository" >&2
+            exit 1
+          fi
+          tag_commit=$(git rev-list -n 1 "refs/tags/${tag_name}")
+          if [ "${tag_commit}" != "${{ github.sha }}" ]; then
+            echo "Error: Release tag ${tag_name} points to ${tag_commit}, expected ${{ github.sha }}" >&2
+            exit 1
+          fi
           if ! python scripts/changelog_section.py "${{ needs.build.outputs.version }}" > changelog.txt || [ ! -s changelog.txt ]; then
             echo "Release notes for version ${{ needs.build.outputs.version }}" > changelog.txt
           fi

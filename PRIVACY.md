@@ -19,7 +19,7 @@
 
 ## 1. Zero Telemetry & Analytics Guarantee
 
-We have conducted a full audit of the CB POS codebase. CB POS contains:
+An internal technical review of the CB POS codebase was completed on 2026-11-12. CB POS contains:
 - **No telemetry** or usage tracking;
 - **No background analytics** (no Google Analytics, Mixpanel, PostHog, or similar tracking libraries);
 - **No remote error monitoring** (no Sentry, Crashlytics, or remote crash reporting beacons);
@@ -35,7 +35,9 @@ CB POS only connects to a network under the following five specific, user-contro
 
 ### 2.1 Software Update Checks & Downloads
 - **Purpose:** Checks whether a newer version of CB POS is available, downloads changelog notes, and downloads updated installer packages if you choose to install them.
-- **What is Sent:** A standard HTTP GET request to GitHub (`https://raw.githubusercontent.com/ceybyte/cbpos-releases/main/latest.json` and `https://github.com/ceybyte/cbpos-releases/releases/`). No shop data, hardware serials, IP addresses, database identifiers, or customer records are sent.
+- **Network Connection & What is Sent:**
+  - **Standard HTTP connection metadata:** As with any standard HTTPS connection on the internet, checking for updates sends a standard HTTP GET request to GitHub (`https://raw.githubusercontent.com/ceybyte/cbpos-releases/main/latest.json` and `https://github.com/ceybyte/cbpos-releases/releases/`). Your network connection metadata (outbound IP address and standard HTTP client headers) is received by GitHub and intermediate network transit operators, governed by the [GitHub Privacy Statement](https://docs.github.com/site-policy/privacy-policies/github-privacy-statement).
+  - **No shop data payload:** CB POS does not include any shop records, sales figures, customer personal data, database identifiers, inventory records, or hardware serial numbers in the update request payload or query parameters.
 - **Control:** You can turn off automatic update checks at any time in **Settings → System** by unchecking *"Check for CB POS updates when it starts"*. You can also trigger a manual check at any time using the **Check now** button.
 
 ### 2.2 Email Receipts & Scheduled Daily Reports (SMTP)
@@ -78,7 +80,7 @@ CB POS stores all business records locally on the computer where it is installed
 ### Files Stored Locally:
 1. **`cbpos.db`**: SQLite database containing all products, categories, sales, refund records, customer balances, loyalty points, supplier payables, tax invoices, and audit logs.
 2. **`settings.json`**: Application preferences, printer configurations, and hardware settings.
-3. **`.key`**: Local cryptographic key used for sensitive credential encryption (e.g. SMTP password storage).
+3. **`.encryption_key`**: Local cryptographic key used for sensitive credential encryption (e.g. SMTP password storage).
 4. **`logs/`**: Local diagnostic log files recording application events and errors. Logs are kept on your hard drive for troubleshooting and are never uploaded automatically.
 5. **`backups/`**: Compressed and encrypted database backups created manually or automatically.
 
@@ -91,7 +93,14 @@ Updating CB POS or running the Windows installer does not overwrite or remove yo
 Because CB POS is an offline-first system:
 - **Full Ownership:** You own 100% of the data recorded in the application.
 - **Exporting Data:** You can export sales history, customer ledgers, supplier statements, inventory lists, and tax filing summaries to CSV or Excel at any time via the Management interface.
-- **Data Deletion:** You can delete or reset data by clearing the database or removing the `%LOCALAPPDATA%\CB POS` directory when the application is closed.
+- **Complete Data Deletion:** When CB POS is closed, you can delete or reset data across all configured storage locations:
+  - **Windows Local Storage:** Delete the directory `%LOCALAPPDATA%\CB POS` (typically `C:\Users\<Username>\AppData\Local\CB POS`).
+  - **macOS Local Storage:** Delete `~/Library/Application Support/CB POS`.
+  - **Linux Local Storage:** Delete `~/.local/share/cbpos`.
+  - **External PostgreSQL Server:** If configured in Settings → Database, delete the database or drop specific tables directly on your PostgreSQL server.
+  - **Secondary LAN Tills:** If using LAN sync across multiple terminals, delete the local data directory on each secondary checkout machine.
+  - **Backups & Export Files:** Manually delete any archived database backups (`backups/`) and exported CSV or Excel spreadsheets stored on local drives, external media, or cloud folders.
+  - **Email Provider Records:** If you sent e-receipts or automated reports via SMTP, delete copies retained in the sent mail or mailbox archives of your configured email service.
 
 ---
 

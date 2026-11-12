@@ -135,7 +135,7 @@ No special software needed. No Python, no databases, no command line — just do
 ### Corresponding Source Code (GNU GPLv3)
 
 CB POS is free and open-source software licensed under the GNU General Public License version 3 (GPLv3). In accordance with the GNU GPLv3:
-- The complete corresponding source code for each release tag is published at: [`https://github.com/HMAHD/CB-POS/tree/v{version}`](https://github.com/HMAHD/CB-POS) (source repository: [`https://github.com/HMAHD/CB-POS`](https://github.com/HMAHD/CB-POS)).
+- The complete corresponding source code for each release is published under the matching version tag at [https://github.com/HMAHD/CB-POS/tags](https://github.com/HMAHD/CB-POS/tags) (e.g. `https://github.com/HMAHD/CB-POS/tree/v<version>`). The primary source repository is [`https://github.com/HMAHD/CB-POS`](https://github.com/HMAHD/CB-POS).
 - The `ceybyte/cbpos-releases` repository distributes Windows installer binaries and release manifests only. The corresponding source code is maintained and published in the primary `HMAHD/CB-POS` repository.
 - Every release build includes all scripts and configuration needed to generate the binary.
 

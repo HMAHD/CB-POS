@@ -64,12 +64,17 @@ def test_privacy_notice_covers_verified_network_categories():
     assert "localappdata" in text.lower() or "appdata" in text.lower()
     assert "telemetry" in text.lower() or "analytics" in text.lower()
 
+    # Truthful network metadata and verified storage filenames
+    assert ".encryption_key" in text, "Must identify .encryption_key (not .key)"
+    assert "github privacy statement" in text.lower(), "Must cite GitHub Privacy Statement for update checks"
+    assert "macos" in text.lower() and "linux" in text.lower(), "Must include multi-platform storage and deletion"
+
     # Crucial protections
     assert "does not automatically send shop data" in text.lower() or "no data is sent automatically" in text.lower()
 
 
 def test_release_workflow_includes_notices_and_source_url():
-    """The release workflow must generate third-party notices and publish exact source link."""
+    """The release workflow must generate third-party notices, check out repo in publish, and publish exact source link."""
     workflow_path = ROOT / ".github" / "workflows" / "release.yml"
     assert workflow_path.exists(), ".github/workflows/release.yml must exist"
 
@@ -77,21 +82,38 @@ def test_release_workflow_includes_notices_and_source_url():
     assert "gen_third_party_notices.py" in text, "Workflow must run gen_third_party_notices.py before build"
     assert "source_url" in text, "latest.json generation must include source_url"
     assert "https://github.com/HMAHD/CB-POS/tree/v" in text, "Exact-version source link must be published"
+    assert "actions/checkout@v4" in text, "Workflow must check out repository"
+    assert "re.subn" in text, "Config version/build date stamping must use re.subn with count check"
+    assert "refs/tags/" in text, "Publish step must verify tag existence in repository"
 
 
-def test_third_party_notices_generation_and_completeness():
+def test_third_party_notices_generation_and_completeness(tmp_path):
     """THIRD_PARTY_NOTICES.txt must be generated deterministically and cover all runtime dependencies."""
     script_path = ROOT / "scripts" / "gen_third_party_notices.py"
     assert script_path.exists(), "scripts/gen_third_party_notices.py must exist"
 
-    # Run generator to test exit code and output
-    proc = subprocess.run([sys.executable, str(script_path)], capture_output=True, text=True)
+    temp_output = tmp_path / "TEMP_NOTICES.txt"
+
+    # Run generator with --output to avoid mutating working tree
+    proc = subprocess.run(
+        [sys.executable, str(script_path), "--output", str(temp_output)],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
     assert proc.returncode == 0, f"gen_third_party_notices.py failed: {proc.stderr}"
+    assert temp_output.exists(), "Output notices file must be created"
 
-    notices_path = ROOT / "THIRD_PARTY_NOTICES.txt"
-    assert notices_path.exists(), "THIRD_PARTY_NOTICES.txt must exist"
+    # Run generator with --check against tracked THIRD_PARTY_NOTICES.txt
+    check_proc = subprocess.run(
+        [sys.executable, str(script_path), "--check"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert check_proc.returncode == 0, f"THIRD_PARTY_NOTICES.txt out of date: {check_proc.stderr or check_proc.stdout}"
 
-    text = notices_path.read_text(encoding="utf-8")
+    text = temp_output.read_text(encoding="utf-8")
 
     # Key runtime packages
     assert "PyQt6" in text
@@ -104,11 +126,17 @@ def test_third_party_notices_generation_and_completeness():
     assert "pandas" in text
 
     # Bundled assets not in standard pypi dependencies
-    assert "Qt" in text
+    assert "Qt 6 (Libraries & Framework)" in text
+    assert "6.11.2" in text, "Qt 6 version must report exact 6.11.2 runtime version"
     assert "Font Awesome" in text
     assert "Noto Sans" in text
     assert "Sinhala" in text
     assert "Tamil" in text
+
+    # URL prioritization and full shipped notice text
+    assert "https://github.com/aio-libs/aiosignal" in text, "aiosignal must prioritize GitHub URL over chat"
+    assert "https://palletsprojects.com/p/markupsafe/" in text, "MarkupSafe must prioritize homepage over donation"
+    assert "--- Shipped Notice" in text, "Must bundle shipped license/notice text"
 
 
 def test_notices_fail_closed_on_missing_license(monkeypatch):

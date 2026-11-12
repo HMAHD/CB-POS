@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 8 · Batch: 8.3 · Branch: feat/p8-b3-legal-about · PR: pending · Last session: 2026-11-12
+- Phase: 8 · Batch: 8.3 · Branch: feat/p8-b3-legal-about · PR: #1018 · Last session: 2026-11-12
 
 ## Issues
 
@@ -189,8 +189,8 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #881 | Exports to USB / another drive refused ("Export path outside allowed director… | medium | 8.1 | done | #1015, #1016 | 37f4601, c116d3b · ensure_writable_target helper in cbpos/core/utils/paths.py, parent existence/W_OK check, format_export_error translated notice |
 | #882 | Auto-report email resent every minute while a send is in progress or failing | medium | 8.1 | done | #1015, #1016 | cd523ee, c116d3b, 2f565b2 · AutoReportWorker off UI thread, 15m stuck recovery, 2^n*5m backoff capped at 6h, max 5 daily failures, Management notice for admin, receiver QueuedConnection, email callback delegation |
 | #814 | Tax invoice compliance features listed in CHANGELOG are missing (serial forma… | high | 8.2 | done | #1017 | d09688f, 0702157 · research note, 814 design, TaxInvoice / TaxInvoiceLine / TaxCreditNote models & migration, TaxInvoiceService serial generator YYMMM_QQQQ_XXXXX, ReportLab TaxInvoicePDFBuilder ORIGINAL/COPY ONLY, BuyerDetailsDialog, PaymentDialog & HistoryView integration |
-| #816 | Add About dialog and help/report-issue links (CB POS website branding) | low | 8.3 | todo | | |
-| #817 | Add EULA, privacy notice and third-party licence notices before public release | high | 8.3 | in-progress | | |
+| #816 | Add About dialog and help/report-issue links (CB POS website branding) | low | 8.3 | done | #1018 | 482f4e0, b2f6de6 · AboutDialog, SideMenu Help tile, links.py safe URL opener, QUrl validation, trilingual support, TextViewerDialog, focus chain & Esc close |
+| #817 | Add EULA, privacy notice and third-party licence notices before public release | high | 8.3 | in-progress (ready-for-human) | #1018 | 251a37e, 395e647 · Decision D27 (GPLv3), LICENSE, PRIVACY.md, THIRD_PARTY_NOTICES.txt generator with complete shipped texts, release workflow tag & count check, legal research note; open pending final lawyer/owner review |
 | #818 | Fix documentation drift found in the pre-release audit | medium | 8.4 | todo | | |
 | #819 | Product labels: English-only names, fake barcode in preview, no label size se… | low | 8.4 | todo | | |
 
@@ -309,5 +309,10 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #877 | Physical 58 mm thermal receipt print of wrapped Sinhala and Tamil lines (shop address, item names) | pending |
 
 ## Handoff
-Batch 8.1 merged in PR #1015 (c116d3bfef40b857ca65f860a5bdd3fd7eff6e63) with follow-up PR #1016 (214570d102dbd618d36354b39b1a8d05b5fa9c17). #808, #881, and #882 verified CLOSED on GitHub. #878 and #731 remain OPEN with `ready-for-human` for physical Windows printer/scanner verification. Next is Phase 8, Batch 8.2 (#814). Stop before Phase 8.2.
+Batch 8.2 merged in PR #1017 (07021573c528ea287fa490074251f22aa52a1223).
+Batch 8.3 review remediation complete on PR #1018 (`feat/p8-b3-legal-about`):
+- #816 implementation complete and verified with full tests.
+- #817 implementation complete and tests passing; issue remains OPEN with label `ready-for-human` pending required owner/lawyer legal review before public release.
+- All 38 review findings + NEW-1..NEW-5 addressed and verified with full test suite passing (3501 passed, 6 skipped, 11 xfailed).
+PR #1018 is kept open for review. Do not merge and do not start Phase 8.4 until Batch 8.3 is approved and merged.
 

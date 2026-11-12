@@ -9,6 +9,9 @@ datas = [
     ('cbpos/i18n', 'cbpos/i18n'),
     ('alembic.ini', '.'),
     ('alembic', 'alembic'),
+    ('LICENSE', '.'),
+    ('PRIVACY.md', '.'),
+    ('THIRD_PARTY_NOTICES.txt', '.'),
 ]
 binaries = []
 hiddenimports = [

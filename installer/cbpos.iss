@@ -40,7 +40,7 @@ AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
-; No license page — free software
+LicenseFile=..\LICENSE
 DisableDirPage=yes
 DisableProgramGroupPage=yes
 ; Installer output settings

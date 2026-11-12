@@ -73,6 +73,11 @@ Format: `D<n> — <date> — #<issue> — <decision>`. New decisions go at the b
 
 **D26 — 2026-11-09 — #810, #831 — Accountant review packet for Tax Filing Summary and Profit & Loss.** Tax Filing Summary and P&L report outputs for the reconciliation day (incorporating VAT/SSCL combinations, voids, partial/full refunds, discounts and loyalty redemptions) are exported and reconciled. The accountant review packet is attached to the PR with the reconciliation artifacts confirming exact tie-out across gross revenue, net revenue, input VAT, output VAT, SSCL liable turnover, and net cash flow.
 
+## 2026-11-12
+
+**D27 — 2026-11-12 — #817 — GNU GPLv3 distribution confirmed (confirming D8, superseding closed-source notes).** The owner chose the GPLv3 distribution path on 2026-11-12. Keep PyQt6. CB POS is free and open-source software under the GNU General Public License version 3 (GPLv3). Every binary release provides the complete corresponding source code for that exact version via public tagged repository link (`https://github.com/HMAHD/CB-POS/tree/v{version}`). There is no closed-source freeware EULA and no additional "no resale", "no modification", or other GPL-incompatible restrictions. This supersedes all previous "closed source / not open source" product notes. Final owner and lawyer review remains required before the first public release.
+
+
 
 
 

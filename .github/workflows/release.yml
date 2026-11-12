@@ -113,19 +113,29 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked --no-dev --group build
 
-      - name: Stamp version in Config
+      - name: Stamp version and build date in Config
         shell: python
         run: |
           import re, pathlib
+          from datetime import datetime, timezone
           cfg = pathlib.Path("cbpos/config.py")
-          text = cfg.read_text()
+          text = cfg.read_text(encoding="utf-8")
           text = re.sub(
               r'VERSION\s*=\s*"[^"]*"',
               'VERSION = "${{ steps.version.outputs.version }}"',
               text,
           )
-          cfg.write_text(text)
-          print(f"Stamped version: ${{ steps.version.outputs.version }}")
+          build_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+          text = re.sub(
+              r'BUILD_DATE\s*=\s*.*',
+              f'BUILD_DATE = "{build_date}"',
+              text,
+          )
+          cfg.write_text(text, encoding="utf-8")
+          print(f"Stamped version: ${{ steps.version.outputs.version }}, build date: {build_date}")
+
+      - name: Generate third-party notices
+        run: uv run python scripts/gen_third_party_notices.py
 
       - name: Build executable with PyInstaller
         run: uv run pyinstaller cbpos.spec
@@ -232,6 +242,8 @@ jobs:
           if ! python scripts/changelog_section.py "${{ needs.build.outputs.version }}" > changelog.txt || [ ! -s changelog.txt ]; then
             echo "Release notes for version ${{ needs.build.outputs.version }}" > changelog.txt
           fi
+          source_url="https://github.com/HMAHD/CB-POS/tree/v${{ needs.build.outputs.version }}"
+          echo -e "\n\n### Corresponding Source Code (GNU GPLv3)\nThe complete corresponding source code for CB POS v${{ needs.build.outputs.version }} is published at:\n${source_url}" >> changelog.txt
 
       - name: Create GitHub Release on releases repo
         env:
@@ -258,6 +270,7 @@ jobs:
               "version": version,
               "release_date": date_str,
               "download_url": f"https://github.com/ceybyte/cbpos-releases/releases/download/v{version}/{installer_name}",
+              "source_url": f"https://github.com/HMAHD/CB-POS/tree/v{version}",
               "changelog": notes,
               "min_version": "1.0.0",
               "sha256": sha256

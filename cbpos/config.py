@@ -11,6 +11,7 @@ class Config:
 
     APP_NAME = "CB POS"
     VERSION = "1.3.0"
+    BUILD_DATE: str | None = None
 
     # Application code / assets directory (where the source lives).
     BASE_DIR = Path(__file__).parent.parent

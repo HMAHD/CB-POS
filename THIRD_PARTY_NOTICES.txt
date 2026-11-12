@@ -1,0 +1,627 @@
+==============================================================================
+CB POS — THIRD-PARTY SOFTWARE NOTICES & LICENSES
+==============================================================================
+
+CB POS is free and open-source software distributed under the GNU General
+Public License version 3 (GPLv3).
+
+This file contains copyright notices, project URLs, and license terms for
+all runtime third-party packages, libraries, fonts, and assets incorporated
+into or distributed with CB POS.
+
+Total third-party components documented: 77
+
+==============================================================================
+
+Component:    aiohappyeyeballs
+Version:      2.7.1
+License:      PSF-2.0
+Copyright:    Author / Maintainer: J. Nick Koston
+URL:          https://github.com/aio-libs/aiohappyeyeballs/issues
+Summary:      Happy Eyeballs for asyncio
+------------------------------------------------------------------------------
+
+Component:    aiohttp
+Version:      3.14.3
+License:      Apache-2.0 AND MIT
+Copyright:    Copyright holders and contributors
+URL:          https://github.com/aio-libs/aiohttp
+Summary:      Async http client/server framework (asyncio)
+------------------------------------------------------------------------------
+
+Component:    aiosignal
+Version:      1.4.0
+License:      Apache 2.0
+Copyright:    Copyright holders and contributors
+URL:          https://gitter.im/aio-libs/Lobby
+Summary:      aiosignal: a list of registered asynchronous callbacks
+------------------------------------------------------------------------------
+
+Component:    alembic
+Version:      1.20.0
+License:      MIT
+Copyright:    Author / Maintainer: Mike Bayer <mike_mp@zzzcomputing.com>
+URL:          https://alembic.sqlalchemy.org
+Summary:      A database migration tool for SQLAlchemy.
+------------------------------------------------------------------------------
+
+Component:    annotated-types
+Version:      0.8.0
+License:      MIT
+Copyright:    Author / Maintainer: Adrian Garcia Badaracco <1755071+adriangb@users.noreply.github.com>, Samuel Colvin <s@muelcolvin.com>, Zac Hatfield-Dodds <zac@zhd.dev>
+URL:          https://github.com/annotated-types/annotated-types
+Summary:      Reusable constraint types to use with typing.Annotated
+------------------------------------------------------------------------------
+
+Component:    appdirs
+Version:      1.4.4
+License:      MIT
+Copyright:    Author / Maintainer: Trent Mick
+URL:          http://github.com/ActiveState/appdirs
+Summary:      A small Python module for determining appropriate platform-specific dirs, e.g. a "user data dir".
+------------------------------------------------------------------------------
+
+Component:    arabic-reshaper
+Version:      3.0.1
+License:      MIT
+Copyright:    Author / Maintainer: Abdullah Diab <mpcabd@gmail.com>
+URL:          https://github.com/mpcabd/python-arabic-reshaper/
+Summary:      Reconstruct Arabic sentences to be used in applications that do not support Arabic
+------------------------------------------------------------------------------
+
+Component:    argcomplete
+Version:      3.7.2
+License:      Apache Software License
+Copyright:    Author / Maintainer: Andrey Kislyuk
+URL:          https://github.com/kislyuk/argcomplete
+Summary:      Bash tab completion for argparse
+------------------------------------------------------------------------------
+
+Component:    asn1crypto
+Version:      1.5.1
+License:      MIT
+Copyright:    Author / Maintainer: wbond
+URL:          https://github.com/wbond/asn1crypto
+Summary:      Fast ASN.1 parser and serializer with definitions for private keys, public keys, certificates, CRL, OCSP, CMS, PKCS#3, PKCS#7, PKCS#8, PKCS#12, PKCS#5, X.509 and TSP
+------------------------------------------------------------------------------
+
+Component:    attrs
+Version:      26.1.0
+License:      MIT
+Copyright:    Author / Maintainer: Hynek Schlawack <hs@ox.cx>
+URL:          https://www.attrs.org/
+Summary:      Classes Without Boilerplate
+------------------------------------------------------------------------------
+
+Component:    bcrypt
+Version:      5.0.0
+License:      Apache-2.0
+Copyright:    Author / Maintainer: The Python Cryptographic Authority developers <cryptography-dev@python.org>
+URL:          https://github.com/pyca/bcrypt/
+Summary:      Modern password hashing for your software and your servers
+------------------------------------------------------------------------------
+
+Component:    certifi
+Version:      2026.7.22
+License:      MPL-2.0
+Copyright:    Author / Maintainer: Kenneth Reitz
+URL:          https://github.com/certifi/python-certifi
+Summary:      Python package for providing Mozilla's CA Bundle.
+------------------------------------------------------------------------------
+
+Component:    cffi
+Version:      2.1.1
+License:      MIT-0
+Copyright:    Author / Maintainer: Armin Rigo, Maciej Fijalkowski
+URL:          https://cffi.readthedocs.io/
+Summary:      Foreign Function Interface for Python calling C code.
+------------------------------------------------------------------------------
+
+Component:    charset-normalizer
+Version:      3.5.1
+License:      MIT
+Copyright:    Author / Maintainer: "Ahmed R. TAHRI" <tahri.ahmed@proton.me>
+URL:          https://github.com/jawah/charset_normalizer/blob/master/CHANGELOG.md
+Summary:      The Real First Universal Charset Detector. Open, modern and actively maintained alternative to Chardet.
+------------------------------------------------------------------------------
+
+Component:    colorama
+Version:      0.4.6
+License:      BSD-3-Clause
+Copyright:    Copyright (c) 2010 Jonathan Hartley, Arnon Yaari
+URL:          https://github.com/tartley/colorama
+------------------------------------------------------------------------------
+
+Component:    cryptography
+Version:      50.0.1
+License:      Apache-2.0 OR BSD-3-Clause
+Copyright:    Author / Maintainer: The Python Cryptographic Authority and individual contributors <cryptography-dev@python.org>
+URL:          https://cryptography.io/en/latest/changelog/
+Summary:      cryptography is a package which provides cryptographic recipes and primitives to Python developers.
+------------------------------------------------------------------------------
+
+Component:    cssselect2
+Version:      0.10.1
+License:      BSD-3-Clause
+Copyright:    Copyright (c) 2012 Simon Sapin and contributors
+URL:          https://github.com/Kozea/cssselect2
+Summary:      CSS selectors for Python ElementTree
+------------------------------------------------------------------------------
+
+Component:    et_xmlfile
+Version:      2.0.0
+License:      MIT
+Copyright:    Author / Maintainer: See AUTHORS.txt
+URL:          https://openpyxl.pages.heptapod.net/et_xmlfile/
+Summary:      An implementation of lxml.xmlfile for the standard library
+------------------------------------------------------------------------------
+
+Component:    Font Awesome Free (via QtAwesome)
+Version:      5.15.4 / 6.x
+License:      SIL OFL 1.1 (fonts), CC BY 4.0 (icons), MIT License (code)
+Copyright:    Copyright (c) Fonticons, Inc. and Font Awesome contributors
+URL:          https://fontawesome.com/
+Notice:       Font Awesome Free is free, open source, and GPL-friendly. Icons are licensed under Creative Commons Attribution 4.0 International (CC BY 4.0), font files under the SIL Open Font License 1.1, and client code under the MIT License.
+------------------------------------------------------------------------------
+
+Component:    frozenlist
+Version:      1.8.0
+License:      Apache-2.0
+Copyright:    Copyright holders and contributors
+URL:          https://matrix.to/#/#aio-libs:matrix.org
+Summary:      A list-like structure which implements collections.abc.MutableSequence
+------------------------------------------------------------------------------
+
+Component:    Google Noto Sans Font Family
+Version:      2.013
+License:      SIL Open Font License 1.1 (OFL-1.1)
+Copyright:    Copyright 2012 Google LLC. All Rights Reserved.
+URL:          https://fonts.google.com/noto
+Notice:       Bundled TrueType fonts in cbpos/assets/fonts/Noto_Sans/ under SIL OFL 1.1.
+------------------------------------------------------------------------------
+
+Component:    Google Noto Sans Sinhala Font Family
+Version:      2.004
+License:      SIL Open Font License 1.1 (OFL-1.1)
+Copyright:    Copyright 2013 Google LLC. All Rights Reserved.
+URL:          https://fonts.google.com/noto/specimen/Noto+Sans+Sinhala
+Notice:       Bundled TrueType fonts in cbpos/assets/fonts/Noto_Sans_Sinhala/ under SIL OFL 1.1.
+------------------------------------------------------------------------------
+
+Component:    Google Noto Sans Tamil Font Family
+Version:      2.004
+License:      SIL Open Font License 1.1 (OFL-1.1)
+Copyright:    Copyright 2013 Google LLC. All Rights Reserved.
+URL:          https://fonts.google.com/noto/specimen/Noto+Sans+Tamil
+Notice:       Bundled TrueType fonts in cbpos/assets/fonts/Noto_Sans_Tamil/ under SIL OFL 1.1.
+------------------------------------------------------------------------------
+
+Component:    html5lib
+Version:      1.1
+License:      MIT License
+Copyright:    Copyright holders and contributors
+URL:          https://github.com/html5lib/html5lib-python
+Summary:      HTML parser based on the WHATWG HTML specification
+------------------------------------------------------------------------------
+
+Component:    idna
+Version:      3.20
+License:      BSD-3-Clause
+Copyright:    Author / Maintainer: Kim Davies <kim+pypi@gumleaf.org>
+URL:          https://github.com/kjd/idna/blob/master/HISTORY.md
+Summary:      Internationalized Domain Names in Applications (IDNA)
+------------------------------------------------------------------------------
+
+Component:    importlib_resources
+Version:      7.1.0
+License:      Apache-2.0
+Copyright:    Author / Maintainer: Barry Warsaw <barry@python.org>
+URL:          https://github.com/python/importlib_resources
+Summary:      Read resources from Python packages
+------------------------------------------------------------------------------
+
+Component:    Lucide / UI SVG Icons
+Version:      0.400+
+License:      MIT License
+Copyright:    Copyright (c) 2022-2026 Lucide Contributors
+URL:          https://lucide.dev
+Notice:       Vector interface icons located under cbpos/assets/icons/.
+------------------------------------------------------------------------------
+
+Component:    lxml
+Version:      6.1.3
+License:      BSD-3-Clause
+Copyright:    Author / Maintainer: lxml dev team
+URL:          https://github.com/lxml/lxml
+Summary:      Powerful and Pythonic XML processing library combining libxml2/libxslt with the ElementTree API.
+------------------------------------------------------------------------------
+
+Component:    Mako
+Version:      1.4.3
+License:      MIT
+Copyright:    Author / Maintainer: Mike Bayer <mike@zzzcomputing.com>
+URL:          https://www.makotemplates.org/
+Summary:      A super-fast templating language that borrows the best ideas from the existing templating languages.
+------------------------------------------------------------------------------
+
+Component:    MarkupSafe
+Version:      3.0.3
+License:      BSD-3-Clause
+Copyright:    Copyright holders and contributors
+URL:          https://palletsprojects.com/donate
+Summary:      Safely add untrusted strings to HTML/XML markup.
+------------------------------------------------------------------------------
+
+Component:    multidict
+Version:      6.9.1
+License:      Apache License 2.0
+Copyright:    Author / Maintainer: Andrew Svetlov
+URL:          https://matrix.to/#/#aio-libs:matrix.org
+Summary:      multidict implementation
+------------------------------------------------------------------------------
+
+Component:    numpy
+Version:      2.5.3
+License:      BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0
+Copyright:    Author / Maintainer: Travis E. Oliphant et al.
+URL:          https://numpy.org
+Summary:      Fundamental package for array computing in Python
+------------------------------------------------------------------------------
+
+Component:    openpyxl
+Version:      3.1.5
+License:      MIT
+Copyright:    Author / Maintainer: See AUTHORS
+URL:          https://openpyxl.readthedocs.io/en/stable/
+Summary:      A Python library to read/write Excel 2010 xlsx/xlsm files
+------------------------------------------------------------------------------
+
+Component:    oscrypto
+Version:      1.3.0
+License:      MIT
+Copyright:    Author / Maintainer: wbond
+URL:          https://github.com/wbond/oscrypto
+Summary:      TLS (SSL) sockets, key generation, encryption, decryption, signing, verification and KDFs using the OS crypto libraries. Does not require a compiler, and relies on the OS for patching. Works on Windows, OS X and Linux/BSD.
+------------------------------------------------------------------------------
+
+Component:    packaging
+Version:      26.3
+License:      Apache-2.0 OR BSD-2-Clause
+Copyright:    Author / Maintainer: Donald Stufft <donald@stufft.io>
+URL:          https://packaging.pypa.io/
+Summary:      Core utilities for Python packages
+------------------------------------------------------------------------------
+
+Component:    pandas
+Version:      3.0.6
+License:      BSD-3-Clause
+Copyright:    Copyright (c) 2008-2011 AQR Capital Management, LLC, Lambda Foundry, Inc. and PyData Development Team; Copyright (c) 2011-2026 Open source contributors
+URL:          https://pandas.pydata.org
+Summary:      Powerful data structures for data analysis, time series, and statistics
+------------------------------------------------------------------------------
+
+Component:    pillow
+Version:      12.3.0
+License:      MIT-CMU
+Copyright:    Author / Maintainer: Jeffrey 'Alex' Clark <aclark@aclark.net>
+URL:          https://pillow.readthedocs.io/en/stable/releasenotes/index.html
+Summary:      Python Imaging Library (fork)
+------------------------------------------------------------------------------
+
+Component:    propcache
+Version:      0.5.4
+License:      Apache-2.0
+Copyright:    Author / Maintainer: Andrew Svetlov
+URL:          https://matrix.to/#/#aio-libs:matrix.org
+Summary:      Accelerated property cache
+------------------------------------------------------------------------------
+
+Component:    psycopg2-binary
+Version:      2.9.13
+License:      LGPL with exceptions
+Copyright:    Author / Maintainer: Federico Di Gregorio
+URL:          https://psycopg.org/
+Summary:      psycopg2 - Python-PostgreSQL Database Adapter
+------------------------------------------------------------------------------
+
+Component:    pycparser
+Version:      3.0
+License:      BSD-3-Clause
+Copyright:    Author / Maintainer: Eli Bendersky <eliben@gmail.com>
+URL:          https://github.com/eliben/pycparser
+Summary:      C parser in Python
+------------------------------------------------------------------------------
+
+Component:    pycryptodomex
+Version:      3.23.0
+License:      BSD, Public Domain
+Copyright:    Author / Maintainer: Helder Eijs
+URL:          https://github.com/Legrandin/pycryptodome/
+Summary:      Cryptographic library for Python
+------------------------------------------------------------------------------
+
+Component:    pydantic
+Version:      2.13.5
+License:      MIT
+Copyright:    Author / Maintainer: Samuel Colvin <s@muelcolvin.com>, Eric Jolibois <em.jolibois@gmail.com>, Hasan Ramezani <hasan.r67@gmail.com>, Adrian Garcia Badaracco <1755071+adriangb@users.noreply.github.com>, Terrence Dorsey <terry@pydantic.dev>, David Montague <david@pydantic.dev>, Serge Matveenko <lig@countzero.co>, Marcelo Trylesinski <marcelotryle@gmail.com>, Sydney Runkle <sydneymarierunkle@gmail.com>, David Hewitt <mail@davidhewitt.dev>, Alex Hall <alex.mojaki@gmail.com>, Victorien Plot <contact@vctrn.dev>
+URL:          https://github.com/pydantic/pydantic
+Summary:      Data validation using Python type hints
+------------------------------------------------------------------------------
+
+Component:    pydantic_core
+Version:      2.46.5
+License:      MIT
+Copyright:    Author / Maintainer: Samuel Colvin <s@muelcolvin.com>, Adrian Garcia Badaracco <1755071+adriangb@users.noreply.github.com>, David Montague <david@pydantic.dev>, David Hewitt <mail@davidhewitt.dev>, Sydney Runkle <sydneymarierunkle@gmail.com>, Victorien Plot <contact@vctrn.dev>
+URL:          https://github.com/sponsors/samuelcolvin
+Summary:      Core functionality for Pydantic validation and serialization
+------------------------------------------------------------------------------
+
+Component:    pyHanko
+Version:      0.37.0
+License:      MIT
+Copyright:    Author / Maintainer: Matthias Valvekens <dev@mvalvekens.be>
+URL:          https://github.com/MatthiasValvekens/pyHanko
+Summary:      Tools for stamping and signing PDF files
+------------------------------------------------------------------------------
+
+Component:    pyhanko-certvalidator
+Version:      0.32.1
+License:      MIT
+Copyright:    Author / Maintainer: Matthias Valvekens <dev@mvalvekens.be>
+URL:          https://github.com/MatthiasValvekens/pyHanko/tree/master/pkgs/pyhanko-certvalidator
+Summary:      Validates X.509 certificates and paths; forked from wbond/certvalidator
+------------------------------------------------------------------------------
+
+Component:    pypdf
+Version:      6.19.0
+License:      BSD-3-Clause
+Copyright:    Author / Maintainer: Mathieu Fenniak <biziqe@mathieu.fenniak.net>
+URL:          https://github.com/py-pdf/pypdf/issues
+Summary:      A pure-python PDF library capable of splitting, merging, cropping, and transforming PDF files
+------------------------------------------------------------------------------
+
+Component:    PyQt6
+Version:      6.11.0
+License:      GPL-3.0-only
+Copyright:    Author / Maintainer: Riverbank Computing Limited <info@riverbankcomputing.com>
+URL:          https://www.riverbankcomputing.com/software/pyqt/
+Summary:      Python bindings for the Qt cross platform application toolkit
+------------------------------------------------------------------------------
+
+Component:    PyQt6-Qt6
+Version:      6.11.2
+License:      LGPL v3
+Copyright:    Author / Maintainer: Riverbank Computing Limited
+URL:          https://www.riverbankcomputing.com/software/pyqt/
+Summary:      The subset of a Qt installation needed by PyQt6.
+------------------------------------------------------------------------------
+
+Component:    PyQt6_sip
+Version:      13.12.0
+License:      BSD-2-Clause
+Copyright:    Author / Maintainer: Phil Thompson
+URL:          https://github.com/Python-SIP/sip
+Summary:      The sip module support for PyQt6
+------------------------------------------------------------------------------
+
+Component:    python-barcode
+Version:      0.16.1
+License:      MIT
+Copyright:    Author / Maintainer: Hugo Osvaldo Barrera et al <hugo@whynothugo.nl>
+URL:          https://python-barcode.readthedocs.io/
+Summary:      Create standard barcodes with Python. No external modules needed. (optional Pillow support included).
+------------------------------------------------------------------------------
+
+Component:    python-bidi
+Version:      0.6.11
+License:      GNU Library or Lesser General Public License (LGPL)
+Copyright:    Author / Maintainer: Meir Kriheli <mkriheli@gmail.com>
+URL:          https://github.com/MeirKriheli/python-bidi/blob/master/CHANGELOG.rst
+Summary:      Python Bidi layout wrapping the Rust crate unicode-bidi
+------------------------------------------------------------------------------
+
+Component:    python-dateutil
+Version:      2.9.0.post0
+License:      Dual License
+Copyright:    Author / Maintainer: Gustavo Niemeyer
+URL:          https://dateutil.readthedocs.io/en/stable/
+Summary:      Extensions to the standard Python datetime module
+------------------------------------------------------------------------------
+
+Component:    python-escpos
+Version:      3.1
+License:      MIT
+Copyright:    Author / Maintainer: python-escpos developers
+URL:          https://github.com/python-escpos/python-escpos/issues
+Summary:      Python library to manipulate ESC/POS Printers
+------------------------------------------------------------------------------
+
+Component:    pyusb
+Version:      1.3.1
+License:      BSD License
+Copyright:    Author / Maintainer: Jonas Malaco
+URL:          https://github.com/pyusb/pyusb/blob/master/docs/tutorial.rst
+Summary:      Easy USB access for Python
+------------------------------------------------------------------------------
+
+Component:    pywin32
+Version:      312
+License:      PSF-2.0
+Copyright:    Copyright (c) 1994-2008 Mark Hammond and contributors
+URL:          https://github.com/mhammond/pywin32
+------------------------------------------------------------------------------
+
+Component:    PyYAML
+Version:      6.0.3
+License:      MIT
+Copyright:    Author / Maintainer: Kirill Simonov
+URL:          https://github.com/yaml/pyyaml/issues
+Summary:      YAML parser and emitter for Python
+------------------------------------------------------------------------------
+
+Component:    pyzipper
+Version:      0.4.0
+License:      MIT
+Copyright:    Author / Maintainer: Daniel Hillier <daniel.hillier@gmail.com>
+URL:          https://github.com/danifus/pyzipper
+Summary:      AES encryption for zipfile.
+------------------------------------------------------------------------------
+
+Component:    qrcode
+Version:      8.2
+License:      BSD
+Copyright:    Author / Maintainer: Lincoln Loop
+URL:          https://github.com/lincolnloop/python-qrcode
+Summary:      QR Code image generator
+------------------------------------------------------------------------------
+
+Component:    Qt 6 (Libraries & Framework)
+Version:      6.7.x / 6.8.x
+License:      GNU Lesser General Public License v3 (LGPLv3) / GNU GPLv3
+Copyright:    Copyright (C) The Qt Company Ltd and other contributors.
+URL:          https://www.qt.io
+Notice:       Qt is available under the GNU LGPL version 3 and GNU GPL version 3. Source code and build instructions for Qt are available from https://code.qt.io.
+------------------------------------------------------------------------------
+
+Component:    QtAwesome
+Version:      1.4.2
+License:      MIT
+Copyright:    Author / Maintainer: Sylvain Corlay and the Spyder Development Team
+URL:          https://github.com/spyder-ide/qtawesome
+Summary:      FontAwesome icons in PyQt and PySide applications
+------------------------------------------------------------------------------
+
+Component:    QtPy
+Version:      2.4.3
+License:      MIT
+Copyright:    Author / Maintainer: Colin Duquesnoy and the Spyder Development Team
+URL:          https://github.com/spyder-ide/qtpy
+Summary:      Provides an abstraction layer on top of the various Qt bindings (PyQt5/6 and PySide2/6).
+------------------------------------------------------------------------------
+
+Component:    reportlab
+Version:      5.0.1
+License:      BSD-3-Clause
+Copyright:    Copyright (c) 2000-2024 ReportLab Inc.
+URL:          https://www.reportlab.com/
+Summary:      The Reportlab Toolkit
+------------------------------------------------------------------------------
+
+Component:    setuptools
+Version:      84.0.0
+License:      MIT
+Copyright:    Author / Maintainer: Python Packaging Authority <distutils-sig@python.org>
+URL:          https://github.com/pypa/setuptools
+Summary:      Most extensible Python build backend with support for C/C++ extension modules
+------------------------------------------------------------------------------
+
+Component:    six
+Version:      1.17.0
+License:      MIT
+Copyright:    Author / Maintainer: Benjamin Peterson
+URL:          https://github.com/benjaminp/six
+Summary:      Python 2 and 3 compatibility utilities
+------------------------------------------------------------------------------
+
+Component:    SQLAlchemy
+Version:      2.1.1
+License:      MIT
+Copyright:    Author / Maintainer: Mike Bayer <mike_mp@zzzcomputing.com>
+URL:          https://www.sqlalchemy.org
+Summary:      Database Abstraction Library
+------------------------------------------------------------------------------
+
+Component:    svglib
+Version:      2.2.0
+License:      LGPL-3.0-or-later
+Copyright:    Author / Maintainer: Dinu Gherman
+URL:          https://github.com/deeplook/svglib
+Summary:      A pure-Python library for reading and converting SVG
+------------------------------------------------------------------------------
+
+Component:    tinycss2
+Version:      1.5.1
+License:      BSD License
+Copyright:    Author / Maintainer: Simon Sapin <simon.sapin@exyr.org>
+URL:          https://github.com/Kozea/tinycss2/releases
+Summary:      A tiny CSS parser
+------------------------------------------------------------------------------
+
+Component:    typing-inspection
+Version:      0.4.4
+License:      MIT
+Copyright:    Author / Maintainer: Victorien Plot <contact@vctrn.dev>
+URL:          https://github.com/pydantic/typing-inspection
+Summary:      Runtime typing introspection tools
+------------------------------------------------------------------------------
+
+Component:    typing_extensions
+Version:      4.16.0
+License:      PSF-2.0
+Copyright:    Author / Maintainer: "Guido van Rossum, Jukka Lehtosalo, Łukasz Langa, Michael Lee" <levkivskyi@gmail.com>
+URL:          https://github.com/python/typing_extensions/issues
+Summary:      Backported and Experimental Type Hints for Python 3.9+
+------------------------------------------------------------------------------
+
+Component:    tzdata
+Version:      2026.4
+License:      Apache-2.0
+Copyright:    Copyright (c) Python Software Foundation
+URL:          https://github.com/python/tzdata
+------------------------------------------------------------------------------
+
+Component:    tzlocal
+Version:      5.4.4
+License:      MIT
+Copyright:    Author / Maintainer: Lennart Regebro <regebro@gmail.com>
+URL:          https://github.com/regebro/tzlocal
+Summary:      tzinfo object for the local timezone
+------------------------------------------------------------------------------
+
+Component:    uharfbuzz
+Version:      0.57.0
+License:      Apache License 2.0
+Copyright:    Author / Maintainer: Adrien Tétar
+URL:          https://github.com/trufont/uharfbuzz
+Summary:      Streamlined Cython bindings for the harfbuzz shaping engine
+------------------------------------------------------------------------------
+
+Component:    uritools
+Version:      6.1.3
+License:      MIT
+Copyright:    Author / Maintainer: Thomas Kemmer <tkemmer@computer.org>
+URL:          https://github.com/tkem/uritools/
+Summary:      URI parsing, classification and composition
+------------------------------------------------------------------------------
+
+Component:    webencodings
+Version:      0.6.1
+License:      BSD License
+Copyright:    Author / Maintainer: Simon Sapin <simon.sapin@exyr.org>
+URL:          https://github.com/CourtBouillon/webencodings/releases
+Summary:      Character encoding aliases for legacy web content
+------------------------------------------------------------------------------
+
+Component:    xhtml2pdf
+Version:      0.2.20
+License:      Apache-2.0
+Copyright:    Copyright (c) 2010-2024 xhtml2pdf contributors
+URL:          https://github.com/xhtml2pdf/xhtml2pdf
+Summary:      PDF generator using HTML and CSS
+------------------------------------------------------------------------------
+
+Component:    xlsxwriter
+Version:      3.2.9
+License:      BSD-2-Clause
+Copyright:    Author / Maintainer: John McNamara
+URL:          https://github.com/jmcnamara/XlsxWriter
+Summary:      A Python module for creating Excel XLSX files.
+------------------------------------------------------------------------------
+
+Component:    yarl
+Version:      1.25.1
+License:      Apache-2.0
+Copyright:    Author / Maintainer: Andrew Svetlov
+URL:          https://matrix.to/#/#aio-libs:matrix.org
+Summary:      Yet another URL library
+------------------------------------------------------------------------------

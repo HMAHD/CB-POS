@@ -140,6 +140,15 @@ class CategoryManagerDialog(QDialog):
             self.chk_sscl_exempt.hide()
             form_layout.addRow("", self.lbl_tax_exempt_hint)
 
+        from cbpos.core.services.warranty_service import WarrantyService
+
+        if WarrantyService.is_enabled():
+            self.combo_warranty = QComboBox()
+            self.combo_warranty.addItem(_t("category_manager.warranty_none"), None)
+            for pol in WarrantyService.list_policies(include_inactive=False):
+                self.combo_warranty.addItem(pol.get_display_name(), pol.id)
+            form_layout.addRow(_t("category_manager.default_warranty"), self.combo_warranty)
+
         right.addWidget(form_group)
 
         # Action buttons
@@ -236,6 +245,17 @@ class CategoryManagerDialog(QDialog):
         self._update_color_preview()
         self.chk_vat_exempt.setChecked(bool(cat.tax_exempt))
         self.chk_sscl_exempt.setChecked(bool(cat.sscl_exempt))
+        if hasattr(self, "combo_warranty"):
+            assigned_id = getattr(cat, "default_warranty_policy_id", None)
+            w_idx = self.combo_warranty.findData(assigned_id)
+            if assigned_id and w_idx < 0:
+                from cbpos.core.services.warranty_service import WarrantyService
+
+                pol = WarrantyService.get_policy(assigned_id)
+                if pol:
+                    self.combo_warranty.addItem(f"{pol.get_display_name()} (inactive)", pol.id)
+                    w_idx = self.combo_warranty.findData(assigned_id)
+            self.combo_warranty.setCurrentIndex(max(0, w_idx))
 
         # Rebuild parent combo excluding self
         self._populate_parent_combo(exclude_id=cat_id)
@@ -269,22 +289,27 @@ class CategoryManagerDialog(QDialog):
 
         try:
             if self._editing_id:
-                CategoryService.update(
-                    self._editing_id,
-                    name=name,
-                    color=self.selected_color,
-                    parent_id=parent_id,
-                    tax_exempt=tax_exempt,
-                    sscl_exempt=sscl_exempt,
-                )
+                update_kwargs = {
+                    "name": name,
+                    "color": self.selected_color,
+                    "parent_id": parent_id,
+                    "tax_exempt": tax_exempt,
+                    "sscl_exempt": sscl_exempt,
+                }
+                if hasattr(self, "combo_warranty"):
+                    update_kwargs["default_warranty_policy_id"] = self.combo_warranty.currentData()
+                CategoryService.update(self._editing_id, **update_kwargs)
             else:
-                CategoryService.create(
-                    name=name,
-                    color=self.selected_color,
-                    parent_id=parent_id,
-                    tax_exempt=tax_exempt,
-                    sscl_exempt=sscl_exempt,
-                )
+                create_kwargs = {
+                    "name": name,
+                    "color": self.selected_color,
+                    "parent_id": parent_id,
+                    "tax_exempt": tax_exempt,
+                    "sscl_exempt": sscl_exempt,
+                }
+                if hasattr(self, "combo_warranty"):
+                    create_kwargs["default_warranty_policy_id"] = self.combo_warranty.currentData()
+                CategoryService.create(**create_kwargs)
         except Exception as e:
             QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))
             return
@@ -358,6 +383,8 @@ class CategoryManagerDialog(QDialog):
         self._update_color_preview()
         self.chk_vat_exempt.setChecked(False)
         self.chk_sscl_exempt.setChecked(False)
+        if hasattr(self, "combo_warranty"):
+            self.combo_warranty.setCurrentIndex(0)
         self.btn_save.setText(_t("category_manager.save_new"))
         self.btn_delete.setEnabled(False)
         self.tree.clearSelection()

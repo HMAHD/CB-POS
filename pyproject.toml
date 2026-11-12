@@ -25,6 +25,7 @@ dependencies = [
     "pyzipper>=0.3.6",
     "pywin32>=312 ; sys_platform == 'win32'",
     "uharfbuzz>=0.57.0",
+    "python-dateutil>=2.9.0.post0",
 ]
 
 [dependency-groups]

@@ -77,6 +77,15 @@ Format: `D<n> — <date> — #<issue> — <decision>`. New decisions go at the b
 
 **D27 — 2026-11-12 — #817 — GNU GPLv3 distribution confirmed (confirming D8, superseding closed-source notes).** The owner chose the GPLv3 distribution path on 2026-11-12. Keep PyQt6. CB POS is free and open-source software under the GNU General Public License version 3 (GPLv3). Every binary release provides the complete corresponding source code for that exact version via public tagged repository link (`https://github.com/HMAHD/CB-POS/tree/v{version}`). There is no closed-source freeware EULA and no additional "no resale", "no modification", or other GPL-incompatible restrictions. This supersedes all previous "closed source / not open source" product notes. Final owner and lawyer review remains required before the first public release.
 
+**D28 — 2026-11-12 — #820, #821 — Phase 9 warranty development pulled forward.** The owner explicitly approved starting Phase 9 (Warranty and Repairs) before the public release gate (§1.3) passes, as permitted by the Phase 9 dependency rule in `phase-09-warranty.md`. Warranty development and testing proceed on internal pre-release builds while unresolved legal review gates (#817) and physical hardware verification gates (#819, #911, #731, #878, #877) continue to hold the public release gate.
+
+**D29 — 2026-11-12 — #821, #822 — Warranty Policy Resolution Semantics and Decision Gate for Deactivated Policies.**
+1. In W1 (#821), `WarrantyService.resolve_policy()` returns the explicitly assigned policy (or category default) even if `is_active is False`, ensuring historical truth and auditability are preserved without silent fallback to category or none.
+2. New assignments of deactivated policies to products or categories are rejected at the service and UI layers.
+3. Owner decision gate for W2 (#822): The product/business policy for checkout behavior on existing products carrying an inactive policy must be explicitly resolved prior to implementing #822 (Options: A) Honor inactive policy for existing inventory at checkout; B) Treat inactive policy as no coverage at checkout; C) Warn cashier at checkout and prompt for manager override).
+4. Under D15, security hardening was added to `CategoryService.create()` and `update()` to fail closed if `acting_user_id` is None/unauthenticated whenever a warranty policy assignment is attempted, matching `WarrantyService` and `InventoryService` mutation boundaries.
+
+
 
 
 

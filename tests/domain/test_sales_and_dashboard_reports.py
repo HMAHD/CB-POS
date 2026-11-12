@@ -381,6 +381,7 @@ class TestSalesAndDashboardIssue845:
         ConfigService.set("admin_email", "owner@shop.lk")
         ConfigService.set("auto_report_time", "00:00")
         ConfigService.set("auto_report_last_run", "")
+        ConfigService.set("auto_report_in_progress_since", "")
 
         class MockDateTime(datetime):
             @classmethod

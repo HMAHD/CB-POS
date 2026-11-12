@@ -191,14 +191,14 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #814 | Tax invoice compliance features listed in CHANGELOG are missing (serial forma… | high | 8.2 | done | #1017 | d09688f, 0702157 · research note, 814 design, TaxInvoice / TaxInvoiceLine / TaxCreditNote models & migration, TaxInvoiceService serial generator YYMMM_QQQQ_XXXXX, ReportLab TaxInvoicePDFBuilder ORIGINAL/COPY ONLY, BuyerDetailsDialog, PaymentDialog & HistoryView integration |
 | #816 | Add About dialog and help/report-issue links (CB POS website branding) | low | 8.3 | done | #1018 | 482f4e0, b2f6de6 · AboutDialog, SideMenu Help tile, links.py safe URL opener, QUrl validation, trilingual support, TextViewerDialog, focus chain & Esc close |
 | #817 | Add EULA, privacy notice and third-party licence notices before public release | high | 8.3 | in-progress (ready-for-human) | #1018 | 251a37e, 395e647 · Decision D27 (GPLv3), LICENSE, PRIVACY.md, THIRD_PARTY_NOTICES.txt generator with complete shipped texts, release workflow tag & count check, legal research note; open pending final lawyer/owner review |
-| #818 | Fix documentation drift found in the pre-release audit | medium | 8.4 | done | | Aligned documentation drift across README, CLAUDE.md, TAX.md, PROJECT_OVERVIEW.md, Roadmap.md, CHANGELOG.md, SECURITY.md, PRODUCT.md, CONTEXT.md, create_installer.py, shortcuts dialog, and CBPOS_FACTS.md |
-| #819 | Product labels: English-only names, fake barcode in preview, no label size se… | low | 8.4 | done (ready-for-human: ⚠️ Verify on Windows) | | d5d3e5c · LabelOptions/LabelLayout models, python-barcode real CODE128/EAN13, ProductService.display_name for si/ta/bilingual, missing local name fallback warning, 50x30/40x25/58mm/custom presets & validation, live preview panel; physical print verification pending on Windows hardware |
+| #818 | Fix documentation drift found in the pre-release audit | medium | 8.4 | done | #1020 | Aligned documentation drift across README, CLAUDE.md, TAX.md, PROJECT_OVERVIEW.md, Roadmap.md, CHANGELOG.md, SECURITY.md, PRODUCT.md, CONTEXT.md, create_installer.py, shortcuts dialog, and CBPOS_FACTS.md |
+| #819 | Product labels: English-only names, fake barcode in preview, no label size se… | low | 8.4 | done (ready-for-human: ⚠️ Verify on Windows) | #1020 | d5d3e5c, 8839ead · LabelOptions/LabelLayout models, python-barcode real CODE128/EAN13, ProductService.display_name for si/ta/bilingual, missing local name fallback warning, 50x30/40x25/58mm/custom presets & validation, live preview panel; physical print verification pending on Windows hardware |
 
 ### Phase 9 — [spec](phases/phase-09-warranty.md)
 
 | # | Title | Sev | Batch | Status | PR | Notes |
 |---|---|---|---|---|---|---|
-| #821 | Warranty W1: Warranty policies and assignment to products and categories | — | 9.1 | todo | | |
+| #821 | Warranty W1: Warranty policies and assignment to products and categories | — | 9.1 | pr-open | | Decision D28; WarrantyPolicy model, migration, WarrantyService, product/category assignment, feature gating, UI dialogs & views |
 | #822 | Warranty W2: Register a warranty per sold unit and cascade on void or refund | — | 9.2 | todo | | |
 | #823 | Warranty W3: Optional serial/IMEI capture at checkout | — | 9.3 | todo | | |
 | #824 | Warranty W4: Print the warranty on the receipt, the A4 invoice and a standalo… | — | 9.3 | todo | | |
@@ -310,19 +310,8 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #819 | Physical print of product labels on 50x30 mm, 40x25 mm, 58 mm receipt paper with Sinhala/Tamil text and real barcode scanning | pending |
 
 ## Handoff
-Batch 8.4 implementation complete on branch `docs/p8-b4-docs-labels-truth`:
-- **#819**: Unified label options/layout models, real python-barcode preview & printing, localized product names via `display_name`, fallback warnings, text rasterization off UI thread, size presets & validation, UI gate screenshots captured. Pushed as `d5d3e5c`. Ready-for-human: physical printing check pending on Windows hardware.
-- **#818**: Documentation drift audit complete and aligned across all docs and code surfaces:
-  - Startup flow, PyInstaller one-dir path, Payment Methods/Admin Tools locations, pyusb scoping, and GPLv3 license updated in `CLAUDE.md`.
-  - SSCL VAT-exclusive turnover basis and Rs 100 gross reconciliation (VAT 15.25, SSCL 1.06, Net 83.69) updated across `CLAUDE.md`, `TAX.md`, and `PROJECT_OVERVIEW.md`.
-  - Offline-first phrasing, update-check disclosure, restart-on-language-change, and GPLv3 corresponding source links updated in `README.md` and `public-releases-readme.md`.
-  - `SECURITY.md` supported versions set to 1.3.x.
-  - `create_installer.py` executable output path updated to `dist/cbpos/cbpos.exe`.
-  - `docs/Roadmap.md` updated with `show_tax_breakdown` completion and per-bill tax calculation truth.
-  - `CHANGELOG.md` updated with PyQt6 6.11.0 compatibility, 1.3.0 pre-release designation, and Phase 8 remediation entries under Unreleased.
-  - `PRODUCT.md` updated with GPLv3 open source licensing and SSCL rules.
-  - `CONTEXT.md` updated with Payment kind, Refund state, Tax invoice, Schema owner, and Till identity.
-  - `CBPOS_FACTS.md` created as audited pre-release truth matrix.
-  - Shortcuts help dialog updated with Ctrl+Z and Ctrl+Alt+C with translations in en/si/ta.
-- Phase 8.4 PR ready for opening and merge review.
+Batch 8.4 merged in PR #1020 (9215d115e4787a2d4808383f2dc5a7ce6b825be6).
+Phase 9 Batch 9.1 started on branch `feat/p9-b1-warranty-policies` (Decision D28):
+- Working on #821 (Warranty policies and assignment to products and categories).
+- #817 and #819 release gates remain active blockers for public distribution.
 

@@ -365,9 +365,15 @@ class Category(Base):
     parent_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id"), nullable=True)
     tax_exempt: Mapped[bool] = mapped_column(Boolean, default=False)
     sscl_exempt: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    default_warranty_policy_id: Mapped[int | None] = mapped_column(
+        ForeignKey("warranty_policies.id"), nullable=True, index=True
+    )
     last_modified: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, index=True)
 
     products: Mapped[list["Product"]] = relationship(back_populates="category")
+    default_warranty_policy: Mapped[Optional["WarrantyPolicy"]] = relationship(
+        "WarrantyPolicy", foreign_keys=[default_warranty_policy_id]
+    )
     parent: Mapped["Category"] = relationship("Category", remote_side=[id], back_populates="subcategories")
     subcategories: Mapped[list["Category"]] = relationship("Category", back_populates="parent")
 
@@ -402,12 +408,20 @@ class Product(Base):
     parent_id: Mapped[int | None] = mapped_column(ForeignKey("products.id"), nullable=True)
     default_supplier_id: Mapped[int | None] = mapped_column(ForeignKey("suppliers.id"), nullable=True)
     unit_id: Mapped[int | None] = mapped_column(ForeignKey("units.id"), nullable=True)
+    warranty_policy_id: Mapped[int | None] = mapped_column(
+        ForeignKey("warranty_policies.id"), nullable=True, index=True
+    )
+    warranty_override: Mapped[str] = mapped_column(String(10), default="INHERIT", server_default="INHERIT")
+    serial_mode: Mapped[str] = mapped_column(String(10), default="OFF", server_default="OFF")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     version_id: Mapped[int] = mapped_column(Integer, default=1, nullable=False)  # Optimistic Locking
     last_modified: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, index=True)
 
     category: Mapped["Category"] = relationship(back_populates="products", lazy="joined")
     unit: Mapped[Optional["Unit"]] = relationship(back_populates="products", lazy="joined")
+    warranty_policy: Mapped[Optional["WarrantyPolicy"]] = relationship(
+        "WarrantyPolicy", foreign_keys=[warranty_policy_id]
+    )
     parent: Mapped["Product"] = relationship("Product", remote_side=[id], back_populates="variants")
     variants: Mapped[list["Product"]] = relationship("Product", back_populates="parent")
     components: Mapped[list["CompositeItem"]] = relationship(
@@ -1046,6 +1060,7 @@ from cbpos.core.models.tax_invoice import (  # noqa: E402, F401
     TaxInvoiceLine,
     TaxInvoiceSequence,
 )
+from cbpos.core.models.warranty import WarrantyPolicy  # noqa: E402
 
 # Registers the session hook that re-sends a till row to the Main PC when it
 # changes after its first push (#677). Imported here so it is active wherever

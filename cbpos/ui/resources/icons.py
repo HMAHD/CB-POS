@@ -38,6 +38,7 @@ class Icons:
     STAR_FILLED = "fa5s.star"
     STAR_OUTLINE = "fa5.star"
     REORDER = "fa5s.dolly"
+    WARRANTY = "fa5s.shield-alt"
 
     # Actions
     ADD = "fa5s.plus"

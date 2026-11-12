@@ -49,6 +49,7 @@ from cbpos.core.models import (  # noqa: E402
     Unit,
     User,
     VoidReason,
+    WarrantyPolicy,
 )
 from cbpos.core.services.database_setup_service import DatabaseSetupService  # noqa: E402
 
@@ -102,6 +103,7 @@ def seed_data():
             "Cash",
             "Loyalty",
             "Screens",
+            "Warranty",
         ]
         for grp in manager_groups:
             for code in groups.get(grp, []):
@@ -114,6 +116,7 @@ def seed_data():
         cashier_role.permissions.append(perm_map[Permissions.CREDIT_RECEIVE_PAYMENT])
         cashier_role.permissions.append(perm_map[Permissions.CASH_OPEN_DRAWER])
         cashier_role.permissions.append(perm_map[Permissions.SALES_REPRINT])
+        cashier_role.permissions.append(perm_map[Permissions.WARRANTY_VIEW])
 
         session.add_all([admin_role, manager_role, cashier_role])
         session.flush()
@@ -178,6 +181,89 @@ def seed_data():
         unit_map = {u.name: u for u in units}
 
         # =============================================================
+        # 6B. WARRANTY POLICIES (#821)
+        # =============================================================
+        print("Seeding Warranty Policies...")
+        pol_7d = WarrantyPolicy(
+            name="7 days shop replacement",
+            name_si="දින 7ක කඩේ ආදේශනය",
+            name_ta="7 நாட்கள் கடை மாற்று உத்தரவாதம்",
+            warranty_type="SHOP",
+            duration=7,
+            duration_unit="DAYS",
+            remedy="REPLACE_ONLY",
+            provider_name=None,
+            terms_text="Item must be returned with complete original packaging, accessories and proof of purchase within 7 days. Physical damage or liquid ingress voids coverage.",
+            terms_text_si="මුල් ඇසුරුම, අමතර කොටස් සහ මිලදී ගැනීමේ සාක්ෂි සහිතව දින 7ක් ඇතුළත භාණ්ඩය ආපසු ලබා දිය යුතුය. භෞතික හානි හෝ දියර කාන්දු වීම් ආවරණය නොවේ.",
+            terms_text_ta="பொருள் 7 நாட்களுக்குள் முழுமையான அசல் பேக்கேஜிங், பாகங்கள் மற்றும் கொள்முதல் சான்றுடன் திரும்பப் பெறப்பட வேண்டும். உடல் சேதம் அல்லது திரவ உட்செலுத்துதல் உத்தரவாதத்தை ரத்து செய்கிறது.",
+            exclusions_text="Physical damage, liquid damage, customer misuse, unauthorized repair attempts.",
+            exclusions_text_si="භෞතික හානි, දියර කාන්දු වීම, පාරිභෝගික අනිසි භාවිතය, අනවසර අලුත්වැඩියා උත්සාහයන්.",
+            exclusions_text_ta="உடல் சேதம், திரவ சேதம், வாடிக்கையாளர் தவறான பயன்பாடு, அங்கீகரிக்கப்படாத பழுது முயற்சிகள்.",
+            supplier_cover_months=0,
+            is_active=True,
+            is_template=False,
+        )
+        pol_6m = WarrantyPolicy(
+            name="6 months shop warranty",
+            name_si="මාස 6ක කඩේ වගකීම",
+            name_ta="6 மாத கடை உத்தரவாதம்",
+            warranty_type="SHOP",
+            duration=6,
+            duration_unit="MONTHS",
+            remedy="REPAIR_OR_REPLACE",
+            provider_name=None,
+            terms_text="Free repair service provided for manufacturing defects within 6 months. Replacement provided if repair is not feasible within 14 working days.",
+            terms_text_si="මාස 6ක් ඇතුළත නිෂ්පාදන දෝෂ සඳහා නොමිලේ අලුත්වැඩියා සේවාව සැපයේ. වැඩ කරන දින 14ක් ඇතුළත අලුත්වැඩියා කළ නොහැකි නම් ආදේශනයක් ලබා දේ.",
+            terms_text_ta="6 மாதங்களுக்குள் உற்பத்தி குறைபாடுகளுக்கு இலவச பழுதுபார்க்கும் சேவை வழங்கப்படும். 14 வேலை நாட்களுக்குள் பழுதுபார்க்க முடியாவிட்டால் மாற்று வழங்கப்படும்.",
+            exclusions_text="Normal wear and tear, cosmetic damage, accidental drops, power surges, pest infestation.",
+            exclusions_text_si="සාමාන්‍ය ගෙවීම් සහ කැඩීම්, මතුපිට හානි, අහඹු වැටීම්, විදුලි සැර වැඩිවීම්, පළිබෝධ හානි.",
+            exclusions_text_ta="இயல்பான தேய்மானம், ஒப்பனை சேதம், தற்செயலான வீழ்ச்சி, மின் ஏற்ற இறக்கங்கள், பூச்சி தொல்லை.",
+            supplier_cover_months=6,
+            is_active=True,
+            is_template=False,
+        )
+        pol_1y_shop = WarrantyPolicy(
+            name="1 year shop warranty",
+            name_si="වසර 1ක කඩේ වගකීම",
+            name_ta="1 வருட கடை உத்தரவாதம்",
+            warranty_type="SHOP",
+            duration=1,
+            duration_unit="YEARS",
+            remedy="REPAIR_OR_REPLACE",
+            provider_name=None,
+            terms_text="Comprehensive 1-year shop warranty covering parts and labor for manufacturing defects. Free repair or like-for-like replacement at shop discretion.",
+            terms_text_si="නිෂ්පාදන දෝෂ සඳහා කොටස් සහ ශ්‍රමය ආවරණය වන සම්පූර්ණ වසර 1ක කඩේ වගකීම. කඩයේ තීරණය මත නොමිලේ අලුත්වැඩියාව හෝ සමාන ආදේශනයක්.",
+            terms_text_ta="உற்பத்தி குறைபாடுகளுக்கான உதிரிபாகங்கள் மற்றும் உழைப்பை உள்ளடக்கிய விரிவான 1 வருட கடை உத்தரவாதம். கடையின் விருப்பப்படி இலவச பழுதுபார்ப்பு அல்லது சமமான மாற்று.",
+            exclusions_text="Unauthorized modification, root/jailbreak, burnt components from lightning/surge, water damage.",
+            exclusions_text_si="අනවසර වෙනස්කම් කිරීම්, රූට්/ජේල්බ්‍රේක්, අකුණු/විදුලි සැරෙන් දැවී ගිය කොටස්, ජල හානි.",
+            exclusions_text_ta="அங்கீகரிக்கப்படாத மாற்றம், ரூட்/ஜெயில்பிரேக், மின்னல்/மின் ஏற்றத்தால் எரிந்த பாகங்கள், நீர் சேதம்.",
+            supplier_cover_months=12,
+            is_active=True,
+            is_template=False,
+        )
+        pol_1y_mfg = WarrantyPolicy(
+            name="1 year manufacturer warranty",
+            name_si="වසර 1ක නිෂ්පාදක වගකීම",
+            name_ta="1 வருட உற்பத்தியாளர் உத்தரவாதம்",
+            warranty_type="MANUFACTURER",
+            duration=1,
+            duration_unit="YEARS",
+            remedy="REPAIR_OR_REPLACE",
+            provider_name="Authorized Service Center",
+            terms_text="Claims must be routed to the manufacturer authorized service center with original invoice. Shop acts as forwarding agent where requested.",
+            terms_text_si="හිමිකම් පෑම් මුල් ඉන්වොයිසිය සමඟ නිෂ්පාදකයාගේ බලයලත් සේවා මධ්‍යස්ථානය වෙත යොමු කළ යුතුය. ඉල්ලීමක් ඇති විට කඩය යොමු කිරීමේ නියෝජිතයෙකු ලෙස ක්‍රියා කරයි.",
+            terms_text_ta="அசல் இன்வாய்ஸுடன் உற்பத்தியாளர் அங்கீகரிக்கப்பட்ட சேவை மையத்திற்கு கோரிக்கைகள் அனுப்பப்பட வேண்டும். கோரப்பட்டால் கடை முன்னனுப்புதல் முகவராக செயல்படும்.",
+            exclusions_text="Manufacturer exclusions apply. Void if serial label removed, defaced or altered.",
+            exclusions_text_si="නිෂ්පාදකයාගේ බැහැර කිරීම් අදාළ වේ. අනුක්‍රමික අංක ලේබලය ඉවත් කර, විකෘති කර හෝ වෙනස් කර ඇත්නම් අවලංගු වේ.",
+            exclusions_text_ta="உற்பத்தியாளர் விலக்குகள் பொருந்தும். வரிசை எண் லேபிள் அகற்றப்பட்டால், அழிக்கப்பட்டால் அல்லது மாற்றப்பட்டால் செல்லாது.",
+            supplier_cover_months=12,
+            is_active=True,
+            is_template=False,
+        )
+        session.add_all([pol_7d, pol_6m, pol_1y_shop, pol_1y_mfg])
+        session.flush()
+
+        # =============================================================
         # 7. CATEGORIES (hierarchical — parent + sub-categories)
         # =============================================================
         print("Seeding Categories...")
@@ -191,7 +277,7 @@ def seed_data():
         cat_pharmacy = Category(name="Pharmacy", color="#F44336", tax_exempt=True)
         cat_produce = Category(name="Fresh Produce", color="#39FF14")
         cat_stationery = Category(name="Stationery", color="#607D8B")
-        cat_electronics = Category(name="Electronics", color="#2196F3")
+        cat_electronics = Category(name="Electronics", color="#2196F3", default_warranty_policy_id=pol_1y_shop.id)
 
         session.add_all(
             [
@@ -1333,6 +1419,7 @@ def seed_data():
                 "preferred": 100,
                 "cat": cat_electronics,
                 "unit": "Pack",
+                "warranty_override": "NONE",
             },
             {
                 "barcode": "4796022000021",
@@ -1387,6 +1474,9 @@ def seed_data():
                 preferred_qty=Decimal(str(pd.get("preferred", 0))),
                 category=pd.get("cat"),
                 unit=unit_map.get(pd.get("unit")) if pd.get("unit") else None,
+                warranty_override=pd.get("warranty_override", "INHERIT"),
+                warranty_policy_id=pd.get("warranty_policy_id"),
+                serial_mode=pd.get("serial_mode", "OFF"),
             )
             # Link to supplier
             sup_name = pd.get("supplier")

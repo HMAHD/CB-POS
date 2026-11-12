@@ -8,9 +8,10 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
+from cbpos.core.constants.audit import WARRANTY_EVENT
 from cbpos.core.constants.permissions import Permissions
 from cbpos.core.database import Database
-from cbpos.core.models import AuditLog, Category, Role, User
+from cbpos.core.models import AuditLog, Category, Role, User, WarrantyPolicy
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.permission_service import PermissionService
 from cbpos.core.utils.terminal_guard import require_catalog_writable
@@ -44,6 +45,22 @@ def _require_admin_settings(session, acting_user_id: int | None) -> int:
     user = session.get(User, effective_actor_id, options=[joinedload(User.role).joinedload(Role.permissions)])
     if not user or not PermissionService.user_has_permission(user, Permissions.ADMIN_SETTINGS):
         raise PermissionError("Permission denied: admin.settings required")
+    return effective_actor_id
+
+
+def _require_warranty_edit(session, acting_user_id: int | None) -> int:
+    effective_actor_id = acting_user_id
+    if effective_actor_id is None:
+        curr = AuthService.get_current_user()
+        if curr:
+            effective_actor_id = curr.id
+
+    if effective_actor_id is None:
+        raise PermissionError("Permission denied: warranty.edit required")
+
+    user = session.get(User, effective_actor_id, options=[joinedload(User.role).joinedload(Role.permissions)])
+    if not user or not PermissionService.user_has_permission(user, Permissions.WARRANTY_EDIT):
+        raise PermissionError("Permission denied: warranty.edit required")
     return effective_actor_id
 
 
@@ -292,6 +309,7 @@ class CategoryService:
         sscl_exempt: bool | None = None,
         vat_exempt: bool | None = None,
         acting_user_id: int | None = None,
+        default_warranty_policy_id: int | None = None,
     ) -> Category:
         """Create a new category.
 
@@ -334,15 +352,35 @@ class CategoryService:
                     AuthService.get_current_user().id if AuthService.get_current_user() else None
                 )
 
+            warr_actor_id = None
+            if default_warranty_policy_id is not None:
+                warr_actor_id = _require_warranty_edit(session, acting_user_id)
+                pol = session.get(WarrantyPolicy, default_warranty_policy_id)
+                if not pol:
+                    raise ValueError(f"Warranty policy {default_warranty_policy_id} not found")
+                if not pol.is_active:
+                    raise ValueError("Cannot assign inactive warranty policy")
+
             category = Category(
                 name=name,
                 parent_id=parent_id,
                 color=color or "#FFFFFF",
                 tax_exempt=bool(effective_vat_exempt),
                 sscl_exempt=bool(sscl_exempt),
+                default_warranty_policy_id=default_warranty_policy_id,
             )
             session.add(category)
             session.flush()
+
+            if default_warranty_policy_id is not None:
+                w_audit = AuditLog(
+                    user_id=warr_actor_id,
+                    action="CATEGORY_DEFAULT_WARRANTY",
+                    event_type=WARRANTY_EVENT,
+                    details=json.dumps({"category_id": category.id, "policy_id": default_warranty_policy_id}),
+                )
+                session.add(w_audit)
+                session.flush()
 
             if effective_vat_exempt or sscl_exempt:
                 audit = AuditLog(
@@ -374,6 +412,7 @@ class CategoryService:
         sscl_exempt: bool | None = None,
         vat_exempt: bool | None = None,
         acting_user_id: int | None = None,
+        default_warranty_policy_id: object = ...,
     ) -> Category:
         """Update an existing category.
 
@@ -425,6 +464,26 @@ class CategoryService:
                     if has_children:
                         raise ValueError("category_too_deep")
                 category.parent_id = parent_id
+
+            if (
+                default_warranty_policy_id is not ...
+                and default_warranty_policy_id != category.default_warranty_policy_id
+            ):
+                warr_actor_id = _require_warranty_edit(session, acting_user_id)
+                if default_warranty_policy_id is not None:
+                    pol = session.get(WarrantyPolicy, default_warranty_policy_id)
+                    if not pol:
+                        raise ValueError(f"Warranty policy {default_warranty_policy_id} not found")
+                    if not pol.is_active:
+                        raise ValueError("Cannot assign inactive warranty policy")
+                category.default_warranty_policy_id = default_warranty_policy_id
+                w_audit = AuditLog(
+                    user_id=warr_actor_id,
+                    action="CATEGORY_DEFAULT_WARRANTY",
+                    event_type=WARRANTY_EVENT,
+                    details=json.dumps({"category_id": category.id, "policy_id": default_warranty_policy_id}),
+                )
+                session.add(w_audit)
 
             effective_vat_exempt = vat_exempt if vat_exempt is not None else tax_exempt
             vat_changed = effective_vat_exempt is not None and effective_vat_exempt != category.tax_exempt

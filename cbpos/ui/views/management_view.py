@@ -100,6 +100,8 @@ class ManagementView(QWidget):
         self.btn_promotions = self.sidebar.add_nav_button("", Icons.PROMOTION, 8)
         self.btn_stock_take = self.sidebar.add_nav_button("", Icons.STOCK_TAKE, 9)
         self.btn_reorder = self.sidebar.add_nav_button("", Icons.REORDER, 10)
+        self.btn_warranty = self.sidebar.add_nav_button("", Icons.WARRANTY, 11)
+        self.btn_warranty.setObjectName("warranty")
 
         self.sidebar.finalize()
         main_layout.addWidget(self.sidebar)
@@ -117,6 +119,7 @@ class ManagementView(QWidget):
             "promotions": self.btn_promotions,
             "stock_take": self.btn_stock_take,
             "reorder": self.btn_reorder,
+            "warranty": self.btn_warranty,
         }
 
         # Tab index -> i18n title key for header breadcrumb
@@ -132,6 +135,7 @@ class ManagementView(QWidget):
             8: "management.sidebar_promotions",
             9: "management.sidebar_stock_take",
             10: "management.sidebar_reorder",
+            11: "management.sidebar_warranty",
         }
 
         # --- Content Area ---
@@ -198,6 +202,7 @@ class ManagementView(QWidget):
             8: "promotion_view",
             9: "stock_take_view",
             10: "reorder_view",
+            11: "warranty_view",
         }
 
     def retranslate_ui(self) -> None:
@@ -219,6 +224,7 @@ class ManagementView(QWidget):
         self.btn_promotions.setText(_t("management.sidebar_promotions"))
         self.btn_stock_take.setText(_t("management.sidebar_stock_take"))
         self.btn_reorder.setText(_t("management.sidebar_reorder"))
+        self.btn_warranty.setText(_t("management.sidebar_warranty"))
 
         # Header actions & title (#537)
         self._update_header_title()
@@ -293,6 +299,10 @@ class ManagementView(QWidget):
             view = ReorderView()
             view.navigate_to_purchase.connect(self._handle_reorder_navigation)
             return view
+        if index == 11:
+            from cbpos.ui.views.warranty_policies_view import WarrantyPoliciesView
+
+            return WarrantyPoliciesView()
         raise ValueError(f"No view factory for nav index {index}")
 
     def _handle_reorder_navigation(self, items: list, purchase_order_id: int) -> None:

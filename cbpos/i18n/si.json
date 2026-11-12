@@ -584,7 +584,16 @@
     "age_restricted": "වයස් සීමා අයිතමය",
     "age_restricted_hint": "ගෙවීමේදී කැෂියර් වයස තහවුරු කළ යුතුයි (උදා: මත්පැන්, දුම්කොළ)",
     "stock_qty": "තොග ප්‍රමාණය:",
-    "weighted_hint": "බර අනුව විකුණන අයිතම කිලෝ, ග්‍රෑම් වගේ ඒකකවලින් විකුණනවා."
+    "weighted_hint": "බර අනුව විකුණන අයිතම කිලෝ, ග්‍රෑම් වගේ ඒකකවලින් විකුණනවා.",
+    "tab_warranty": "වගකීම",
+    "warranty_mode": "වගකීම් ආවරණය:",
+    "warranty_inherit": "කාණ්ඩයේ පෙරනිමිය",
+    "warranty_none": "වගකීමක් නැත",
+    "warranty_policy": "විශේෂිත ප්‍රතිපත්තියක්",
+    "warranty_select_policy": "-- වගකීම් ප්‍රතිපත්තිය තෝරන්න --",
+    "warranty_preview_none": "මෙම භාණ්ඩය සඳහා වගකීම් ආවරණයක් නොමැත.",
+    "warranty_preview_covered": "අද විකිණීම ({sale_date}) {end_date} දක්වා ආවරණය වේ ({policy_name})",
+    "warranty_weighted_hint": "බර අනුව විකුණන භාණ්ඩ සඳහා වගකීම් ආවරණයක් ලබා දිය නොහැක."
   },
   "csv_import": {
     "title": "CSV ආයාතය",
@@ -819,7 +828,8 @@
     "sidebar_logout": "ලොග් අවුට්",
     "sidebar_collapse": "පැති තීරුව හකුලන්න",
     "sidebar_expand": "පැති තීරුව දිගහරින්න",
-    "logo_fallback": "CB POS"
+    "logo_fallback": "CB POS",
+    "sidebar_warranty": "වගකීම් සහ අලුත්වැඩියා"
   },
   "dashboard": {
     "total_sales": "මුළු විකුණුම්",
@@ -2001,7 +2011,9 @@
       "choose_backup_folder": "බැකප් ෆෝල්ඩරය තෝරන්න",
       "suffix_min": " මිනි",
       "suffix_sec": " තත්",
-      "suffix_backups": " උපස්ථ"
+      "suffix_backups": " උපස්ථ",
+      "warranty_enabled": "වගකීම් සහ අලුත්වැඩියා කළමනාකරණය සක්‍රිය කරන්න",
+      "tooltip_warranty_enabled": "වගකීම්, ප්‍රතිපත්ති, ආවරණ දින සහ අලුත්වැඩියා කටයුතු නිරීක්ෂණය කරන්න"
     },
     "network": {
       "title": "නෙට්වර්ක්",
@@ -2262,7 +2274,9 @@
     "none": "කිසිවක් නැහැ (ඉහළම මට්ටම)",
     "pick_color": "වර්ණයක් තෝරන්න",
     "select_color": "කාණ්ඩයේ වර්ණය තෝරන්න",
-    "name_required": "කාණ්ඩ නම අවශ්‍යයි"
+    "name_required": "කාණ්ඩ නම අවශ්‍යයි",
+    "default_warranty": "පෙරනිමි වගකීම:",
+    "warranty_none": "නැත (පෙරනිමි වගකීමක් නැත)"
   },
   "category_manager": {
     "title": "කාණ්ඩ කළමනාකරණය",
@@ -2287,7 +2301,9 @@
     "confirm_delete_title": "මකන්න ද?",
     "confirm_delete_msg": "'{name}' කාණ්ඩය මකන්න ද?",
     "confirm_delete_sub": "අයිතම {count}ක් කාණ්ඩයෙන් අයින් වෙනවා.",
-    "cannot_delete_title": "මකන්න බැහැ"
+    "cannot_delete_title": "මකන්න බැහැ",
+    "default_warranty": "පෙරනිමි වගකීම:",
+    "warranty_none": "නැත (පෙරනිමි වගකීමක් නැත)"
   },
   "role_manager": {
     "title": "භූමිකා කළමනාකරණය",
@@ -2526,7 +2542,8 @@
       "admin": "පරිපාලනය",
       "other": "වෙනත්",
       "screens": "තිර",
-      "loyalty": "ලොයල්ටි"
+      "loyalty": "ලොයල්ටි",
+      "warranty": "වගකීම්"
     },
     "code": {
       "sales.view": "විකුණුම් තිරය පාවිච්චි කිරීම",
@@ -2574,7 +2591,10 @@
       "loyalty.adjust_points": "පාරිභෝගික ලොයල්ටි ලකුණු වෙනස් කිරීම",
       "pricing.manage": "මිල ලැයිස්තු කළමනාකරණය",
       "promotions.manage": "ප්‍රවර්ධන කළමනාකරණය",
-      "suppliers.manage": "සැපයුම්කරුවන් කළමනාකරණය"
+      "suppliers.manage": "සැපයුම්කරුවන් කළමනාකරණය",
+      "warranty.view": "වගකීම් ප්‍රතිපත්ති සහ ආවරණය බැලීම",
+      "warranty.edit": "භාණ්ඩ සහ කාණ්ඩ සඳහා වගකීම් නියම කිරීම",
+      "warranty.manage_policies": "වගකීම් ප්‍රතිපත්ති සෑදීම, සංස්කරණය සහ අක්‍රිය කිරීම"
     }
   },
   "roles": {
@@ -3477,7 +3497,71 @@
     "ineligible_sale": "මෙම විකුණුම සඳහා බදු ඉන්වොයිසියක් නිකුත් කළ නොහැක.",
     "invalid_user_id": "බදු ඉන්වොයිසියක් නිකුත් කිරීමට වලංගු පරිශීලකයෙකු අවශ්‍ය වේ.",
     "cannot_void_tax_invoice_sale": "බදු ඉන්වොයිසියක් නිකුත් කර ඇති විකුණුමක් අවලංගු කළ නොහැක. ආපසු භාරගැනීමක් හරහා ණය සටහනක් (Credit Note) නිකුත් කරන්න."
+  },
+  "warranty": {
+    "policies": "වගකීම් ප්‍රතිපත්ති",
+    "new_policy": "නව ප්‍රතිපත්තියක්",
+    "edit_policy": "ප්‍රතිපත්තිය සංස්කරණය",
+    "deactivate": "අක්‍රිය කරන්න",
+    "activate": "සක්‍රිය කරන්න",
+    "active": "සක්‍රියයි",
+    "inactive": "අක්‍රියයි",
+    "empty_title": "වගකීම් ප්‍රතිපත්ති නොමැත",
+    "empty_desc": "භාණ්ඩ සහ කාණ්ඩ සඳහා වගකීම් ලබා දීමට ප්‍රතිපත්ති සාදන්න.",
+    "deactivate_confirm_title": "වගකීම් ප්‍රතිපත්තිය අක්‍රිය කරන්න",
+    "deactivate_confirm_msg": "මෙම වගකීම් ප්‍රතිපත්තිය අක්‍රිය කිරීමට ඔබට විශ්වාසද? නව භාණ්ඩ සඳහා මෙය පැවරිය නොහැක.",
+    "load_error_banner": "වගකීම් ප්‍රතිපත්ති පූරණය කිරීමට නොහැකි විය. කරුණාකර නැවත උත්සාහ කරන්න.",
+    "col_name": "ප්‍රතිපත්ති නම",
+    "col_type": "වර්ගය",
+    "col_duration": "කාලය",
+    "col_remedy": "ප්‍රතිකාරය",
+    "col_provider": "සපයන්නා",
+    "col_status": "තත්වය",
+    "types": {
+      "shop": "කඩේ වගකීම",
+      "manufacturer": "නිෂ්පාදක වගකීම",
+      "extended": "දීර්ඝ කළ වගකීම"
+    },
+    "units": {
+      "days": "දින",
+      "months": "මාස",
+      "years": "වසර"
+    },
+    "remedies": {
+      "repair_or_replace": "අලුත්වැඩියාව හෝ ආදේශනය",
+      "repair_only": "අලුත්වැඩියාව පමණි",
+      "replace_only": "ආදේශනය පමණි",
+      "refund": "මුදල් ආපසු ගෙවීම"
+    },
+    "policy": {
+      "title_add": "නව වගකීම් ප්‍රතිපත්තිය",
+      "title_edit": "වගකීම් ප්‍රතිපත්තිය සංස්කරණය",
+      "tab_basic": "මූලික විස්තර",
+      "tab_terms": "කොන්දේසි සහ බැහැර කිරීම්",
+      "name_en": "නම (ඉංග්‍රීසි)*:",
+      "name_si": "නම (සිංහල):",
+      "name_ta": "නම (දෙමළ):",
+      "name_en_placeholder": "ඉංග්‍රීසි නම (අනිවාර්යයි)",
+      "name_si_placeholder": "සිංහල නම (අවශ්‍ය නම්)",
+      "name_ta_placeholder": "දෙමළ නම (අවශ්‍ය නම්)",
+      "type": "වගකීම් වර්ගය*:",
+      "duration": "කාලය*:",
+      "unit": "කාල ඒකකය*:",
+      "remedy": "ප්‍රතිකාරය*:",
+      "provider": "සපයන්නාගේ නම:",
+      "provider_placeholder": "කඩය සපයන්නේ නම් හිස්ව තබන්න",
+      "supplier_cover": "සැපයුම්කරුගේ ආවරණය (මාස):",
+      "terms_en": "කොන්දේසි (ඉංග්‍රීසි):",
+      "terms_si": "කොන්දේසි (සිංහල):",
+      "terms_ta": "කොන්දේසි (දෙමළ):",
+      "exclusions_en": "බැහැර කිරීම් (ඉංග්‍රීසි):",
+      "exclusions_si": "බැහැර කිරීම් (සිංහල):",
+      "exclusions_ta": "බැහැර කිරීම් (දෙමළ):",
+      "active": "සක්‍රියයි",
+      "name_required": "ඉංග්‍රීසි නම ඇතුළත් කළ යුතුය.",
+      "duration_required": "කාලය බිංදුවට වඩා වැඩි විය යුතුය.",
+      "terms_translation_requires_en": "පරිවර්තන ඇති විට ඉංග්‍රීසි කොන්දේසි ලබා දිය යුතුය.",
+      "exclusions_translation_requires_en": "පරිවර්තන ඇති විට ඉංග්‍රීසි බැහැර කිරීම් ලබා දිය යුතුය."
+    }
   }
 }
-
-

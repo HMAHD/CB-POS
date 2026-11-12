@@ -22,6 +22,7 @@ from cbpos.core.models import (
     Unit,
     User,
     VoidReason,
+    WarrantyPolicy,
 )
 from cbpos.core.services.auth_service import AuthService
 
@@ -212,6 +213,7 @@ class DatabaseSetupService:
                 "Stock Take",
                 "Cash",
                 "Screens",
+                "Warranty",
             ]
             for grp in manager_groups:
                 for code in groups.get(grp, []):
@@ -224,6 +226,7 @@ class DatabaseSetupService:
             cashier_role.permissions.append(perm_map[Permissions.CREDIT_RECEIVE_PAYMENT])
             cashier_role.permissions.append(perm_map[Permissions.CASH_OPEN_DRAWER])
             cashier_role.permissions.append(perm_map[Permissions.SALES_REPRINT])
+            cashier_role.permissions.append(perm_map[Permissions.WARRANTY_VIEW])
 
             session.add_all([admin_role, manager_role, cashier_role])
             session.flush()
@@ -268,6 +271,65 @@ class DatabaseSetupService:
                 Unit(name="Dozen", abbreviation="dz", decimal_places=0),
             ]
             session.add_all(units)
+
+            # 7. Default inactive warranty templates (#821)
+            # Terms and exclusions are left None (Root Fix H / NEW-1) so merchants supply
+            # their own terms rather than seeding unverified legal commitments.
+            templates = [
+                WarrantyPolicy(
+                    name="7 days shop replacement",
+                    name_si="දින 7ක කඩේ ආදේශනය",
+                    name_ta="7 நாட்கள் கடை மாற்று உத்தரவாதம்",
+                    warranty_type="SHOP",
+                    duration=7,
+                    duration_unit="DAYS",
+                    remedy="REPLACE_ONLY",
+                    provider_name=None,
+                    supplier_cover_months=0,
+                    is_active=False,
+                    is_template=True,
+                ),
+                WarrantyPolicy(
+                    name="6 months shop warranty",
+                    name_si="මාස 6ක කඩේ වගකීම",
+                    name_ta="6 மாத கடை உத்தரவாதம்",
+                    warranty_type="SHOP",
+                    duration=6,
+                    duration_unit="MONTHS",
+                    remedy="REPAIR_OR_REPLACE",
+                    provider_name=None,
+                    supplier_cover_months=6,
+                    is_active=False,
+                    is_template=True,
+                ),
+                WarrantyPolicy(
+                    name="1 year shop warranty",
+                    name_si="වසර 1ක කඩේ වගකීම",
+                    name_ta="1 வருட கடை உத்தரவாதம்",
+                    warranty_type="SHOP",
+                    duration=1,
+                    duration_unit="YEARS",
+                    remedy="REPAIR_OR_REPLACE",
+                    provider_name=None,
+                    supplier_cover_months=12,
+                    is_active=False,
+                    is_template=True,
+                ),
+                WarrantyPolicy(
+                    name="1 year manufacturer warranty",
+                    name_si="වසර 1ක නිෂ්පාදක වගකීම",
+                    name_ta="1 வருட உற்பத்தியாளர் உத்தரவாதம்",
+                    warranty_type="MANUFACTURER",
+                    duration=1,
+                    duration_unit="YEARS",
+                    remedy="REPAIR_OR_REPLACE",
+                    provider_name="Authorized Service Center",
+                    supplier_cover_months=12,
+                    is_active=False,
+                    is_template=True,
+                ),
+            ]
+            session.add_all(templates)
 
         # Stamp the alembic version so future migrations apply correctly
         cls.stamp_alembic_head()

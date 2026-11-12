@@ -75,6 +75,15 @@ class CategoryDialog(QDialog):
         form.addRow(_t("category_dialog.parent_category"), self.parent_combo)
         form.addRow(_t("category_dialog.color"), color_layout)
 
+        from cbpos.core.services.warranty_service import WarrantyService
+
+        if WarrantyService.is_enabled():
+            self.warranty_combo = QComboBox()
+            self.warranty_combo.addItem(_t("category_dialog.warranty_none"), None)
+            for pol in WarrantyService.list_policies(include_inactive=False):
+                self.warranty_combo.addItem(pol.get_display_name(), pol.id)
+            form.addRow(_t("category_dialog.default_warranty"), self.warranty_combo)
+
         layout.addLayout(form)
 
         footer_layout, self.btn_save, self.btn_cancel = make_dialog_footer(
@@ -106,6 +115,10 @@ class CategoryDialog(QDialog):
         index = self.parent_combo.findData(self.category.parent_id)
         if index >= 0:
             self.parent_combo.setCurrentIndex(index)
+        if hasattr(self, "warranty_combo") and getattr(self.category, "default_warranty_policy_id", None):
+            w_idx = self.warranty_combo.findData(self.category.default_warranty_policy_id)
+            if w_idx >= 0:
+                self.warranty_combo.setCurrentIndex(w_idx)
 
     def save(self):
         """Validate input and create or update the category via CategoryService."""
@@ -115,6 +128,7 @@ class CategoryDialog(QDialog):
             return
 
         parent_id = self.parent_combo.currentData()
+        warranty_id = self.warranty_combo.currentData() if hasattr(self, "warranty_combo") else None
 
         try:
             if self.category:
@@ -123,12 +137,14 @@ class CategoryDialog(QDialog):
                     name=name,
                     color=self.selected_color,
                     parent_id=parent_id,
+                    default_warranty_policy_id=warranty_id,
                 )
             else:
                 CategoryService.create(
                     name=name,
                     color=self.selected_color,
                     parent_id=parent_id,
+                    default_warranty_policy_id=warranty_id,
                 )
             self.accept()
         except Exception as e:

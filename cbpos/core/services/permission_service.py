@@ -89,10 +89,13 @@ class PermissionService:
     @staticmethod
     def management_tabs(user: User) -> set[str]:
         """Names of the Management tabs this user may see (keys of ``MANAGEMENT_TAB_PERMISSIONS``)."""
+        from cbpos.core.services.warranty_service import WarrantyService
+
+        warranty_enabled = WarrantyService.is_enabled()
         return {
             tab
             for tab, codes in MANAGEMENT_TAB_PERMISSIONS.items()
-            if PermissionService.user_has_any_permission(user, codes)
+            if (tab != "warranty" or warranty_enabled) and PermissionService.user_has_any_permission(user, codes)
         }
 
     @staticmethod

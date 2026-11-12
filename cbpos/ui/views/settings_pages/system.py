@@ -83,6 +83,9 @@ class SystemPage(SettingsPage):
         self.chk_auto_barcodes = QCheckBox()
         self._form_inv.addRow("", self.chk_auto_barcodes)
 
+        self.chk_warranty_enabled = QCheckBox()
+        self._form_inv.addRow("", self.chk_warranty_enabled)
+
         self.chk_loyalty = QCheckBox()
         # Retained for legacy test compatibility (#754); not added to layout
 
@@ -180,6 +183,8 @@ class SystemPage(SettingsPage):
         self.chk_negative_stock.setToolTip(_t("settings.system.tooltip_negative_stock"))
         self.chk_auto_barcodes.setText(_t("settings.system.auto_barcodes"))
         self.chk_auto_barcodes.setToolTip(_t("settings.system.tooltip_auto_barcodes"))
+        self.chk_warranty_enabled.setText(_t("settings.system.warranty_enabled"))
+        self.chk_warranty_enabled.setToolTip(_t("settings.system.tooltip_warranty_enabled"))
         self.chk_loyalty.setText(_t("settings.system.loyalty_points"))
         self.chk_loyalty.setToolTip(_t("settings.system.tooltip_loyalty"))
 
@@ -245,6 +250,7 @@ class SystemPage(SettingsPage):
         self.chk_enable_sounds.setChecked(settings.get("enable_sounds", True))
         self.chk_negative_stock.setChecked(settings.get("allow_negative_stock", False))
         self.chk_auto_barcodes.setChecked(settings.get("auto_generate_barcodes", True))
+        self.chk_warranty_enabled.setChecked(bool(settings.get("warranty_enabled", False)))
         self.chk_loyalty.setChecked(settings.get("enable_loyalty", True))
         self.chk_auto_backup.setChecked(settings.get("auto_backup_on_close", True))
         self.spin_retention.setValue(int(settings.get("backup_retention_count", 5)))
@@ -264,6 +270,7 @@ class SystemPage(SettingsPage):
             "enable_sounds": self.chk_enable_sounds.isChecked(),
             "allow_negative_stock": self.chk_negative_stock.isChecked(),
             "auto_generate_barcodes": self.chk_auto_barcodes.isChecked(),
+            "warranty_enabled": self.chk_warranty_enabled.isChecked(),
             "auto_backup_on_close": self.chk_auto_backup.isChecked(),
             "backup_retention_count": self.spin_retention.value(),
             "backup_dir": self.input_backup_dir.text(),

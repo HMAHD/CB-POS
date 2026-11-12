@@ -74,6 +74,11 @@ class Permissions:
     MANAGEMENT_VIEW = "management.view"
     SETTINGS_VIEW = "settings.view"
 
+    # Warranty Group (#821, #820)
+    WARRANTY_VIEW = "warranty.view"
+    WARRANTY_EDIT = "warranty.edit"
+    WARRANTY_MANAGE_POLICIES = "warranty.manage_policies"
+
     # Admin
     ADMIN_MANAGE_USERS = "admin.manage_users"
     ADMIN_MANAGE_ROLES = "admin.manage_roles"
@@ -148,6 +153,11 @@ class Permissions:
                 cls.MANAGEMENT_VIEW,
                 cls.SETTINGS_VIEW,
             ],
+            "Warranty": [
+                cls.WARRANTY_VIEW,
+                cls.WARRANTY_EDIT,
+                cls.WARRANTY_MANAGE_POLICIES,
+            ],
             "Admin": [
                 cls.ADMIN_MANAGE_USERS,
                 cls.ADMIN_MANAGE_ROLES,
@@ -182,6 +192,11 @@ MANAGEMENT_TAB_PERMISSIONS: dict[str, tuple[str, ...]] = {
     "promotions": (Permissions.PROMOTIONS_MANAGE,),
     "stock_take": (Permissions.STOCK_TAKE_VIEW,),
     "reorder": _EVERYONE_IN_MANAGEMENT,
+    "warranty": (
+        Permissions.WARRANTY_VIEW,
+        Permissions.WARRANTY_EDIT,
+        Permissions.WARRANTY_MANAGE_POLICIES,
+    ),
 }
 
 _EVERYONE_IN_SETTINGS = (Permissions.SETTINGS_VIEW, Permissions.ADMIN_SETTINGS)

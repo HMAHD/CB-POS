@@ -292,6 +292,7 @@ class CategoryService:
         sscl_exempt: bool | None = None,
         vat_exempt: bool | None = None,
         acting_user_id: int | None = None,
+        default_warranty_policy_id: int | None = None,
     ) -> Category:
         """Create a new category.
 
@@ -340,6 +341,7 @@ class CategoryService:
                 color=color or "#FFFFFF",
                 tax_exempt=bool(effective_vat_exempt),
                 sscl_exempt=bool(sscl_exempt),
+                default_warranty_policy_id=default_warranty_policy_id,
             )
             session.add(category)
             session.flush()
@@ -374,6 +376,7 @@ class CategoryService:
         sscl_exempt: bool | None = None,
         vat_exempt: bool | None = None,
         acting_user_id: int | None = None,
+        default_warranty_policy_id: object = ...,
     ) -> Category:
         """Update an existing category.
 
@@ -425,6 +428,9 @@ class CategoryService:
                     if has_children:
                         raise ValueError("category_too_deep")
                 category.parent_id = parent_id
+
+            if default_warranty_policy_id is not ...:
+                category.default_warranty_policy_id = default_warranty_policy_id
 
             effective_vat_exempt = vat_exempt if vat_exempt is not None else tax_exempt
             vat_changed = effective_vat_exempt is not None and effective_vat_exempt != category.tax_exempt

@@ -118,6 +118,14 @@ class ProductEditor(QDialog):
         self.setup_image_tab()
         self.tabs.addTab(self.tab_image, _t("product_editor.tab_image"))
 
+        # Tab 5: Warranty (#821)
+        from cbpos.core.services.warranty_service import WarrantyService
+
+        if WarrantyService.is_enabled():
+            self.tab_warranty = QWidget()
+            self.setup_warranty_tab()
+            self.tabs.addTab(self.tab_warranty, _t("product_editor.tab_warranty"))
+
         layout.addWidget(self.tabs)
 
         footer_layout, self.btn_save, self.btn_cancel = make_dialog_footer(
@@ -552,6 +560,120 @@ class ProductEditor(QDialog):
         else:
             self.lbl_image.setText(_t("product_editor.image_not_found"))
 
+    def setup_warranty_tab(self):
+        """Build the Warranty tab: override mode (INHERIT/NONE/POLICY), policy combo, and live preview."""
+        layout = QFormLayout(self.tab_warranty)
+        layout.setVerticalSpacing(14)
+        layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        layout.setContentsMargins(16, 16, 16, 16)
+
+        self.warranty_override_combo = QComboBox()
+        self.warranty_override_combo.addItem(_t("product_editor.warranty_inherit"), "INHERIT")
+        self.warranty_override_combo.addItem(_t("product_editor.warranty_none"), "NONE")
+        self.warranty_override_combo.addItem(_t("product_editor.warranty_policy"), "POLICY")
+        layout.addRow(_t("product_editor.warranty_mode"), self.warranty_override_combo)
+
+        self.warranty_policy_combo = QComboBox()
+        self.warranty_policy_combo.addItem(_t("product_editor.warranty_select_policy"), None)
+        self._load_warranty_policies()
+        layout.addRow(_t("warranty.policies"), self.warranty_policy_combo)
+
+        self.lbl_warranty_preview = QLabel()
+        self.lbl_warranty_preview.setWordWrap(True)
+        self.lbl_warranty_preview.setProperty("class", "muted")
+        layout.addRow(_t("common.preview", default="Preview:"), self.lbl_warranty_preview)
+
+        self.warranty_override_combo.currentIndexChanged.connect(self._on_warranty_mode_changed)
+        self.warranty_policy_combo.currentIndexChanged.connect(self._update_warranty_preview)
+        self.category_combo.currentIndexChanged.connect(self._update_warranty_preview)
+        self.weighted_check.toggled.connect(self._on_weighted_toggled_warranty)
+
+        self._on_warranty_mode_changed()
+
+    def _load_warranty_policies(self):
+        from cbpos.core.services.warranty_service import WarrantyService
+
+        policies = WarrantyService.list_policies(include_inactive=False)
+        for pol in policies:
+            self.warranty_policy_combo.addItem(pol.get_display_name(), pol.id)
+
+        # If product already assigned an inactive policy, load it so it is visible
+        if self.product and getattr(self.product, "warranty_policy_id", None):
+            pid = self.product.warranty_policy_id
+            if self.warranty_policy_combo.findData(pid) < 0:
+                inactive_pol = WarrantyService.get_policy(pid)
+                if inactive_pol:
+                    self.warranty_policy_combo.addItem(
+                        f"{inactive_pol.get_display_name()} ({_t('warranty.inactive')})",
+                        inactive_pol.id,
+                    )
+
+    def _on_warranty_mode_changed(self):
+        mode = self.warranty_override_combo.currentData()
+        self.warranty_policy_combo.setEnabled(mode == "POLICY")
+        self._update_warranty_preview()
+
+    def _on_weighted_toggled_warranty(self, checked: bool):
+        if hasattr(self, "warranty_override_combo"):
+            if checked:
+                self.warranty_override_combo.setEnabled(False)
+                self.warranty_policy_combo.setEnabled(False)
+            else:
+                self.warranty_override_combo.setEnabled(True)
+                self._on_warranty_mode_changed()
+            self._update_warranty_preview()
+
+    def _update_warranty_preview(self):
+        if not hasattr(self, "lbl_warranty_preview"):
+            return
+
+        if self.weighted_check.isChecked():
+            self.lbl_warranty_preview.setText(_t("product_editor.warranty_weighted_hint"))
+            return
+
+        from datetime import date
+        from decimal import Decimal
+
+        from cbpos.core.models import Product
+        from cbpos.core.services.warranty_service import WarrantyService
+        from cbpos.core.utils.formatters import format_date
+
+        mode = self.warranty_override_combo.currentData()
+        if mode == "NONE":
+            self.lbl_warranty_preview.setText(_t("product_editor.warranty_preview_none"))
+            return
+
+        if mode == "POLICY":
+            policy_id = self.warranty_policy_combo.currentData()
+            if not policy_id:
+                self.lbl_warranty_preview.setText(_t("product_editor.warranty_select_policy"))
+                return
+            policy = WarrantyService.get_policy(policy_id)
+        else:  # INHERIT
+            cat_id = self.category_combo.currentData()
+            dummy = Product(
+                barcode="TEMP",
+                name_en="Temp",
+                category_id=cat_id,
+                warranty_override="INHERIT",
+                price=Decimal("0.00"),
+            )
+            policy = WarrantyService.resolve_policy(dummy)
+
+        if not policy:
+            self.lbl_warranty_preview.setText(_t("product_editor.warranty_preview_none"))
+        else:
+            today = date.today()
+            end_date = WarrantyService.compute_end_date(today, policy.duration, policy.duration_unit)
+            self.lbl_warranty_preview.setText(
+                _t(
+                    "product_editor.warranty_preview_covered",
+                    sale_date=format_date(today),
+                    end_date=format_date(end_date),
+                    policy_name=policy.get_display_name(),
+                )
+            )
+
     def load_data(self):
         """Populate all tabs' fields, including bundle components, from the product being edited."""
         self.barcode_input.setText(self.product.barcode)
@@ -585,10 +707,10 @@ class ProductEditor(QDialog):
             if self.product.preferred_qty is None
             else format(Decimal(str(self.product.preferred_qty)).quantize(_q), "f")
         )
-        self.weighted_check.setChecked(self.product.is_weighted)
-        self.service_check.setChecked(self.product.is_service)
-        self.price_change_allowed_check.setChecked(self.product.price_change_allowed)
-        self.age_restricted_check.setChecked(self.product.is_age_restricted)
+        self.weighted_check.setChecked(bool(self.product.is_weighted))
+        self.service_check.setChecked(bool(self.product.is_service))
+        self.price_change_allowed_check.setChecked(bool(self.product.price_change_allowed))
+        self.age_restricted_check.setChecked(bool(self.product.is_age_restricted))
 
         # Load unit
         if self.product.unit_id:
@@ -631,6 +753,17 @@ class ProductEditor(QDialog):
                 remove_btn.setProperty("class", "danger")
                 remove_btn.clicked.connect(on_remove)
                 set_cell_widget(row, 3, remove_btn)
+
+        # Load warranty
+        if hasattr(self, "warranty_override_combo"):
+            idx = self.warranty_override_combo.findData(self.product.warranty_override or "INHERIT")
+            if idx >= 0:
+                self.warranty_override_combo.setCurrentIndex(idx)
+            if self.product.warranty_policy_id:
+                w_idx = self.warranty_policy_combo.findData(self.product.warranty_policy_id)
+                if w_idx >= 0:
+                    self.warranty_policy_combo.setCurrentIndex(w_idx)
+            self._on_warranty_mode_changed()
 
     def _parse_decimal(self, text: str, fallback: str = "0") -> Decimal:
         """Safely parse a QLineEdit value to Decimal."""
@@ -713,6 +846,21 @@ class ProductEditor(QDialog):
             components.append({"child_product_id": child_id, "qty": qty})
 
         data["components"] = components
+
+        if hasattr(self, "tab_warranty"):
+            override = self.warranty_override_combo.currentData() or "INHERIT"
+            policy_id = self.warranty_policy_combo.currentData() if override == "POLICY" else None
+            if data.get("is_weighted") and override == "POLICY":
+                QMessageBox.warning(self, _t("common.validation_error"), _t("product_editor.warranty_weighted_hint"))
+                self.tabs.setCurrentWidget(self.tab_warranty)
+                return
+            if override == "POLICY" and not policy_id:
+                QMessageBox.warning(self, _t("common.validation_error"), _t("product_editor.warranty_select_policy"))
+                self.tabs.setCurrentWidget(self.tab_warranty)
+                return
+            data["warranty_override"] = override
+            data["warranty_policy_id"] = policy_id
+            data["serial_mode"] = getattr(self.product, "serial_mode", "OFF") if self.product else "OFF"
 
         try:
             if self.product:

@@ -584,7 +584,16 @@
     "age_restricted": "Age-Restricted Item",
     "age_restricted_hint": "Cashier must confirm age at checkout (e.g. alcohol, tobacco)",
     "stock_qty": "Stock Qty",
-    "weighted_hint": "Weighted items are sold by weight (kg, g, etc.)"
+    "weighted_hint": "Weighted items are sold by weight (kg, g, etc.)",
+    "tab_warranty": "Warranty",
+    "warranty_mode": "Warranty Coverage:",
+    "warranty_inherit": "Category Default",
+    "warranty_none": "No Warranty",
+    "warranty_policy": "Specific Policy",
+    "warranty_select_policy": "-- Select Warranty Policy --",
+    "warranty_preview_none": "No warranty coverage for this product.",
+    "warranty_preview_covered": "Sale today ({sale_date}) covered until {end_date} ({policy_name})",
+    "warranty_weighted_hint": "Weighted products cannot receive warranty coverage."
   },
   "csv_import": {
     "title": "Import Products from CSV",
@@ -819,7 +828,8 @@
     "sidebar_logout": "Logout",
     "sidebar_collapse": "Collapse Sidebar",
     "sidebar_expand": "Expand Sidebar",
-    "logo_fallback": "CB POS"
+    "logo_fallback": "CB POS",
+    "sidebar_warranty": "Warranty & Repairs"
   },
   "dashboard": {
     "total_sales": "Total Sales",
@@ -2038,7 +2048,9 @@
       "choose_backup_folder": "Choose Backup Folder",
       "suffix_min": " min",
       "suffix_sec": " sec",
-      "suffix_backups": " backups"
+      "suffix_backups": " backups",
+      "warranty_enabled": "Enable Warranty & Repairs",
+      "tooltip_warranty_enabled": "Track warranties, policies, coverage dates, and repair jobs"
     },
     "network": {
       "title": "Network",
@@ -2299,7 +2311,9 @@
     "none": "None (Top Level)",
     "pick_color": "Pick Color",
     "select_color": "Select Category Color",
-    "name_required": "Category name is required."
+    "name_required": "Category name is required.",
+    "default_warranty": "Default Warranty:",
+    "warranty_none": "None (No default warranty)"
   },
   "category_manager": {
     "title": "Category Manager",
@@ -2324,7 +2338,9 @@
     "confirm_delete_title": "Confirm Delete",
     "confirm_delete_msg": "Delete category '{name}'?",
     "confirm_delete_sub": "{count} product(s) will be uncategorized.",
-    "cannot_delete_title": "Cannot Delete"
+    "cannot_delete_title": "Cannot Delete",
+    "default_warranty": "Default Warranty:",
+    "warranty_none": "None (No default warranty)"
   },
   "role_manager": {
     "title": "Manage Roles",
@@ -2563,7 +2579,8 @@
       "admin": "Admin",
       "other": "Other",
       "screens": "Screens",
-      "loyalty": "Loyalty"
+      "loyalty": "Loyalty",
+      "warranty": "Warranty"
     },
     "code": {
       "sales.view": "Use the sales screen",
@@ -2611,7 +2628,10 @@
       "loyalty.adjust_points": "Adjust customer loyalty points",
       "pricing.manage": "Manage price lists",
       "promotions.manage": "Manage promotions",
-      "suppliers.manage": "Manage suppliers"
+      "suppliers.manage": "Manage suppliers",
+      "warranty.view": "View warranty policies and product coverage",
+      "warranty.edit": "Assign warranty policies to products and categories",
+      "warranty.manage_policies": "Create, edit and deactivate warranty policies"
     }
   },
   "roles": {
@@ -3477,7 +3497,68 @@
     "ineligible_sale": "Sale transaction is ineligible for a VAT Tax Invoice.",
     "invalid_user_id": "Valid user authentication is required to issue a tax invoice.",
     "cannot_void_tax_invoice_sale": "Cannot void a sale that has an issued Tax Invoice. Process a return/refund to generate a Tax Credit Note instead."
+  },
+  "warranty": {
+    "policies": "Warranty Policies",
+    "new_policy": "New Policy",
+    "edit_policy": "Edit Policy",
+    "deactivate": "Deactivate",
+    "activate": "Activate",
+    "active": "Active",
+    "inactive": "Inactive",
+    "empty_title": "No Warranty Policies",
+    "empty_desc": "Create policies to assign standard or custom warranties to products and categories.",
+    "col_name": "Policy Name",
+    "col_type": "Type",
+    "col_duration": "Duration",
+    "col_remedy": "Remedy",
+    "col_provider": "Provider",
+    "col_status": "Status",
+    "types": {
+      "shop": "Shop Warranty",
+      "manufacturer": "Manufacturer Warranty",
+      "extended": "Extended Warranty"
+    },
+    "units": {
+      "days": "Days",
+      "months": "Months",
+      "years": "Years"
+    },
+    "remedies": {
+      "repair_or_replace": "Repair or Replace",
+      "repair_only": "Repair Only",
+      "replace_only": "Replace Only",
+      "refund": "Refund"
+    },
+    "policy": {
+      "title_add": "New Warranty Policy",
+      "title_edit": "Edit Warranty Policy",
+      "tab_basic": "Basic Details",
+      "tab_terms": "Terms & Exclusions",
+      "name_en": "Name (EN)*:",
+      "name_si": "Name (SI):",
+      "name_ta": "Name (TA):",
+      "name_en_placeholder": "Policy name in English (required)",
+      "name_si_placeholder": "Optional name in Sinhala",
+      "name_ta_placeholder": "Optional name in Tamil",
+      "type": "Warranty Type*:",
+      "duration": "Duration*:",
+      "unit": "Duration Unit*:",
+      "remedy": "Remedy*:",
+      "provider": "Provider Name:",
+      "provider_placeholder": "Leave blank if shop is provider",
+      "supplier_cover": "Supplier Cover (Months):",
+      "terms_en": "Terms & Conditions (EN):",
+      "terms_si": "Terms & Conditions (SI):",
+      "terms_ta": "Terms & Conditions (TA):",
+      "exclusions_en": "Exclusions (EN):",
+      "exclusions_si": "Exclusions (SI):",
+      "exclusions_ta": "Exclusions (TA):",
+      "active": "Active",
+      "name_required": "English name is required.",
+      "duration_required": "Duration must be greater than zero.",
+      "terms_translation_requires_en": "English terms must be provided when translations are present.",
+      "exclusions_translation_requires_en": "English exclusions must be provided when translations are present."
+    }
   }
 }
-
-

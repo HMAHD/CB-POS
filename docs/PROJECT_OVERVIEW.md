@@ -450,7 +450,6 @@ with db.get_session() as session:
 - **BarcodeScanner**: Global event filter routes scans to active view
 - **SessionWatchdog**: 5-minute inactivity timeout → auto-logout
 - **Side Menu**: Animated slide-out (300ms `QPropertyAnimation`)
-- **Fullscreen Toggle**: F11/Escape shortcuts
 
 **Navigation Flow:**
 Login → SalesView → Management/Settings (via side menu) → Back returns to last view
@@ -794,20 +793,23 @@ Runtime dependencies live in `pyproject.toml`'s `[project.dependencies]`; dev-on
 
 ### Sri Lankan Tax (Backward Calculation from MRP)
 
-Shelf prices are MRP (Maximum Retail Price) and include tax.
+Shelf prices are MRP (Maximum Retail Price) and include tax. Per SSCL Act s.3(3)(b), SSCL turnover base excludes VAT.
 
 ```python
 from decimal import Decimal
+from cbpos.core.utils.money import round_money
 
-# VAT (18%)
-vat_base = mrp / Decimal("1.18")
-vat_amount = mrp - vat_base
+# VAT (18% backward calculation)
+vat_amount = round_money(taxable_mrp * Decimal("0.18") / Decimal("1.18"))
 
-# SSCL (2.5% on 50% of revenue)
-sscl_amount = (mrp * Decimal("0.5")) * Decimal("0.025")
+# SSCL (2.5% on VAT-exclusive turnover with preset, e.g. Retail 50%)
+sscl_base = taxable_mrp / Decimal("1.18")
+sscl_amount = round_money(sscl_base * Decimal("0.50") * Decimal("0.025"))
 
-# Net Revenue
-net_revenue = mrp - vat_amount - sscl_amount
+# Net Revenue (what the shop keeps)
+net_revenue = round_money(mrp) - vat_amount - sscl_amount
+
+# On Rs 100 gross: VAT = 15.25, SSCL = 1.06, Net = 83.69
 ```
 
 ### Inventory Costing — Weighted Average Cost (AVCO)
@@ -928,9 +930,9 @@ new_cost = (old_cost * old_qty + purchase_cost * purchase_qty) / (old_qty + purc
 
 | Language | Code | Font | Translation Status |
 |----------|------|------|--------------------|
-| English | `en` | Noto Sans | Complete (2,090 keys) |
-| Sinhala | `si` | Noto Sans Sinhala | 97%+ translated (2,032/2,090 keys) |
-| Tamil | `ta` | Noto Sans Tamil | 97%+ translated (2,030/2,090 keys) |
+| English | `en` | Noto Sans | Complete (3,212 keys) |
+| Sinhala | `si` | Noto Sans Sinhala | 97%+ translated (3,146/3,212 keys) |
+| Tamil | `ta` | Noto Sans Tamil | 97%+ translated (3,142/3,212 keys) |
 
 ### Architecture
 
@@ -942,11 +944,11 @@ new_cost = (old_cost * old_qty + purchase_cost * purchase_qty) / (old_qty + purc
 - `{parameter}` interpolation: `_t("common.items", count=5)` → "Items: 5"
 - `translate_in(lang, key)` for language-specific lookup without switching (used for receipts)
 - WeakMethod callbacks prevent memory leaks on Qt widget destruction
-- Live language switching — no restart required
+- Language switching prompts for application restart to reinitialize all UI components cleanly
 
 **JSON Files** (`cbpos/i18n/en.json`, `si.json`, `ta.json`):
 
-- 70 sections, 2,090 keys (English complete; Sinhala/Tamil 97%+ translated)
+- 3,212 keys (English complete; Sinhala/Tamil 97%+ translated)
 - Flat or nested JSON, flattened to dot notation at load time
 - Keys starting with `_` are metadata (skipped)
 

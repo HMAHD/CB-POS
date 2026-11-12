@@ -81,7 +81,7 @@ Whether you run a *sathosa*, a pharmacy in Kandy, a hardware store in Galle, or 
 
 ### Trilingual — English, සිංහල, தமிழ்
 - Full Sinhala and Tamil interface translation
-- Switch language instantly, no restart needed
+- Switch language cleanly — prompts to restart the application to apply the chosen locale across all screens
 - Your staff can work in the language they're comfortable with
 
 ### Reports & Dashboard
@@ -97,15 +97,16 @@ Whether you run a *sathosa*, a pharmacy in Kandy, a hardware store in Galle, or 
 - Complete audit trail — every void, refund, and price change is logged
 
 ### Sri Lankan Tax Compliance
-- Built-in **VAT (18%)** and **SSCL (2.5%)** backward calculation from MRP
+- Built-in **VAT (18%)** and **SSCL (2.5%)** backward calculation from MRP (disabled by default until "VAT registered" is enabled in Settings > Tax)
 - Tax invoice generation (statutory 2026 mandate compliant: YYMMM_QQQQ_XXXXX serial, mandatory particulars, ORIGINAL / COPY ONLY markings)
 - Tax-exempt categories (pharmaceuticals, essentials)
 - Tax filing summary reports for your accountant
 
-### Works Offline — Always
-- **No internet required.** Everything runs on your computer.
+### Works Offline-First
+- **No continuous internet required.** Everything runs locally on your computer.
 - Local SQLite database — your data stays on your machine
-- No cloud subscriptions, no servers, no downtime
+- No cloud subscriptions, no mandatory servers, no downtime
+- Optional startup update check (checks for new releases; can be disabled in Settings > System)
 
 ---
 
@@ -164,9 +165,9 @@ CB POS is free and open-source software licensed under the GNU General Public Li
 
 5. **Connect your hardware** (optional):
    - Plug in your USB barcode scanner — it works automatically
-   - Set up your thermal printer in Settings > Receipt Settings
+   - Set up your thermal printer in Settings > Receipts (or Settings > Hardware)
 
-6. **Create staff accounts** — go to Management > Admin Tools:
+6. **Create staff accounts** — go to Settings > Admin Tools:
    - Create Cashier accounts for your staff
    - Each person gets their own login and permissions
 
@@ -194,7 +195,7 @@ Start scanning items, processing sales, and printing receipts. CB POS is designe
 Yes. Free to download, free to use, no trial period, no feature limits, no monthly fees. We build this to support Sri Lankan small businesses.
 
 **Do I need internet to use CB POS?**
-No. CB POS works 100% offline. Your data is stored locally on your computer. Internet is only needed to download the installer.
+No. CB POS is offline-first. Your data is stored locally on your computer. Internet is only needed to download the installer and for an optional automatic check for software updates on startup (which can be turned off in Settings > System).
 
 **Can I use it for my grocery/pharmacy/hardware/clothing shop?**
 Yes. CB POS works for any retail shop. It supports barcoded items, weighted items (kg), and manual entry.
@@ -209,13 +210,18 @@ Yes. The full interface is available in Sinhala, Tamil, and English. You can eve
 Your data stays on your computer — it is never sent anywhere online. We recommend regular backups using the built-in backup feature.
 
 **Can multiple cashiers use it at the same time?**
-Yes. CB POS supports multi-terminal setups. Switch to Network mode in Settings > Network, point each terminal to a shared PostgreSQL database, and assign a unique Terminal ID (TERM-01, TERM-02, etc.) to each machine. All terminals share inventory, customers, and sales data in real time.
+Yes. CB POS supports multi-terminal setups in two ways:
+- **LAN Sync**: One machine acts as the Main PC / sync server, and secondary tills sync sales and stock changes over your local network.
+- **Network Database Mode**: Terminals connect directly to a shared PostgreSQL database server, each with a unique Terminal ID (TERM-01, TERM-02, etc.).
+
+*Note on updates:* In multi-terminal mode, update all machines together so database schemas and sync protocols remain aligned.
 
 **I found a bug / I have a feature request.**
 Open an [Issue](https://github.com/ceybyte/cbpos-releases/issues) on this repository, or contact us at [ceybyte.com](https://ceybyte.com). We read every message.
 
 **Is this open source?**
-No. CB POS is free to use but the source code is proprietary. You may not copy, modify, or redistribute the software.
+Yes. CB POS is free and open source software licensed under the GNU General Public License v3.0 (GPLv3). Complete corresponding source code for each release is available at:
+`https://github.com/HMAHD/CB-POS/tree/v{version}`
 
 ---
 
@@ -223,14 +229,13 @@ No. CB POS is free to use but the source code is proprietary. You may not copy, 
 
 See the [Releases page](https://github.com/ceybyte/cbpos-releases/releases) for the full changelog.
 
-**Current Version: 1.2.2** (March 2026)
-- Sale history browser with search and filters
-- Improved refund workflow
-- First-run database setup (empty or demo)
-- 80+ Sri Lankan retail products in sample data
-- Trilingual interface (English, Sinhala, Tamil)
-- VAT & SSCL tax compliance
-- Pagination, undo toast, discount preview, and more
+**Current Version: 1.3.0 (Pre-release)**
+- Multi-terminal LAN sync (Main PC and secondary tills)
+- Statutory 2026 VAT Tax Invoice compliance (YYMMM_QQQQ_XXXXX serial, mandatory particulars, ORIGINAL / COPY ONLY markings)
+- Accurate multilingual label printing with real barcode preview and size presets
+- Automated background maintenance and notifications
+- GPLv3 open source licensing and About / Help dialogs
+- Trilingual interface (English, Sinhala, Tamil) with 3,200+ keys
 
 ---
 

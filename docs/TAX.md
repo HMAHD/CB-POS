@@ -44,16 +44,16 @@ This logic impacts three specific areas of your Python code:
 You cannot just store `total_amount`. You must store the breakdown so the owner knows their liability instantly.
 When a sale is saved, your **Tax Service** runs silently:
 1.  **Input:** `Rs. 100.00`
-2.  **Logic:** Calculate VAT portion and SSCL portion.
+2.  **Logic:** Calculate VAT portion and SSCL portion (SSCL turnover base excludes VAT per s.3(3)(b) of the SSCL Act).
 3.  **Storage:**
     * `total_amount`: 100.00
     * `tax_vat`: 15.25 (Stored for reporting)
-    * `tax_sscl`: 1.25 (Stored for reporting)
-    * `net_revenue`: 83.50 (This is what the owner actually earned)
+    * `tax_sscl`: 1.06 (Stored for tax reporting; 50% retail preset)
+    * `net_revenue`: 83.69 (This is what the owner actually earned)
 
 ### B. The Receipt (Visuals)
-* **For Normal People (B2C):** They just see **Total: Rs. 100.00**. You might print a small footer: *"Prices include VAT/SSCL"*.
-* **For Companies (B2B):** If a company buys from you, they need a **Tax Invoice**. Your system needs to print the breakdown (Base Value: 83.50, VAT: 15.25, Total: 100.00) so *they* can claim that VAT back.
+* **For Normal People (B2C):** They just see **Total: Rs. 100.00**. You might print a small footer: *"Prices include VAT"*.
+* **For Companies (B2B):** If a VAT-registered company buys from you, they need a **Tax Invoice**. Your system prints the statutory breakdown (Value excluding VAT: 84.75, VAT: 15.25, Total: 100.00) with mandated particulars so *they* can claim that input VAT back. (SSCL is omitted from receipts and tax invoices per statutory rules and tracked in tax liability reports).
 
 ### C. Profit Calculation (The "Real" Profit)
 If you buy an item for Rs. 80 and sell it for Rs. 100, do you make Rs. 20 profit?

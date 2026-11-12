@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file. Never delet
 
 ## [Unreleased]
 
+### Added — Pre-Release Remediation & Hardening (Phase 8)
+
+- **Automatic update check and prompt (#808)**: Background check against GitHub Releases API with deferred non-blocking startup query, user-facing prompt, and skip option.
+- **Shift opening and closing validation (#881)**: Reconciled cash drawer floats, cash discrepancy tracking, and audit trail for shift lifecycle.
+- **Background automation scheduler (#882)**: Headless background scheduler service for recurring tasks (database backups, report generation, cleanup).
+- **Statutory 2026 VAT Tax Invoice compliance (#814)**: Mandated `YYMMM_QQQQ_XXXXX` serial format, complete supplier and buyer particulars snapshot, amount in words, and explicit `ORIGINAL` / `COPY ONLY` markings.
+- **Licensing and Legal compliance (#817)**: Official GNU General Public License v3.0 (`LICENSE`), comprehensive `PRIVACY.md` detailing zero telemetry and local storage, and deterministic `THIRD_PARTY_NOTICES.txt` generator from lockfile.
+- **About and Help dialogs (#816)**: Centralized `AboutDialog` showing application version, build date, GPLv3 license, privacy policy, third-party notices, and sanitized bug reporting links.
+- **Accurate multilingual label preview and sizing (#819)**: Real barcode generation via python-barcode replacing mock hash bars, trilingual name rendering via text rasterization, and presets (50×30 mm, 40×25 mm, 58 mm, custom).
+- **Pre-release documentation truth alignment (#818)**: Corrected documentation drift across README, CLAUDE.md, TAX.md, and specifications to align with shipped behavior.
+
 ### Added — Full API documentation coverage + Sphinx docs build
 
 - **Docstring coverage: 51% → 98.8%** (1,385/1,402 public classes/functions across `cbpos/`; the remaining gap is entirely `tests/`, deliberately out of scope since test names are self-documenting).
@@ -30,7 +41,7 @@ All notable changes to this project will be documented in this file. Never delet
 
 - **Global crash handler**: an uncaught exception on the packaged Windows build previously vanished into nowhere (no console); `sys.excepthook` now logs it via the existing rotating log handler before the process exits, so a crash report survives to be diagnosed.
 - **Atomic settings/encryption-key writes**: `ConfigService` now writes `settings.json` and the encryption key to a temp file first, then `os.replace()`s it onto the real path — a crash or power cut mid-write can no longer leave either file truncated or half-written.
-- **`PyQt6` capped below 6.11.0**: 6.11.0 regresses `PaymentDialog`'s row `sizeHint()` (tracked upstream as #427); pinned in `requirements.txt`/`pyproject.toml` until fixed.
+- **PyQt6 compatibility**: Fully compatible with PyQt6 6.11.0+ (no artificial cap; resolved in uv.lock).
 
 ### Added — Complete Sinhala/Tamil Trilingual Translation
 
@@ -45,7 +56,7 @@ All notable changes to this project will be documented in this file. Never delet
 - **Stale cross-references to translated labels**: Several messages told users to navigate to a menu item or click a button by its English name (e.g. "Settings > Hardware", "Host, Database Name, Username", quoting `"Mode"` or `'Use Gmail'`) after those labels had since been translated elsewhere, which would confuse a Sinhala/Tamil-only user. Updated all references to match the actual translated labels.
 - **Register/vocabulary consistency**: Fixed several places using archaic literary verb forms or formal/clinical phrasing inconsistent with the casual, spoken-register tone used throughout the rest of the app (most notably the entire `setup_wizard` — the first screen every new shop owner sees — and the shared `errors` section used across many features), plus vocabulary drift for "export" (native word vs. loanword) and "role" (Tamil) between sections.
 
-## [1.3.0] - 2026-09-03
+## [1.3.0] - 2026-09-27 (Pre-release)
 
 ### Added — Multi-Terminal LAN Sync
 

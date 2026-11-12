@@ -279,7 +279,7 @@
 - [x] **9.2 Invoicing Rules** *(2 items remaining — nice to have)*
     - [x] Logic: Detect Registered Customer (VAT No).
     - [x] Output: Switch Receipt format to "Tax Invoice".
-    - [ ] **Tax Breakdown Display:** Show VAT and SSCL separately on receipt
+    - [x] **Tax Breakdown Display:** Show VAT breakdown on receipt (configurable via `show_tax_breakdown` in receipt settings; SSCL is recorded in tax reports per statutory rules)
     - [ ] **Tax-Exempt Sales:** Support with permission
 
 > **Removed:** Phase 9.3 (Multi-Tax Support) — Sri Lanka has fixed VAT (18%) + SSCL (2.5%). Small retailers don't need per-product tax rates, multiple taxes per product, or tax overrides. Current implementation is correct and complete for the market.
@@ -377,7 +377,7 @@
     - [x] **Company Logo:** Image printing support
     - [x] **Custom Header/Footer:** Configurable text
     - [x] **Barcode/QR Code:** On receipt (with plugins)
-    - [x] **Tax Breakdown Display:** Line-by-line tax amounts
+    - [x] **Tax Breakdown Display:** Per-bill tax breakdown on receipt footer (VAT and net amount calculated per bill, not line-by-line)
     - [x] **Payment Details:** Show payment types and change
     - [x] **Item Merging:** Combine duplicate items
     - [x] **Receipt vs Invoice:** Different formats

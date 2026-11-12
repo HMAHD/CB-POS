@@ -20,7 +20,7 @@ def create_installer():
 
     if result.returncode == 0:
         print("✅ Build Successful!")
-        print(f"Output: {os.path.abspath('dist/cbpos.exe')}")
+        print(f"Output: {os.path.abspath('dist/cbpos/cbpos.exe')}")
     else:
         print("❌ Build Failed!")
         print(result.stderr)

@@ -14,7 +14,7 @@ Non-technical shop owners and their 1-3 cashiers running small-to-medium retail 
 
 ## Product Purpose
 
-CB POS is free, closed-source point-of-sale software built to remove the cost and complexity barrier that keeps small Sri Lankan retailers from having real POS tooling. It exists to make professional-grade retail operations (fast checkout, inventory, tax compliance, reporting, multi-terminal sync) accessible to shop owners who can't afford commercial POS licenses or IT staff. Success means shops adopt it, run their daily operations reliably offline, and voluntarily promote it — the business model is reputation-based, not license revenue.
+CB POS is free, open-source point-of-sale software under GPLv3 built to remove the cost and complexity barrier that keeps small Sri Lankan retailers from having real POS tooling. It exists to make professional-grade retail operations (fast checkout, inventory, tax compliance, reporting, multi-terminal sync) accessible to shop owners who can't afford commercial POS licenses or IT staff. Success means shops adopt it, run their daily operations reliably offline, and voluntarily promote it — the business model is reputation-based, not license revenue.
 
 ## Positioning
 
@@ -32,7 +32,7 @@ No single named competitor. CB POS's position is the combination of: genuinely f
 ## Capabilities and Constraints
 
 - Money math: always `decimal.Decimal`, never `float`.
-- Tax: shelf prices are MRP (tax-inclusive); VAT (18%) and SSCL (2.5% on 50% of revenue) are calculated backward from MRP, not added on top.
+- Tax: shelf prices are MRP (tax-inclusive); VAT (18%) and SSCL (2.5% on VAT-exclusive turnover) are calculated backward from MRP (disabled by default until "VAT registered" is enabled), not added on top.
 - Inventory costing: Weighted Average Cost (AVCO); quantities support 3 decimal places for weighed items.
 - Critical actions (void, refund, price change) require permission checks and are written to an audit log.
 - All customer-facing outputs (receipts, reports, invoices, PDFs, emails) must carry CB POS branding and website — a business-model requirement (reputation-based growth), not just a style choice.

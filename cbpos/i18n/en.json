@@ -2823,6 +2823,8 @@
     "last_cart_item": "Select last cart item",
     "add_product": "Add product from search",
     "void_bill": "Void current bill",
+    "undo_remove": "Undo remove cart item",
+    "calculator": "Open calculator",
     "close_cancel": "Close dialog / Cancel"
   },
   "stock_history": {

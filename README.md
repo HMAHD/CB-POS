@@ -28,13 +28,13 @@
 ### Security & Compliance
 - **RBAC**: Role-Based Access Control (Admin, Manager, Cashier) with granular permissions.
 - **Audit Trails**: Detailed logs for all critical actions (voids, price overrides, logins).
-- **Sri Lankan Tax Compliance**: Built-in VAT (18%) and SSCL (2.5%) backward calculation from MRP.
+- **Sri Lankan Tax Compliance**: Built-in VAT (18%) and SSCL (2.5%) backward calculation from MRP (disabled by default until "VAT registered" is enabled in settings).
 - **Manager Override**: Permission elevation for restricted operations.
 
 ### Internationalization (i18n)
 - **Trilingual Support**: English, Sinhala (සිංහල), Tamil (தமிழ்).
-- **2,090 Translation Keys**: 97%+ translated across all UI screens in casual, native-speaker register — the remaining untranslated keys are intentional (brand names, VAT/SSCL/TIN technical abbreviations, format placeholders).
-- **Live Language Switching**: Change language without restarting the application.
+- **3,212 Translation Keys**: 97%+ translated across all UI screens in casual, native-speaker register — the remaining untranslated keys are intentional (brand names, VAT/SSCL/TIN technical abbreviations, format placeholders).
+- **Language Selection**: Clean language switching (prompts to restart the application to apply the chosen locale across all screens).
 - **Independent Receipt Language**: Print receipts in a different language than the UI.
 - **Format Parameter Safety**: Validated `{parameter}` interpolation across all translations.
 
@@ -165,7 +165,7 @@ cbpos/
 | [SECURITY.md](SECURITY.md) | Vulnerability reporting policy |
 | [docs/archive/](docs/archive/) | Superseded project-inception planning docs (historical only) |
 
-A full Sphinx API reference (auto-generated from docstrings across all of `cbpos/`, 98.8% coverage) builds on every push to `main` via `docs.yml` and uploads as a CI artifact — **not published to GitHub Pages**, since CB-POS is closed-source and Pages is public. Download the `sphinx-docs` artifact from the workflow run, or build it locally:
+A full Sphinx API reference (auto-generated from docstrings across all of `cbpos/`, 98.8% coverage) builds on every push to `main` via `docs.yml` and uploads as a CI artifact. Download the `sphinx-docs` artifact from the workflow run, or build it locally:
 ```bash
 QT_QPA_PLATFORM=offscreen uv run sphinx-apidoc -f -o docs/api cbpos --separate --module-first
 uv run sphinx-build -b html docs docs/_build/html
@@ -173,6 +173,8 @@ uv run sphinx-build -b html docs docs/_build/html
 
 ## License
 
-**Proprietary Software**.
-Copyright 2026 Ceylon Byte. All Rights Reserved.
-Unauthorized copying of this file, via any medium is strictly prohibited.
+CB POS is free and open source software licensed under the **GNU General Public License v3.0 (GPLv3)**.
+See the [LICENSE](LICENSE) file for the full license text.
+
+In accordance with GPLv3, complete corresponding source code is provided for every binary release at:
+`https://github.com/HMAHD/CB-POS/tree/v{version}`

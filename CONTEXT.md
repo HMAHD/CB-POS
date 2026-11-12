@@ -45,3 +45,29 @@ _Avoid_: points log, ledger (in UI text; "loyalty ledger" is fine in code)
 **Credit**:
 A customer's debt to the shop from sales put on their book, tracked in the Credit Book.
 _Avoid_: loyalty, store credit
+
+### Payments & Refunds
+
+**Payment Kind**:
+The method used to settle a bill or refund (Cash, Card, Credit, QR/Bank Transfer). Each payment record tracks its kind and amount.
+_Avoid_: tender type (in UI text), payment mode
+
+**Refund State**:
+The refund status of a sale: `NONE` (no items refunded), `PARTIAL` (some items or quantities returned), or `FULL` (entire bill refunded).
+_Avoid_: return status, voided (Void means canceling an unpaid cart before completion)
+
+### Tax & Compliance
+
+**Tax Invoice**:
+A formal VAT document issued on demand to VAT-registered buyers complying with statutory 2026 mandates: unique serial (`YYMMM_QQQQ_XXXXX`), supplier/buyer particulars, VAT breakdown, and `ORIGINAL` or `COPY ONLY` markings.
+_Avoid_: tax bill, retail receipt (Retail receipts are separate proof-of-purchase documents and never say "TAX INVOICE")
+
+### Architecture & Synchronization
+
+**Schema Owner**:
+The designated migration authority (in PostgreSQL network mode or standalone SQLite) that runs Alembic database migrations to HEAD. Secondary terminals verify schema compatibility but do not mutate database structure.
+_Avoid_: migration master, database leader
+
+**Till Identity**:
+A unique identifier (`TERM-01`, `TERM-02`, etc.) assigned to each physical till terminal, stamped on every generated transaction and audit entry (`origin_terminal_id`) to maintain clear provenance across multi-terminal setups.
+_Avoid_: register number, machine name

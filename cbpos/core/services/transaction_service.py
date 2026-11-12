@@ -79,6 +79,7 @@ class TransactionService:
         customer_id: int = None,
         peripherals: TransactionPeripherals | None = None,
         loyalty_points_redeemed: int = 0,
+        tax_invoice_details: dict | None = None,
     ) -> Sale | None:
         """
         Process the sale with multiple payments.
@@ -104,6 +105,7 @@ class TransactionService:
                 customer_id,
                 peripherals or TransactionService._peripherals,
                 loyalty_points_redeemed=loyalty_points_redeemed,
+                tax_invoice_details=tax_invoice_details,
             )
         except ValueError:
             raise
@@ -562,6 +564,7 @@ class TransactionService:
         customer_id: int | None,
         peripherals: TransactionPeripherals,
         loyalty_points_redeemed: int = 0,
+        tax_invoice_details: dict | None = None,
     ) -> Sale:
         """Write the sale in one transaction; see ``process_sale`` for the interface.
 
@@ -650,6 +653,17 @@ class TransactionService:
             # 4c. Loyalty points earned on final bill (#747)
             LoyaltyService.record_sale_points(session, sale)
 
+            # 4d. Optional atomic TaxInvoice issuance at checkout (#814)
+            if tax_invoice_details:
+                from cbpos.core.services.tax_invoice_service import TaxInvoiceService
+
+                TaxInvoiceService._create_tax_invoice_in_session(
+                    session=session,
+                    sale=sale,
+                    buyer_details=tax_invoice_details,
+                    user_id=cashier_id,
+                )
+
             # 5. Eager-load relationships before session closes (prevents DetachedInstanceError)
             TransactionService._load_receipt_relations(sale)
 
@@ -710,6 +724,13 @@ class TransactionService:
                 already_refunded = session.query(Sale.id).filter(Sale.refund_of_sale_id == sale_id).first() is not None
                 if already_refunded:
                     raise ValueError("sale_has_refund")
+
+                # Cannot void a sale that has an issued Tax Invoice (VAT Act No. 14 of 2002 s.25)
+                from cbpos.core.models.tax_invoice import TaxInvoice
+
+                has_tax_invoice = session.query(TaxInvoice.id).filter_by(sale_id=sale.id).first() is not None
+                if has_tax_invoice:
+                    raise ValueError("cannot_void_tax_invoice_sale")
 
                 sale.status = "VOID"
                 if reason_id:

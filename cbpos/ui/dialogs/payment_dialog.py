@@ -6,6 +6,7 @@ from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtGui import QDoubleValidator, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QComboBox,
     QCompleter,
     QDialog,
@@ -54,6 +55,7 @@ class PaymentDialog(QDialog):
         self._on_finish = on_finish
         self._loyalty_points_redeemed = 0
         self._loyalty_discount_value = Decimal("0.00")
+        self._tax_invoice_details: dict | None = None
         self.payments = []  # List of {'method': str, 'amount': Decimal}
         self.payment_methods = []
 
@@ -218,6 +220,27 @@ class PaymentDialog(QDialog):
         left_layout.addWidget(self.loyalty_frame)
         self._update_loyalty_display()
 
+        # Tax Invoice Section (#814)
+        tax_invoice_row = QHBoxLayout()
+        tax_invoice_row.setSpacing(8)
+        self.chk_tax_invoice = QCheckBox(_t("tax_invoice.issue_tax_invoice_checkbox"))
+        self.chk_tax_invoice.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.chk_tax_invoice.toggled.connect(self._on_tax_invoice_toggled)
+
+        self.btn_tax_invoice_details = QPushButton(_t("tax_invoice.edit_buyer_details"))
+        self.btn_tax_invoice_details.setObjectName("BtnTaxInvoiceDetails")
+        self.btn_tax_invoice_details.setFixedHeight(28)
+        self.btn_tax_invoice_details.setVisible(False)
+        self.btn_tax_invoice_details.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.btn_tax_invoice_details.clicked.connect(self._edit_buyer_details)
+
+        tax_invoice_row.addWidget(self.chk_tax_invoice)
+        tax_invoice_row.addWidget(self.btn_tax_invoice_details)
+        tax_invoice_row.addStretch()
+        left_layout.addLayout(tax_invoice_row)
+
+        self._check_tax_invoice_eligibility()
+
         # Section Header: Applied Payments
         self.lbl_applied = QLabel("")
         self.lbl_applied.setObjectName("PaymentMethodsHeader")
@@ -236,6 +259,7 @@ class PaymentDialog(QDialog):
         self.list_payments.setMaximumHeight(280)
         self.list_payments.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         left_layout.addWidget(self.list_payments, 1)
+
         content_layout.addWidget(left_widget, stretch=4)
 
         # --- RIGHT COLUMN: Amount Input + Numpad + Add Button ---
@@ -389,6 +413,8 @@ class PaymentDialog(QDialog):
         self.btn_add.setText(_t("payment.add_payment"))
         self.btn_cancel.setText(_t("payment.cancel"))
         self.btn_finish.setText(_t("payment.finish_sale"))
+        self.chk_tax_invoice.setText(_t("tax_invoice.issue_tax_invoice_checkbox"))
+        self.btn_tax_invoice_details.setText(_t("tax_invoice.edit_buyer_details"))
 
     def setup_shortcuts(self):
         """Wire the Enter key, F12 quick-cash shortcut, and each payment method's configured shortcut key."""
@@ -900,3 +926,71 @@ class PaymentDialog(QDialog):
     def payment_data(self):
         """Return the list of applied payments and the selected customer id, if any."""
         return self.payments, self.customer_id
+
+    # ── Tax Invoice Integration (#814) ──────────────────────────
+
+    def _check_tax_invoice_eligibility(self) -> None:
+        """Enable or disable the tax invoice checkbox based on shop configuration and terminal mode."""
+        from cbpos.core.services.tax_invoice_service import TaxInvoiceService
+
+        allowed, error_key = TaxInvoiceService.can_issue_invoices()
+        self.chk_tax_invoice.setEnabled(allowed)
+        if not allowed and error_key:
+            self.chk_tax_invoice.setToolTip(_t(error_key))
+        else:
+            self.chk_tax_invoice.setToolTip("")
+
+    def _on_tax_invoice_toggled(self, checked: bool) -> None:
+        """Handle toggling the tax invoice request."""
+        if not checked:
+            self._tax_invoice_details = None
+            self.btn_tax_invoice_details.setVisible(False)
+            return
+
+        initial_data: dict[str, str] = {}
+        if self.customer:
+            initial_data["name"] = getattr(self.customer, "company_name", None) or getattr(self.customer, "name", "")
+            initial_data["address"] = getattr(self.customer, "address", "") or ""
+            initial_data["phone"] = getattr(self.customer, "phone", "") or ""
+            initial_data["tin"] = getattr(self.customer, "tax_id", "") or getattr(self.customer, "vat_number", "") or ""
+
+        import re
+
+        tin_val = str(initial_data.get("tin") or "")
+        name_val = str(initial_data.get("name") or "")
+        addr_val = str(initial_data.get("address") or "")
+
+        from cbpos.ui.dialogs.buyer_details_dialog import BuyerDetailsDialog
+
+        if re.match(r"^\d{9}$", tin_val) and name_val and addr_val:
+            self._tax_invoice_details = {
+                "name": name_val,
+                "address": addr_val,
+                "phone": initial_data.get("phone") or None,
+                "tin": tin_val,
+            }
+            self.btn_tax_invoice_details.setVisible(True)
+        else:
+            dlg = BuyerDetailsDialog(parent=self, initial_data=initial_data)
+            if dlg.exec() == QDialog.DialogCode.Accepted:
+                self._tax_invoice_details = dlg.get_buyer_details()
+                self.btn_tax_invoice_details.setVisible(True)
+            else:
+                self.chk_tax_invoice.blockSignals(True)
+                self.chk_tax_invoice.setChecked(False)
+                self.chk_tax_invoice.blockSignals(False)
+                self._tax_invoice_details = None
+                self.btn_tax_invoice_details.setVisible(False)
+
+    def _edit_buyer_details(self) -> None:
+        """Allow user to edit statutory buyer particulars before completing the sale."""
+        from cbpos.ui.dialogs.buyer_details_dialog import BuyerDetailsDialog
+
+        dlg = BuyerDetailsDialog(parent=self, initial_data=self._tax_invoice_details)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            self._tax_invoice_details = dlg.get_buyer_details()
+
+    @property
+    def tax_invoice_details(self) -> dict | None:
+        """Return statutory buyer particulars if a tax invoice is requested, else None."""
+        return self._tax_invoice_details

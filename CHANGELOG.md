@@ -212,7 +212,7 @@ All notable changes to this project will be documented in this file. Never delet
 
 - **VAT registration mode**: New "VAT Registered" toggle in Settings > Sales & Tax. When disabled, all tax calculations return zero — suitable for businesses below the registration threshold.
 - **Per-category VAT exemption**: Categories can be marked as tax-exempt (e.g., pharmaceuticals, rice, books). When "Enable item-level tax exemptions" is on, CartService splits items into taxable/exempt amounts and only applies VAT/SSCL to the taxable portion.
-- **Tax invoice format (Jan 2026 mandate)**: New `generate_tax_invoice()` produces A4 PDF with "TAX INVOICE" title, supplier/buyer TIN and details, YYMMM_QQQQ_XXXX serial number, payment method, amount in words, Net/VAT/SSCL breakdown, and ORIGINAL/DUPLICATE watermarks.
+- **Tax invoice format (2026 mandate)**: Produces statutory A4 PDF with "TAX INVOICE" title, supplier/buyer 9-digit TIN and particulars, YYMMM_QQQQ_XXXXX serial number, amount in words, Net/VAT breakdown, and ORIGINAL / COPY ONLY markings.
 - **Customer TIN field**: Added `tax_id` to Customer model for B2B buyer identification on tax invoices.
 - **Amount-to-words utility**: Converts Decimal amounts to English words (e.g., "One Thousand Two Hundred Rupees") for tax invoice compliance.
 - **Tax filing summary report**: New period-based report (monthly/quarterly/custom) with sales summary, VAT/SSCL computation, refund/void handling, and payment breakdown for filing returns.

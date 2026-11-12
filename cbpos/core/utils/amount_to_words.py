@@ -88,16 +88,17 @@ def _number_to_words_en(n: int) -> str:
 
 def amount_to_words(amount: Decimal, language: str = "en") -> str:
     """
-    Convert a monetary amount to words.
+    Convert a monetary amount to words for tax invoice compliance.
 
     Args:
-        amount: The monetary amount (Decimal). Cents/paisa are ignored for
-                tax invoice purposes (whole LKR only).
+        amount: The monetary amount (Decimal).
         language: Language code - 'en' (English), 'si' (Sinhala), 'ta' (Tamil).
 
     Returns:
-        Human-readable string, e.g. "One Thousand Two Hundred Rupees"
+        Human-readable string, e.g. "One Thousand Two Hundred Fifty Rupees and Fifty Cents Only"
     """
+    from cbpos.core.utils.money import round_money
+
     # Work with absolute value, handle negative
     if amount < 0:
         prefix = "Negative "
@@ -105,13 +106,17 @@ def amount_to_words(amount: Decimal, language: str = "en") -> str:
     else:
         prefix = ""
 
-    # Truncate to whole rupees for tax invoice compliance
+    amount = round_money(amount)
     whole = int(amount)
+    cents = round((amount - whole) * 100)
+    if cents >= 100:
+        whole += 1
+        cents = 0
 
-    if language in ("si", "ta"):
-        # Sinhala and Tamil: fall back to English with a note
-        words = _number_to_words_en(whole)
-        return f"{prefix}{words} Rupees"
+    rupees_str = f"{_number_to_words_en(whole)} Rupees"
+    if cents > 0:
+        cents_str = f" and {_number_to_words_en(cents)} Cents"
+    else:
+        cents_str = ""
 
-    words = _number_to_words_en(whole)
-    return f"{prefix}{words} Rupees"
+    return f"{prefix}{rupees_str}{cents_str} Only"

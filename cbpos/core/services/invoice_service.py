@@ -276,7 +276,8 @@ class InvoiceService:
         st = _styles()
         show_vat = InvoiceService._shows_vat(sale)
         lines = InvoiceService.invoice_lines(sale, lang)
-        title = t("title_tax") if show_vat else t("title")
+        # Ordinary commercial invoices must always be titled "INVOICE", never "TAX INVOICE" (#814)
+        title = t("title")
 
         elements: list[Flowable] = [
             InvoiceService._header(sale, title, show_vat, t, st),

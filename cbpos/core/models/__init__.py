@@ -1040,6 +1040,13 @@ class ShopMeta(Base):
     value: Mapped[str] = mapped_column(String(200), nullable=False)
 
 
+from cbpos.core.models.tax_invoice import (  # noqa: E402, F401
+    TaxCreditNote,
+    TaxInvoice,
+    TaxInvoiceLine,
+    TaxInvoiceSequence,
+)
+
 # Registers the session hook that re-sends a till row to the Main PC when it
 # changes after its first push (#677). Imported here so it is active wherever
 # the models are.

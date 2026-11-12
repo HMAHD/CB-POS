@@ -773,6 +773,20 @@ class RefundService:
                     )
                 )
 
+            # 10b. Issue statutory Tax Credit Note if original sale had a Tax Invoice (VAT Act s.25)
+            from cbpos.core.services.tax_invoice_service import TaxInvoiceService
+
+            TaxInvoiceService.create_credit_note_in_session(
+                session=session,
+                orig_sale_id=sale.id,
+                refund_sale_id=refund_sale.id,
+                net_amount=preview.refund_net,
+                vat_amount=preview.refund_vat,
+                total_amount=preview.total_refund_amount,
+                user_id=user_id,
+                reason=reason,
+            )
+
             # 11. Build voucher receipt before commit while relations loaded
             voucher = TransactionService._build_refund_receipt(session, sale, refund_sale, credit_reversed)
             completed = RefundCompleted(refund_sale, voucher)

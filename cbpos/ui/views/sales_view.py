@@ -1073,11 +1073,15 @@ class SalesView(QWidget):
 
             self._processing = True
             try:
+                tax_invoice_details = getattr(dialog_ref, "tax_invoice_details", None)
+                if not isinstance(tax_invoice_details, dict):
+                    tax_invoice_details = None
                 sale = TransactionService.process_sale(
                     self.cart_service,
                     payments,
                     customer_id,
                     loyalty_points_redeemed=redeemed_points,
+                    tax_invoice_details=tax_invoice_details,
                 )
                 if sale:
                     # Mark proforma as converted if this was a proforma-to-sale conversion
@@ -1087,6 +1091,17 @@ class SalesView(QWidget):
 
                         ProformaService.mark_converted(proforma_id, sale.id)
                         self._pending_proforma_id = None
+
+                    if tax_invoice_details:
+                        from cbpos.core.services.tax_invoice_service import TaxInvoiceService
+
+                        ti = TaxInvoiceService.get_tax_invoice_by_sale_id(sale.id)
+                        if ti:
+                            QMessageBox.information(
+                                self,
+                                _t("tax_invoice.serial_label"),
+                                _t("tax_invoice.issued_success", serial=ti.serial_number),
+                            )
 
                     self._finalize_sale(sale)
                     sale_completed = True

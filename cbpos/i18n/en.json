@@ -762,6 +762,7 @@
     "version": "Version {version} ({date})",
     "dev_build": "Development build",
     "company": "Ceylon Byte (Pvt) Ltd · ceybyte.com",
+    "company_link": "{company} · {domain}",
     "made_by": "Made by Ceylon Byte · ceybyte.com",
     "help_section": "Get Help",
     "user_guide": "User Guide",

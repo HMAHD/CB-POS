@@ -14,7 +14,7 @@ from PyQt6.QtGui import QDesktopServices
 from PyQt6.QtWidgets import QApplication, QMessageBox, QWidget
 
 from cbpos.config import Config
-from cbpos.i18n import _t
+from cbpos.i18n import _t, get_language
 
 if TYPE_CHECKING:
     pass
@@ -42,14 +42,9 @@ def resolve_locale(locale: str | None = None) -> str:
     If locale is None, attempts to inspect the active translation service language.
     """
     if locale is None:
-        try:
-            from cbpos.i18n import get_current_language
-
-            lang = get_current_language()
-            if lang and str(lang).lower() in SUPPORTED_LOCALES:
-                return str(lang).lower()
-        except Exception:
-            pass
+        lang = get_language()
+        if lang and str(lang).lower() in SUPPORTED_LOCALES:
+            return str(lang).lower()
         return DEFAULT_LOCALE
 
     norm = str(locale).strip().lower()
@@ -98,24 +93,41 @@ def get_source_url(version: str | None = None) -> str:
     """Return durable GitHub source repository URL pinned to the exact release version tag.
 
     If version is not provided, defaults to Config.VERSION.
+    Normalizes any leading 'v' or 'V' to avoid duplicate prefixes like 'vv1.3.0'.
     """
-    ver = (version or Config.VERSION or "").strip()
-    if ver:
-        return SOURCE_URL_TEMPLATE.format(version=ver)
+    raw_ver = Config.VERSION if version is None else version
+    ver = (raw_ver or "").strip()
+    clean_ver = ver.lstrip("vV")
+    if clean_ver:
+        return SOURCE_URL_TEMPLATE.format(version=clean_ver)
     return SOURCE_REPO_URL
 
 
 def open_external_url(url: str, parent: QWidget | None = None) -> bool:
     """Safely open an external HTTPS URL in the user's default desktop web browser.
 
-    Shows a localized fallback dialog with the copyable URL if opening fails.
+    Validates that the URL is a valid, absolute HTTPS URL with a non-empty host.
+    Shows a localized fallback dialog with the copyable URL if validation or opening fails.
     Returns True if successfully launched, False otherwise.
     """
-    if not url.startswith("https://"):
-        raise ValueError(f"Only HTTPS URLs are permitted, got: {url!r}")
+    if not isinstance(url, str):
+        logger.warning("open_external_url called with non-string argument: %r", url)
+        _show_url_fallback_dialog(str(url), parent)
+        return False
+
+    trimmed_url = url.strip()
+    qurl = QUrl(trimmed_url)
+    is_valid_https = (
+        qurl.isValid() and not qurl.isRelative() and qurl.scheme().lower() == "https" and bool(qurl.host().strip())
+    )
+
+    if not is_valid_https:
+        logger.warning("Rejected non-HTTPS, invalid, or relative URL: %r", url)
+        _show_url_fallback_dialog(url, parent)
+        return False
 
     try:
-        opened = QDesktopServices.openUrl(QUrl(url))
+        opened = QDesktopServices.openUrl(qurl)
     except Exception as exc:
         logger.warning("Exception launching external URL %s: %s", url, exc)
         opened = False

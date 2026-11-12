@@ -762,6 +762,7 @@
     "version": "වර්ෂන් {version} ({date})",
     "dev_build": "සංවර්ධන සංස්කරණය",
     "company": "සිලෝන් බයිට් (පුද්) සමාගම · ceybyte.com",
+    "company_link": "{company} · {domain}",
     "made_by": "නිෂ්පාදනය සිලෝන් බයිට් · ceybyte.com",
     "help_section": "උදවු සහ මඟපෙන්වීම්",
     "user_guide": "පරිශීලක අත්පොත",

@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QDialog, QScrollArea
+from PyQt6.QtWidgets import QScrollArea
 
 from cbpos.config import Config
 from cbpos.core.constants.links import (
@@ -30,8 +30,23 @@ from cbpos.ui.widgets.side_menu import SideMenu
 ROOT = Path(__file__).resolve().parents[3]
 
 
+@pytest.fixture(autouse=True)
+def isolate_language_state():
+    """Ensure tests start in 'en' and restore original language after execution."""
+    from cbpos.i18n import get_language, set_language
+
+    orig = get_language()
+    set_language("en")
+    try:
+        yield
+    finally:
+        set_language(orig)
+
+
 def test_locale_resolution_and_canonical_links():
     """Canonical links must resolve locale correctly and contain no PII."""
+    from cbpos.i18n import set_language
+
     for loc in SUPPORTED_LOCALES:
         assert resolve_locale(loc) == loc
         assert f"/{loc}/" in get_website_url(loc)
@@ -43,8 +58,14 @@ def test_locale_resolution_and_canonical_links():
 
     # Unknown locale falls back to default
     assert resolve_locale("fr") == DEFAULT_LOCALE
-    assert resolve_locale(None) == DEFAULT_LOCALE
-    assert f"/{DEFAULT_LOCALE}/" in get_website_url("unknown")
+
+    # resolve_locale(None) inspects active language
+    set_language("si")
+    assert resolve_locale(None) == "si"
+    set_language("ta")
+    assert resolve_locale(None) == "ta"
+    set_language("en")
+    assert resolve_locale(None) == "en"
 
     # Fixed routing parameters only, no PII or version parameters
     bug_url = get_report_bug_url("en")
@@ -52,16 +73,39 @@ def test_locale_resolution_and_canonical_links():
     feature_url = get_suggest_feature_url("en")
     assert feature_url == "https://ceybyte.com/en/feedback/?type=feature"
 
-    # Source URL contains exact version tag
-    source_url = get_source_url("1.3.0")
-    assert source_url == "https://github.com/HMAHD/CB-POS/tree/v1.3.0"
+    # Source URL normalization handles exact tag, leading v/V, and double v
+    assert get_source_url("1.3.0") == "https://github.com/HMAHD/CB-POS/tree/v1.3.0"
+    assert get_source_url("v1.3.0") == "https://github.com/HMAHD/CB-POS/tree/v1.3.0"
+    assert get_source_url("V1.3.0") == "https://github.com/HMAHD/CB-POS/tree/v1.3.0"
+    assert get_source_url("vv1.3.0") == "https://github.com/HMAHD/CB-POS/tree/v1.3.0"
+    assert get_source_url("") == "https://github.com/HMAHD/CB-POS"
 
 
-def test_open_external_url_helper(qapp, monkeypatch):
-    """open_external_url opens only HTTPS URLs and shows fallback on failure."""
-    # Reject non-https
-    with pytest.raises(ValueError, match="Only HTTPS URLs are permitted"):
-        open_external_url("http://insecure.site")
+def test_open_external_url_helper(qapp):
+    """open_external_url opens only valid HTTPS URLs and shows fallback on rejection or failure."""
+    # Reject non-https, relative, malformed, or empty URLs without raising ValueError
+    with patch("cbpos.core.constants.links._show_url_fallback_dialog") as mock_fallback:
+        invalid_urls = [
+            "http://insecure.site",
+            "ftp://files.example.com",
+            "javascript:alert(1)",
+            "relative/path",
+            "",
+            "https://",
+            "not a url",
+            None,
+        ]
+        for bad_url in invalid_urls:
+            mock_fallback.reset_mock()
+            success = open_external_url(bad_url)
+            assert success is False, f"Expected False for {bad_url!r}"
+            mock_fallback.assert_called_once()
+
+    # Upper-case or mixed-case HTTPS scheme is valid
+    with patch("PyQt6.QtGui.QDesktopServices.openUrl", return_value=True) as mock_open:
+        success = open_external_url("HTTPS://CEYBYTE.COM/EN/")
+        assert success is True
+        mock_open.assert_called_once()
 
     # Mock QDesktopServices.openUrl returning True
     with patch("PyQt6.QtGui.QDesktopServices.openUrl", return_value=True) as mock_open:
@@ -101,6 +145,7 @@ def test_about_dialog_components_and_visual_hierarchy(qtbot):
 
     # Clickable website company link
     assert "ceybyte.com" in dialog.btn_company.text()
+    assert "Ceylon Byte (Pvt) Ltd" in dialog.btn_company.text()
 
     # Help section actions
     assert hasattr(dialog, "btn_user_guide")
@@ -108,9 +153,8 @@ def test_about_dialog_components_and_visual_hierarchy(qtbot):
     assert hasattr(dialog, "btn_suggest_feature")
     assert hasattr(dialog, "btn_check_updates")
 
-    # Helper text
-    assert "Google" in dialog.lbl_feedback_helper.text()
-    assert "CB POS" in dialog.lbl_feedback_helper.text()
+    # Helper text - verified against localized translation
+    assert dialog.lbl_feedback_helper.text() == _t("about.feedback_helper")
 
     # Legal section actions
     assert hasattr(dialog, "btn_licence")
@@ -138,24 +182,36 @@ def test_about_dialog_components_and_visual_hierarchy(qtbot):
 
 
 def test_about_dialog_legal_viewers_load_bundled_files(qtbot):
-    """Clicking legal buttons opens TextViewerDialog with bundled files."""
+    """Clicking legal buttons opens TextViewerDialog with exact bundled files."""
     dialog = AboutDialog()
     qtbot.addWidget(dialog)
 
-    # Test licence viewer
-    with patch.object(TextViewerDialog, "exec", return_value=QDialog.DialogCode.Accepted) as mock_exec:
+    with patch.object(TextViewerDialog, "show_document") as mock_show:
+        # Test licence viewer
         dialog.btn_licence.click()
-        mock_exec.assert_called_once()
+        mock_show.assert_called_once_with(
+            title=_t("about.licence"),
+            filename="LICENSE",
+            parent=dialog,
+        )
 
-    # Test privacy viewer
-    with patch.object(TextViewerDialog, "exec", return_value=QDialog.DialogCode.Accepted) as mock_exec:
+        # Test privacy viewer
+        mock_show.reset_mock()
         dialog.btn_privacy.click()
-        mock_exec.assert_called_once()
+        mock_show.assert_called_once_with(
+            title=_t("about.privacy"),
+            filename="PRIVACY.md",
+            parent=dialog,
+        )
 
-    # Test third-party notices viewer
-    with patch.object(TextViewerDialog, "exec", return_value=QDialog.DialogCode.Accepted) as mock_exec:
+        # Test third-party notices viewer
+        mock_show.reset_mock()
         dialog.btn_third_party.click()
-        mock_exec.assert_called_once()
+        mock_show.assert_called_once_with(
+            title=_t("about.third_party_notices"),
+            filename="THIRD_PARTY_NOTICES.txt",
+            parent=dialog,
+        )
 
 
 def test_about_dialog_update_check_delegates(qtbot):
@@ -265,10 +321,34 @@ def test_main_window_wires_help_signal(qapp, monkeypatch):
 
 
 def test_about_dialog_keyboard_navigation_and_esc_close(qtbot):
-    """AboutDialog must handle keyboard navigation (Tab focus) and close on Esc."""
+    """AboutDialog must handle keyboard navigation (Tab focus chain) and close on Esc."""
     dialog = AboutDialog()
     qtbot.addWidget(dialog)
     dialog.show()
+
+    # Expected focus chain matching _setup_tab_order
+    expected_order = [
+        dialog.btn_company,
+        dialog.btn_user_guide,
+        dialog.btn_check_updates,
+        dialog.btn_report_problem,
+        dialog.btn_suggest_feature,
+        dialog.btn_licence,
+        dialog.btn_privacy,
+        dialog.btn_third_party,
+        dialog.btn_view_source,
+        dialog.btn_close,
+    ]
+
+    expected_order[0].setFocus()
+    assert dialog.focusWidget() == expected_order[0]
+
+    for expected in expected_order[1:]:
+        qtbot.keyClick(dialog.focusWidget(), Qt.Key.Key_Tab)
+        assert dialog.focusWidget() == expected, (
+            f"Expected focus on {expected.objectName() or expected.text()}, "
+            f"got {dialog.focusWidget().objectName() if dialog.focusWidget() else None}"
+        )
 
     # Esc key closes the dialog
     qtbot.keyClick(dialog, Qt.Key.Key_Escape)

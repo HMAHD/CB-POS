@@ -104,7 +104,9 @@ class AboutDialog(QDialog):
         header_layout.addWidget(self.lbl_version)
 
         # Clickable company link
-        self.btn_company = QPushButton("Ceylon Byte (Pvt) Ltd · ceybyte.com")
+        self.btn_company = QPushButton(
+            _t("about.company_link", company=Config.COMPANY_NAME, domain=Config.WEBSITE_DOMAIN)
+        )
         self.btn_company.setObjectName("AboutCompanyBtn")
         self.btn_company.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_company.setFlat(True)
@@ -263,7 +265,7 @@ class AboutDialog(QDialog):
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
         btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
-        icon_color = "#00BCEB" if primary else ThemeService.get_icon_color()
+        icon_color = ThemeService.get_accent_color() if primary else ThemeService.get_icon_color()
         btn.setIcon(Icons.get(icon_name, icon_color))
         btn.setIconSize(QSize(18, 18))
 

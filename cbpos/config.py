@@ -10,7 +10,10 @@ class Config:
     """
 
     APP_NAME = "CB POS"
+    COMPANY_NAME = "Ceylon Byte (Pvt) Ltd"
+    WEBSITE_DOMAIN = "ceybyte.com"
     VERSION = "1.3.0"
+    BUILD_DATE: str | None = None
 
     # Application code / assets directory (where the source lives).
     BASE_DIR = Path(__file__).parent.parent

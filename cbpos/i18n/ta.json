@@ -68,7 +68,9 @@
     "na": "பொருந்தாது",
     "unknown": "தெரியாத",
     "important": "முக்கியம்",
-    "got_it": "புரிஞ்சது"
+    "got_it": "புரிஞ்சது",
+    "copy": "இணைப்பை நகலெடுக்கவும்",
+    "support_hint": "உதவி தேவையா? {url} ஐப் பார்வையிடவும்"
   },
   "login": {
     "welcome": "Welcome / ආයුබෝවන් / வணக்கம்",
@@ -751,7 +753,31 @@
     "sign_out": "லாக் அவுட்",
     "settings_tooltip": "அமைப்புகள்",
     "fullscreen_tooltip": "முழுத்திரை",
-    "exit_tooltip": "POS-ஐ மூடு"
+    "exit_tooltip": "POS-ஐ மூடு",
+    "help_about": "உதவி & விபரம்",
+    "help_tooltip": "உதவி, வழிகாட்டி, புதுப்பிப்புகள் மற்றும் உரிம விபரங்கள்"
+  },
+  "about": {
+    "title": "CB POS பற்றி",
+    "version": "பதிப்பு {version} ({date})",
+    "dev_build": "உருவாக்க பதிப்பு",
+    "company": "சிலோன் பைட் (பிரைவேட்) லிமிடெட் · ceybyte.com",
+    "company_link": "{company} · {domain}",
+    "made_by": "சிலோன் பைட் தயாரிப்பு · ceybyte.com",
+    "help_section": "உதவி பெற",
+    "user_guide": "பயனர் கையேடு",
+    "report_problem": "சிக்கலைப் புகாரளிக்கவும்",
+    "suggest_feature": "புதிய வசதியைப் பரிந்துரைக்கவும்",
+    "check_updates": "புதுப்பிப்புகளைச் சரிபார்க்கவும்",
+    "feedback_helper": "கருத்து தெரிவிக்க உங்கள் உலாவியில் CeyByte திறக்கும். அதை அனுப்ப Google கணக்கில் உள்நுழையவும். CB POS உங்கள் கடைத் தரவை தானாக அனுப்பாது.",
+    "legal_section": "சட்ட விபரங்கள்",
+    "licence": "GNU GPLv3 உரிமம்",
+    "privacy": "தனியுரிமை அறிவிப்பு",
+    "third_party_notices": "மூன்றாம் தரப்பு அறிவிப்புகள்",
+    "view_source": "மூலக் குறியீட்டைக் காண்க",
+    "open_url_failed": "உலாவியைத் திறக்க முடியவில்லை. தயவுசெய்து இந்த இணைப்பைப் பார்வையிடவும்:\n{url}",
+    "doc_missing": "கோரப்பட்ட ஆவணத்தைக் கண்டுபிடிக்க முடியவில்லை: {filename}",
+    "copied_to_clipboard": "இணைப்பு நகலெடுக்கப்பட்டது"
   },
   "action_panel": {
     "customer_label": "வாடிக்கையாளர்",

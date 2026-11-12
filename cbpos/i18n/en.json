@@ -68,7 +68,9 @@
     "na": "N/A",
     "unknown": "Unknown",
     "important": "Important",
-    "got_it": "Got it"
+    "got_it": "Got it",
+    "copy": "Copy Link",
+    "support_hint": "Need help? Visit {url}"
   },
   "login": {
     "welcome": "Welcome / ආයුබෝවන් / வணக்கம்",
@@ -751,7 +753,31 @@
     "sign_out": "Sign Out",
     "settings_tooltip": "Settings",
     "fullscreen_tooltip": "Toggle Fullscreen",
-    "exit_tooltip": "Exit Application"
+    "exit_tooltip": "Exit Application",
+    "help_about": "Help & About",
+    "help_tooltip": "Help, documentation, updates and licence information"
+  },
+  "about": {
+    "title": "About CB POS",
+    "version": "Version {version} ({date})",
+    "dev_build": "Development build",
+    "company": "Ceylon Byte (Pvt) Ltd · ceybyte.com",
+    "company_link": "{company} · {domain}",
+    "made_by": "Made by Ceylon Byte · ceybyte.com",
+    "help_section": "Get Help",
+    "user_guide": "User Guide",
+    "report_problem": "Report a Problem",
+    "suggest_feature": "Suggest a Feature",
+    "check_updates": "Check for Updates",
+    "feedback_helper": "Feedback opens CeyByte in your browser. Sign in with Google to send it. CB POS does not send shop data automatically.",
+    "legal_section": "Legal",
+    "licence": "GNU GPLv3 Licence",
+    "privacy": "Privacy Notice",
+    "third_party_notices": "Third-Party Notices",
+    "view_source": "View Source Code",
+    "open_url_failed": "Could not open browser. Please visit:\n{url}",
+    "doc_missing": "The requested document could not be found: {filename}",
+    "copied_to_clipboard": "Link copied to clipboard"
   },
   "action_panel": {
     "customer_label": "Customer",

@@ -106,6 +106,7 @@ class MainWindow(QMainWindow):
         self.sales_view.side_menu.refund_clicked.connect(self.sales_view.open_refund)
         self.sales_view.side_menu.history_clicked.connect(self.sales_view.open_sale_history)
         self.sales_view.side_menu.shift_clicked.connect(self.sales_view.open_shift_management)
+        self.sales_view.side_menu.help_clicked.connect(self.open_about_dialog)
         self.sales_view.shift_closed.connect(self.logout)
         self.sales_view.printer_setup_requested.connect(self.open_hardware_settings)
         self.sales_view.side_menu.logout_clicked.connect(self.logout)
@@ -308,6 +309,17 @@ class MainWindow(QMainWindow):
         self.stack.setCurrentWidget(self.settings_view)
         # Hide side menu in sales view if open
         self.sales_view.side_menu.setVisible(False)
+
+    def open_about_dialog(self) -> None:
+        """Open the Help & About dialog."""
+        from cbpos.ui.dialogs.about_dialog import AboutDialog
+
+        if hasattr(self.sales_view, "side_menu") and self.sales_view.side_menu.isVisible():
+            self.sales_view.side_menu.setVisible(False)
+            self.sales_view.side_menu.clear_active()
+
+        dialog = AboutDialog(self)
+        dialog.exec()
 
     def open_settings(self, page_index: int = 0, subtab_index: int | None = None) -> None:
         """Show Settings on a specific page index and optional subtab (#875, #882)."""

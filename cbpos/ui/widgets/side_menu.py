@@ -160,6 +160,7 @@ class SideMenu(QWidget):
     reprint_receipt_clicked = pyqtSignal()
     refund_clicked = pyqtSignal()
     shift_clicked = pyqtSignal()
+    help_clicked = pyqtSignal()
     logout_clicked = pyqtSignal()
     settings_clicked = pyqtSignal()
     fullscreen_clicked = pyqtSignal()
@@ -263,6 +264,12 @@ class SideMenu(QWidget):
         self.btn_shift.clicked.connect(self._on_shift)
         nav_layout.addWidget(self.btn_shift)
         self._nav_buttons.append(self.btn_shift)
+
+        # Help & About
+        self.btn_help = NavTile("side_menu.help_about", "fa5s.question-circle")
+        self.btn_help.clicked.connect(self._on_help)
+        nav_layout.addWidget(self.btn_help)
+        self._nav_buttons.append(self.btn_help)
 
         nav_layout.addStretch(1)
         self.nav_scroll.setWidget(nav_container)
@@ -432,6 +439,10 @@ class SideMenu(QWidget):
     def _on_shift(self) -> None:
         self._set_active(self.btn_shift)
         self.shift_clicked.emit()
+
+    def _on_help(self) -> None:
+        self._set_active(self.btn_help)
+        self.help_clicked.emit()
 
     # ── Translation ──────────────────────────────────────────────
 

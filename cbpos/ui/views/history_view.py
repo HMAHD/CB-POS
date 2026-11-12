@@ -1,8 +1,10 @@
 import logging
+from typing import Any
 
 from PyQt6.QtCore import QDate, Qt
 from PyQt6.QtWidgets import (
     QDateEdit,
+    QFileDialog,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -171,6 +173,11 @@ class HistoryView(QWidget):
         self.reprint_btn.setEnabled(False)
         action_layout.addWidget(self.reprint_btn)
 
+        self.tax_invoice_btn = QPushButton(_t("history.issue_tax_invoice"))
+        self.tax_invoice_btn.clicked.connect(self.handle_tax_invoice_action)
+        self.tax_invoice_btn.setEnabled(False)
+        action_layout.addWidget(self.tax_invoice_btn)
+
         self.refund_btn = QPushButton(_t("history.process_refund"))
         self.refund_btn.clicked.connect(self.process_refund)
         self.refund_btn.setEnabled(False)
@@ -228,6 +235,16 @@ class HistoryView(QWidget):
         # Action buttons
         self.reprint_btn.setText(_t("history.reprint_receipt"))
         self.refund_btn.setText(_t("history.process_refund"))
+        if self.current_sale:
+            from cbpos.core.services.tax_invoice_service import TaxInvoiceService
+
+            existing = TaxInvoiceService.get_tax_invoice_by_sale_id(self.current_sale.id)
+            if existing:
+                self.tax_invoice_btn.setText(_t("history.view_tax_invoice"))
+            else:
+                self.tax_invoice_btn.setText(_t("history.issue_tax_invoice"))
+        else:
+            self.tax_invoice_btn.setText(_t("history.issue_tax_invoice"))
 
     def load_today(self):
         """Load today's transactions"""
@@ -316,6 +333,7 @@ class HistoryView(QWidget):
             self.current_sale = None
             self.reprint_btn.setEnabled(False)
             self.refund_btn.setEnabled(False)
+            self.tax_invoice_btn.setEnabled(False)
             return
 
         # Get sale ID from first column
@@ -327,6 +345,22 @@ class HistoryView(QWidget):
             self.current_sale = sale
             self.display_details(sale)
             self.reprint_btn.setEnabled(True)
+
+            from cbpos.core.services.tax_invoice_service import TaxInvoiceService
+
+            existing = TaxInvoiceService.get_tax_invoice_by_sale_id(sale.id)
+            if existing:
+                self.tax_invoice_btn.setText(_t("history.view_tax_invoice"))
+                self.tax_invoice_btn.setEnabled(True)
+                self.tax_invoice_btn.setToolTip(f"{existing.serial_number} ({existing.print_count} prints)")
+            else:
+                self.tax_invoice_btn.setText(_t("history.issue_tax_invoice"))
+                eligible, err_key = TaxInvoiceService.validate_eligibility(sale.id)
+                self.tax_invoice_btn.setEnabled(eligible)
+                if not eligible and err_key:
+                    self.tax_invoice_btn.setToolTip(_t(err_key))
+                else:
+                    self.tax_invoice_btn.setToolTip("")
 
             rstate = getattr(self, "_refund_states", {}).get(sale.id)
             if rstate is None:
@@ -376,6 +410,12 @@ class HistoryView(QWidget):
 
         if sale.refund_of_sale_id:
             details_text += f"<br><b>{_t('history.refund_of_sale')}:</b> #{sale.refund_of_sale_id}"
+
+        from cbpos.core.services.tax_invoice_service import TaxInvoiceService
+
+        existing_tax_inv = TaxInvoiceService.get_tax_invoice_by_sale_id(sale.id)
+        if existing_tax_inv:
+            details_text += f"<br><b>{_t('tax_invoice.serial_label')}:</b> {existing_tax_inv.serial_number}"
 
         self.details_label.setText(details_text)
 
@@ -498,3 +538,121 @@ class HistoryView(QWidget):
                 QMessageBox.critical(
                     self, _t("common.error"), _t("history.refund_error", error=translate_error(str(e)))
                 )
+
+    def handle_tax_invoice_action(self):
+        """View/print an existing Tax Invoice or issue a new one for the selected sale."""
+        if not self.current_sale:
+            return
+
+        from PyQt6.QtWidgets import QDialog
+
+        from cbpos.core.services.tax_invoice_service import TaxInvoiceService
+        from cbpos.ui.dialogs.buyer_details_dialog import BuyerDetailsDialog
+
+        existing = TaxInvoiceService.get_tax_invoice_by_sale_id(self.current_sale.id)
+        if existing:
+            default_name = f"Tax_Invoice_{existing.serial}.pdf"
+            file_path, _ = QFileDialog.getSaveFileName(
+                self,
+                _t("tax_invoice.save_dialog_title"),
+                default_name,
+                "PDF Files (*.pdf)",
+            )
+            if not file_path:
+                return
+
+            current_user = AuthService.get_current_user()
+            if not current_user:
+                QMessageBox.warning(self, _t("common.error"), _t("errors.permission_denied"))
+                return
+
+            self._export_tax_invoice_pdf(existing.id, file_path, current_user.id)
+        else:
+            initial_data = {}
+            if self.current_sale.customer:
+                cust = self.current_sale.customer
+                initial_data["name"] = getattr(cust, "company_name", None) or getattr(cust, "name", "")
+                initial_data["address"] = getattr(cust, "address", "") or ""
+                initial_data["phone"] = getattr(cust, "phone", "") or ""
+                initial_data["tin"] = getattr(cust, "tax_id", "") or getattr(cust, "vat_number", "") or ""
+
+            dlg = BuyerDetailsDialog(parent=self, initial_data=initial_data)
+            if dlg.exec() != QDialog.DialogCode.Accepted:
+                return
+
+            buyer_details = dlg.get_buyer_details()
+            if not buyer_details:
+                return
+
+            current_user = AuthService.get_current_user()
+            if not current_user:
+                QMessageBox.warning(self, _t("common.error"), _t("errors.permission_denied"))
+                return
+
+            try:
+                tax_inv = TaxInvoiceService.issue_tax_invoice(
+                    sale_id=self.current_sale.id,
+                    buyer_details=buyer_details,
+                    user_id=current_user.id,
+                )
+                QMessageBox.information(
+                    self,
+                    _t("common.success"),
+                    _t("tax_invoice.issued_success", serial=tax_inv.serial),
+                )
+                self.display_details(self.current_sale)
+                self.on_selection_changed()
+
+                # Offer to save PDF right now
+                reply = QMessageBox.question(
+                    self,
+                    _t("tax_invoice.serial_label"),
+                    _t("tax_invoice.save_dialog_title") + "?",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.Yes,
+                )
+                if reply == QMessageBox.StandardButton.Yes:
+                    default_name = f"Tax_Invoice_{tax_inv.serial}.pdf"
+                    file_path, _ = QFileDialog.getSaveFileName(
+                        self,
+                        _t("tax_invoice.save_dialog_title"),
+                        default_name,
+                        "PDF Files (*.pdf)",
+                    )
+                    if file_path:
+                        self._export_tax_invoice_pdf(tax_inv.id, file_path, current_user.id)
+            except PermissionError:
+                QMessageBox.warning(self, _t("common.error"), _t("errors.permission_denied"))
+            except ValueError as e:
+                err_msg = _t(f"tax_invoice.{e}") if _t(f"tax_invoice.{e}") != f"tax_invoice.{e}" else str(e)
+                QMessageBox.warning(self, _t("common.error"), err_msg)
+            except Exception as e:
+                logger.exception("Failed to issue tax invoice: %s", e)
+                QMessageBox.critical(self, _t("common.error"), str(e))
+
+    def _export_tax_invoice_pdf(self, invoice_id: int, file_path: str, user_id: int) -> None:
+        """Export tax invoice PDF off the main thread using TaxInvoiceArtifactWorker."""
+        from cbpos.ui.workers import TaxInvoiceArtifactWorker, start_background_job
+
+        worker = TaxInvoiceArtifactWorker(
+            invoice_id=invoice_id,
+            destination_path=file_path,
+            user_id=user_id,
+            channel="pdf",
+        )
+        worker.result.connect(self._on_tax_invoice_exported)
+        worker.error.connect(self._on_tax_invoice_export_failed)
+        start_background_job(worker)
+
+    def _on_tax_invoice_exported(self, res: Any) -> None:
+        QMessageBox.information(
+            self,
+            _t("common.success"),
+            _t("tax_invoice.pdf_saved_success", path=res.destination_path),
+        )
+        if self.current_sale:
+            self.display_details(self.current_sale)
+
+    def _on_tax_invoice_export_failed(self, error_msg: str) -> None:
+        logger.exception("Failed to export tax invoice PDF: %s", error_msg)
+        QMessageBox.critical(self, _t("common.error"), error_msg)

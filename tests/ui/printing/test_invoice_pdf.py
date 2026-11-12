@@ -148,7 +148,8 @@ class TestVatInvoicePdf:
     def test_lines_totals_and_vat_breakdown(self, settings, tmp_path):
         text = _pdf_text(_vat_sale(), tmp_path)
 
-        assert "TAX INVOICE" in text
+        assert "INVOICE" in text
+        assert "TAX INVOICE" not in text  # Ordinary commercial invoices never use "TAX INVOICE" (#814)
         assert "REC-000123" in text
         assert "2026-10-15" in text
         for expected in ("Cement 50kg", "Sugar (loose)", "1.250", "1,200.00", "200.00", "2,200.00"):

@@ -98,7 +98,7 @@ Whether you run a *sathosa*, a pharmacy in Kandy, a hardware store in Galle, or 
 
 ### Sri Lankan Tax Compliance
 - Built-in **VAT (18%)** and **SSCL (2.5%)** backward calculation from MRP
-- Tax invoice generation (2026 mandate compliant)
+- Tax invoice generation (statutory 2026 mandate compliant: YYMMM_QQQQ_XXXXX serial, mandatory particulars, ORIGINAL / COPY ONLY markings)
 - Tax-exempt categories (pharmaceuticals, essentials)
 - Tax filing summary reports for your accountant
 

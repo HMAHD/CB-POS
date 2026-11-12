@@ -885,6 +885,44 @@ class PinCheckWorker(QThread):
         self.result.emit(self.output)
 
 
+class TaxInvoiceArtifactWorker(QThread):
+    """Generates and finalizes a VAT Tax Invoice PDF artifact in a background thread."""
+
+    result = pyqtSignal(object)  # TaxInvoiceArtifactResult
+    error = pyqtSignal(str)
+
+    def __init__(
+        self,
+        invoice_id: int,
+        destination_path: str,
+        user_id: int,
+        channel: str = "pdf",
+        parent: QObject | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.finished.connect(self.deleteLater)
+        self.invoice_id = invoice_id
+        self.destination_path = destination_path
+        self.user_id = user_id
+        self.channel = channel
+
+    def run(self) -> None:
+        """Execute artifact issuance off the Qt UI thread."""
+        try:
+            from cbpos.core.services.tax_invoice_service import TaxInvoiceService
+
+            artifact = TaxInvoiceService.issue_artifact(
+                invoice_id=self.invoice_id,
+                destination_path=self.destination_path,
+                user_id=self.user_id,
+                channel=self.channel,
+            )
+            self.result.emit(artifact)
+        except Exception as e:
+            logger.exception("Tax invoice artifact generation failed: %s", e)
+            self.error.emit(str(e))
+
+
 # Alias PrintWorker as ReceiptWorker for backwards/audit naming compatibility
 def __getattr__(name: str):
     if name == "ReceiptWorker":

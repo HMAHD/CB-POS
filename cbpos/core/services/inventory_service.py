@@ -1,3 +1,4 @@
+import json
 import logging
 import uuid
 from dataclasses import dataclass
@@ -8,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.orm.exc import StaleDataError
 
+from cbpos.core.constants.audit import WARRANTY_EVENT
 from cbpos.core.constants.permissions import Permissions
 from cbpos.core.constants.status import MovementType
 from cbpos.core.database import Database
@@ -105,9 +107,41 @@ class InventoryService:
 
         # Opening stock is initialized to 0 on model, then recorded via StockService
         data["stock_qty"] = Decimal("0")
+
+        # Validate warranty assignment and enforce warranty.edit if specified
+        warr_actor_id = None
+        override = data.get("warranty_override")
+        policy_id = data.get("warranty_policy_id")
+        if (override is not None and override != "INHERIT") or policy_id is not None:
+            from cbpos.core.services.warranty_service import WarrantyService
+
+            warr_actor_id = WarrantyService._resolve_actor(user_id, Permissions.WARRANTY_EDIT)
+            WarrantyService.validate_warranty_assignment(
+                override=override or "INHERIT",
+                policy_id=policy_id,
+                is_weighted=bool(data.get("is_weighted")),
+                session=session,
+            )
+
         product = Product(**data)
         session.add(product)
         session.flush()  # Generate ID
+
+        if warr_actor_id is not None:
+            audit = AuditLog(
+                user_id=warr_actor_id,
+                action="PRODUCT_WARRANTY_ASSIGNMENT",
+                event_type=WARRANTY_EVENT,
+                details=json.dumps(
+                    {
+                        "product_id": product.id,
+                        "override": product.warranty_override,
+                        "policy_id": product.warranty_policy_id,
+                    }
+                ),
+            )
+            session.add(audit)
+            session.flush()
 
         if generate_barcode:
             product.barcode = self._in_store_barcode(session, product.id)
@@ -146,7 +180,11 @@ class InventoryService:
         return product
 
     def update_product(
-        self, product_id: int, data: dict[str, Any], expected_version: int | None = None
+        self,
+        product_id: int,
+        data: dict[str, Any],
+        expected_version: int | None = None,
+        user_id: int | None = None,
     ) -> Product | None:
         """Update an existing product; rejects stale updates and ignores stock/cost (#862)."""
         require_catalog_writable()
@@ -162,6 +200,31 @@ class InventoryService:
 
             if expected_version is not None and product.version_id != expected_version:
                 raise StaleProductError("This product was modified by another user. Please reload and try again.")
+
+            warr_actor_id = None
+            override_in_data = "warranty_override" in data
+            policy_in_data = "warranty_policy_id" in data
+            new_override = data.get("warranty_override") if override_in_data else product.warranty_override
+            new_policy_id = data.get("warranty_policy_id") if policy_in_data else product.warranty_policy_id
+
+            override_changed = override_in_data and new_override != product.warranty_override
+            policy_changed = policy_in_data and new_policy_id != product.warranty_policy_id
+
+            if override_changed or policy_changed:
+                effective_override = new_override or "INHERIT"
+                effective_policy_id = new_policy_id
+                effective_weighted = data.get("is_weighted", product.is_weighted)
+
+                from cbpos.core.services.warranty_service import WarrantyService
+
+                warr_actor_id = WarrantyService._resolve_actor(user_id, Permissions.WARRANTY_EDIT)
+                WarrantyService.validate_warranty_assignment(
+                    override=effective_override,
+                    policy_id=effective_policy_id,
+                    is_weighted=bool(effective_weighted),
+                    existing_policy_id=product.warranty_policy_id,
+                    session=session,
+                )
 
             if data.get("price") is not None:
                 price_change = diff_changes({"price": product.price}, {"price": Decimal(str(data["price"]))})
@@ -188,6 +251,21 @@ class InventoryService:
                             qty=qty,
                         )
                         session.add(composite)
+
+            if warr_actor_id is not None:
+                audit = AuditLog(
+                    user_id=warr_actor_id,
+                    action="PRODUCT_WARRANTY_ASSIGNMENT",
+                    event_type=WARRANTY_EVENT,
+                    details=json.dumps(
+                        {
+                            "product_id": product.id,
+                            "override": product.warranty_override,
+                            "policy_id": product.warranty_policy_id,
+                        }
+                    ),
+                )
+                session.add(audit)
 
             try:
                 session.commit()

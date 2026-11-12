@@ -6,13 +6,26 @@ out uncaught. A stock adjustment could fail outright rather than merely
 fail to log.
 """
 
+import json
 from decimal import Decimal
 
 import pytest
 
-from cbpos.core.constants.permissions import ADMIN_ROLE_NAME
+from cbpos.core.constants.audit import WARRANTY_EVENT
+from cbpos.core.constants.permissions import ADMIN_ROLE_NAME, Permissions
 from cbpos.core.constants.status import MovementType
-from cbpos.core.models import AuditLog, InventoryLog, Product, Role, StockMovement, User
+from cbpos.core.models import (
+    AuditLog,
+    Category,
+    InventoryLog,
+    Permission,
+    Product,
+    Role,
+    StockMovement,
+    User,
+    WarrantyPolicy,
+)
+from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.inventory_service import InventoryService
 
 _counter = 0
@@ -381,7 +394,6 @@ class TestInventoryServiceListProductsIssue863:
 
     def test_issue_863_count_matches_filter(self, db_session):
         """#863: list_products total_count accurately reflects active, category, and low stock filters."""
-        from cbpos.core.models import Category
 
         service = InventoryService()
         suffix = _next_suffix()
@@ -433,3 +445,178 @@ class TestInventoryServiceListProductsIssue863:
         )
         assert count_low == 1
         assert items_low[0].barcode == f"LOW-{suffix}"
+
+
+def test_issue_821_inventory_service_warranty_permission_and_audit(db_session):
+    """Product create and update with warranty settings enforces warranty.edit and writes WARRANTY audit."""
+    service = InventoryService()
+    policy = WarrantyPolicy(
+        name="Prod Policy Active",
+        warranty_type="SHOP",
+        duration=1,
+        duration_unit="YEARS",
+        remedy="REPAIR_OR_REPLACE",
+        is_active=True,
+    )
+    inactive_policy = WarrantyPolicy(
+        name="Prod Policy Inactive",
+        warranty_type="SHOP",
+        duration=6,
+        duration_unit="MONTHS",
+        remedy="REPAIR_OR_REPLACE",
+        is_active=False,
+    )
+    db_session.add_all([policy, inactive_policy])
+    db_session.flush()
+
+    role_no_warr = Role(name=f"InvOnlyRole_{_next_suffix()}")
+    db_session.add(role_no_warr)
+    db_session.flush()
+    perm_inv = db_session.query(Permission).filter(Permission.code == Permissions.INVENTORY_EDIT).first()
+    if not perm_inv:
+        perm_inv = Permission(code=Permissions.INVENTORY_EDIT, description="Inventory Edit", group="Inventory")
+        db_session.add(perm_inv)
+        db_session.flush()
+    role_no_warr.permissions.append(perm_inv)
+
+    user_no_warr = User(
+        username=f"nowarr_{_next_suffix()}",
+        pin_hash=AuthService.hash_pin("3333"),
+        role_id=role_no_warr.id,
+        is_active=True,
+    )
+    db_session.add(user_no_warr)
+
+    role_warr = Role(name=f"WarrRole_{_next_suffix()}")
+    db_session.add(role_warr)
+    db_session.flush()
+    perm_warr = db_session.query(Permission).filter(Permission.code == Permissions.WARRANTY_EDIT).first()
+    if not perm_warr:
+        perm_warr = Permission(code=Permissions.WARRANTY_EDIT, description="Warranty Edit", group="Warranty")
+        db_session.add(perm_warr)
+        db_session.flush()
+    role_warr.permissions.extend([perm_inv, perm_warr])
+
+    user_warr = User(
+        username=f"warr_{_next_suffix()}",
+        pin_hash=AuthService.hash_pin("4444"),
+        role_id=role_warr.id,
+        is_active=True,
+    )
+    db_session.add(user_warr)
+    db_session.commit()
+
+    # 1. User without warranty.edit cannot set specific warranty policy on create
+    with pytest.raises(PermissionError, match=r"warranty\.edit required"):
+        service.create_product(
+            {
+                "barcode": f"WARR-FAIL-{_next_suffix()}",
+                "name_en": "Warranty Create Fail",
+                "price": Decimal("150.00"),
+                "warranty_override": "POLICY",
+                "warranty_policy_id": policy.id,
+            },
+            user_id=user_no_warr.id,
+        )
+
+    # 2. Cannot assign inactive policy on create
+    with pytest.raises(ValueError, match="Cannot assign inactive warranty policy"):
+        service.create_product(
+            {
+                "barcode": f"WARR-INACT-{_next_suffix()}",
+                "name_en": "Warranty Inactive Fail",
+                "price": Decimal("150.00"),
+                "warranty_override": "POLICY",
+                "warranty_policy_id": inactive_policy.id,
+            },
+            user_id=user_warr.id,
+        )
+
+    # 3. Weighted product cannot have warranty policy
+    with pytest.raises(ValueError, match="Weighted products cannot have warranty policies"):
+        service.create_product(
+            {
+                "barcode": f"WARR-WEIGHT-{_next_suffix()}",
+                "name_en": "Warranty Weighted Fail",
+                "price": Decimal("150.00"),
+                "is_weighted": True,
+                "warranty_override": "POLICY",
+                "warranty_policy_id": policy.id,
+            },
+            user_id=user_warr.id,
+        )
+
+    # 4. User with warranty.edit succeeds on create and writes AuditLog
+    prod = service.create_product(
+        {
+            "barcode": f"WARR-OK-{_next_suffix()}",
+            "name_en": "Warranty Success",
+            "price": Decimal("250.00"),
+            "warranty_override": "POLICY",
+            "warranty_policy_id": policy.id,
+        },
+        user_id=user_warr.id,
+    )
+    assert prod.warranty_override == "POLICY"
+    assert prod.warranty_policy_id == policy.id
+
+    audit = (
+        db_session.query(AuditLog)
+        .filter(AuditLog.event_type == WARRANTY_EVENT, AuditLog.action == "PRODUCT_WARRANTY_ASSIGNMENT")
+        .order_by(AuditLog.id.desc())
+        .first()
+    )
+    assert audit is not None
+    assert audit.user_id == user_warr.id
+    details = json.loads(audit.details)
+    assert details["product_id"] == prod.id
+    assert details["override"] == "POLICY"
+    assert details["policy_id"] == policy.id
+
+    # 5. User without warranty.edit cannot change warranty settings on update
+    with pytest.raises(PermissionError, match=r"warranty\.edit required"):
+        service.update_product(
+            prod.id,
+            {"warranty_override": "NONE", "warranty_policy_id": None},
+            user_id=user_no_warr.id,
+        )
+
+    # 6. User without warranty.edit CAN update price or name without changing warranty
+    updated = service.update_product(
+        prod.id,
+        {"price": Decimal("300.00")},
+        user_id=user_no_warr.id,
+    )
+    assert updated.price == Decimal("300.00")
+    assert updated.warranty_policy_id == policy.id
+
+
+def test_issue_821_inventory_service_preserves_inactive_warranty(db_session):
+    """Updating a product that already has an inactive warranty preserves the assignment."""
+    service = InventoryService()
+    inactive_policy = WarrantyPolicy(
+        name="Existing Inactive Policy",
+        warranty_type="SHOP",
+        duration=6,
+        duration_unit="MONTHS",
+        remedy="REPAIR_OR_REPLACE",
+        is_active=False,
+    )
+    db_session.add(inactive_policy)
+    db_session.flush()
+
+    prod = Product(
+        barcode=f"EXIST-INACT-{_next_suffix()}",
+        name_en="Existing Product With Inactive Policy",
+        price=Decimal("500.00"),
+        stock_qty=Decimal("10"),
+        warranty_override="POLICY",
+        warranty_policy_id=inactive_policy.id,
+    )
+    db_session.add(prod)
+    db_session.commit()
+
+    # Updating name should succeed and preserve the inactive policy
+    updated = service.update_product(prod.id, {"name_en": "Updated Name Keeping Inactive"})
+    assert updated.name_en == "Updated Name Keeping Inactive"
+    assert updated.warranty_policy_id == inactive_policy.id

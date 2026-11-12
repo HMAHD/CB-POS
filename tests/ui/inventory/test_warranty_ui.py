@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from cbpos.core.models import Role, User, WarrantyPolicy
+from cbpos.core.models import Category, Product, Role, User, WarrantyPolicy
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.warranty_service import WarrantyService
@@ -21,9 +21,11 @@ pytestmark = pytest.mark.usefixtures("qapp")
 
 @pytest.fixture
 def admin_user(db_session):
-    role = Role(name="AdminWarrantyUI", access_level=9)
-    db_session.add(role)
-    db_session.flush()
+    role = db_session.query(Role).filter_by(name="Admin").first()
+    if not role:
+        role = Role(name="Admin", access_level=9)
+        db_session.add(role)
+        db_session.flush()
 
     user = User(
         username="admin_warranty_ui",
@@ -123,6 +125,55 @@ class TestWarrantyPoliciesView:
         view.search_input.setText("NonExistentString12345")
         assert view.table.rowCount() == 0
 
+    def test_issue_821_view_load_failure_preserves_rows_and_shows_retry(self, sample_policy, admin_user):
+        AuthService._current_user = admin_user
+        view = WarrantyPoliciesView()
+        view.show()
+        initial_count = view.table.rowCount()
+        assert initial_count >= 1
+        assert view.btn_new.isEnabled() is True
+
+        # Simulate transient error during reload
+        with patch.object(WarrantyService, "list_policies", side_effect=RuntimeError("DB disconnected")):
+            view.load_data()
+
+        # Rows preserved
+        assert view.table.rowCount() == initial_count
+        # Error banner visible
+        assert hasattr(view, "error_banner")
+        assert not view.error_banner.isHidden()
+        assert view.btn_new.isEnabled() is False
+
+        # Clicking retry recovers
+        view.load_data()
+        assert view.error_banner.isHidden()
+        assert view.btn_new.isEnabled() is True
+
+    def test_issue_821_view_deactivate_shows_confirmation_dialog(self, sample_policy):
+        view = WarrantyPoliciesView()
+        # Mock QMessageBox.question returning Cancel / No
+        from PyQt6.QtWidgets import QMessageBox
+
+        with patch.object(QMessageBox, "question", return_value=QMessageBox.StandardButton.No) as mock_q:
+            view._deactivate_policy(sample_policy)
+            mock_q.assert_called_once()
+            # Policy remains active
+            assert sample_policy.is_active is True
+
+    def test_issue_821_view_double_click_obeys_permissions_and_readonly(self, sample_policy):
+        view = WarrantyPoliciesView()
+        with patch("cbpos.ui.views.warranty_policies_view.WarrantyPolicyDialog") as mock_dlg:
+            # When catalog is read-only
+            view.read_only = True
+            view._on_row_double_clicked(0, 0)
+            mock_dlg.assert_not_called()
+
+            # When user lacks permission
+            view.read_only = False
+            with patch("cbpos.core.utils.permission_helper.check_permission_with_override", return_value=None):
+                view._on_row_double_clicked(0, 0)
+                mock_dlg.assert_not_called()
+
 
 class TestProductEditorWarrantyTab:
     """Test product editor warranty tab display, live preview, and weighted item behavior."""
@@ -162,6 +213,36 @@ class TestProductEditorWarrantyTab:
         assert str(end_date.year) in preview_text
         assert sample_policy.name in preview_text
 
+    def test_issue_821_product_editor_preserves_inactive_policy(self, db_session):
+        ConfigService.set("warranty_enabled", True)
+        inactive = WarrantyPolicy(
+            name="Archived Phone Warranty",
+            warranty_type="SHOP",
+            duration=1,
+            duration_unit="YEARS",
+            remedy="REPAIR_OR_REPLACE",
+            is_active=False,
+        )
+        db_session.add(inactive)
+        db_session.flush()
+
+        prod = Product(
+            barcode="INACT-PROD-UI",
+            name_en="Phone With Inactive Warranty",
+            price=100.0,
+            stock_qty=1.0,
+            warranty_override="POLICY",
+            warranty_policy_id=inactive.id,
+        )
+        db_session.add(prod)
+        db_session.commit()
+
+        editor = ProductEditor(product=prod)
+        idx = editor.warranty_policy_combo.findData(inactive.id)
+        assert idx >= 0
+        assert "(inactive)" in editor.warranty_policy_combo.itemText(idx).lower()
+        assert editor.warranty_policy_combo.currentIndex() == idx
+
 
 class TestCategoryDialogWarranty:
     """Test category dialog default warranty assignment."""
@@ -173,3 +254,30 @@ class TestCategoryDialogWarranty:
         # Ensure sample policy is listed
         idx = dialog.warranty_combo.findData(sample_policy.id)
         assert idx >= 0
+
+    def test_issue_821_category_dialog_preserves_inactive_policy(self, db_session):
+        ConfigService.set("warranty_enabled", True)
+        inactive = WarrantyPolicy(
+            name="Archived Category Warranty",
+            warranty_type="SHOP",
+            duration=6,
+            duration_unit="MONTHS",
+            remedy="REPAIR_OR_REPLACE",
+            is_active=False,
+        )
+        db_session.add(inactive)
+        db_session.flush()
+
+        cat = Category(
+            name="Electronics Inactive Cat",
+            default_warranty_policy_id=inactive.id,
+        )
+        db_session.add(cat)
+        db_session.commit()
+
+        dialog = CategoryDialog(category=cat)
+        assert hasattr(dialog, "warranty_combo")
+        idx = dialog.warranty_combo.findData(inactive.id)
+        assert idx >= 0
+        assert "(inactive)" in dialog.warranty_combo.itemText(idx).lower()
+        assert dialog.warranty_combo.currentIndex() == idx

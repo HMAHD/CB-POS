@@ -116,7 +116,15 @@ class CategoryDialog(QDialog):
         if index >= 0:
             self.parent_combo.setCurrentIndex(index)
         if hasattr(self, "warranty_combo") and getattr(self.category, "default_warranty_policy_id", None):
-            w_idx = self.warranty_combo.findData(self.category.default_warranty_policy_id)
+            assigned_id = self.category.default_warranty_policy_id
+            w_idx = self.warranty_combo.findData(assigned_id)
+            if w_idx < 0:
+                from cbpos.core.services.warranty_service import WarrantyService
+
+                pol = WarrantyService.get_policy(assigned_id)
+                if pol:
+                    self.warranty_combo.addItem(f"{pol.get_display_name()} (inactive)", pol.id)
+                    w_idx = self.warranty_combo.findData(assigned_id)
             if w_idx >= 0:
                 self.warranty_combo.setCurrentIndex(w_idx)
 
@@ -128,24 +136,27 @@ class CategoryDialog(QDialog):
             return
 
         parent_id = self.parent_combo.currentData()
-        warranty_id = self.warranty_combo.currentData() if hasattr(self, "warranty_combo") else None
+        warranty_id = self.warranty_combo.currentData() if hasattr(self, "warranty_combo") else ...
 
         try:
             if self.category:
-                CategoryService.update(
-                    self.category.id,
-                    name=name,
-                    color=self.selected_color,
-                    parent_id=parent_id,
-                    default_warranty_policy_id=warranty_id,
-                )
+                update_kwargs = {
+                    "name": name,
+                    "color": self.selected_color,
+                    "parent_id": parent_id,
+                }
+                if warranty_id is not ...:
+                    update_kwargs["default_warranty_policy_id"] = warranty_id
+                CategoryService.update(self.category.id, **update_kwargs)
             else:
-                CategoryService.create(
-                    name=name,
-                    color=self.selected_color,
-                    parent_id=parent_id,
-                    default_warranty_policy_id=warranty_id,
-                )
+                create_kwargs = {
+                    "name": name,
+                    "color": self.selected_color,
+                    "parent_id": parent_id,
+                }
+                if warranty_id is not ... and warranty_id is not None:
+                    create_kwargs["default_warranty_policy_id"] = warranty_id
+                CategoryService.create(**create_kwargs)
             self.accept()
         except Exception as e:
             QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))

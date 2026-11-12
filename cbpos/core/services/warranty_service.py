@@ -49,22 +49,37 @@ def _session_scope(session: Session | None):
             s.commit()
 
 
-def _require_permission(session: Session, perm_code: str, acting_user_id: int | None = None) -> None:
-    """Check that the acting user (or current session user) holds the required permission."""
-    user_id = acting_user_id
-    if user_id is None:
-        curr = AuthService.get_current_user()
-        if curr:
-            user_id = curr.id
-
-    if user_id is not None:
-        user = session.get(User, user_id, options=[joinedload(User.role).joinedload(Role.permissions)])
-        if not user or not PermissionService.user_has_permission(user, perm_code):
-            raise PermissionError(f"Permission denied: {perm_code} required")
+def _require_permission(session: Session, perm_code: str, acting_user_id: int | None = None) -> int:
+    """Check that the acting user (or current session user) holds the required permission fail-closed."""
+    return WarrantyService._resolve_actor(acting_user_id, perm_code, session=session)
 
 
 class WarrantyService:
     """Service owning warranty policy CRUD, resolution, and calendar arithmetic."""
+
+    @staticmethod
+    def _resolve_actor(acting_user_id: int | None, perm_code: str, session: Session | None = None) -> int:
+        """Resolve acting user and verify permission fail-closed. Never skips check."""
+        user_id = acting_user_id
+        if user_id is None:
+            curr = AuthService.get_current_user()
+            if curr:
+                user_id = curr.id
+
+        if user_id is None:
+            raise PermissionError(f"Permission denied: {perm_code} required (no authenticated actor)")
+
+        if session is not None:
+            user = session.get(User, user_id, options=[joinedload(User.role).joinedload(Role.permissions)])
+            if not user or not PermissionService.user_has_permission(user, perm_code):
+                raise PermissionError(f"Permission denied: {perm_code} required")
+        else:
+            db = Database()
+            with db.get_session() as s:
+                user = s.get(User, user_id, options=[joinedload(User.role).joinedload(Role.permissions)])
+                if not user or not PermissionService.user_has_permission(user, perm_code):
+                    raise PermissionError(f"Permission denied: {perm_code} required")
+        return user_id
 
     @classmethod
     def is_enabled(cls, session: Session | None = None) -> bool:
@@ -230,10 +245,16 @@ class WarrantyService:
         if (exclusions_text_si or exclusions_text_ta) and not exclusions_text:
             raise ValueError("English exclusions must be provided when translations are present")
 
-        supplier_cover_months = int(data.get("supplier_cover_months") or 0)
+        scm_raw = data.get("supplier_cover_months")
+        if scm_raw is not None:
+            supplier_cover_months = int(scm_raw)
+            if supplier_cover_months < 0:
+                raise ValueError("supplier_cover_months cannot be negative")
+        else:
+            supplier_cover_months = 0
 
         with _session_scope(session) as s:
-            _require_permission(s, Permissions.WARRANTY_MANAGE_POLICIES, acting_user_id)
+            actor_id = _require_permission(s, Permissions.WARRANTY_MANAGE_POLICIES, acting_user_id)
 
             policy = WarrantyPolicy(
                 name=name,
@@ -258,7 +279,7 @@ class WarrantyService:
             s.flush()
 
             audit = AuditLog(
-                user_id=acting_user_id,
+                user_id=actor_id,
                 action="CREATE_POLICY",
                 event_type=WARRANTY_EVENT,
                 details=json.dumps(
@@ -288,7 +309,7 @@ class WarrantyService:
         require_catalog_writable()
 
         with _session_scope(session) as s:
-            _require_permission(s, Permissions.WARRANTY_MANAGE_POLICIES, acting_user_id)
+            actor_id = _require_permission(s, Permissions.WARRANTY_MANAGE_POLICIES, acting_user_id)
 
             policy = s.get(WarrantyPolicy, policy_id)
             if not policy:
@@ -370,6 +391,8 @@ class WarrantyService:
 
             if "supplier_cover_months" in data:
                 scm = int(data["supplier_cover_months"] or 0)
+                if scm < 0:
+                    raise ValueError("supplier_cover_months cannot be negative")
                 changes["supplier_cover_months"] = {"old": policy.supplier_cover_months, "new": scm}
                 policy.supplier_cover_months = scm
 
@@ -381,7 +404,7 @@ class WarrantyService:
             s.flush()
 
             audit = AuditLog(
-                user_id=acting_user_id,
+                user_id=actor_id,
                 action="UPDATE_POLICY",
                 event_type=WARRANTY_EVENT,
                 details=json.dumps({"id": policy.id, "changes": changes}),
@@ -401,7 +424,7 @@ class WarrantyService:
         require_catalog_writable()
 
         with _session_scope(session) as s:
-            _require_permission(s, Permissions.WARRANTY_MANAGE_POLICIES, acting_user_id)
+            actor_id = _require_permission(s, Permissions.WARRANTY_MANAGE_POLICIES, acting_user_id)
 
             policy = s.get(WarrantyPolicy, policy_id)
             if not policy:
@@ -411,7 +434,7 @@ class WarrantyService:
             s.flush()
 
             audit = AuditLog(
-                user_id=acting_user_id,
+                user_id=actor_id,
                 action="DEACTIVATE_POLICY",
                 event_type=WARRANTY_EVENT,
                 details=json.dumps({"id": policy.id, "name": policy.name}),
@@ -431,7 +454,7 @@ class WarrantyService:
         require_catalog_writable()
 
         with _session_scope(session) as s:
-            _require_permission(s, Permissions.WARRANTY_MANAGE_POLICIES, acting_user_id)
+            actor_id = _require_permission(s, Permissions.WARRANTY_MANAGE_POLICIES, acting_user_id)
 
             policy = s.get(WarrantyPolicy, policy_id)
             if not policy:
@@ -441,7 +464,7 @@ class WarrantyService:
             s.flush()
 
             audit = AuditLog(
-                user_id=acting_user_id,
+                user_id=actor_id,
                 action="ACTIVATE_POLICY",
                 event_type=WARRANTY_EVENT,
                 details=json.dumps({"id": policy.id, "name": policy.name}),
@@ -467,7 +490,7 @@ class WarrantyService:
             raise ValueError(f"Invalid warranty override: {override}")
 
         with _session_scope(session) as s:
-            _require_permission(s, Permissions.WARRANTY_EDIT, acting_user_id)
+            actor_id = _require_permission(s, Permissions.WARRANTY_EDIT, acting_user_id)
 
             prod = s.get(Product, product_id)
             if not prod:
@@ -482,6 +505,8 @@ class WarrantyService:
                 policy = s.get(WarrantyPolicy, policy_id)
                 if not policy:
                     raise ValueError(f"Policy {policy_id} not found")
+                if policy_id != prod.warranty_policy_id and not policy.is_active:
+                    raise ValueError("Cannot assign inactive warranty policy")
                 prod.warranty_policy_id = policy_id
             else:
                 prod.warranty_policy_id = None
@@ -490,7 +515,7 @@ class WarrantyService:
             s.flush()
 
             audit = AuditLog(
-                user_id=acting_user_id,
+                user_id=actor_id,
                 action="SET_PRODUCT_WARRANTY",
                 event_type=WARRANTY_EVENT,
                 details=json.dumps(
@@ -517,7 +542,7 @@ class WarrantyService:
         require_catalog_writable()
 
         with _session_scope(session) as s:
-            _require_permission(s, Permissions.WARRANTY_EDIT, acting_user_id)
+            actor_id = _require_permission(s, Permissions.WARRANTY_EDIT, acting_user_id)
 
             cat = s.get(Category, category_id)
             if not cat:
@@ -527,12 +552,14 @@ class WarrantyService:
                 policy = s.get(WarrantyPolicy, policy_id)
                 if not policy:
                     raise ValueError(f"Policy {policy_id} not found")
+                if policy_id != cat.default_warranty_policy_id and not policy.is_active:
+                    raise ValueError("Cannot assign inactive warranty policy")
 
             cat.default_warranty_policy_id = policy_id
             s.flush()
 
             audit = AuditLog(
-                user_id=acting_user_id,
+                user_id=actor_id,
                 action="SET_CATEGORY_WARRANTY",
                 event_type=WARRANTY_EVENT,
                 details=json.dumps({"category_id": cat.id, "default_policy_id": policy_id}),
@@ -540,3 +567,29 @@ class WarrantyService:
             s.add(audit)
             s.flush()
             return cat
+
+    @classmethod
+    def validate_warranty_assignment(
+        cls,
+        override: str,
+        policy_id: int | None,
+        is_weighted: bool = False,
+        existing_policy_id: int | None = None,
+        session: Session | None = None,
+    ) -> None:
+        """Validate product/category warranty assignment rules."""
+        clean_override = (override or "INHERIT").strip().upper()
+        if clean_override not in VALID_OVERRIDES:
+            raise ValueError(f"Invalid warranty override: {override}")
+        if is_weighted and (clean_override == "POLICY" or policy_id is not None):
+            raise ValueError("Weighted products cannot have warranty policies")
+        if clean_override == "POLICY" and policy_id is None:
+            raise ValueError("Specific policy requires a warranty policy ID")
+        if clean_override != "POLICY" and policy_id is not None:
+            raise ValueError(f"Warranty policy ID cannot be set when override is {clean_override}")
+        if policy_id is not None and policy_id != existing_policy_id:
+            pol = session.get(WarrantyPolicy, policy_id) if session else cls.get_policy(policy_id)
+            if not pol:
+                raise ValueError(f"Warranty policy {policy_id} not found")
+            if not pol.is_active:
+                raise ValueError("Cannot assign inactive warranty policy")

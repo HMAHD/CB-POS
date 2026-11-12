@@ -25,10 +25,13 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.config import Config
+from cbpos.core.constants.permissions import Permissions
 from cbpos.core.models import Product
+from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.category_service import CategoryService
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.inventory_service import InventoryService
+from cbpos.core.services.permission_service import PermissionService
 from cbpos.core.services.supplier_service import SupplierService
 from cbpos.core.utils.error_messages import translate_error
 from cbpos.core.utils.formatters import get_currency_symbol
@@ -583,12 +586,20 @@ class ProductEditor(QDialog):
         self.lbl_warranty_preview.setProperty("class", "muted")
         layout.addRow(_t("common.preview", default="Preview:"), self.lbl_warranty_preview)
 
+        curr = AuthService.get_current_user()
+        self._can_edit_warranty = bool(curr and PermissionService.user_has_permission(curr, Permissions.WARRANTY_EDIT))
+
         self.warranty_override_combo.currentIndexChanged.connect(self._on_warranty_mode_changed)
         self.warranty_policy_combo.currentIndexChanged.connect(self._update_warranty_preview)
         self.category_combo.currentIndexChanged.connect(self._update_warranty_preview)
         self.weighted_check.toggled.connect(self._on_weighted_toggled_warranty)
 
-        self._on_warranty_mode_changed()
+        if not self._can_edit_warranty:
+            self.warranty_override_combo.setEnabled(False)
+            self.warranty_policy_combo.setEnabled(False)
+            self._update_warranty_preview()
+        else:
+            self._on_warranty_mode_changed()
 
     def _load_warranty_policies(self):
         from cbpos.core.services.warranty_service import WarrantyService
@@ -609,13 +620,18 @@ class ProductEditor(QDialog):
                     )
 
     def _on_warranty_mode_changed(self):
+        if not getattr(self, "_can_edit_warranty", True):
+            self.warranty_override_combo.setEnabled(False)
+            self.warranty_policy_combo.setEnabled(False)
+            self._update_warranty_preview()
+            return
         mode = self.warranty_override_combo.currentData()
         self.warranty_policy_combo.setEnabled(mode == "POLICY")
         self._update_warranty_preview()
 
     def _on_weighted_toggled_warranty(self, checked: bool):
         if hasattr(self, "warranty_override_combo"):
-            if checked:
+            if not getattr(self, "_can_edit_warranty", True) or checked:
                 self.warranty_override_combo.setEnabled(False)
                 self.warranty_policy_combo.setEnabled(False)
             else:
@@ -848,19 +864,37 @@ class ProductEditor(QDialog):
         data["components"] = components
 
         if hasattr(self, "tab_warranty"):
-            override = self.warranty_override_combo.currentData() or "INHERIT"
-            policy_id = self.warranty_policy_combo.currentData() if override == "POLICY" else None
-            if data.get("is_weighted") and override == "POLICY":
-                QMessageBox.warning(self, _t("common.validation_error"), _t("product_editor.warranty_weighted_hint"))
-                self.tabs.setCurrentWidget(self.tab_warranty)
-                return
-            if override == "POLICY" and not policy_id:
-                QMessageBox.warning(self, _t("common.validation_error"), _t("product_editor.warranty_select_policy"))
-                self.tabs.setCurrentWidget(self.tab_warranty)
-                return
-            data["warranty_override"] = override
-            data["warranty_policy_id"] = policy_id
-            data["serial_mode"] = getattr(self.product, "serial_mode", "OFF") if self.product else "OFF"
+            can_edit = getattr(self, "_can_edit_warranty", True)
+            if not can_edit:
+                if self.product:
+                    data.pop("warranty_override", None)
+                    data.pop("warranty_policy_id", None)
+                    data.pop("serial_mode", None)
+                else:
+                    data["warranty_override"] = "INHERIT"
+                    data["warranty_policy_id"] = None
+                    data["serial_mode"] = "OFF"
+            else:
+                override = self.warranty_override_combo.currentData() or "INHERIT"
+                policy_id = self.warranty_policy_combo.currentData() if override == "POLICY" else None
+                if data.get("is_weighted") and override == "POLICY":
+                    QMessageBox.warning(
+                        self, _t("common.validation_error"), _t("product_editor.warranty_weighted_hint")
+                    )
+                    self.tabs.setCurrentWidget(self.tab_warranty)
+                    return
+                if override == "POLICY" and not policy_id:
+                    QMessageBox.warning(
+                        self, _t("common.validation_error"), _t("product_editor.warranty_select_policy")
+                    )
+                    self.tabs.setCurrentWidget(self.tab_warranty)
+                    return
+                data["warranty_override"] = override
+                data["warranty_policy_id"] = policy_id
+                data["serial_mode"] = getattr(self.product, "serial_mode", "OFF") if self.product else "OFF"
+
+        curr_user = AuthService.get_current_user()
+        curr_id = curr_user.id if curr_user else None
 
         try:
             if self.product:
@@ -870,7 +904,12 @@ class ProductEditor(QDialog):
                 data.pop("stock_qty", None)
                 data.pop("cost", None)
                 try:
-                    self.inventory_service.update_product(self.product.id, data, expected_version=self.loaded_version)
+                    self.inventory_service.update_product(
+                        self.product.id,
+                        data,
+                        expected_version=self.loaded_version,
+                        user_id=curr_id,
+                    )
                 except StaleProductError:
                     QMessageBox.warning(
                         self,
@@ -888,7 +927,7 @@ class ProductEditor(QDialog):
                     self.tabs.setCurrentIndex(0)
                     self.barcode_input.setFocus()
                     return
-                self.inventory_service.create_product(data)
+                self.inventory_service.create_product(data, user_id=curr_id)
             self.accept()
         except Exception as e:
             QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))

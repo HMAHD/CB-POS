@@ -6,7 +6,10 @@ import json
 
 import pytest
 
-from cbpos.core.models import Category, Product
+from cbpos.core.constants.audit import WARRANTY_EVENT
+from cbpos.core.constants.permissions import Permissions
+from cbpos.core.models import AuditLog, Category, Permission, Product, Role, User, WarrantyPolicy
+from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.category_service import CategoryService
 
 # ── Shared Fixtures ──────────────────────────────────────────────────────
@@ -205,3 +208,116 @@ def test_issue_797_category_flag_settable_and_audited(db_session):
     flags = CategoryService.effective_flags(subcat.id)
     assert flags["vat_exempt"] is True
     assert flags["sscl_exempt"] is True
+
+
+def test_issue_821_category_warranty_permission_and_audit(db_session):
+    """Setting default_warranty_policy_id enforces warranty.edit, validates active policy, and audits."""
+    policy = WarrantyPolicy(
+        name="Cat Policy Active",
+        warranty_type="SHOP",
+        duration=1,
+        duration_unit="YEARS",
+        remedy="REPAIR_OR_REPLACE",
+        is_active=True,
+    )
+    inactive_policy = WarrantyPolicy(
+        name="Cat Policy Inactive",
+        warranty_type="SHOP",
+        duration=6,
+        duration_unit="MONTHS",
+        remedy="REPAIR_OR_REPLACE",
+        is_active=False,
+    )
+    db_session.add_all([policy, inactive_policy])
+    db_session.flush()
+
+    role_no_warranty = Role(name=f"NoWarrantyRole_{_next_suffix()}")
+    db_session.add(role_no_warranty)
+    db_session.flush()
+    perm_inv = db_session.query(Permission).filter(Permission.code == Permissions.INVENTORY_EDIT).first()
+    if not perm_inv:
+        perm_inv = Permission(code=Permissions.INVENTORY_EDIT, description="Inventory Edit", group="Inventory")
+        db_session.add(perm_inv)
+        db_session.flush()
+    role_no_warranty.permissions.append(perm_inv)
+
+    user_no_warranty = User(
+        username=f"nowarr_{_next_suffix()}",
+        pin_hash=AuthService.hash_pin("1111"),
+        role_id=role_no_warranty.id,
+        is_active=True,
+    )
+    db_session.add(user_no_warranty)
+
+    role_warranty = Role(name=f"WarrantyRole_{_next_suffix()}")
+    db_session.add(role_warranty)
+    db_session.flush()
+    perm_warr = db_session.query(Permission).filter(Permission.code == Permissions.WARRANTY_EDIT).first()
+    if not perm_warr:
+        perm_warr = Permission(code=Permissions.WARRANTY_EDIT, description="Warranty Edit", group="Warranty")
+        db_session.add(perm_warr)
+        db_session.flush()
+    if perm_inv:
+        role_warranty.permissions.append(perm_inv)
+    role_warranty.permissions.append(perm_warr)
+
+    user_warranty = User(
+        username=f"warr_{_next_suffix()}",
+        pin_hash=AuthService.hash_pin("2222"),
+        role_id=role_warranty.id,
+        is_active=True,
+    )
+    db_session.add(user_warranty)
+    db_session.commit()
+
+    # 1. Unauthenticated or user without warranty.edit cannot set default_warranty_policy_id on create
+    with pytest.raises(PermissionError, match=r"warranty\.edit required"):
+        CategoryService.create(
+            name=f"CatWarrFail_{_next_suffix()}",
+            default_warranty_policy_id=policy.id,
+            acting_user_id=user_no_warranty.id,
+        )
+
+    # 2. Cannot assign inactive policy on create
+    with pytest.raises(ValueError, match="Cannot assign inactive warranty policy"):
+        CategoryService.create(
+            name=f"CatInactFail_{_next_suffix()}",
+            default_warranty_policy_id=inactive_policy.id,
+            acting_user_id=user_warranty.id,
+        )
+
+    # 3. User with warranty.edit succeeds on create and writes AuditLog
+    cat = CategoryService.create(
+        name=f"CatWarrSuccess_{_next_suffix()}",
+        default_warranty_policy_id=policy.id,
+        acting_user_id=user_warranty.id,
+    )
+    assert cat.default_warranty_policy_id == policy.id
+
+    audit = (
+        db_session.query(AuditLog)
+        .filter(AuditLog.event_type == WARRANTY_EVENT, AuditLog.action == "CATEGORY_DEFAULT_WARRANTY")
+        .order_by(AuditLog.id.desc())
+        .first()
+    )
+    assert audit is not None
+    assert audit.user_id == user_warranty.id
+    details = json.loads(audit.details)
+    assert details["category_id"] == cat.id
+    assert details["policy_id"] == policy.id
+
+    # 4. Update default_warranty_policy_id requires warranty.edit
+    with pytest.raises(PermissionError, match=r"warranty\.edit required"):
+        CategoryService.update(
+            cat.id,
+            default_warranty_policy_id=None,
+            acting_user_id=user_no_warranty.id,
+        )
+
+    # 5. Update without changing warranty (default_warranty_policy_id=...) succeeds for inventory editor
+    cat_updated = CategoryService.update(
+        cat.id,
+        name=f"RenamedCat_{_next_suffix()}",
+        acting_user_id=user_no_warranty.id,
+    )
+    assert cat_updated.default_warranty_policy_id == policy.id

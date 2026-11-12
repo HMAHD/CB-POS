@@ -83,6 +83,21 @@ class WarrantyPoliciesView(QWidget, Activatable):
 
         main_layout.addLayout(toolbar)
 
+        # Error banner
+        self.error_banner = QWidget()
+        banner_layout = QHBoxLayout(self.error_banner)
+        banner_layout.setContentsMargins(12, 8, 12, 8)
+        self.lbl_error = QLabel(_t("warranty.load_error_banner"))
+        self.lbl_error.setProperty("class", "danger")
+        banner_layout.addWidget(self.lbl_error)
+        banner_layout.addStretch()
+        self.btn_retry = QPushButton(_t("common.retry"))
+        self.btn_retry.setProperty("class", "secondary")
+        self.btn_retry.clicked.connect(self.load_data)
+        banner_layout.addWidget(self.btn_retry)
+        self.error_banner.hide()
+        main_layout.addWidget(self.error_banner)
+
         # Policies table
         self.table = QTableWidget()
         self.table.setColumnCount(7)
@@ -107,6 +122,9 @@ class WarrantyPoliciesView(QWidget, Activatable):
         self.lbl_title.setText(_t("warranty.policies"))
         self.search_input.setPlaceholderText(_t("common.search"))
         self.btn_new.setText(_t("warranty.new_policy"))
+        if hasattr(self, "lbl_error"):
+            self.lbl_error.setText(_t("warranty.load_error_banner"))
+            self.btn_retry.setText(_t("common.retry"))
 
         headers = [
             _t("warranty.col_name"),
@@ -138,11 +156,15 @@ class WarrantyPoliciesView(QWidget, Activatable):
         """Fetch all policies (including inactive) from WarrantyService."""
         try:
             self._policies = WarrantyService.list_policies(include_inactive=True)
+            if hasattr(self, "error_banner"):
+                self.error_banner.hide()
+            self._render_table()
+            self._update_permissions()
         except Exception as e:
             logger.error("Failed to load warranty policies: %s", e)
-            self._policies = []
-        self._render_table()
-        self._update_permissions()
+            if hasattr(self, "error_banner"):
+                self.error_banner.show()
+            self.btn_new.setEnabled(False)
 
     def _update_permissions(self) -> None:
         """Enable/disable buttons based on current user permissions and terminal role."""
@@ -250,6 +272,13 @@ class WarrantyPoliciesView(QWidget, Activatable):
             self.load_data()
 
     def _on_row_double_clicked(self, row: int, col: int) -> None:
+        if getattr(self, "read_only", False) or catalog_is_read_only():
+            return
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+
+        user = check_permission_with_override(Permissions.WARRANTY_MANAGE_POLICIES, self)
+        if not user:
+            return
         item = self.table.item(row, 0)
         if not item:
             return
@@ -263,7 +292,20 @@ class WarrantyPoliciesView(QWidget, Activatable):
         if dialog.exec():
             self.load_data()
 
+    def _deactivate_policy(self, policy: WarrantyPolicy) -> None:
+        """Deactivate policy helper with confirmation dialog."""
+        self._on_deactivate_policy(policy.id)
+
     def _on_deactivate_policy(self, policy_id: int) -> None:
+        reply = QMessageBox.question(
+            self,
+            _t("warranty.deactivate_confirm_title"),
+            _t("warranty.deactivate_confirm_msg"),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
         try:
             curr = AuthService.get_current_user()
             user_id = curr.id if curr else None

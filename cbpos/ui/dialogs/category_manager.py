@@ -246,7 +246,15 @@ class CategoryManagerDialog(QDialog):
         self.chk_vat_exempt.setChecked(bool(cat.tax_exempt))
         self.chk_sscl_exempt.setChecked(bool(cat.sscl_exempt))
         if hasattr(self, "combo_warranty"):
-            w_idx = self.combo_warranty.findData(getattr(cat, "default_warranty_policy_id", None))
+            assigned_id = getattr(cat, "default_warranty_policy_id", None)
+            w_idx = self.combo_warranty.findData(assigned_id)
+            if assigned_id and w_idx < 0:
+                from cbpos.core.services.warranty_service import WarrantyService
+
+                pol = WarrantyService.get_policy(assigned_id)
+                if pol:
+                    self.combo_warranty.addItem(f"{pol.get_display_name()} (inactive)", pol.id)
+                    w_idx = self.combo_warranty.findData(assigned_id)
             self.combo_warranty.setCurrentIndex(max(0, w_idx))
 
         # Rebuild parent combo excluding self
@@ -278,28 +286,30 @@ class CategoryManagerDialog(QDialog):
         parent_id = self.combo_parent.currentData()
         tax_exempt = self.chk_vat_exempt.isChecked()
         sscl_exempt = self.chk_sscl_exempt.isChecked()
-        warranty_id = self.combo_warranty.currentData() if hasattr(self, "combo_warranty") else None
 
         try:
             if self._editing_id:
-                CategoryService.update(
-                    self._editing_id,
-                    name=name,
-                    color=self.selected_color,
-                    parent_id=parent_id,
-                    tax_exempt=tax_exempt,
-                    sscl_exempt=sscl_exempt,
-                    default_warranty_policy_id=warranty_id,
-                )
+                update_kwargs = {
+                    "name": name,
+                    "color": self.selected_color,
+                    "parent_id": parent_id,
+                    "tax_exempt": tax_exempt,
+                    "sscl_exempt": sscl_exempt,
+                }
+                if hasattr(self, "combo_warranty"):
+                    update_kwargs["default_warranty_policy_id"] = self.combo_warranty.currentData()
+                CategoryService.update(self._editing_id, **update_kwargs)
             else:
-                CategoryService.create(
-                    name=name,
-                    color=self.selected_color,
-                    parent_id=parent_id,
-                    tax_exempt=tax_exempt,
-                    sscl_exempt=sscl_exempt,
-                    default_warranty_policy_id=warranty_id,
-                )
+                create_kwargs = {
+                    "name": name,
+                    "color": self.selected_color,
+                    "parent_id": parent_id,
+                    "tax_exempt": tax_exempt,
+                    "sscl_exempt": sscl_exempt,
+                }
+                if hasattr(self, "combo_warranty"):
+                    create_kwargs["default_warranty_policy_id"] = self.combo_warranty.currentData()
+                CategoryService.create(**create_kwargs)
         except Exception as e:
             QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))
             return

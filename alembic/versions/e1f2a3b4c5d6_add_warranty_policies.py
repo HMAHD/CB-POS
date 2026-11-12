@@ -84,8 +84,8 @@ def upgrade() -> None:
             sa.Column("is_active", sa.Boolean(), server_default=sa.text("1"), nullable=False),
             sa.Column("is_template", sa.Boolean(), server_default=sa.text("0"), nullable=False),
             sa.Column("synced", sa.Boolean(), server_default=sa.text("0"), nullable=False),
-            sa.Column("created_at", sa.DateTime(), nullable=False, default=datetime.now),
-            sa.Column("last_modified", sa.DateTime(), nullable=False, default=datetime.now),
+            sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
+            sa.Column("last_modified", sa.DateTime(), server_default=sa.func.now(), nullable=False),
             sa.CheckConstraint("duration > 0", name="ck_warranty_policy_duration"),
             sa.CheckConstraint("duration_unit IN ('DAYS', 'MONTHS', 'YEARS')", name="ck_warranty_policy_unit"),
             sa.CheckConstraint("warranty_type IN ('SHOP', 'MANUFACTURER', 'EXTENDED')", name="ck_warranty_policy_type"),
@@ -93,6 +93,7 @@ def upgrade() -> None:
                 "remedy IN ('REPAIR_OR_REPLACE', 'REPAIR_ONLY', 'REPLACE_ONLY', 'REFUND')",
                 name="ck_warranty_policy_remedy",
             ),
+            sa.CheckConstraint("supplier_cover_months >= 0", name="ck_warranty_policy_supplier_cover_months"),
         )
         op.create_index("ix_warranty_policies_is_active", "warranty_policies", ["is_active"])
         op.create_index("ix_warranty_policies_last_modified", "warranty_policies", ["last_modified"])
@@ -160,6 +161,18 @@ def upgrade() -> None:
                         nullable=False,
                     )
                 )
+            batch_op.create_check_constraint(
+                "ck_products_warranty_override",
+                "warranty_override IN ('INHERIT', 'NONE', 'POLICY')",
+            )
+            batch_op.create_check_constraint(
+                "ck_products_serial_mode",
+                "serial_mode IN ('OFF', 'OPTIONAL', 'REQUIRED')",
+            )
+            batch_op.create_check_constraint(
+                "ck_products_warranty_policy_coherence",
+                "(warranty_override = 'POLICY' AND warranty_policy_id IS NOT NULL) OR (warranty_override != 'POLICY' AND warranty_policy_id IS NULL)",
+            )
 
     # 4. Insert permissions and map to roles
     if "permissions" in existing_tables:
@@ -222,7 +235,14 @@ def downgrade() -> None:
     # 2. Batch alter products to drop columns
     if "products" in existing_tables:
         existing_cols = {c["name"] for c in insp.get_columns("products")}
+        existing_checks = {c["name"] for c in insp.get_check_constraints("products") if c.get("name")}
         with op.batch_alter_table("products", schema=None) as batch_op:
+            if "ck_products_warranty_override" in existing_checks or conn.dialect.name != "sqlite":
+                batch_op.drop_constraint("ck_products_warranty_override", type_="check")
+            if "ck_products_serial_mode" in existing_checks or conn.dialect.name != "sqlite":
+                batch_op.drop_constraint("ck_products_serial_mode", type_="check")
+            if "ck_products_warranty_policy_coherence" in existing_checks or conn.dialect.name != "sqlite":
+                batch_op.drop_constraint("ck_products_warranty_policy_coherence", type_="check")
             if "warranty_policy_id" in existing_cols:
                 if conn.dialect.name != "sqlite":
                     batch_op.drop_constraint("fk_products_warranty_policy_id", type_="foreignkey")

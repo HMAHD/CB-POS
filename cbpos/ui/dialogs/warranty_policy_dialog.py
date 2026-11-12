@@ -196,13 +196,6 @@ class WarrantyPolicyDialog(QDialog):
             self.name_en_input.setFocus()
             return
 
-        duration = self.duration_spin.value()
-        if duration <= 0:
-            QMessageBox.warning(self, _t("common.validation_error"), _t("warranty.policy.duration_required"))
-            self.tabs.setCurrentIndex(0)
-            self.duration_spin.setFocus()
-            return
-
         terms_en = self.terms_en_edit.toPlainText().strip()
         terms_si = self.terms_si_edit.toPlainText().strip()
         terms_ta = self.terms_ta_edit.toPlainText().strip()
@@ -230,7 +223,7 @@ class WarrantyPolicyDialog(QDialog):
             "name_si": self.name_si_input.text().strip() or None,
             "name_ta": self.name_ta_input.text().strip() or None,
             "warranty_type": self.type_combo.currentData(),
-            "duration": duration,
+            "duration": self.duration_spin.value(),
             "duration_unit": self.unit_combo.currentData(),
             "remedy": self.remedy_combo.currentData(),
             "provider_name": self.provider_input.text().strip() or None,

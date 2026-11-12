@@ -222,8 +222,11 @@ class TestWarrantyPolicyResolution:
         assert WarrantyService.resolve_policy(prod, session=db_session) is None
 
         # Setting warranty on weighted product raises ValueError
+        user = _create_user_with_permissions(db_session, "user_weighted", [Permissions.WARRANTY_EDIT])
         with pytest.raises(ValueError, match="Weighted products cannot receive a warranty policy"):
-            WarrantyService.set_product_warranty(prod.id, override="POLICY", policy_id=policy.id, session=db_session)
+            WarrantyService.set_product_warranty(
+                prod.id, override="POLICY", policy_id=policy.id, acting_user_id=user.id, session=db_session
+            )
 
     def test_issue_821_deactivated_policy_remains_on_assigned_products(self, db_session):
         policy = WarrantyPolicy(
@@ -496,3 +499,168 @@ class TestWarrantyPermissionsAndAudit:
                 )
         finally:
             ConfigService.set("terminal_mode", "standalone")
+
+    def test_issue_821_unauthenticated_mutation_fails_closed(self, db_session):
+        """Unauthenticated mutations without acting_user_id or current user fail closed with PermissionError."""
+        # Ensure no logged in user
+        with patch.object(AuthService, "get_current_user", return_value=None):
+            with pytest.raises(PermissionError, match=r"warranty\.manage_policies"):
+                WarrantyService.create_policy(
+                    {
+                        "name": "Unauth Policy",
+                        "warranty_type": "SHOP",
+                        "duration": 1,
+                        "duration_unit": "YEARS",
+                        "remedy": "REFUND",
+                    },
+                    acting_user_id=None,
+                    session=db_session,
+                )
+
+            with pytest.raises(PermissionError, match=r"warranty\.manage_policies"):
+                WarrantyService.update_policy(1, {"duration": 2}, acting_user_id=None, session=db_session)
+
+            with pytest.raises(PermissionError, match=r"warranty\.manage_policies"):
+                WarrantyService.deactivate_policy(1, acting_user_id=None, session=db_session)
+
+            with pytest.raises(PermissionError, match=r"warranty\.manage_policies"):
+                WarrantyService.activate_policy(1, acting_user_id=None, session=db_session)
+
+            with pytest.raises(PermissionError, match=r"warranty\.edit"):
+                WarrantyService.set_product_warranty(1, "NONE", acting_user_id=None, session=db_session)
+
+            with pytest.raises(PermissionError, match=r"warranty\.edit"):
+                WarrantyService.set_category_default_warranty(1, None, acting_user_id=None, session=db_session)
+
+    def test_issue_821_current_user_fallback_writes_id_to_audit_log(self, db_session):
+        """When acting_user_id is None, AuthService.get_current_user() is used and its ID written to AuditLog."""
+        admin = _create_user_with_permissions(db_session, "admin_audit", [Permissions.WARRANTY_MANAGE_POLICIES])
+
+        with patch.object(AuthService, "get_current_user", return_value=admin):
+            policy = WarrantyService.create_policy(
+                {
+                    "name": "Audit Fallback Policy",
+                    "warranty_type": "SHOP",
+                    "duration": 6,
+                    "duration_unit": "MONTHS",
+                    "remedy": "REPAIR_OR_REPLACE",
+                },
+                acting_user_id=None,
+                session=db_session,
+            )
+            assert policy.id is not None
+
+            audit = (
+                db_session.execute(
+                    select(AuditLog)
+                    .where(AuditLog.event_type == WARRANTY_EVENT, AuditLog.action == "CREATE_POLICY")
+                    .order_by(AuditLog.id.desc())
+                )
+                .scalars()
+                .first()
+            )
+            assert audit is not None
+            assert audit.user_id == admin.id
+            assert audit.user_id is not None
+
+    def test_issue_821_new_assignment_to_inactive_policy_rejected(self, db_session):
+        """Assigning an inactive policy as a new assignment raises ValueError."""
+        admin = _create_user_with_permissions(
+            db_session, "admin_assign", [Permissions.WARRANTY_EDIT, Permissions.WARRANTY_MANAGE_POLICIES]
+        )
+        policy = WarrantyPolicy(
+            name="Inactive Policy",
+            warranty_type="SHOP",
+            duration=1,
+            duration_unit="YEARS",
+            remedy="REPAIR_OR_REPLACE",
+            is_active=False,
+        )
+        cat = Category(name="Cat Inactive Test")
+        prod = Product(
+            barcode="INACT-PROD-01",
+            name_en="Prod Inactive Test",
+            price=Decimal("100.00"),
+            stock_qty=Decimal("5"),
+        )
+        db_session.add_all([policy, cat, prod])
+        db_session.commit()
+
+        # Direct service assignment must reject inactive policy
+        with pytest.raises(ValueError, match="Cannot assign inactive warranty policy"):
+            WarrantyService.set_product_warranty(
+                prod.id, override="POLICY", policy_id=policy.id, acting_user_id=admin.id, session=db_session
+            )
+
+        with pytest.raises(ValueError, match="Cannot assign inactive warranty policy"):
+            WarrantyService.set_category_default_warranty(
+                cat.id, policy_id=policy.id, acting_user_id=admin.id, session=db_session
+            )
+
+    def test_issue_821_supplier_cover_months_validation(self, db_session):
+        """Supplier cover months cannot be negative."""
+        admin = _create_user_with_permissions(db_session, "admin_cover", [Permissions.WARRANTY_MANAGE_POLICIES])
+
+        with pytest.raises(ValueError, match="supplier_cover_months cannot be negative"):
+            WarrantyService.create_policy(
+                {
+                    "name": "Negative Cover Policy",
+                    "warranty_type": "SHOP",
+                    "duration": 1,
+                    "duration_unit": "YEARS",
+                    "remedy": "REFUND",
+                    "supplier_cover_months": -1,
+                },
+                acting_user_id=admin.id,
+                session=db_session,
+            )
+
+    def test_issue_821_inactive_custom_policy_keeps_feature_accessible(self, db_session):
+        """An inactive custom policy keeps the warranty feature accessible so merchant can reactivate it."""
+        ConfigService.set("warranty_enabled", False)
+        # Clear any active policies
+        db_session.query(WarrantyPolicy).delete()
+        db_session.commit()
+
+        # Seed custom inactive policy
+        custom_inactive = WarrantyPolicy(
+            name="Custom Inactive Policy",
+            warranty_type="SHOP",
+            duration=1,
+            duration_unit="YEARS",
+            remedy="REPAIR_OR_REPLACE",
+            is_active=False,
+            is_template=False,
+        )
+        db_session.add(custom_inactive)
+        db_session.commit()
+
+        assert WarrantyService.is_enabled(session=db_session) is True
+
+    def test_issue_821_model_localized_accessors_fallback(self):
+        """WarrantyPolicy localized accessors fall back to English and handle unexpected languages safely."""
+        policy = WarrantyPolicy(
+            name="1 Year Shop",
+            name_si="වසර 1 සාප්පු වගකීම",
+            name_ta=None,
+            warranty_type="SHOP",
+            duration=1,
+            duration_unit="YEARS",
+            remedy="REPAIR_OR_REPLACE",
+            terms_text="English terms",
+            terms_text_si=None,
+            terms_text_ta="Tamil terms",
+            exclusions_text="English exclusions",
+        )
+
+        assert policy.get_display_name("en") == "1 Year Shop"
+        assert policy.get_display_name("si") == "වසර 1 සාප්පු වගකීම"
+        assert policy.get_display_name("ta") == "1 Year Shop"  # Fallback to EN
+
+        assert policy.get_terms("en") == "English terms"
+        assert policy.get_terms("si") == "English terms"  # Fallback to EN
+        assert policy.get_terms("ta") == "Tamil terms"
+
+        assert policy.get_exclusions("en") == "English exclusions"
+        assert policy.get_exclusions("si") == "English exclusions"
+        assert policy.get_exclusions("ta") == "English exclusions"

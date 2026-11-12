@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, Integer, String, Text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from cbpos.core.database import Base
@@ -34,9 +34,11 @@ class WarrantyPolicy(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1", nullable=False, index=True)
     is_template: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0", nullable=False)
     synced: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0", nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.now, server_default=func.now(), nullable=False
+    )
     last_modified: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.now, onupdate=datetime.now, index=True, nullable=False
+        DateTime, default=datetime.now, server_default=func.now(), onupdate=datetime.now, index=True, nullable=False
     )
 
     __table_args__ = (
@@ -47,64 +49,34 @@ class WarrantyPolicy(Base):
             "remedy IN ('REPAIR_OR_REPLACE', 'REPAIR_ONLY', 'REPLACE_ONLY', 'REFUND')",
             name="ck_warranty_policy_remedy",
         ),
+        CheckConstraint("supplier_cover_months >= 0", name="ck_warranty_policy_supplier_cover_months"),
     )
+
+    def _resolve_localized_field(self, field_base: str, lang: str | None = None) -> str:
+        """Resolve localized field (e.g. 'name', 'terms_text', 'exclusions_text') with English fallback."""
+        if lang is None:
+            try:
+                from cbpos.i18n import get_language
+
+                lang = get_language()
+            except (ImportError, LookupError, AttributeError):
+                lang = "en"
+        lang = (lang or "en").lower()
+        if lang in ("si", "ta"):
+            localized_val = getattr(self, f"{field_base}_{lang}", None)
+            if localized_val and str(localized_val).strip():
+                return str(localized_val).strip()
+        default_val = getattr(self, field_base, None)
+        return str(default_val).strip() if default_val else ""
 
     def get_display_name(self, lang: str | None = None) -> str:
         """Return the policy name in the requested or active language with fallbacks."""
-        if lang is None:
-            try:
-                from cbpos.i18n import get_language
-
-                lang = get_language()
-            except Exception:
-                lang = "en"
-        lang = (lang or "en").lower()
-        if lang == "si":
-            name = (self.name_si or "").strip()
-            if name:
-                return name
-        elif lang == "ta":
-            name = (self.name_ta or "").strip()
-            if name:
-                return name
-        return self.name
+        return self._resolve_localized_field("name", lang) or self.name
 
     def get_terms(self, lang: str | None = None) -> str:
         """Return terms text in the requested or active language with fallback to English."""
-        if lang is None:
-            try:
-                from cbpos.i18n import get_language
-
-                lang = get_language()
-            except Exception:
-                lang = "en"
-        lang = (lang or "en").lower()
-        if lang == "si":
-            terms = (self.terms_text_si or "").strip()
-            if terms:
-                return terms
-        elif lang == "ta":
-            terms = (self.terms_text_ta or "").strip()
-            if terms:
-                return terms
-        return self.terms_text or ""
+        return self._resolve_localized_field("terms_text", lang)
 
     def get_exclusions(self, lang: str | None = None) -> str:
         """Return exclusions text in the requested or active language with fallback to English."""
-        if lang is None:
-            try:
-                from cbpos.i18n import get_language
-
-                lang = get_language()
-            except Exception:
-                lang = "en"
-        lang = (lang or "en").lower()
-        if lang == "si":
-            ex = (self.exclusions_text_si or "").strip()
-            if ex:
-                return ex
-        elif lang == "ta":
-            ex = (self.exclusions_text_ta or "").strip()
-            if ex:
-                return ex
-        return self.exclusions_text or ""
+        return self._resolve_localized_field("exclusions_text", lang)

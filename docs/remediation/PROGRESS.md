@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 9 · Batch: 9.2 · Branch: feat/p9-b2-per-unit-warranty · PR: pr-open · Last session: 2026-11-12
+- Phase: 9 · Batch: 9.2 · Branch: feat/p9-b2-per-unit-warranty · PR: #1022 (pr-open) · Last session: 2026-11-12
 
 ## Issues
 
@@ -199,7 +199,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | # | Title | Sev | Batch | Status | PR | Notes |
 |---|---|---|---|---|---|---|
 | #821 | Warranty W1: Warranty policies and assignment to products and categories | — | 9.1 | done | #1021 | d787378 · Decisions D28/D29; WarrantyPolicy model, migration, WarrantyService, product/category assignment, feature gating, UI dialogs & views |
-| #822 | Warranty W2: Register a warranty per sold unit and cascade on void or refund | — | 9.2 | pr-open | | Decision D30; Warranty model, migration, per-unit registration at checkout, whole-unit guard, void/refund cascades, LAN sync 1.4 |
+| #822 | Warranty W2: Register a warranty per sold unit and cascade on void or refund | — | 9.2 | pr-open | #1022 | Decision D30; Warranty model, migration, per-unit registration at checkout, whole-unit guard, void/refund cascades, LAN sync 1.4 |
 | #823 | Warranty W3: Optional serial/IMEI capture at checkout | — | 9.3 | todo | | |
 | #824 | Warranty W4: Print the warranty on the receipt, the A4 invoice and a standalo… | — | 9.3 | todo | | |
 | #825 | Warranty W5: Warranty lookup by receipt, serial, phone or customer | — | 9.4 | todo | | |

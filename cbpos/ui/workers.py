@@ -479,6 +479,26 @@ class AutocompleteLoadWorker(QThread):
             self.result.emit([])
 
 
+class LabelProductLoaderWorker(QThread):
+    """Loads active products for LabelPrintDialog in a background thread (#819)."""
+
+    loaded = pyqtSignal(list)
+
+    def __init__(self, product_service) -> None:
+        super().__init__()
+        self.finished.connect(self.deleteLater)
+        self.product_service = product_service
+
+    def run(self) -> None:
+        """Fetch all active products and emit the result list."""
+        try:
+            products = self.product_service.get_all_products()
+            self.loaded.emit(products)
+        except Exception as e:
+            logger.debug("LabelProductLoaderWorker failed: %s", e)
+            self.loaded.emit([])
+
+
 _REPORT_PRINT_HTML = """
 <html>
 <head>

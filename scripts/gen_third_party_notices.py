@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.metadata as md
+import json
 import sys
 import tomllib
 from pathlib import Path
@@ -462,19 +463,55 @@ def extract_package_notice(pkg_name: str, pinned_version: str) -> dict[str, str]
     }
 
 
-def generate_notices() -> str:
-    """Generate deterministic, sorted third-party notices text."""
+def generate_notices(update_manifest: bool = False) -> str:
+    """Generate deterministic, sorted third-party notices text.
+
+    Validates every package in the runtime closure against the reviewed
+    checked-in manifest (scripts/third_party_manifest.json) to ensure
+    identical output across Windows, macOS, and Linux build environments.
+    """
     lock_path = ROOT / "uv.lock"
     if not lock_path.exists():
         raise FileNotFoundError(f"uv.lock not found at {lock_path}")
 
     closure = get_runtime_closure(lock_path)
+    manifest_path = ROOT / "scripts" / "third_party_manifest.json"
 
+    manifest: dict[str, dict[str, str]] = {}
+    if manifest_path.exists():
+        try:
+            with manifest_path.open("r", encoding="utf-8") as f:
+                manifest = json.load(f)
+        except Exception as exc:
+            raise RuntimeError(f"Could not load manifest from {manifest_path}: {exc}") from exc
+
+    if update_manifest or not manifest:
+        manifest = {}
+        for pkg_name in sorted(closure.keys()):
+            version = closure[pkg_name]
+            notice = extract_package_notice(pkg_name, version)
+            manifest[pkg_name] = notice
+        manifest_path.write_text(
+            json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+
+    # Validate closure against checked-in reviewed manifest
     package_notices: list[dict[str, str]] = []
     for pkg_name in sorted(closure.keys()):
-        version = closure[pkg_name]
-        notice = extract_package_notice(pkg_name, version)
-        package_notices.append(notice)
+        locked_version = closure[pkg_name]
+        if pkg_name not in manifest:
+            raise RuntimeError(
+                f"Package '{pkg_name}' in runtime closure is missing from {manifest_path}. "
+                "Run python scripts/gen_third_party_notices.py --update-manifest to record reviewed metadata."
+            )
+        entry = manifest[pkg_name]
+        if entry.get("version") != locked_version:
+            raise RuntimeError(
+                f"Package '{pkg_name}' version mismatch: uv.lock has {locked_version}, "
+                f"manifest has {entry.get('version')}. Run with --update-manifest."
+            )
+        package_notices.append(entry)
 
     # Combine runtime packages and bundled assets
     all_entries = package_notices + BUNDLED_ASSETS
@@ -534,10 +571,15 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Verify that the existing output file matches generated content without writing",
     )
+    parser.add_argument(
+        "--update-manifest",
+        action="store_true",
+        help="Re-extract metadata from environment to update scripts/third_party_manifest.json",
+    )
     args = parser.parse_args(argv)
 
     try:
-        content = generate_notices()
+        content = generate_notices(update_manifest=args.update_manifest)
         output_path: Path = args.output
         if args.check:
             if not output_path.exists():

@@ -41,7 +41,6 @@ CCPlugins/
 Thumbs.db
 
 #AI
-CLAUDE.md
 cbpos.db-shm
 .gitignore
 cbpos.db-wal

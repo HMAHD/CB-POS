@@ -137,9 +137,16 @@ def _autocomplete_preload_runs_inline():
     """
     from cbpos.core.services.scheduler_service import AutoReportWorker
     from cbpos.ui.views.dashboard_view import _PeriodicWorker, _YearlyWorker
-    from cbpos.ui.workers import AutocompleteLoadWorker, SyncTestWorker
+    from cbpos.ui.workers import AutocompleteLoadWorker, LabelProductLoaderWorker, SyncTestWorker
 
-    inline_workers = (AutocompleteLoadWorker, _YearlyWorker, _PeriodicWorker, SyncTestWorker, AutoReportWorker)
+    inline_workers = (
+        AutocompleteLoadWorker,
+        _YearlyWorker,
+        _PeriodicWorker,
+        SyncTestWorker,
+        AutoReportWorker,
+        LabelProductLoaderWorker,
+    )
     for worker_cls in inline_workers:
         worker_cls.start = worker_cls.run
     try:

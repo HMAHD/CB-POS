@@ -44,6 +44,7 @@ from cbpos.core.models import (
     StockMovement,
     SupplierLedgerEntry,
     SupplierPayment,
+    Warranty,
 )
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.sync_change_tracking import SKIP_CHANGE_TRACKING
@@ -69,6 +70,7 @@ logger = logging.getLogger(__name__)
 
 # Pushed tables without children, in push order: (table name, model).
 _FLAT_PUSH_TABLES: tuple[tuple[str, type], ...] = (
+    ("warranties", Warranty),
     ("stock_movements", StockMovement),
     ("shifts", Shift),
     ("cash_movements", CashMovement),

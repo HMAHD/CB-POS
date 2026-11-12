@@ -438,7 +438,7 @@ class TransactionService:
     @staticmethod
     def _write_sale_lines(
         session: Session, sale: Sale, cart_items: list[dict[str, Any]], composite_map: dict[int, list[CompositeItem]]
-    ) -> None:
+    ) -> list[SaleItem]:
         """Add a SaleItem per cart line and take its stock out (components for a composite).
 
         Args:
@@ -446,7 +446,11 @@ class TransactionService:
             sale: The flushed sale (id and cashier set).
             cart_items: ``CartService.items``.
             composite_map: ``_fetch_composite_map`` result for the cart's products.
+
+        Returns:
+            list[SaleItem]: The created sale items.
         """
+        written_items: list[SaleItem] = []
         for item in cart_items:
             product = item["product"]
             qty = item["qty"]
@@ -457,6 +461,7 @@ class TransactionService:
             sscl_exempt = bool(item.get("sscl_exempt", False))
 
             sale_item = SaleItem(
+                sale=sale,
                 sale_id=sale.id,
                 product_id=product.id,
                 qty=qty,
@@ -468,9 +473,13 @@ class TransactionService:
                 unit_cost=unit_cost,
                 notes=item.get("note") or None,
             )
+            # In-memory warranties initialization to avoid N+1 query
+            sale_item.warranties = []
             session.add(sale_item)
+            written_items.append(sale_item)
 
             TransactionService._move_stock(session, composite_map, product.id, -qty, "SALE", sale.id, sale.user_id)
+        return written_items
 
     @staticmethod
     def _load_receipt_relations(sale: Sale) -> None:
@@ -489,6 +498,7 @@ class TransactionService:
         _ = sale.user
         for item in sale.items:
             _ = item.product
+            _ = item.warranties
 
     @staticmethod
     def _normalise_payments(
@@ -609,6 +619,24 @@ class TransactionService:
             )
             TransactionService._check_stock(session, cart_items, composite_map)
 
+            # Batched warranty policy resolution and whole-unit validation (#822)
+            from cbpos.core.services.warranty_service import WarrantyService
+
+            policy_map: dict[int, Any] = {}
+            if WarrantyService.is_enabled(session=session):
+                cart_pids = [item["product"].id for item in cart_items]
+                policy_map = WarrantyService.resolve_policies_for_products(session, cart_pids)
+                for item in cart_items:
+                    p_id = item["product"].id
+                    if policy_map.get(p_id) is not None:
+                        qty = item["qty"]
+                        if qty <= Decimal("0") or qty % Decimal("1") != Decimal("0"):
+                            from cbpos.i18n import _t
+
+                            raise ValueError(
+                                _t("errors.warranty_whole_units", default="Warranty items must be sold in whole units")
+                            )
+
             current_user = AuthService.get_current_user()
             if not current_user:
                 raise ValueError("No user logged in.")
@@ -644,7 +672,16 @@ class TransactionService:
                         tendered_amount=p.get("tendered_amount"),
                     )
                 )
-            TransactionService._write_sale_lines(session, sale, cart_items, composite_map)
+            written_items = TransactionService._write_sale_lines(session, sale, cart_items, composite_map)
+            session.flush()
+
+            # 4a. Register per-unit warranties for covered lines (#822)
+            if WarrantyService.is_enabled(session=session) and policy_map:
+                items_with_policies = [
+                    (si, policy_map[si.product_id]) for si in written_items if policy_map.get(si.product_id) is not None
+                ]
+                if items_with_policies:
+                    WarrantyService.register_for_sale_in_session(session, sale, items_with_policies)
 
             # 4b. Loyalty redemption deduction (ADR-0002)
             if sale.loyalty_points_redeemed > 0:
@@ -756,6 +793,11 @@ class TransactionService:
                 LoyaltyService.reverse_sale_points(session, sale, reason="VOID")
                 # Return any loyalty points redeemed on this sale (#755)
                 LoyaltyService.return_redeemed_points(session, sale, reason="VOID")
+
+                # Void any active warranties associated with this sale (#822)
+                from cbpos.core.services.warranty_service import WarrantyService
+
+                WarrantyService.void_sale_warranties_in_session(session, sale.id, user_id)
 
                 logger.info("VOID Sale %s by User %s: %s", sale.document_number, user_id, reason)
 

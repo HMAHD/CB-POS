@@ -85,6 +85,9 @@ Format: `D<n> — <date> — #<issue> — <decision>`. New decisions go at the b
 3. Owner decision gate for W2 (#822): The product/business policy for checkout behavior on existing products carrying an inactive policy must be explicitly resolved prior to implementing #822 (Options: A) Honor inactive policy for existing inventory at checkout; B) Treat inactive policy as no coverage at checkout; C) Warn cashier at checkout and prompt for manager override).
 4. Under D15, security hardening was added to `CategoryService.create()` and `update()` to fail closed if `acting_user_id` is None/unauthenticated whenever a warranty policy assignment is attempted, matching `WarrantyService` and `InventoryService` mutation boundaries.
 
+**D30 — 2026-11-12 — #822 — Inactive Policy Resolution at Checkout (W2).**
+For checkout and per-unit warranty registration in W2 (#822), resolving a product or category assignment to an inactive policy produces no new warranty coverage (`WarrantyService.resolve_coverage_for_sale` or registration issues no `Warranty` row). The inactive assignment remains visible and preserved on the product/category; it does not fall through to any category or parent policy (fail-closed against silent substitution), and W2 adds no cashier warning or manager override prompt.
+
 
 
 

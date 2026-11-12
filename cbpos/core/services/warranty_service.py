@@ -5,11 +5,12 @@ feature gating, permissions, audit trails, and calendar-aware end-date calculati
 import json
 import logging
 from contextlib import contextmanager
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from decimal import Decimal
 from typing import Any
 
 from dateutil.relativedelta import relativedelta
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
 from cbpos.core.constants.audit import WARRANTY_EVENT
@@ -20,7 +21,10 @@ from cbpos.core.models import (
     Category,
     Product,
     Role,
+    Sale,
+    SaleItem,
     User,
+    Warranty,
     WarrantyPolicy,
 )
 from cbpos.core.services.auth_service import AuthService
@@ -175,6 +179,322 @@ class WarrantyService:
                 current_category_id = cat.parent_id
 
             return None
+
+    @classmethod
+    def resolve_policies_for_products(
+        cls,
+        session: Session,
+        product_ids: list[int],
+    ) -> dict[int, WarrantyPolicy | None]:
+        """Batched policy resolution for checkout (Decision D30).
+
+        Runs at most 1-2 batched queries across all products.
+        Enforces Decision D30:
+        - Inactive policy on product (POLICY override) produces None without category fallthrough.
+        - Inactive default policy on category produces None without parent category fallthrough.
+        - Weighted products produce None.
+        Returns dict mapping product_id -> WarrantyPolicy or None.
+        """
+        if not product_ids:
+            return {}
+
+        unique_ids = list(set(product_ids))
+        products = session.query(Product).filter(Product.id.in_(unique_ids)).all()
+        prod_map = {p.id: p for p in products}
+
+        # Collect policies and categories needed
+        direct_policy_ids = set()
+        needed_category_ids = set()
+
+        for p in products:
+            if p.is_weighted:
+                continue
+            override = p.warranty_override or "INHERIT"
+            if override == "NONE":
+                continue
+            if override == "POLICY" and p.warranty_policy_id:
+                direct_policy_ids.add(p.warranty_policy_id)
+            elif override == "INHERIT" and p.category_id:
+                needed_category_ids.add(p.category_id)
+
+        # Batch load category ancestors
+        category_map: dict[int, Category] = {}
+        while needed_category_ids:
+            cats = session.query(Category).filter(Category.id.in_(list(needed_category_ids))).all()
+            needed_category_ids = set()
+            for c in cats:
+                category_map[c.id] = c
+                if c.default_warranty_policy_id:
+                    direct_policy_ids.add(c.default_warranty_policy_id)
+                elif c.parent_id and c.parent_id not in category_map:
+                    needed_category_ids.add(c.parent_id)
+
+        # Batch load all referenced policies
+        policy_map: dict[int, WarrantyPolicy] = {}
+        if direct_policy_ids:
+            policies = session.query(WarrantyPolicy).filter(WarrantyPolicy.id.in_(list(direct_policy_ids))).all()
+            policy_map = {pol.id: pol for pol in policies}
+
+        result: dict[int, WarrantyPolicy | None] = {}
+        for pid in unique_ids:
+            p = prod_map.get(pid)
+            if not p or p.is_weighted:
+                result[pid] = None
+                continue
+
+            override = p.warranty_override or "INHERIT"
+            if override == "NONE":
+                result[pid] = None
+                continue
+
+            if override == "POLICY":
+                pol = policy_map.get(p.warranty_policy_id) if p.warranty_policy_id else None
+                # D30: Inactive policy produces None; never falls through
+                result[pid] = pol if (pol and pol.is_active) else None
+                continue
+
+            # override == "INHERIT"
+            curr_cat_id = p.category_id
+            resolved_pol = None
+            visited = set()
+            while curr_cat_id and curr_cat_id not in visited:
+                visited.add(curr_cat_id)
+                cat = category_map.get(curr_cat_id)
+                if not cat:
+                    break
+                if cat.default_warranty_policy_id:
+                    cpol = policy_map.get(cat.default_warranty_policy_id)
+                    # D30: If category has a policy, inspect is_active.
+                    # If active: use it. If inactive: return None immediately (no parent fallthrough!)
+                    resolved_pol = cpol if (cpol and cpol.is_active) else None
+                    break
+                curr_cat_id = cat.parent_id
+
+            result[pid] = resolved_pol
+
+        return result
+
+    @classmethod
+    def register_for_sale_in_session(
+        cls,
+        session: Session,
+        sale: Sale,
+        sale_items_with_policies: list[tuple[SaleItem, WarrantyPolicy]],
+        receipt_lang: str | None = None,
+    ) -> list[Warranty]:
+        """Create per-unit Warranty rows for sold lines in the current session.
+
+        - Validates that qty is an exact integer.
+        - Generates codes: <sale.document_number>-01..NN across all warranty units of the sale.
+        - Sets unit_index per line (1..int(qty)).
+        - Computes start_date = sale.date.date(), end_date = compute_end_date(...).
+        - Snapshots terms/exclusions in receipt language (falling back to English).
+        - Snapshots customer name and phone.
+        - In-memory collection attachment on sale_item.warranties and sale.warranties.
+        - Emits an atomic WARRANTY audit log entry.
+        """
+        if not sale_items_with_policies:
+            return []
+
+        # Resolve receipt language
+        lang = receipt_lang
+        if not lang:
+            try:
+                from cbpos.i18n import get_language
+
+                lang = get_language()
+            except Exception:
+                lang = "en"
+        lang = (lang or "en").lower()
+        if lang not in ("en", "si", "ta"):
+            lang = "en"
+
+        customer_name = None
+        customer_phone = None
+        if sale.customer:
+            customer_name = sale.customer.name
+            customer_phone = sale.customer.phone
+
+        start_date = sale.date.date() if sale.date else date.today()
+        created_warranties = []
+        global_seq = 0
+
+        for sale_item, policy in sale_items_with_policies:
+            qty = sale_item.qty
+            if qty <= Decimal("0") or qty % Decimal("1") != Decimal("0"):
+                from cbpos.i18n import _t
+
+                raise ValueError(
+                    _t("errors.warranty_whole_units", default="Warranty items must be sold in whole units")
+                )
+
+            unit_count = int(qty)
+            end_date = cls.compute_end_date(start_date, policy.duration, policy.duration_unit)
+
+            # Snapshots in receipt language
+            terms_snapshot = policy.get_terms(lang)
+            exclusions_snapshot = policy.get_exclusions(lang)
+
+            line_warranties = []
+            for unit_idx in range(1, unit_count + 1):
+                global_seq += 1
+                code = f"{sale.document_number}-{global_seq:02d}"
+
+                warranty = Warranty(
+                    code=code,
+                    unit_index=unit_idx,
+                    sale_id=sale.id,
+                    sale_item_id=sale_item.id,
+                    product_id=sale_item.product_id,
+                    customer_id=sale.customer_id,
+                    policy_id=policy.id,
+                    customer_name_snapshot=customer_name,
+                    customer_phone_snapshot=customer_phone,
+                    warranty_type=policy.warranty_type,
+                    duration=policy.duration,
+                    duration_unit=policy.duration_unit,
+                    remedy=policy.remedy,
+                    provider_name=policy.provider_name,
+                    terms_text=terms_snapshot,
+                    exclusions_text=exclusions_snapshot,
+                    lang=lang,
+                    start_date=start_date,
+                    end_date=end_date,
+                    status="ACTIVE",
+                    terminal_id=sale.terminal_id,
+                    synced=False,
+                )
+                session.add(warranty)
+                line_warranties.append(warranty)
+                created_warranties.append(warranty)
+
+            # In-memory attachment to avoid lazy query during receipt printing
+            if hasattr(sale_item, "warranties"):
+                if sale_item.warranties is None:
+                    sale_item.warranties = []
+                sale_item.warranties.extend(line_warranties)
+
+        # In-memory attachment on sale as well
+        if hasattr(sale, "warranties"):
+            if sale.warranties is None:
+                sale.warranties = []
+            sale.warranties.extend(created_warranties)
+
+        # Audit log
+        user_id = sale.user_id
+        session.add(
+            AuditLog(
+                user_id=user_id,
+                action="REGISTER_WARRANTIES",
+                event_type=WARRANTY_EVENT,
+                details=f"Registered {len(created_warranties)} warranties for sale {sale.document_number} (ID {sale.id})",
+            )
+        )
+
+        return created_warranties
+
+    @classmethod
+    def void_sale_warranties_in_session(
+        cls,
+        session: Session,
+        sale_id: int,
+        actor_id: int,
+    ) -> int:
+        """Atomically transition all ACTIVE warranties for sale_id to VOID."""
+        stmt = (
+            select(Warranty)
+            .where(
+                Warranty.sale_id == sale_id,
+                Warranty.status == "ACTIVE",
+            )
+            .with_for_update()
+        )
+        active_warranties = list(session.scalars(stmt).all())
+        if not active_warranties:
+            return 0
+
+        now = datetime.now()
+        for w in active_warranties:
+            w.status = "VOID"
+            w.last_modified = now
+
+        session.add(
+            AuditLog(
+                user_id=actor_id,
+                action="VOID_WARRANTIES",
+                event_type=WARRANTY_EVENT,
+                details=f"Voided {len(active_warranties)} warranties for sale ID {sale_id}",
+            )
+        )
+        return len(active_warranties)
+
+    @classmethod
+    def cancel_units_for_refund_in_session(
+        cls,
+        session: Session,
+        refund_sale: Sale,
+        refund_lines: list[tuple[int, Decimal]],  # (sale_item_id, qty)
+        actor_id: int,
+    ) -> list[Warranty]:
+        """Cancel ACTIVE warranties per refunded line item (highest unit_index first)."""
+        cancelled_warranties = []
+        now = datetime.now()
+
+        for sale_item_id, qty in refund_lines:
+            if qty <= Decimal("0"):
+                continue
+
+            # Check if this line item has any warranties at all
+            total_warranties = session.scalar(
+                select(func.count(Warranty.id)).where(Warranty.sale_item_id == sale_item_id)
+            )
+            if not total_warranties:
+                # Non-warranty line item, cleanly skip
+                continue
+
+            if qty % Decimal("1") != Decimal("0"):
+                from cbpos.i18n import _t
+
+                raise ValueError(
+                    _t("errors.warranty_whole_units", default="Warranty items must be sold in whole units")
+                )
+
+            units_to_cancel = int(qty)
+
+            # Query active warranties with row locking, highest unit_index first
+            stmt = (
+                select(Warranty)
+                .where(
+                    Warranty.sale_item_id == sale_item_id,
+                    Warranty.status == "ACTIVE",
+                )
+                .order_by(Warranty.unit_index.desc())
+                .with_for_update()
+            )
+            active_units = list(session.scalars(stmt).all())
+
+            if len(active_units) < units_to_cancel:
+                raise ValueError(
+                    f"insufficient_active_warranties: {len(active_units)} active warranties available for line {sale_item_id}, {units_to_cancel} requested"
+                )
+
+            for w in active_units[:units_to_cancel]:
+                w.status = "CANCELLED"
+                w.cancelled_by_sale_id = refund_sale.id
+                w.last_modified = now
+                cancelled_warranties.append(w)
+
+        if cancelled_warranties:
+            session.add(
+                AuditLog(
+                    user_id=actor_id,
+                    action="CANCEL_WARRANTIES",
+                    event_type=WARRANTY_EVENT,
+                    details=f"Cancelled {len(cancelled_warranties)} warranties by refund sale {refund_sale.document_number} (ID {refund_sale.id})",
+                )
+            )
+
+        return cancelled_warranties
 
     @classmethod
     def list_policies(

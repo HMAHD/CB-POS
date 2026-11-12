@@ -42,6 +42,7 @@ class SaleQueryService:
                 _ = sale.user
                 for it in sale.items:
                     _ = it.product
+                    _ = it.warranties
                 _ = sale.payments
                 session.expunge_all()
             return sale
@@ -128,6 +129,7 @@ class SaleQueryService:
                 _ = sale.user
                 for it in sale.items:
                     _ = it.product
+                    _ = it.warranties
                 _ = sale.payments
                 session.expunge_all()
             return sale

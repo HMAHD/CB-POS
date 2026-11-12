@@ -223,6 +223,9 @@ class Sale(Document):
     customer: Mapped["Customer"] = relationship(back_populates="sales")
     items: Mapped[list["SaleItem"]] = relationship(back_populates="sale", cascade="all, delete-orphan")
     payments: Mapped[list["SalePayment"]] = relationship(back_populates="sale", cascade="all, delete-orphan")
+    warranties: Mapped[list["Warranty"]] = relationship(
+        "Warranty", foreign_keys="[Warranty.sale_id]", back_populates="sale", lazy="selectin"
+    )
     refund_of_sale: Mapped["Sale"] = relationship("Sale", remote_side=[id], foreign_keys=[refund_of_sale_id])
     shift: Mapped["Shift | None"] = relationship("Shift")
 
@@ -566,6 +569,9 @@ class SaleItem(Base):
 
     sale: Mapped["Sale"] = relationship(back_populates="items")
     product: Mapped["Product"] = relationship("Product")
+    warranties: Mapped[list["Warranty"]] = relationship(
+        "Warranty", foreign_keys="[Warranty.sale_item_id]", back_populates="sale_item", lazy="selectin"
+    )
     refund_of_item: Mapped["SaleItem | None"] = relationship(
         "SaleItem", remote_side=[id], foreign_keys=[refund_of_item_id]
     )
@@ -1060,7 +1066,7 @@ from cbpos.core.models.tax_invoice import (  # noqa: E402, F401
     TaxInvoiceLine,
     TaxInvoiceSequence,
 )
-from cbpos.core.models.warranty import WarrantyPolicy  # noqa: E402
+from cbpos.core.models.warranty import Warranty, WarrantyPolicy  # noqa: E402
 
 # Registers the session hook that re-sends a till row to the Main PC when it
 # changes after its first push (#677). Imported here so it is active wherever

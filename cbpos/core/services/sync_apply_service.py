@@ -76,6 +76,7 @@ APPLY_ORDER: tuple[str, ...] = (
     "documents",
     "sale_items",
     "sale_payments",
+    "warranties",
     "purchase_items",
     "stock_movements",
     "cash_movements",
@@ -99,6 +100,13 @@ TERMINAL_REFS: dict[str, dict[str, str]] = {
     "sales": {"refund_of_sale_id": DOCUMENT_ID_SPACE, "shift_id": "shifts"},
     "sale_items": {"sale_id": DOCUMENT_ID_SPACE, "refund_of_item_id": "sale_items"},
     "sale_payments": {"sale_id": DOCUMENT_ID_SPACE},
+    "warranties": {
+        "sale_id": DOCUMENT_ID_SPACE,
+        "sale_item_id": "sale_items",
+        "cancelled_by_sale_id": DOCUMENT_ID_SPACE,
+        "covers_warranty_id": "warranties",
+        "replaces_warranty_id": "warranties",
+    },
     "purchase_items": {"purchase_id": DOCUMENT_ID_SPACE},
     "stock_movements": {"document_id": DOCUMENT_ID_SPACE},
     "cash_movements": {"shift_id": "shifts"},
@@ -124,7 +132,7 @@ LEDGER_REFS: dict[str, dict[str, str]] = {
 # Tables whose customer_id may point at a customer the till created and
 # pushed in the same batch (#680). Any other customer_id is a Main PC id.
 _CUSTOMER_REF_TABLES = frozenset(
-    {"sales", "customer_payments", "customer_ledger", "loyalty_ledger", "suspended_transactions"}
+    {"sales", "warranties", "customer_payments", "customer_ledger", "loyalty_ledger", "suspended_transactions"}
 )
 
 # Columns that point at till rows that are never pushed (purchase orders

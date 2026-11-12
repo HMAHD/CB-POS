@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 from PyQt6.QtCore import QDate, Qt
 from PyQt6.QtWidgets import (
@@ -545,13 +546,12 @@ class HistoryView(QWidget):
 
         from PyQt6.QtWidgets import QDialog
 
-        from cbpos.core.services.tax_invoice_pdf_builder import TaxInvoicePDFBuilder
         from cbpos.core.services.tax_invoice_service import TaxInvoiceService
         from cbpos.ui.dialogs.buyer_details_dialog import BuyerDetailsDialog
 
         existing = TaxInvoiceService.get_tax_invoice_by_sale_id(self.current_sale.id)
         if existing:
-            default_name = f"Tax_Invoice_{existing.serial_number}.pdf"
+            default_name = f"Tax_Invoice_{existing.serial}.pdf"
             file_path, _ = QFileDialog.getSaveFileName(
                 self,
                 _t("tax_invoice.save_dialog_title"),
@@ -561,24 +561,12 @@ class HistoryView(QWidget):
             if not file_path:
                 return
 
-            try:
-                current_user = AuthService.get_current_user()
-                user_id = current_user.id if current_user else 1
-                TaxInvoiceService.record_print(existing.id, user_id=user_id)
-                updated_inv = TaxInvoiceService.get_tax_invoice_by_sale_id(self.current_sale.id)
-                if updated_inv:
-                    pdf_bytes = TaxInvoicePDFBuilder.generate_pdf(updated_inv)
-                    with open(file_path, "wb") as f:
-                        f.write(pdf_bytes)
-                    QMessageBox.information(
-                        self,
-                        _t("common.success"),
-                        _t("tax_invoice.pdf_saved_success", path=file_path),
-                    )
-                    self.display_details(self.current_sale)
-            except Exception as e:
-                logger.exception("Failed to export tax invoice PDF: %s", e)
-                QMessageBox.critical(self, _t("common.error"), str(e))
+            current_user = AuthService.get_current_user()
+            if not current_user:
+                QMessageBox.warning(self, _t("common.error"), _t("errors.permission_denied"))
+                return
+
+            self._export_tax_invoice_pdf(existing.id, file_path, current_user.id)
         else:
             initial_data = {}
             if self.current_sale.customer:
@@ -596,18 +584,21 @@ class HistoryView(QWidget):
             if not buyer_details:
                 return
 
+            current_user = AuthService.get_current_user()
+            if not current_user:
+                QMessageBox.warning(self, _t("common.error"), _t("errors.permission_denied"))
+                return
+
             try:
-                current_user = AuthService.get_current_user()
-                user_id = current_user.id if current_user else 1
                 tax_inv = TaxInvoiceService.issue_tax_invoice(
                     sale_id=self.current_sale.id,
                     buyer_details=buyer_details,
-                    user_id=user_id,
+                    user_id=current_user.id,
                 )
                 QMessageBox.information(
                     self,
                     _t("common.success"),
-                    _t("tax_invoice.issued_success", serial=tax_inv.serial_number),
+                    _t("tax_invoice.issued_success", serial=tax_inv.serial),
                 )
                 self.display_details(self.current_sale)
                 self.on_selection_changed()
@@ -621,7 +612,7 @@ class HistoryView(QWidget):
                     QMessageBox.StandardButton.Yes,
                 )
                 if reply == QMessageBox.StandardButton.Yes:
-                    default_name = f"Tax_Invoice_{tax_inv.serial_number}.pdf"
+                    default_name = f"Tax_Invoice_{tax_inv.serial}.pdf"
                     file_path, _ = QFileDialog.getSaveFileName(
                         self,
                         _t("tax_invoice.save_dialog_title"),
@@ -629,14 +620,7 @@ class HistoryView(QWidget):
                         "PDF Files (*.pdf)",
                     )
                     if file_path:
-                        pdf_bytes = TaxInvoicePDFBuilder.generate_pdf(tax_inv)
-                        with open(file_path, "wb") as f:
-                            f.write(pdf_bytes)
-                        QMessageBox.information(
-                            self,
-                            _t("common.success"),
-                            _t("tax_invoice.pdf_saved_success", path=file_path),
-                        )
+                        self._export_tax_invoice_pdf(tax_inv.id, file_path, current_user.id)
             except PermissionError:
                 QMessageBox.warning(self, _t("common.error"), _t("errors.permission_denied"))
             except ValueError as e:
@@ -645,3 +629,30 @@ class HistoryView(QWidget):
             except Exception as e:
                 logger.exception("Failed to issue tax invoice: %s", e)
                 QMessageBox.critical(self, _t("common.error"), str(e))
+
+    def _export_tax_invoice_pdf(self, invoice_id: int, file_path: str, user_id: int) -> None:
+        """Export tax invoice PDF off the main thread using TaxInvoiceArtifactWorker."""
+        from cbpos.ui.workers import TaxInvoiceArtifactWorker, start_background_job
+
+        worker = TaxInvoiceArtifactWorker(
+            invoice_id=invoice_id,
+            destination_path=file_path,
+            user_id=user_id,
+            channel="pdf",
+        )
+        worker.result.connect(self._on_tax_invoice_exported)
+        worker.error.connect(self._on_tax_invoice_export_failed)
+        start_background_job(worker)
+
+    def _on_tax_invoice_exported(self, res: Any) -> None:
+        QMessageBox.information(
+            self,
+            _t("common.success"),
+            _t("tax_invoice.pdf_saved_success", path=res.destination_path),
+        )
+        if self.current_sale:
+            self.display_details(self.current_sale)
+
+    def _on_tax_invoice_export_failed(self, error_msg: str) -> None:
+        logger.exception("Failed to export tax invoice PDF: %s", error_msg)
+        QMessageBox.critical(self, _t("common.error"), error_msg)

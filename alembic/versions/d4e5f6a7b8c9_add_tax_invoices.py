@@ -49,8 +49,8 @@ def upgrade() -> None:
         op.create_table(
             "tax_invoices",
             sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
-            sa.Column("sale_id", sa.Integer(), sa.ForeignKey("sales.id"), nullable=False, unique=True),
-            sa.Column("serial", sa.String(length=40), nullable=False, unique=True),
+            sa.Column("sale_id", sa.Integer(), sa.ForeignKey("sales.id"), nullable=False),
+            sa.Column("serial", sa.String(length=40), nullable=False),
             sa.Column("issued_at", sa.DateTime(), nullable=False),
             sa.Column("supply_date", sa.Date(), nullable=False),
             sa.Column("payment_method", sa.String(length=50), nullable=False),
@@ -86,7 +86,7 @@ def upgrade() -> None:
             sa.Column(
                 "tax_invoice_id",
                 sa.Integer(),
-                sa.ForeignKey("tax_invoices.id", ondelete="CASCADE"),
+                sa.ForeignKey("tax_invoices.id", ondelete="RESTRICT"),
                 nullable=False,
             ),
             sa.Column("item_number", sa.Integer(), nullable=False),
@@ -114,7 +114,7 @@ def upgrade() -> None:
         op.create_table(
             "tax_invoice_sequences",
             sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
-            sa.Column("prefix", sa.String(length=30), nullable=False, unique=True),
+            sa.Column("prefix", sa.String(length=30), nullable=False),
             sa.Column("last_seq", sa.Integer(), server_default="0", nullable=False),
             sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
         )
@@ -125,9 +125,14 @@ def upgrade() -> None:
         op.create_table(
             "tax_credit_notes",
             sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
-            sa.Column("tax_invoice_id", sa.Integer(), sa.ForeignKey("tax_invoices.id"), nullable=False),
-            sa.Column("refund_sale_id", sa.Integer(), sa.ForeignKey("sales.id"), nullable=False, unique=True),
-            sa.Column("serial", sa.String(length=40), nullable=False, unique=True),
+            sa.Column(
+                "tax_invoice_id",
+                sa.Integer(),
+                sa.ForeignKey("tax_invoices.id", ondelete="RESTRICT"),
+                nullable=False,
+            ),
+            sa.Column("refund_sale_id", sa.Integer(), sa.ForeignKey("sales.id"), nullable=False),
+            sa.Column("serial", sa.String(length=40), nullable=False),
             sa.Column("issued_at", sa.DateTime(), nullable=False),
             sa.Column("issued_by_user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False),
             sa.Column("reason", sa.Text(), nullable=False),
@@ -138,6 +143,7 @@ def upgrade() -> None:
             sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
         )
         op.create_index("ix_tax_credit_notes_serial", "tax_credit_notes", ["serial"], unique=True)
+        op.create_index("ix_tax_credit_notes_refund_sale_id", "tax_credit_notes", ["refund_sale_id"], unique=True)
         op.create_index("ix_tax_credit_notes_tax_invoice_id", "tax_credit_notes", ["tax_invoice_id"])
 
     # 5. Seed permission sales.tax_invoice

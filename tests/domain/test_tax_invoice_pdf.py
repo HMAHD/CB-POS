@@ -5,9 +5,10 @@ from decimal import Decimal
 from pathlib import Path
 
 import pypdf
+from reportlab.lib.enums import TA_LEFT
 
 from cbpos.core.models.tax_invoice import TaxInvoice, TaxInvoiceLine
-from cbpos.core.services.tax_invoice_pdf_builder import TaxInvoicePDFBuilder
+from cbpos.core.services.tax_invoice_pdf_builder import TaxInvoicePDFBuilder, _styles, _text
 
 
 def _build_test_invoice(print_count: int = 0) -> TaxInvoice:
@@ -98,3 +99,75 @@ def test_tax_invoice_pdf_copy_only(tmp_path: Path):
     assert "TAX INVOICE" in text
     assert "COPY ONLY" in text
     assert "26OCT_MAIN_00001" in text
+
+
+def test_tax_invoice_pdf_text_preserves_zero_and_newlines():
+    """_text helper must preserve numeric 0 and convert newlines to <br/> without dropping content."""
+    st = _styles()
+    flowable_zero = _text(0, st["base"])
+    assert hasattr(flowable_zero, "text")
+    assert flowable_zero.text == "0"
+
+    flowable_zero_dec = _text(Decimal("0.00"), st["base"])
+    assert flowable_zero_dec.text == "0.00"
+
+    flowable_nl = _text("Line 1\nLine 2", st["base"])
+    assert "<br/>" in flowable_nl.text
+
+
+def test_tax_invoice_pdf_supplier_heading_left_aligned():
+    """Supplier heading must use left-aligned title style."""
+    st = _styles()
+    assert "title_left" in st
+    assert st["title_left"].alignment == TA_LEFT
+
+
+def test_tax_invoice_pdf_dynamic_mixed_vat_rates(tmp_path: Path):
+    """PDF builder must dynamically break down VAT rates rather than hardcoding 18%."""
+    inv = _build_test_invoice(print_count=0)
+    # Add a second line with 0% VAT rate (exempt/zero-rated)
+    inv.lines.append(
+        TaxInvoiceLine(
+            item_number=2,
+            product_id=20,
+            item_code_snapshot="SKU-002",
+            product_name_snapshot="Fresh Produce (Zero-Rated)",
+            unit_snapshot="kg",
+            quantity=Decimal("1.000"),
+            unit_price=Decimal("200.00"),
+            discount_amount=Decimal("0.00"),
+            net_amount=Decimal("200.00"),
+            vat_rate=Decimal("0.00"),
+            vat_amount=Decimal("0.00"),
+            total_amount=Decimal("200.00"),
+        )
+    )
+    inv.subtotal_amount = Decimal("1200.00")
+    inv.net_amount = Decimal("1200.00")
+    inv.total_amount = Decimal("1380.00")
+    inv.amount_in_words = "One Thousand Three Hundred Eighty Rupees Only"
+
+    pdf_path = tmp_path / "mixed_vat.pdf"
+    TaxInvoicePDFBuilder.generate_pdf(inv, str(pdf_path))
+
+    reader = pypdf.PdfReader(str(pdf_path))
+    text = reader.pages[0].extract_text()
+    assert "Output VAT (18%):" in text
+    assert "Fresh Produce" in text
+    assert "(Zero-Rated)" in text
+
+
+def test_tax_invoice_pdf_optional_fields_none(tmp_path: Path):
+    """When optional fields (phones, discount) are None, no 'None' literal is rendered."""
+    inv = _build_test_invoice(print_count=0)
+    inv.supplier_phone = None
+    inv.buyer_phone = None
+    inv.discount_amount = None
+
+    pdf_path = tmp_path / "none_safe.pdf"
+    TaxInvoicePDFBuilder.generate_pdf(inv, str(pdf_path))
+
+    reader = pypdf.PdfReader(str(pdf_path))
+    text = reader.pages[0].extract_text()
+    assert "Tel: None" not in text
+    assert "None" not in text

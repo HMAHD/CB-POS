@@ -5,6 +5,7 @@ Under VAT Act No. 14 of 2002 Section 25:
 - Direct voiding of sales with a Tax Invoice is strictly prohibited.
 """
 
+import re
 from datetime import datetime
 from decimal import Decimal
 
@@ -153,8 +154,8 @@ def test_refund_generates_tax_credit_note(test_setup, db_session):
     cn = db_session.query(TaxCreditNote).filter_by(tax_invoice_id=invoice.id).first()
     assert cn is not None
     assert cn.refund_sale_id == result.refund_sale_id
-    assert cn.serial.startswith("CN_") or cn.serial.startswith("CN-")
-    assert invoice.serial in cn.serial
+    assert cn.serial.startswith("CN_")
+    assert cn.tax_invoice_id == invoice.id
     assert cn.total_amount == Decimal("1180.00")
     assert cn.net_amount == Decimal("1000.00")
     assert cn.tax_vat == Decimal("180.00")
@@ -182,4 +183,65 @@ def test_void_sale_with_tax_invoice_is_blocked(test_setup):
 
     # Attempting to void the sale must raise ValueError
     with pytest.raises(ValueError, match="cannot_void_tax_invoice_sale"):
-        TransactionService.void_sale(sale_id, "Mistake entry", user_id)
+        TransactionService.void_sale(sale_id, user_id, "Mistake entry")
+
+
+def test_create_credit_note_returns_none_when_sale_has_no_tax_invoice(test_setup, db_session):
+    """Deep module guard: create_credit_note_in_session must return None if the sale has no TaxInvoice."""
+    sale_id = test_setup["sale_id"]
+    user_id = test_setup["user_id"]
+    # Sale has no TaxInvoice issued
+    res = TaxInvoiceService.create_credit_note_in_session(
+        session=db_session,
+        orig_sale_id=sale_id,
+        refund_sale_id=999999,
+        net_amount=Decimal("1000.00"),
+        vat_amount=Decimal("180.00"),
+        total_amount=Decimal("1180.00"),
+        user_id=user_id,
+        reason="Test Return",
+    )
+    assert res is None
+
+
+def test_credit_note_serial_format_no_truncation(test_setup, db_session):
+    """Credit note serial format must be CN_{YYMMM}_{QQQQ}_{XXXXX} and <= 40 chars."""
+    user_id = test_setup["user_id"]
+    sale_id = test_setup["sale_id"]
+
+    buyer_details = {
+        "name": "Lanka Traders PLC",
+        "address": "45 Temple Road, Colombo",
+        "tin": "987654321",
+    }
+    TaxInvoiceService.issue_tax_invoice(sale_id=sale_id, buyer_details=buyer_details, user_id=user_id)
+
+    refund_sale = Sale(
+        document_number=f"REF-{int(datetime.now().timestamp() * 1000)}",
+        type="sale",
+        date=datetime.now(),
+        user_id=user_id,
+        status=DocumentStatus.COMPLETED,
+        total_amount=Decimal("1180.00"),
+        tax_vat=Decimal("180.00"),
+        net_revenue=Decimal("1000.00"),
+        payment_method="REFUND",
+        refund_of_sale_id=sale_id,
+    )
+    db_session.add(refund_sale)
+    db_session.flush()
+
+    cn = TaxInvoiceService.create_credit_note_in_session(
+        session=db_session,
+        orig_sale_id=sale_id,
+        refund_sale_id=refund_sale.id,
+        net_amount=Decimal("1000.00"),
+        vat_amount=Decimal("180.00"),
+        total_amount=Decimal("1180.00"),
+        user_id=user_id,
+        reason="Return",
+    )
+    assert cn is not None
+    # Must match statutory CN prefix pattern and never be sliced or exceed 40 chars
+    assert re.match(r"^CN_\d{2}[A-Z]{3}_[A-Za-z0-9]+_\d{5,}$", cn.serial)
+    assert len(cn.serial) <= 40

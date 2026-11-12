@@ -66,11 +66,12 @@ All legal and regulatory findings in this document are derived directly from pri
 - **Constraints**:
   - Maximum total length: **≤ 40 characters** (VAT Act s.20(2)(b) and Gazette 2481/22 Schedule Item 2).
   - **No whitespace**: Space characters are strictly forbidden anywhere in the serial.
-- **Sequence Continuity & Reset Rules**:
+- **Sequence Continuity, Overflow & Reset Rules**:
   - Under IRD Circular SEC/2026/E/03 (p. 3), the serial number `XXXXX` may either:
     1. Run continuously across periods without resetting, or
     2. Reset to `00001` periodically (monthly or annually).
-  - **CB POS Decision**: In CB POS, to maintain strict monotonic uniqueness and prevent duplicate serials within any given year/month/branch combination, `XXXXX` is an auto-incrementing integer sequence formatted as zero-padded 5 digits (expanding as needed up to 10 digits without exceeding the 40-char limit). Resetting monthly per `YYMMM` prefix or maintaining global monotonic numbering is safe.
+  - **Sequence Width & Overflow Handling**: The standard format prescribes a 5-digit zero-padded number (`00001`–`99999`). If a high-volume business exceeds 99,999 in a single sequence period, the sequence counter expands to 6+ digits (e.g. `100000`). The overarching statutory constraint is the hard **≤ 40 characters** limit from VAT Act s.20(2)(b). For example, `26NOV_MAIN_100000` is only 17 characters, well within the limit. The system validates the final generated serial length before persisting; if the length exceeds 40 characters, it fails closed with `OverflowError`. Monotonic sequence allocation must never truncate or wrap around to `00000`.
+  - **CB POS Decision**: In CB POS, to maintain strict monotonic uniqueness and prevent duplicate serials within any given year/month/branch combination, `XXXXX` is an auto-incrementing integer sequence formatted as zero-padded 5+ digits (`f"{seq:05d}"`). Resetting monthly per `YYMMM` prefix or maintaining global monotonic numbering is safe.
 - **Multi-Terminal / LAN-Sync Consideration**:
   - `QQQQ` explicitly permits a terminal or branch component (e.g. `MAIN`, `POS1`).
   - However, per RELEASE_PLAN.md Part 0 and the #814 specification:
@@ -134,9 +135,12 @@ All legal and regulatory findings in this document are derived directly from pri
 - **Rule**:
   - Expressing the total consideration in words is marked as **Optional** on the IRD Gazette template (*"The total consideration expressed in words (Optional)"*).
   - However, in standard Sri Lankan commercial accounting practice and under CB POS design decision D6, the total consideration in words is included on the tax invoice for audit clarity and fraud prevention.
-  - When included, it expresses the total in Sri Lankan Rupees and Cents:
-    e.g., `One Thousand Two Hundred Fifty Rupees and Fifty Cents Only` (or `... and Zero Cents Only` if whole rupees).
-  - Language: English is standard on official Sri Lankan tax documents. Sinhala/Tamil transliterations are supported, but English legal amount words are accepted and legally valid nationwide.
+  - When included, it expresses the total in Sri Lankan Rupees and Cents ending with "Only":
+    - English: `One Thousand Two Hundred Fifty Rupees and Fifty Cents Only` (or `... and Zero Cents Only` if whole rupees).
+    - Sinhala: `රුපියල් එක්දහස් දෙසිය පනහයි ශත පනහයි පමණි` (or `ශත බිංදුවයි පමණි`).
+    - Tamil: `ரூபாய் ஓராயிரத்து இருநூற்று ஐம்பது மற்றும் ஐம்பது சதம் மட்டும்` (or `பூஜ்ஜியம் சதம் மட்டும்`).
+  - Whole LKR truncation is prohibited; cents must be preserved to prevent accounting reconciliation discrepancies.
+  - Language: Sourced from `issue_language` (`en`, `si`, `ta`). Unsupported language codes fail closed with `ValueError` rather than silently returning English.
 
 ---
 
@@ -163,7 +167,7 @@ All legal and regulatory findings in this document are derived directly from pri
 ---
 
 ### 2.9 Refunds and Tax Credit Notes
-- **Statutory Source**: VAT Act No. 14 of 2002 Section 25 (pp. 31–33).
+- **Statutory Source**: VAT Act No. 14 of 2002 Section 25 (pp. 31–33) & IRD Circular SEC/2026/E/03 (Section 3.4).
 - **Statutory Rule**:
   - Where a tax invoice has been issued and the supply is subsequently cancelled, goods returned, or the consideration reduced, the supplier cannot simply void or delete the tax invoice.
   - The supplier must issue a **Tax Credit Note** adjusting the output tax liability and referencing:
@@ -171,9 +175,12 @@ All legal and regulatory findings in this document are derived directly from pri
     2. The reason for the adjustment.
     3. The original value of supply and VAT charged.
     4. The adjusted/refunded value and VAT credit.
+  - **Credit Note Serial Format**:
+    `CN_{YYMMM}_{QQQQ}_{XXXXX}` (e.g. `CN_26NOV_MAIN_00001`).
+    This format uses a dedicated sequence prefix `CN_{YYMMM}_{QQQQ}` in `tax_invoice_sequences`, guaranteeing monotonic numbering and uniqueness without string truncation (max length ≤ 30 chars, well below the statutory 40-character maximum).
 - **CB POS Application**:
   - A sale for which a `TaxInvoice` has already been issued cannot be voided.
-  - If refunded (via RefundService), the refund document records a reference to the issued Tax Invoice serial, and a corresponding `TaxCreditNote` record captures the VAT adjustment.
+  - If refunded (via RefundService), the refund document records a reference to the issued Tax Invoice serial, and a corresponding `TaxCreditNote` record captures the VAT adjustment, committing atomically with the refund in the same transaction.
 
 ---
 

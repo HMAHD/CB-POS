@@ -1,5 +1,7 @@
 from decimal import Decimal
 
+import pytest
+
 from cbpos.core.utils.amount_to_words import amount_to_words
 
 
@@ -35,7 +37,20 @@ def test_negative_amount():
     assert amount_to_words(Decimal("-100.00")) == "Negative One Hundred Rupees Only"
 
 
-def test_language_fallback():
-    # si and ta currently fallback to English text
-    assert amount_to_words(Decimal("150.50"), language="si") == "One Hundred Fifty Rupees and Fifty Cents Only"
-    assert amount_to_words(Decimal("150.50"), language="ta") == "One Hundred Fifty Rupees and Fifty Cents Only"
+def test_language_si_and_ta():
+    # Sinhala and Tamil should return genuine natural language words
+    si_words = amount_to_words(Decimal("150.50"), language="si")
+    assert "රුපියල්" in si_words
+    assert "ශත" in si_words
+    assert "පමණි" in si_words
+
+    ta_words = amount_to_words(Decimal("150.50"), language="ta")
+    assert "ரூபாய்" in ta_words
+    assert "சதம்" in ta_words
+    assert "மட்டும்" in ta_words
+
+
+def test_unsupported_language_fails_closed():
+    # Unsupported language codes must raise ValueError rather than falling back to English
+    with pytest.raises(ValueError, match="Unsupported language"):
+        amount_to_words(Decimal("150.50"), language="fr")

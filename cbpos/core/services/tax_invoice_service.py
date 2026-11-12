@@ -8,11 +8,12 @@ Implements statutory requirements under:
 
 import logging
 import re
-from datetime import datetime, timedelta
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import func, text
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
@@ -56,8 +57,44 @@ MONTH_CODES = (
 _TIN_RE = re.compile(r"^\d{9}$")
 
 
+@dataclass(frozen=True)
+class TaxInvoiceArtifactResult:
+    """Result of an atomic tax invoice artifact issuance / export."""
+
+    invoice_id: int
+    serial: str
+    destination_path: str
+    is_original: bool
+    print_count: int
+    issued_at: datetime
+
+
 class TaxInvoiceService:
     """Service managing official VAT Tax Invoices and their statutory lifecycle."""
+
+    @staticmethod
+    def resolve_supplier_tin() -> str | None:
+        """Resolve canonical supplier TIN from configuration, failing closed on conflict.
+
+        Returns:
+            Clean 9-digit TIN string, or None if not configured.
+
+        Raises:
+            ValueError("conflicting_supplier_tin"): If conflicting non-empty TINs are configured.
+        """
+        keys = ("company_tax_id", "vat_number", "tax_tin")
+        found_tins = set()
+        for k in keys:
+            val = ConfigService.get(k)
+            if val is not None:
+                cleaned = str(val).strip()
+                if cleaned:
+                    found_tins.add(cleaned)
+
+        if len(found_tins) > 1:
+            raise ValueError("conflicting_supplier_tin")
+
+        return found_tins.pop() if found_tins else None
 
     @staticmethod
     def can_issue_invoices() -> tuple[bool, str | None]:
@@ -69,8 +106,8 @@ class TaxInvoiceService:
         if not TaxService.is_vat_active():
             return False, "tax_invoice.error_vat_not_active"
 
-        shop_tin = ConfigService.get("company_tax_id") or ConfigService.get("vat_number")
-        if not shop_tin:
+        shop_tin = TaxInvoiceService.resolve_supplier_tin()
+        if not shop_tin or not _TIN_RE.match(shop_tin):
             return False, "tax_invoice.error_vat_not_active"
 
         terminal_mode = ConfigService.get("terminal_mode") or "standalone"
@@ -86,12 +123,10 @@ class TaxInvoiceService:
         Returns:
             (is_eligible, error_translation_key_or_None)
         """
-        # 1. Shop must be VAT registered and have a valid TIN/VAT number configured
         can_issue, err = TaxInvoiceService.can_issue_invoices()
         if not can_issue:
             return False, err
 
-        # 3. Sale status and window checks
         def _check_sale(s: Session) -> tuple[bool, str | None]:
             sale = s.get(Sale, sale_id)
             if not sale:
@@ -103,9 +138,16 @@ class TaxInvoiceService:
             if sale.payment_method == "REFUND" or sale.refund_of_sale_id is not None:
                 return False, "tax_invoice.error_cannot_issue_on_refund"
 
+            if sale.date is None:
+                return False, "tax_invoice.error_missing_sale_date"
+
             # 28-day statutory issue window based on sale date
-            sale_date = sale.date if sale.date else datetime.now()
-            if sale_date < datetime.now() - timedelta(days=28):
+            sale_dt = sale.date
+            if hasattr(sale_dt, "tzinfo") and sale_dt.tzinfo is not None:
+                sale_dt = sale_dt.astimezone(UTC).replace(tzinfo=None)
+
+            now_utc = datetime.now(UTC).replace(tzinfo=None)
+            if sale_dt < now_utc - timedelta(days=28):
                 return False, "tax_invoice.error_window_expired"
 
             return True, None
@@ -139,40 +181,52 @@ class TaxInvoiceService:
         issued_at: datetime | None = None,
         terminal_code: str | None = None,
         session: Session | None = None,
+        is_credit_note: bool = False,
     ) -> str:
         """Generate the next atomic monotonic serial number in YYMMM_QQQQ_XXXXX format.
 
         Uses explicit invariant month abbreviations and atomic upsert across engines.
         """
+        if session is not None and session.bind is None:
+            raise RuntimeError("Unbound session cannot allocate sequences")
+
         now = issued_at or datetime.now()
         yy = now.strftime("%y")
         mmm = MONTH_CODES[now.month - 1]
 
         if not terminal_code:
             tid = ConfigService.get("terminal_id") or "MAIN"
-            terminal_code = re.sub(r"[^A-Za-z0-9]", "", tid).upper() or "MAIN"
+            terminal_code = re.sub(r"[^A-Za-z0-9]", "", str(tid)).upper() or "MAIN"
+            terminal_code = terminal_code[:15]
+        else:
+            terminal_code = re.sub(r"[^A-Za-z0-9]", "", str(terminal_code)).upper()
 
-        terminal_code = terminal_code[:15].upper()
-        prefix = f"{yy}{mmm}_{terminal_code}"
+        prefix = f"CN_{yy}{mmm}_{terminal_code}" if is_credit_note else f"{yy}{mmm}_{terminal_code}"
 
         def _allocate_seq(s: Session) -> int:
-            is_sqlite = s.bind.dialect.name == "sqlite" if s.bind else True
+            if s.bind is None:
+                raise RuntimeError("Unbound session cannot allocate sequences")
+            is_sqlite = s.bind.dialect.name == "sqlite"
             if is_sqlite:
-                # SQLite sequence incrementation inside transaction
-                seq_row = s.query(TaxInvoiceSequence).filter_by(prefix=prefix).first()
-                if not seq_row:
-                    try:
-                        seq_row = TaxInvoiceSequence(prefix=prefix, last_seq=1)
-                        s.add(seq_row)
-                        s.flush()
-                        return 1
-                    except IntegrityError:
-                        s.rollback()
+                # Use a nested transaction (savepoint) so IntegrityError does not roll back outer session
+                try:
+                    with s.begin_nested():
                         seq_row = s.query(TaxInvoiceSequence).filter_by(prefix=prefix).first()
-
-                seq_row.last_seq += 1
-                s.flush()
-                return seq_row.last_seq
+                        if not seq_row:
+                            seq_row = TaxInvoiceSequence(prefix=prefix, last_seq=1)
+                            s.add(seq_row)
+                            s.flush()
+                            return 1
+                        seq_row.last_seq += 1
+                        s.flush()
+                        return seq_row.last_seq
+                except IntegrityError:
+                    seq_row = s.query(TaxInvoiceSequence).filter_by(prefix=prefix).first()
+                    if not seq_row:
+                        raise
+                    seq_row.last_seq += 1
+                    s.flush()
+                    return seq_row.last_seq
             else:
                 # PostgreSQL atomic upsert + FOR UPDATE
                 s.execute(
@@ -196,13 +250,19 @@ class TaxInvoiceService:
 
         if session is not None:
             seq = _allocate_seq(session)
-            return f"{prefix}_{seq:05d}"
+            serial = f"{prefix}_{seq:05d}"
+            if len(serial) > 40:
+                raise OverflowError(f"Serial exceeds 40 characters statutory limit: {serial}")
+            return serial
 
         db = Database()
         with db.get_session(serializable=True) as s:
             seq = _allocate_seq(s)
             s.commit()
-            return f"{prefix}_{seq:05d}"
+            serial = f"{prefix}_{seq:05d}"
+            if len(serial) > 40:
+                raise OverflowError(f"Serial exceeds 40 characters statutory limit: {serial}")
+            return serial
 
     @staticmethod
     def validate_buyer_details(buyer_details: dict[str, Any]) -> None:
@@ -225,6 +285,9 @@ class TaxInvoiceService:
         issue_language: str = "en",
     ) -> TaxInvoice:
         """Issue an official VAT Tax Invoice for a completed sale."""
+        if not user_id or user_id <= 0:
+            raise ValueError("invalid_user_id")
+
         # Permission check
         user = check_permission_with_override(Permissions.SALES_TAX_INVOICE, user_id)
         if not user:
@@ -239,13 +302,7 @@ class TaxInvoiceService:
             if not ok:
                 raise ValueError(err_key or "ineligible_sale")
 
-            # Idempotency check: if already issued, return existing
-            existing = (
-                session.query(TaxInvoice).options(joinedload(TaxInvoice.lines)).filter_by(sale_id=sale_id).first()
-            )
-            if existing:
-                return existing
-
+            # Lock the sale row first
             sale = (
                 session.query(Sale)
                 .options(
@@ -253,10 +310,18 @@ class TaxInvoiceService:
                     joinedload(Sale.payments),
                 )
                 .filter_by(id=sale_id)
+                .with_for_update()
                 .first()
             )
             if not sale:
                 raise ValueError("sale_not_found")
+
+            # Idempotency check: if already issued, return existing
+            existing = (
+                session.query(TaxInvoice).options(joinedload(TaxInvoice.lines)).filter_by(sale_id=sale_id).first()
+            )
+            if existing:
+                return existing
 
             invoice = TaxInvoiceService._create_tax_invoice_in_session(
                 session=session,
@@ -265,22 +330,17 @@ class TaxInvoiceService:
                 user_id=user_id,
                 issue_language=issue_language,
             )
+
+            # Atomic audit log in same transaction
+            audit_log = AuditLog(
+                user_id=user_id,
+                action="TAX_INVOICE_ISSUED",
+                event_type="TRANSACTION",
+                details=f"Issued Tax Invoice {invoice.serial} for sale {sale.document_number}",
+            )
+            session.add(audit_log)
             session.commit()
-
-            # Record in AuditLog
-            try:
-                with db.get_session() as audit_session:
-                    audit_log = AuditLog(
-                        user_id=user_id,
-                        action="TAX_INVOICE_ISSUED",
-                        event_type="TRANSACTION",
-                        details=f"Issued Tax Invoice {invoice.serial} for sale {sale.document_number}",
-                    )
-                    audit_session.add(audit_log)
-                    audit_session.commit()
-            except Exception as e:
-                logger.warning("Could not write tax invoice audit log: %s", e)
-
+            session.refresh(invoice)
             return invoice
 
     @staticmethod
@@ -300,10 +360,12 @@ class TaxInvoiceService:
         serial = TaxInvoiceService.generate_serial(issued_at=now, session=session)
 
         # Supplier particulars snapshot
-        supplier_name = str(ConfigService.get("shop_name") or "CB POS Merchant")
-        supplier_address = str(ConfigService.get("shop_address") or "")
-        supplier_phone = str(ConfigService.get("shop_phone") or "")
-        supplier_tin = str(ConfigService.get("company_tax_id") or ConfigService.get("vat_number") or "")
+        supplier_name = str(ConfigService.get("shop_name") or ConfigService.get("company_name") or "CB POS Merchant")
+        supplier_address = str(ConfigService.get("shop_address") or ConfigService.get("company_address") or "")
+        supplier_phone = str(ConfigService.get("shop_phone") or ConfigService.get("company_phone") or "")
+        supplier_tin = TaxInvoiceService.resolve_supplier_tin()
+        if not supplier_tin:
+            raise ValueError("missing_supplier_tin")
 
         # Buyer particulars snapshot
         buyer_name = str(buyer_details["name"]).strip()
@@ -328,7 +390,11 @@ class TaxInvoiceService:
         lines: list[TaxInvoiceLine] = []
         allocated_discounts = Decimal("0.00")
 
-        # Proportional discount allocation per line
+        expected_total = sale.total_amount
+        expected_vat = sale.tax_vat or Decimal("0.00")
+        expected_net = sale.net_revenue if sale.net_revenue is not None else (expected_total - expected_vat)
+
+        # Backward VAT extraction per line (retail prices in CB POS are VAT-inclusive)
         for idx, item in enumerate(sale_items):
             if subtotal_sum > Decimal("0.00") and total_bill_discount > Decimal("0.00"):
                 if idx == len(sale_items) - 1:
@@ -339,19 +405,23 @@ class TaxInvoiceService:
             else:
                 line_discount = Decimal("0.00")
 
-            line_net = item.subtotal - line_discount
-            # VAT rate on line
+            line_gross = item.subtotal - line_discount
+
             if item.vat_exempt:
                 vat_rate = Decimal("0.00")
-                line_vat = Decimal("0.00")
+            elif sale.vat_rate is not None:
+                vat_rate = Decimal(str(sale.vat_rate))
             else:
-                if sale.vat_rate is not None:
-                    vat_rate = Decimal(str(sale.vat_rate))
-                else:
-                    vat_rate = Decimal(str(ConfigService.get("tax_vat_rate") or 18.0))
-                line_vat = round_money(line_net * vat_rate / Decimal("100"))
+                vat_rate = Decimal(str(ConfigService.get("tax_vat_rate") or 18.0))
 
-            line_total = line_net + line_vat
+            if vat_rate > Decimal("0.00"):
+                line_vat = line_gross - round_money(line_gross / (Decimal("1.00") + (vat_rate / Decimal("100.00"))))
+                line_net = line_gross - line_vat
+            else:
+                line_vat = Decimal("0.00")
+                line_net = line_gross
+
+            line_total = line_gross
 
             product = item.product
             unit_name = "pcs"
@@ -382,15 +452,11 @@ class TaxInvoiceService:
             )
             lines.append(line)
 
-        # Line total reconciliation with Sale totals
-        expected_net = (
-            sale.net_revenue
-            if sale.net_revenue is not None
-            else (sale.total_amount - (sale.tax_vat or Decimal("0.00")))
-        )
-        expected_vat = sale.tax_vat or Decimal("0.00")
-        expected_total = sale.total_amount
+        # Statutory check: positive VAT requires at least one taxable line
+        if expected_vat > Decimal("0.00") and all(line_item.vat_rate == Decimal("0.00") for line_item in lines):
+            raise ValueError("sale_has_vat_but_no_taxable_lines")
 
+        # Line total reconciliation with Sale totals
         curr_net = sum((line.net_amount for line in lines), Decimal("0.00"))
         curr_vat = sum((line.vat_amount for line in lines), Decimal("0.00"))
 
@@ -398,11 +464,12 @@ class TaxInvoiceService:
         vat_diff = expected_vat - curr_vat
 
         if lines and (net_diff != Decimal("0.00") or vat_diff != Decimal("0.00")):
-            # Reconcile onto the last line
-            last_line = lines[-1]
-            last_line.net_amount += net_diff
-            last_line.vat_amount += vat_diff
-            last_line.total_amount = last_line.net_amount + last_line.vat_amount
+            target_line = next(
+                (line_item for line_item in reversed(lines) if line_item.vat_rate > Decimal("0.00")), lines[-1]
+            )
+            target_line.net_amount += net_diff
+            target_line.vat_amount += vat_diff
+            target_line.total_amount = target_line.net_amount + target_line.vat_amount
 
         # Consideration in words
         words = amount_to_words(expected_total, language=issue_language)
@@ -440,9 +507,12 @@ class TaxInvoiceService:
     @staticmethod
     def record_print(tax_invoice_id: int, user_id: int) -> TaxInvoice:
         """Record a successful print or export of a tax invoice, managing ORIGINAL/COPY ONLY state."""
+        if not user_id or user_id <= 0:
+            raise ValueError("invalid_user_id")
+
         db = Database()
         with db.get_session() as session:
-            inv = session.get(TaxInvoice, tax_invoice_id)
+            inv = session.query(TaxInvoice).filter_by(id=tax_invoice_id).with_for_update().first()
             if not inv:
                 raise ValueError("tax_invoice_not_found")
 
@@ -450,23 +520,15 @@ class TaxInvoiceService:
             if inv.print_count == 1:
                 inv.original_printed_at = datetime.now()
 
+            audit_log = AuditLog(
+                user_id=user_id,
+                action="TAX_INVOICE_PRINT",
+                event_type="TRANSACTION",
+                details=f"Printed Tax Invoice {inv.serial} (count {inv.print_count})",
+            )
+            session.add(audit_log)
             session.commit()
             session.refresh(inv)
-
-            # Audit log
-            try:
-                with db.get_session() as audit_session:
-                    audit_log = AuditLog(
-                        user_id=user_id,
-                        action="TAX_INVOICE_PRINT",
-                        event_type="TRANSACTION",
-                        details=f"Printed Tax Invoice {inv.serial} (count {inv.print_count})",
-                    )
-                    audit_session.add(audit_log)
-                    audit_session.commit()
-            except Exception as e:
-                logger.warning("Could not write print audit log: %s", e)
-
             return inv
 
     @staticmethod
@@ -485,20 +547,12 @@ class TaxInvoiceService:
         if not orig_tax_invoice:
             return None
 
-        # Count existing credit notes for this invoice to allocate sequence
-        cn_count = (
-            session.query(func.count(TaxCreditNote.id))
-            .filter(TaxCreditNote.tax_invoice_id == orig_tax_invoice.id)
-            .scalar()
-            or 0
-        )
-        suffix = f"-{cn_count + 1}" if cn_count > 0 else ""
-        cn_serial = f"CN{suffix}_{orig_tax_invoice.serial}"[:40]
+        cn_serial = TaxInvoiceService.generate_serial(session=session, is_credit_note=True)
 
         abs_total = abs(total_amount)
         abs_net = abs(net_amount)
         abs_vat = abs(vat_amount)
-        words = amount_to_words(abs_total, language="en")
+        words = amount_to_words(abs_total, language=orig_tax_invoice.issue_language or "en")
 
         credit_note = TaxCreditNote(
             tax_invoice_id=orig_tax_invoice.id,
@@ -515,18 +569,98 @@ class TaxInvoiceService:
         session.add(credit_note)
         session.flush()
 
-        try:
+        audit_log = AuditLog(
+            user_id=user_id,
+            action="TAX_CREDIT_NOTE_ISSUED",
+            event_type="TRANSACTION",
+            details=f"Issued Tax Credit Note {cn_serial} for Tax Invoice {orig_tax_invoice.serial}",
+        )
+        session.add(audit_log)
+        return credit_note
+
+    @staticmethod
+    def issue_artifact(
+        invoice_id: int,
+        destination_path: str,
+        user_id: int,
+        channel: str = "pdf",
+    ) -> TaxInvoiceArtifactResult:
+        """Atomically generate, write, and finalize a Tax Invoice PDF artifact.
+
+        Guarantees that ORIGINAL is only consumed if the file is successfully written,
+        and that file I/O errors roll back state without partial persistence.
+        """
+        import os
+        import tempfile
+
+        from cbpos.core.services.tax_invoice_pdf_builder import TaxInvoicePDFBuilder
+
+        if not user_id or user_id <= 0:
+            raise ValueError("invalid_user_id")
+
+        db = Database()
+        with db.get_session() as session:
+            inv = (
+                session.query(TaxInvoice)
+                .options(joinedload(TaxInvoice.lines))
+                .filter_by(id=invoice_id)
+                .with_for_update()
+                .first()
+            )
+            if not inv:
+                raise ValueError("tax_invoice_not_found")
+
+            is_original = bool(inv.print_count == 0 and inv.original_printed_at is None)
+
+            # Ensure destination directory exists
+            dest_dir = os.path.dirname(os.path.abspath(destination_path))
+            os.makedirs(dest_dir, exist_ok=True)
+
+            # Render to a temporary file in destination directory for atomic rename
+            tmp_fd, tmp_path = tempfile.mkstemp(prefix="tax_inv_", suffix=".pdf", dir=dest_dir)
+            os.close(tmp_fd)
+
+            try:
+                TaxInvoicePDFBuilder.generate_pdf(
+                    invoice=inv,
+                    filepath=tmp_path,
+                    is_copy=not is_original,
+                )
+                # Atomic replace
+                os.replace(tmp_path, destination_path)
+            except Exception:
+                if os.path.exists(tmp_path):
+                    try:
+                        os.unlink(tmp_path)
+                    except OSError:
+                        pass
+                raise
+
+            # File successfully replaced; update state and record audit log
+            inv.print_count += 1
+            if is_original:
+                inv.original_printed_at = datetime.now()
+
             audit_log = AuditLog(
                 user_id=user_id,
-                action="TAX_CREDIT_NOTE_ISSUED",
+                action="TAX_INVOICE_PRINT",
                 event_type="TRANSACTION",
-                details=f"Issued Tax Credit Note {cn_serial} for Tax Invoice {orig_tax_invoice.serial}",
+                details=(
+                    f"Exported Tax Invoice {inv.serial} "
+                    f"({'ORIGINAL' if is_original else 'COPY ONLY'}, count {inv.print_count})"
+                ),
             )
             session.add(audit_log)
-        except Exception as e:
-            logger.warning("Could not write credit note audit log: %s", e)
+            session.commit()
 
-        return credit_note
+            return TaxInvoiceArtifactResult(
+                invoice_id=inv.id,
+                serial=inv.serial,
+                destination_path=destination_path,
+                is_original=is_original,
+                print_count=inv.print_count,
+                issued_at=inv.issued_at,
+            )
 
     @staticmethod
     def get_credit_notes_by_tax_invoice_id(tax_invoice_id: int, session: Session | None = None) -> list[TaxCreditNote]:

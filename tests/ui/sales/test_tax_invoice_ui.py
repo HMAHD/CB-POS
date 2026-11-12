@@ -16,8 +16,10 @@ from PyQt6.QtWidgets import QDialog
 from cbpos.core.database import Base
 from cbpos.core.models import (
     Customer,
+    Product,
     Role,
     Sale,
+    SaleItem,
     User,
 )
 from cbpos.core.services.auth_service import AuthService
@@ -206,6 +208,27 @@ class TestHistoryViewTaxInvoice:
             user_id=user.id,
         )
         db_session.add(sale)
+        db_session.flush()
+
+        product = Product(
+            barcode=f"BC-{datetime.now().timestamp()}",
+            name_en="Test Product",
+            price=Decimal("1180.00"),
+            cost=Decimal("800.00"),
+            stock_qty=Decimal("100.000"),
+        )
+        db_session.add(product)
+        db_session.flush()
+
+        item = SaleItem(
+            sale_id=sale.id,
+            product_id=product.id,
+            qty=Decimal("1.000"),
+            unit_price=Decimal("1180.00"),
+            original_price=Decimal("1180.00"),
+            subtotal=Decimal("1180.00"),
+        )
+        db_session.add(item)
         db_session.commit()
 
         history_view = HistoryView()

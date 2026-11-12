@@ -75,9 +75,7 @@ class TaxInvoice(Base):
     # Relationships
     sale: Mapped["Sale"] = relationship("Sale")
     issued_by_user: Mapped["User"] = relationship("User")
-    lines: Mapped[list["TaxInvoiceLine"]] = relationship(
-        "TaxInvoiceLine", back_populates="tax_invoice", cascade="all, delete-orphan"
-    )
+    lines: Mapped[list["TaxInvoiceLine"]] = relationship("TaxInvoiceLine", back_populates="tax_invoice")
 
     @property
     def serial_number(self) -> str:
@@ -92,7 +90,7 @@ class TaxInvoiceLine(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     tax_invoice_id: Mapped[int] = mapped_column(
-        ForeignKey("tax_invoices.id", ondelete="CASCADE"), index=True, nullable=False
+        ForeignKey("tax_invoices.id", ondelete="RESTRICT"), index=True, nullable=False
     )
     item_number: Mapped[int] = mapped_column(Integer, nullable=False)
     product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id", ondelete="SET NULL"), nullable=True)
@@ -130,8 +128,10 @@ class TaxCreditNote(Base):
     __tablename__ = "tax_credit_notes"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    tax_invoice_id: Mapped[int] = mapped_column(ForeignKey("tax_invoices.id"), index=True, nullable=False)
-    refund_sale_id: Mapped[int] = mapped_column(ForeignKey("sales.id"), unique=True, nullable=False)
+    tax_invoice_id: Mapped[int] = mapped_column(
+        ForeignKey("tax_invoices.id", ondelete="RESTRICT"), index=True, nullable=False
+    )
+    refund_sale_id: Mapped[int] = mapped_column(ForeignKey("sales.id"), unique=True, index=True, nullable=False)
     serial: Mapped[str] = mapped_column(String(40), unique=True, index=True, nullable=False)
     issued_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, nullable=False)
     issued_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)

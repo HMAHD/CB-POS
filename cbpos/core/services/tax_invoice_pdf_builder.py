@@ -13,7 +13,7 @@ from typing import Any
 from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
@@ -61,6 +61,14 @@ def _styles() -> dict[str, ParagraphStyle]:
             alignment=TA_RIGHT,
             textColor=_NAVY_DARK,
         ),
+        "title_left": ParagraphStyle(
+            "TITitleLeft",
+            parent=bold,
+            fontSize=18,
+            leading=22,
+            alignment=TA_LEFT,
+            textColor=_NAVY_DARK,
+        ),
         "badge_orig": ParagraphStyle(
             "TIBadgeOrig",
             parent=bold,
@@ -91,10 +99,14 @@ def _styles() -> dict[str, ParagraphStyle]:
 
 
 def _text(text: Any, style: ParagraphStyle, width: float | None = None) -> Flowable:
-    """Format text with Qt rasterization fallback for Sinhala/Tamil scripts."""
-    text_str = str(text or "")
+    """Format text with Qt rasterization fallback for Sinhala/Tamil scripts.
+
+    Preserves numeric 0 and converts newlines to <br/>.
+    """
+    text_str = "" if text is None else str(text)
     if not needs_raster(text_str):
-        return Paragraph(escape(text_str), style)
+        html_escaped = escape(text_str).replace("\n", "<br/>")
+        return Paragraph(html_escaped, style)
 
     from cbpos.infrastructure.hardware.text_raster import render_text_png
 
@@ -191,7 +203,7 @@ class TaxInvoicePDFBuilder:
         badge_label = "[ COPY ONLY ]" if is_copy else "[ ORIGINAL ]"
 
         left_flowables = [
-            _text(invoice.supplier_name, st["title"], 95 * mm),
+            _text(invoice.supplier_name, st["title_left"], 95 * mm),
         ]
         right_flowables = [
             _text("TAX INVOICE", st["title"], 85 * mm),
@@ -248,10 +260,15 @@ class TaxInvoicePDFBuilder:
             _text("SUPPLIER (SELLER)", st["bold"], 88 * mm),
             _text(invoice.supplier_name, st["bold"], 88 * mm),
             _text(invoice.supplier_address, st["base"], 88 * mm),
-            _text(f"Tel: {invoice.supplier_phone}", st["base"], 88 * mm),
-            Spacer(1, 1 * mm),
-            _text(f"VAT / TIN No: {invoice.supplier_tin}", st["bold"], 88 * mm),
         ]
+        if invoice.supplier_phone:
+            supp_lines.append(_text(f"Tel: {invoice.supplier_phone}", st["base"], 88 * mm))
+        supp_lines.extend(
+            [
+                Spacer(1, 1 * mm),
+                _text(f"VAT / TIN No: {invoice.supplier_tin}", st["bold"], 88 * mm),
+            ]
+        )
 
         # Buyer Box
         buyer_lines = [
@@ -286,7 +303,6 @@ class TaxInvoicePDFBuilder:
 
     @staticmethod
     def _build_items_table(invoice: TaxInvoice, st: dict[str, ParagraphStyle]) -> Table:
-        # Headers: 10 + 50 + 20 + 20 + 15 + 20 + 15 + 15 + 15 = 180 mm
         col_widths = [
             10 * mm,
             50 * mm,
@@ -312,25 +328,27 @@ class TaxInvoicePDFBuilder:
         header_row = [_text(h, st["th"]) for h in headers]
         table_rows = [header_row]
 
-        for line in invoice.lines:
-            desc_text = line.product_name_snapshot
+        for line in invoice.lines or []:
+            desc_text = line.product_name_snapshot or ""
             if line.item_code_snapshot:
                 desc_text = f"[{line.item_code_snapshot}] {desc_text}"
 
-            qty_str = f"{format_quantity(line.quantity)} {line.unit_snapshot}"
-            vat_rate_str = f"{int(line.vat_rate)}%" if line.vat_rate == int(line.vat_rate) else f"{line.vat_rate}%"
+            unit = line.unit_snapshot or "pcs"
+            qty_str = f"{format_quantity(line.quantity)} {unit}"
+            v_rate = line.vat_rate if line.vat_rate is not None else Decimal("0.00")
+            vat_rate_str = f"{int(v_rate)}%" if v_rate == int(v_rate) else f"{v_rate}%"
 
             table_rows.append(
                 [
                     _text(str(line.item_number), st["center"]),
                     _text(desc_text, st["base"], 48 * mm),
                     _text(qty_str, st["center"]),
-                    _text(format_currency(line.unit_price), st["right"]),
-                    _text(format_currency(line.discount_amount), st["right"]),
-                    _text(format_currency(line.net_amount), st["right"]),
+                    _text(format_currency(line.unit_price or Decimal("0.00")), st["right"]),
+                    _text(format_currency(line.discount_amount or Decimal("0.00")), st["right"]),
+                    _text(format_currency(line.net_amount or Decimal("0.00")), st["right"]),
                     _text(vat_rate_str, st["center"]),
-                    _text(format_currency(line.vat_amount), st["right"]),
-                    _text(format_currency(line.total_amount), st["right_bold"]),
+                    _text(format_currency(line.vat_amount or Decimal("0.00")), st["right"]),
+                    _text(format_currency(line.total_amount or Decimal("0.00")), st["right_bold"]),
                 ]
             )
 
@@ -361,18 +379,29 @@ class TaxInvoicePDFBuilder:
 
         # Right side: Totals breakdown
         summary_rows = [
-            ("Subtotal (Gross):", format_currency(invoice.subtotal_amount)),
+            ("Subtotal (Gross):", format_currency(invoice.subtotal_amount or Decimal("0.00"))),
         ]
-        if invoice.discount_amount > Decimal("0.00"):
-            summary_rows.append(("Bill Discount:", f"-{format_currency(invoice.discount_amount)}"))
+        disc = invoice.discount_amount or Decimal("0.00")
+        if disc > Decimal("0.00"):
+            summary_rows.append(("Bill Discount:", f"-{format_currency(disc)}"))
 
-        summary_rows.extend(
-            [
-                ("Net Liable (Excl. VAT):", format_currency(invoice.net_amount)),
-                ("Output VAT (18%):", format_currency(invoice.tax_vat)),
-                ("TOTAL AMOUNT DUE:", format_currency(invoice.total_amount)),
-            ]
-        )
+        summary_rows.append(("Net Liable (Excl. VAT):", format_currency(invoice.net_amount or Decimal("0.00"))))
+
+        vat_groups: dict[Decimal, Decimal] = {}
+        for line in invoice.lines or []:
+            r = line.vat_rate if line.vat_rate is not None else Decimal("0.00")
+            a = line.vat_amount if line.vat_amount is not None else Decimal("0.00")
+            vat_groups[r] = vat_groups.get(r, Decimal("0.00")) + a
+
+        taxable_groups = {r: a for r, a in vat_groups.items() if r > Decimal("0.00")}
+        if taxable_groups:
+            for r in sorted(taxable_groups.keys()):
+                r_str = f"{int(r)}%" if r == int(r) else f"{r}%"
+                summary_rows.append((f"Output VAT ({r_str}):", format_currency(taxable_groups[r])))
+        else:
+            summary_rows.append(("Output VAT:", format_currency(invoice.tax_vat or Decimal("0.00"))))
+
+        summary_rows.append(("TOTAL AMOUNT DUE:", format_currency(invoice.total_amount or Decimal("0.00"))))
 
         sum_table_data = []
         for label, val in summary_rows:

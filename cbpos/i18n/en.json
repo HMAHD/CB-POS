@@ -3416,7 +3416,16 @@
     "serial_label": "Tax Invoice Serial",
     "issued_success": "Tax Invoice {serial} issued successfully.",
     "save_dialog_title": "Save Tax Invoice PDF",
-    "pdf_saved_success": "Tax invoice PDF saved to {path}."
+    "pdf_saved_success": "Tax invoice PDF saved to {path}.",
+    "error_conflicting_tin": "Configured company TIN and VAT numbers conflict. Check Settings.",
+    "error_missing_sale_date": "Sale transaction date is missing. Cannot verify statutory 28-day window.",
+    "conflicting_supplier_tin": "Configured company TIN and VAT numbers conflict. Check Settings.",
+    "missing_supplier_tin": "Shop VAT/TIN number is not configured in Settings.",
+    "sale_has_vat_but_no_taxable_lines": "Sale has VAT charged but contains no taxable line items.",
+    "tax_invoice_not_found": "Tax invoice record not found.",
+    "ineligible_sale": "Sale transaction is ineligible for a VAT Tax Invoice.",
+    "invalid_user_id": "Valid user authentication is required to issue a tax invoice.",
+    "cannot_void_tax_invoice_sale": "Cannot void a sale that has an issued Tax Invoice. Process a return/refund to generate a Tax Credit Note instead."
   }
 }
 

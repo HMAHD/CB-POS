@@ -86,13 +86,12 @@ CREATE TABLE tax_invoices (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX ix_tax_invoices_serial ON tax_invoices(serial);
-CREATE INDEX ix_tax_invoices_sale_id ON tax_invoices(sale_id);
+-- Note: serial and sale_id have UNIQUE constraints; no redundant CREATE INDEX needed.
 
 -- 2. tax_invoice_lines
 CREATE TABLE tax_invoice_lines (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    tax_invoice_id INTEGER NOT NULL REFERENCES tax_invoices(id) ON DELETE CASCADE,
+    tax_invoice_id INTEGER NOT NULL REFERENCES tax_invoices(id) ON DELETE RESTRICT,
     item_number INTEGER NOT NULL,
     product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
     item_code_snapshot VARCHAR(50),
@@ -107,7 +106,7 @@ CREATE TABLE tax_invoice_lines (
     total_amount NUMERIC(12, 2) NOT NULL
 );
 
-CREATE INDEX ix_tax_invoice_lines_invoice_id ON tax_invoice_lines(tax_invoice_id);
+CREATE INDEX ix_tax_invoice_lines_tax_invoice_id ON tax_invoice_lines(tax_invoice_id);
 
 -- 3. tax_invoice_sequences
 CREATE TABLE tax_invoice_sequences (
@@ -117,12 +116,12 @@ CREATE TABLE tax_invoice_sequences (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX ix_tax_invoice_sequences_prefix ON tax_invoice_sequences(prefix);
+-- Note: prefix has UNIQUE constraint; no redundant CREATE INDEX needed.
 
 -- 4. tax_credit_notes
 CREATE TABLE tax_credit_notes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    tax_invoice_id INTEGER NOT NULL REFERENCES tax_invoices(id),
+    tax_invoice_id INTEGER NOT NULL REFERENCES tax_invoices(id) ON DELETE RESTRICT,
     refund_sale_id INTEGER NOT NULL UNIQUE REFERENCES sales(id),
     serial VARCHAR(40) NOT NULL UNIQUE,
     issued_at TIMESTAMP NOT NULL,
@@ -135,7 +134,7 @@ CREATE TABLE tax_credit_notes (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX ix_tax_credit_notes_serial ON tax_credit_notes(serial);
+-- Note: serial and refund_sale_id have UNIQUE constraints.
 CREATE INDEX ix_tax_credit_notes_tax_invoice_id ON tax_credit_notes(tax_invoice_id);
 ```
 
@@ -144,7 +143,7 @@ Add classes `TaxInvoice`, `TaxInvoiceLine`, `TaxInvoiceSequence`, and `TaxCredit
 
 ---
 
-## 4. Statutory Serial Number Generation (`YYMMM_QQQQ_XXXXX`)
+## 4. Statutory Serial Number Generation (`YYMMM_QQQQ_XXXXX` and `CN_{YYMMM}_{QQQQ}_{XXXXX}`)
 
 ### 4.1 Format Specification
 Gazette 2481/22 and 2500/106 mandate:
@@ -158,77 +157,100 @@ Gazette 2481/22 and 2500/106 mandate:
 - `QQQQ`: Alphanumeric branch/terminal code (1 to 15 characters, no spaces, uppercase). Derived from sanitized `ConfigService.get("terminal_id")` or `"MAIN"`. In standalone or main PC mode, defaults to `"MAIN"`.
 - `_`: Mandatory underscore separator.
 - `XXXXX`: Monotonically incrementing 5-digit zero-padded numeric sequence (e.g. `00001`), resetting at the beginning of each calendar month.
-- Total length: ≤ 40 characters (e.g. `26OCT_MAIN_00001` is 16 chars).
+  - **Sequence Width & Overflow**: Zero-padded minimum 5 digits (`f"{next_seq:05d}"`). If numbers exceed 99,999 in a single monthly sequence, digits expand monotonically without wrapping around.
+  - **Statutory Length Guarantee**: Total serial length is strictly validated `len(serial) <= 40`. If 40 characters is exceeded, system fails closed with `OverflowError`.
+- **Credit Note Serial Format**:
+  - `CN_{YYMMM}_{QQQQ}_{XXXXX}` (e.g. `CN_26NOV_MAIN_00001`), allocated atomically using dedicated sequence prefix `CN_{YYMMM}_{QQQQ}`. Total length ≤ 30 characters, guaranteeing no truncation.
 
 ### 4.2 Atomic Sequence Allocation
 To ensure gapless monotonicity and cross-engine safety (PostgreSQL and SQLite):
-1. Compute prefix: `{YY}{MMM}_{QQQQ}`.
-2. In PostgreSQL:
-   ```sql
-   INSERT INTO tax_invoice_sequences (prefix, last_seq) VALUES (:prefix, 0)
-   ON CONFLICT (prefix) DO NOTHING;
-   SELECT last_seq FROM tax_invoice_sequences WHERE prefix = :prefix FOR UPDATE;
-   UPDATE tax_invoice_sequences SET last_seq = last_seq + 1 WHERE prefix = :prefix;
-   ```
-3. In SQLite:
-   Use `session.execute` with `serializable=True` (or execute inside a transaction with retry loop on `IntegrityError` / `OperationalError("database is locked")`) to ensure atomic sequence incrementation.
+1. Compute prefix: `{YY}{MMM}_{QQQQ}` (or `CN_{YYMMM}_{QQQQ}` for credit notes).
+2. Dialect validation: Check `session.bind.dialect.name`. If unbound (`session.bind is None`), raise `RuntimeError("Unbound session cannot allocate sequences")`.
+3. In PostgreSQL:
+   Row-level lock on the sequence record via `SELECT last_seq FROM tax_invoice_sequences WHERE prefix = :prefix FOR UPDATE` (or atomic upsert `INSERT ... ON CONFLICT (prefix) DO UPDATE SET last_seq = tax_invoice_sequences.last_seq + 1 RETURNING last_seq;`).
+4. In SQLite:
+   Execute sequence update using a nested transaction (SAVEPOINT) or engine-level write lock (`BEGIN IMMEDIATE` transaction) without rolling back outer caller-owned transactions on transient conflict.
 
 ---
 
 ## 5. Eligibility Rules & Lifecycle Guards
 
 Before issuing a `TaxInvoice`, `TaxInvoiceService.validate_eligibility(sale_id, session)` checks:
-1. **Shop VAT Registration**: `TaxService.is_vat_active()` must be True, and `ConfigService.get("company_tax_id")` (or `ConfigService.get("vat_number")`) must be set.
+1. **Shop VAT Registration**: `TaxService.is_vat_active()` must be True, and canonical supplier TIN must be configured.
+   - **Canonical Supplier TIN Resolver**: Look up `company_tax_id` and legacy `vat_number`/`tax_tin`. If both are populated with conflicting values, fail closed with an actionable error.
 2. **Terminal Authority**: `ConfigService.get("terminal_mode")` must be `"standalone"` or `"main"`. If `"terminal"`, reject with error: `"tax_invoice.network_mode_restriction"`.
 3. **Sale Status**: Sale must be `COMPLETED` and not a refund (`sale.payment_method != "REFUND"` and `sale.refund_of_sale_id is None` and `sale.status != "VOID"`).
-4. **Issue Window (28 Days)**: `sale.date >= datetime.now() - timedelta(days=28)`. (Uses `sale.date`, NOT `created_at`).
-5. **Buyer Particulars**: Buyer TIN must match `^\d{9}$`. Buyer Name and Address must not be blank.
-6. **No Pre-existing Invoice**: If `TaxInvoice` already exists for this `sale_id`, return existing invoice (idempotent).
+4. **Issue Window (28 Days)**:
+   - Sale date must not be None (`if sale.date is None: raise ValueError("sale_date_missing")`).
+   - Comparison normalizes naive and aware datetimes to UTC before evaluating the 28-day window (`sale.date >= now - timedelta(days=28)`).
+5. **Buyer Particulars**: Buyer TIN is strictly mandatory and must match `^\d{9}$`. Buyer Name and Address must not be blank.
+6. **No Pre-existing Invoice**: If `TaxInvoice` already exists for this `sale_id`, return existing invoice (idempotent, locking the Sale row first).
 
-### 5.1 Void Guard in `TransactionService.void_sale`
-Under VAT Act Section 25, a sale with an issued Tax Invoice cannot be voided; adjustments must go through an official credit note.
-In `cbpos/core/services/transaction_service.py:void_sale`:
-```python
-has_tax_invoice = session.query(TaxInvoice.id).filter_by(sale_id=sale_id).first() is not None
-if has_tax_invoice:
-    raise ValueError("cannot_void_tax_invoice_sale")
-```
+### 5.1 Lock Order & Void Guard
+To prevent concurrency race conditions between invoice issuance and voiding:
+- Both `TaxInvoiceService.issue_tax_invoice` and `TransactionService.void_sale` acquire a lock on the `Sale` row first (`session.query(Sale).filter(Sale.id == sale_id).with_for_update().first()`).
+- In `TransactionService.void_sale`:
+  ```python
+  has_tax_invoice = session.query(TaxInvoice.id).filter_by(sale_id=sale_id).first() is not None
+  if has_tax_invoice:
+      raise ValueError("cannot_void_tax_invoice_sale")
+  ```
+- Because both paths lock the same `Sale` record in the same order, exactly one operation can proceed: either the sale is voided, or the tax invoice is issued, never both.
 
-### 5.2 Bill-Level Discount & Loyalty Proration
-When snapshotting lines:
-- For each item in `sale.items`, calculate line net amount after allocating whole-bill discounts and loyalty redemptions proportionally:
-  `effective_line_net = item.subtotal * (1 - sale_discount / sale_subtotal)`.
-- Line VAT is computed on `effective_line_net` (if item is taxable).
-- Reconciliation: Any 1-cent rounding difference between `sum(lines.net)` and `sale.net_revenue` or `sum(lines.vat)` and `sale.tax_vat` is adjusted onto the final taxable line item, preserving exact tie-out.
+### 5.2 Tax Math & Snapshot Reconciliation
+Prices in CB POS are VAT-inclusive MRP. Tax-line calculation uses backward VAT extraction per D4/D25:
+- For each item in `sale.items`:
+  - `line_total = item.total` (VAT-inclusive MRP after line/bill discounts).
+  - If taxable:
+    `line_vat = line_total - round_money(line_total / (1 + vat_rate / 100))`
+    `line_net = line_total - line_vat`
+  - If exempt (rate == 0):
+    `line_vat = Decimal("0.00")`
+    `line_net = line_total`
+- Reconcile line totals against stored sale facts:
+  - `sum(line_net) + sum(line_vat) == sale.total_amount`.
+  - Discrepancies due to fractional cents reconcile onto the largest taxable line item.
+  - Inconsistency (e.g. sale has positive `tax_vat` but zero taxable line items) fails closed.
+  - SSCL is strictly excluded from customer tax invoices (tracked in liability reporting only per D25).
 
 ---
 
-## 6. Document Generation & Output Rules
+## 6. Deep Artifact-Issuance Module
 
-### 6.1 Original vs. Copy Marking
-- Statutory requirement (VAT Act s.20(5)):
-  - First printed/delivered copy: prominent **"ORIGINAL"** header marking.
-  - Any subsequent reprint/re-download: prominent **"COPY ONLY"** header marking.
-- Lifecycle tracking:
-  - `print_count` starts at `0`.
-  - PDF generation uses `status = "ORIGINAL"` if `invoice.print_count == 0` else `"COPY ONLY"`.
-  - Previewing on screen does not increment `print_count`.
-  - When a physical print or exported PDF is generated, call `TaxInvoiceService.record_print(tax_invoice_id, user_id)`:
-    - Atomically increments `print_count = print_count + 1`.
-    - If `print_count == 1`, sets `original_printed_at = datetime.now()`.
-    - Logs to `AuditLog` (`action="TAX_INVOICE_PRINT"`, details with serial and count).
+### 6.1 Unified Artifact Interface (`issue_artifact`)
+Replace fragmented UI print/reload/render calls with a single deep interface:
+```python
+def issue_artifact(
+    invoice_id: int,
+    destination_path: Path,
+    user_id: int,
+    channel: str = "print",  # "print" or "pdf"
+) -> TaxInvoiceArtifactResult: ...
+```
+Behind this interface, the module hides:
+1. **Concurrency Lock / Reservation**: Locks the invoice row.
+2. **Original vs. Copy Decision**:
+   - First successful issuance / delivery (print or PDF export) is marked `"ORIGINAL"`.
+   - Subsequent issuances are marked `"COPY ONLY"`.
+3. **Safe Rendering**: Generates ReportLab PDF to a temporary file.
+4. **Atomic Write**: Uses `os.replace` to write to the destination path.
+5. **State Finalization**: Only upon successful filesystem write, increments `print_count` and updates `original_printed_at` if `print_count == 1`.
+6. **Audit Trail**: Writes `AuditLog` inside the same database transaction.
+7. **Failure Recovery**: If rendering, write, or DB commit fails, temporary files are cleaned up, `print_count` is NOT consumed, and the transaction rolls back cleanly.
 
-### 6.2 Elimination of Commercial Invoice Conflation
-In `cbpos/core/services/invoice_service.py`:
-- In `generate_pdf`: Remove logic that sets `title = t("title_tax")` ("TAX INVOICE") when VAT is active.
-- Standard commercial A4 invoices generated by `InvoiceService` must always be titled `INVOICE` or `COMMERCIAL INVOICE`.
-- The prominent title **"TAX INVOICE"** is strictly reserved for `TaxInvoicePDFBuilder`.
+### 6.2 ReportLab PDF Formatting & Text Normalization
+- `_text(val)`: None is blank; numeric 0 is `'0'`; text is XML-escaped; newlines become `<br/>` for Paragraphs and line breaks for raster rendering.
+- Supplier header: Left-aligned title style matching layout hierarchy.
+- Absent optional fields (phone, buyer phone) omitted cleanly without rendering Python `'None'`.
+- Mixed VAT rates: Generates per-rate breakdown dynamically from line snapshots instead of hardcoded 18%.
+- Localization: PDF labels translated via `translate_in(invoice.issue_language, key)`. Prominent header "TAX INVOICE" is preserved in English per statutory mandate.
+- Qt thread offloading: PDF generation and file I/O execute in a background thread via `start_background_job`, preventing UI freezes.
 
-### 6.3 Amount to Words with Rupees and Cents
-In `cbpos/core/utils/amount_to_words.py`:
-- Update `amount_to_words(amount: Decimal, language: str = "en") -> str`:
-  - Split amount into whole rupees and cents (`00` to `99`).
-  - Format: `f"{rupees_words} Rupees and {cents_words} Cents Only"` (or `f"{rupees_words} Rupees Only"` if cents == 0).
+### 6.3 Trilingual Amount in Words
+`cbpos/core/utils/amount_to_words.py`:
+- Converts amounts to words in English (`en`), Sinhala (`si`), and Tamil (`ta`).
+- Retains Rupees and Cents ending with "Only" across all three languages.
+- Fails closed (`ValueError`) on unsupported language codes.
 
 ---
 

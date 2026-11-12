@@ -1,7 +1,7 @@
 """Domain tests for TaxInvoiceService (#814)."""
 
 import re
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -17,6 +17,7 @@ from cbpos.core.models import (
     SaleItem,
     User,
 )
+from cbpos.core.models.tax_invoice import TaxInvoiceSequence
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.tax_invoice_service import TaxInvoiceService
@@ -29,6 +30,8 @@ def test_db(db_session: Session):
     ConfigService.set("vat_registered", True)
     ConfigService.set("tax_vat_rate", 18.0)
     ConfigService.set("company_tax_id", "123456789")
+    ConfigService.set("vat_number", "")
+    ConfigService.set("tax_tin", "")
     ConfigService.set("shop_name", "Test Lanka Stores")
     ConfigService.set("shop_address", "123 Galle Road, Colombo 03")
     ConfigService.set("shop_phone", "+94 11 234 5678")
@@ -89,7 +92,7 @@ def _create_sample_sale(
         status=status,
         total_amount=total,
         tax_vat=vat,
-        net_revenue=subtotal - discount,
+        net_revenue=total - vat - discount,
         additional_discount_value=discount,
         payment_method=payment_method,
     )
@@ -233,9 +236,7 @@ def test_issue_tax_invoice_and_snapshots(test_db):
     assert inv.tax_vat == Decimal("180.00")
     assert inv.amount_in_words == "One Thousand One Hundred Eighty Rupees Only"
     assert inv.print_count == 0
-    assert inv.original_printed_at is None
-
-    # Verify line snapshot
+    assert inv.original_printed_at is None  # Verify line snapshot
     assert len(inv.lines) == 1
     line = inv.lines[0]
     assert line.product_name_snapshot == "Test Item 1"
@@ -288,9 +289,7 @@ def test_record_print_lifecycle(test_db):
 
     inv = TaxInvoiceService.issue_tax_invoice(sale.id, buyer, user_id=user.id)
     assert inv.print_count == 0
-    assert inv.original_printed_at is None
-
-    # First print
+    assert inv.original_printed_at is None  # First print
     inv = TaxInvoiceService.record_print(inv.id, user_id=user.id)
     assert inv.print_count == 1
     assert inv.original_printed_at is not None
@@ -343,3 +342,130 @@ def test_checkout_atomic_issuance(test_db):
     assert inv is not None
     assert inv.buyer_name == "Atomic Corp"
     assert inv.total_amount == Decimal("1000.00")
+
+
+def test_backward_vat_calculation_from_inclusive_mrp(test_db):
+    """CB POS prices are VAT-inclusive MRP. TaxInvoiceLine must extract VAT backward, not add it forward."""
+    # 1 item at Rs. 1180.00 inclusive of 18% VAT: Net must be Rs. 1000.00, VAT Rs. 180.00, Total Rs. 1180.00
+    sale = _create_sample_sale(
+        test_db,
+        subtotal=Decimal("1180.00"),
+        vat=Decimal("180.00"),
+        total=Decimal("1180.00"),
+    )
+    user = test_db.query(User).filter_by(username="tax_user").first()
+    buyer = {"name": "Lanka Corp", "address": "Colombo 02", "tin": "123456789"}
+
+    inv = TaxInvoiceService.issue_tax_invoice(sale.id, buyer, user.id)
+    assert len(inv.lines) == 1
+    line = inv.lines[0]
+    assert line.total_amount == Decimal("1180.00")
+    assert line.net_amount == Decimal("1000.00")
+    assert line.vat_amount == Decimal("180.00")
+    assert line.net_amount + line.vat_amount == line.total_amount
+
+
+def test_conflicting_supplier_tin_fails_closed(test_db):
+    """If company_tax_id and legacy vat_number/tax_tin conflict, fail closed with an error."""
+    ConfigService.set("company_tax_id", "123456789")
+    ConfigService.set("vat_number", "987654321")
+    try:
+        sale = _create_sample_sale(test_db)
+        user = test_db.query(User).filter_by(username="tax_user").first()
+        buyer = {"name": "Buyer Corp", "address": "Colombo 03", "tin": "111222333"}
+
+        with pytest.raises(ValueError, match="conflicting_supplier_tin"):
+            TaxInvoiceService.issue_tax_invoice(sale.id, buyer, user.id)
+    finally:
+        ConfigService.set("vat_number", "")
+
+
+def test_missing_sale_date_is_ineligible(test_db):
+    """A sale missing a date must be ineligible; it must never fall back to 'now'."""
+    sale = _create_sample_sale(test_db)
+    with test_db.no_autoflush:
+        sale.date = None
+        ok, err = TaxInvoiceService.validate_eligibility(sale.id, session=test_db)
+        assert not ok
+        assert err == "tax_invoice.error_missing_sale_date"
+    test_db.rollback()
+
+
+def test_timezone_aware_and_naive_sale_date_comparison(test_db):
+    """Aware and naive dates must normalize before comparison and not raise TypeError."""
+
+    sale = _create_sample_sale(test_db)
+    sale.date = datetime.now(UTC) - timedelta(days=5)
+    test_db.commit()
+
+    ok, _ = TaxInvoiceService.validate_eligibility(sale.id, session=test_db)
+    assert ok is True
+
+
+def test_unbound_session_fails_clearly():
+    """Generating serial on an unbound session must raise RuntimeError, not silently default to SQLite."""
+    unbound = Session()
+    with pytest.raises(RuntimeError, match="Unbound session"):
+        TaxInvoiceService.generate_serial(session=unbound)
+
+
+def test_serial_overflow_handling(test_db):
+    """When sequence exceeds 99999, expand to 6+ digits without wrap-around; fail if >40 chars."""
+    now = datetime(2026, 11, 15)
+    seq_row = TaxInvoiceSequence(prefix="26NOV_MAIN", last_seq=99999)
+    test_db.add(seq_row)
+    test_db.commit()
+
+    serial = TaxInvoiceService.generate_serial(issued_at=now, terminal_code="MAIN", session=test_db)
+    assert serial == "26NOV_MAIN_100000"
+    assert len(serial) <= 40
+
+    # Overly long terminal code that exceeds 40 chars must fail closed
+    long_term = "A" * 35
+    with pytest.raises(OverflowError, match="40 characters"):
+        TaxInvoiceService.generate_serial(issued_at=now, terminal_code=long_term, session=test_db)
+
+
+def test_issue_artifact_atomic_write_and_state(test_db, tmp_path):
+    """issue_artifact must atomically generate PDF, write to destination, update print_count, and audit."""
+    sale = _create_sample_sale(test_db)
+    user = test_db.query(User).filter_by(username="tax_user").first()
+    buyer = {"name": "Lanka Corp", "address": "Colombo 02", "tin": "123456789"}
+
+    inv = TaxInvoiceService.issue_tax_invoice(sale.id, buyer, user.id)
+    dest_pdf = tmp_path / "exported_tax_inv.pdf"
+
+    # First export: is_original is True
+    res1 = TaxInvoiceService.issue_artifact(inv.id, str(dest_pdf), user.id)
+    assert res1.is_original is True
+    assert res1.print_count == 1
+    assert dest_pdf.exists()
+
+    # Second export: is_original is False
+    dest_pdf_copy = tmp_path / "exported_tax_inv_copy.pdf"
+    res2 = TaxInvoiceService.issue_artifact(inv.id, str(dest_pdf_copy), user.id)
+    assert res2.is_original is False
+    assert res2.print_count == 2
+    assert dest_pdf_copy.exists()
+
+
+def test_issue_artifact_failure_does_not_consume_original(test_db, tmp_path):
+    """If PDF generation or write fails, original state is NOT consumed."""
+    sale = _create_sample_sale(test_db)
+    user = test_db.query(User).filter_by(username="tax_user").first()
+    buyer = {"name": "Lanka Corp", "address": "Colombo 02", "tin": "123456789"}
+
+    inv = TaxInvoiceService.issue_tax_invoice(sale.id, buyer, user.id)
+
+    # Invalid path where directory cannot be created (e.g. file as directory)
+    dummy_file = tmp_path / "blocker.txt"
+    dummy_file.write_text("blocked")
+    invalid_dest = dummy_file / "sub" / "out.pdf"
+
+    with pytest.raises((OSError, RuntimeError)):
+        TaxInvoiceService.issue_artifact(inv.id, str(invalid_dest), user.id)
+
+    # Verify invoice state was rolled back and ORIGINAL was not consumed
+    test_db.refresh(inv)
+    assert inv.print_count == 0
+    assert inv.original_printed_at is None

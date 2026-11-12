@@ -3416,7 +3416,16 @@
     "serial_label": "බදු ඉන්වොයිසි අංකය",
     "issued_success": "{serial} බදු ඉන්වොයිසිය සාර්ථකව නිකුත් කරන ලදී.",
     "save_dialog_title": "බදු ඉන්වොයිසි PDF සුරකින්න",
-    "pdf_saved_success": "බදු ඉන්වොයිසි PDF {path} වෙත සුරකින ලදී."
+    "pdf_saved_success": "බදු ඉන්වොයිසි PDF {path} වෙත සුරකින ලදී.",
+    "error_conflicting_tin": "සැකසුම්වල සමාගම් TIN සහ VAT අංක එකිනෙකට නොගැලපේ.",
+    "error_missing_sale_date": "විකුණුම් දිනය නොමැත. දින 28ක කාලසීමාව තහවුරු කළ නොහැක.",
+    "conflicting_supplier_tin": "සැකසුම්වල සමාගම් TIN සහ VAT අංක එකිනෙකට නොගැලපේ.",
+    "missing_supplier_tin": "වෙළඳසැල් VAT/TIN අංකය සැකසුම්වල ඇතුළත් කර නොමැත.",
+    "sale_has_vat_but_no_taxable_lines": "විකුණුමෙහි වැට් බද්දක් අය කර ඇතත් බද්දට යටත් භාණ්ඩ නොමැත.",
+    "tax_invoice_not_found": "බදු ඉන්වොයිස් වාර්තාව හමු නොවීය.",
+    "ineligible_sale": "මෙම විකුණුම සඳහා බදු ඉන්වොයිසියක් නිකුත් කළ නොහැක.",
+    "invalid_user_id": "බදු ඉන්වොයිසියක් නිකුත් කිරීමට වලංගු පරිශීලකයෙකු අවශ්‍ය වේ.",
+    "cannot_void_tax_invoice_sale": "බදු ඉන්වොයිසියක් නිකුත් කර ඇති විකුණුමක් අවලංගු කළ නොහැක. ආපසු භාරගැනීමක් හරහා ණය සටහනක් (Credit Note) නිකුත් කරන්න."
   }
 }
 

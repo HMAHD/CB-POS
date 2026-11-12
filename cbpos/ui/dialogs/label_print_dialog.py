@@ -51,6 +51,7 @@ from cbpos.ui.widgets.table_helpers import (
     batch_table_update,
     configure_table_columns,
 )
+from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 from cbpos.ui.workers import LabelProductLoaderWorker, start_background_job
 
 logger = logging.getLogger(__name__)
@@ -105,6 +106,7 @@ class LabelPrintDialog(QDialog):
 
         PrintWorker.instance().job_result.connect(self._on_print_job_result)
         call_on_destroyed(self, self._disconnect_print_worker)
+        install_wheel_guard(self)
 
         self._init_ui()
         self._load_products()

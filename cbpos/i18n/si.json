@@ -68,7 +68,9 @@
     "na": "අදාළ නොවේ",
     "unknown": "නොදන්නා",
     "important": "වැදගත්",
-    "got_it": "තේරුනා"
+    "got_it": "තේරුනා",
+    "copy": "සබැඳිය කොපි කරන්න",
+    "support_hint": "උදවු අවශ්‍යද? {url} වෙත පිවිසෙන්න"
   },
   "login": {
     "welcome": "Welcome / ආයුබෝවන් / வணக்கம்",
@@ -751,7 +753,30 @@
     "sign_out": "ලොග් අවුට්",
     "settings_tooltip": "සැකසුම්",
     "fullscreen_tooltip": "සම්පූර්ණ තිරය",
-    "exit_tooltip": "POS එක වහන්න"
+    "exit_tooltip": "POS එක වහන්න",
+    "help_about": "උදවු සහ විස්තර",
+    "help_tooltip": "උදවු, මඟපෙන්වීම්, යාවත්කාලීන සහ බලපත්‍ර තොරතුරු"
+  },
+  "about": {
+    "title": "CB POS පිළිබඳව",
+    "version": "වර්ෂන් {version} ({date})",
+    "dev_build": "සංවර්ධන සංස්කරණය",
+    "company": "සිලෝන් බයිට් (පුද්) සමාගම · ceybyte.com",
+    "made_by": "නිෂ්පාදනය සිලෝන් බයිට් · ceybyte.com",
+    "help_section": "උදවු සහ මඟපෙන්වීම්",
+    "user_guide": "පරිශීලක අත්පොත",
+    "report_problem": "ගැටලුවක් දන්වන්න",
+    "suggest_feature": "නව අදහසක් යෝජනා කරන්න",
+    "check_updates": "යාවත්කාලීන පරීක්ෂා කරන්න",
+    "feedback_helper": "ප්‍රතිචාර යැවීම සඳහා වෙබ් බ්‍රව්සරයෙන් CeyByte විවෘත වේ. ඒ සඳහා Google ගිණුමෙන් ලොග් වන්න. CB POS මඟින් ඔබේ වෙළඳසැලේ දත්ත කිසිවක් ස්වයංක්‍රීයව නොයවයි.",
+    "legal_section": "නීතිමය තොරතුරු",
+    "licence": "GNU GPLv3 බලපත්‍රය",
+    "privacy": "පෞද්ගලිකත්ව නිවේදනය",
+    "third_party_notices": "තෙවන පාර්ශ්ව බලපත්‍ර",
+    "view_source": "මූල කේතය බලන්න (Source Code)",
+    "open_url_failed": "බ්‍රව්සරය විවෘත කළ නොහැකි විය. කරුණාකර මෙම සබැඳියට පිවිසෙන්න:\n{url}",
+    "doc_missing": "අවශ්‍ය ලේඛනය සොයාගත නොහැකි විය: {filename}",
+    "copied_to_clipboard": "සබැඳිය කොපි කරගන්නා ලදී"
   },
   "action_panel": {
     "customer_label": "පාරිභෝගිකයා",

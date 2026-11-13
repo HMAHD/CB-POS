@@ -130,6 +130,17 @@ class ReceiptOptionsDialog(QDialog):
         self.btn_save_pdf.clicked.connect(self.save_as_pdf)
         layout.addWidget(self.btn_save_pdf)
 
+        if getattr(self.sale, "warranties", None):
+            layout.addSpacing(10)
+            self.btn_print_warranties = QPushButton("")
+            self.btn_print_warranties.setObjectName("ReceiptBtnWarrantyCards")
+            self.btn_print_warranties.setIcon(Icons.get("fa5s.shield-alt", icon_clr))
+            self.btn_print_warranties.setIconSize(QSize(18, 18))
+            self.btn_print_warranties.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.btn_print_warranties.setFixedHeight(44)
+            self.btn_print_warranties.clicked.connect(self.print_warranty_cards)
+            layout.addWidget(self.btn_print_warranties)
+
         layout.addStretch(1)
 
         # ── Close Button (centered, subtle) ────────────────────────
@@ -158,6 +169,10 @@ class ReceiptOptionsDialog(QDialog):
         self.btn_print.setText("  " + _t("receipt_options.btn_print"))
         self.btn_email.setText("  " + _t("receipt_options.btn_email"))
         self.btn_save_pdf.setText("  " + _t("receipt_options.btn_save_pdf"))
+        if hasattr(self, "btn_print_warranties"):
+            self.btn_print_warranties.setText(
+                "  " + _t("receipt_options.btn_print_warranty_cards", default="Print Warranty Card(s)")
+            )
         self.btn_close.setText(_t("receipt_options.btn_close"))
 
         configured = EmailService.is_configured()
@@ -190,6 +205,26 @@ class ReceiptOptionsDialog(QDialog):
         except Exception as e:
             self.btn_print.setEnabled(True)
             logger.error("Receipt print failed: %s", e)
+            QMessageBox.warning(
+                self,
+                _t("receipt_options.print_error_title"),
+                _t("receipt_options.print_error_message", error=translate_error(str(e))),
+            )
+
+    def print_warranty_cards(self) -> None:
+        """Print thermal warranty cards for the sale."""
+        warranties = getattr(self.sale, "warranties", [])
+        if not warranties:
+            return
+        try:
+            PrinterService.print_warranty_cards(warranties)
+            QMessageBox.information(
+                self,
+                _t("receipt_options.title"),
+                _t("receipt_options.warranty_print_success", default="Warranty card(s) queued for printing"),
+            )
+        except Exception as e:
+            logger.error("Failed to print warranty cards: %s", e)
             QMessageBox.warning(
                 self,
                 _t("receipt_options.print_error_title"),

@@ -496,6 +496,7 @@ class TransactionService:
         """
         _ = sale.customer
         _ = sale.user
+        _ = sale.warranties
         for item in sale.items:
             _ = item.product
             _ = item.warranties

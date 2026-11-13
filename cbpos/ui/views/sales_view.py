@@ -1368,10 +1368,10 @@ class SalesView(QWidget):
         row = self.cart_table.rowAt(position.y())
         if 0 <= row < len(self.cart_service.items):
             item_prod = self.cart_service.items[row]["product"]
-            if getattr(item_prod, "serial_mode", "OFF") != "OFF":
+            if getattr(item_prod, "serial_mode", None) in ("REQUIRED", "OPTIONAL"):
                 serials_action = QAction(
                     Icons.get("fa5s.barcode", icon_color),
-                    _t("cart.context_edit_serials", default="Edit Serial / IMEI Numbers"),
+                    _t("cart.context_edit_serials", default="&Edit Serial / IMEI Numbers"),
                     self,
                 )
                 serials_action.triggered.connect(self.edit_line_serials)
@@ -1990,8 +1990,36 @@ class SalesView(QWidget):
         self.order_bar.set_active_bill(None)
         self.order_bar.refresh_tabs()
 
+        # Handle warranty card printing (#824)
+        from cbpos.core.services.sales_receipt_builder import _safe_warranties
+
+        sale_warranties = _safe_warranties(sale)
+        show_receipt_dlg = bool(ConfigService.get("show_receipt_dialog"))
+        w_card_mode = ConfigService.get("warranty_card_mode") or "ASK"
+
+        if sale_warranties:
+            from cbpos.core.services.printer_service import PrinterService
+
+            if w_card_mode == "ALWAYS":
+                try:
+                    PrinterService.print_warranty_cards(sale_warranties)
+                except Exception as e:
+                    logger.error("Auto-print warranty cards failed: %s", e)
+            elif w_card_mode == "ASK" and not show_receipt_dlg:
+                ans = QMessageBox.question(
+                    self,
+                    _t("warranty_card.prompt_title", default="Warranty Cards"),
+                    _t("warranty_card.prompt_message", default="Print warranty card(s) for this sale?"),
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                )
+                if ans == QMessageBox.StandardButton.Yes:
+                    try:
+                        PrinterService.print_warranty_cards(sale_warranties)
+                    except Exception as e:
+                        logger.error("Print warranty cards failed: %s", e)
+
         # Show Receipt Options if configured (dialog handles printing)
-        if ConfigService.get("show_receipt_dialog"):
+        if show_receipt_dlg:
             dlg = ReceiptOptionsDialog(sale, self)
             dlg.exec()
         self._focus_search()

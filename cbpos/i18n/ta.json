@@ -237,7 +237,7 @@
     "removed_undo": "நீக்கிட்டோம்: {product} — திரும்பி வர Ctrl+Z",
     "item_count": "பொருட்கள்: {count}",
     "bill_discount_row": "பில் தள்ளுபடி",
-    "context_edit_serials": "வரிசை / IMEI எண்களைத் திருத்து",
+    "context_edit_serials": "&வரிசை / IMEI எண்களைத் திருத்து",
     "confirm_discard_serials": "அளவைக் குறைத்தால் பதிவு செய்யப்பட்ட வரிசை எண்கள் நீக்கப்படும்: {serials}\n\nதொடரவா?"
   },
   "bill_discount": {
@@ -362,7 +362,9 @@
     "pdf_error_message": "ரசீது PDF-ஐ சேவ் செய்ய முடியல: {error}",
     "email_sent": "{email} க்கு ரசீது அனுப்பப்பட்டது.",
     "email_failed": "மின்னஞ்சல் அனுப்ப முடியவில்லை: {reason}. விற்பனை சேமிக்கப்பட்டுள்ளது; விற்பனை வரலாற்றிலிருந்து மீண்டும் அனுப்பலாம்.",
-    "email_not_configured": "மின்னஞ்சல் அமைக்கப்படவில்லை. அமைப்புகள் → மின்னஞ்சலில் அமைக்கவும்."
+    "email_not_configured": "மின்னஞ்சல் அமைக்கப்படவில்லை. அமைப்புகள் → மின்னஞ்சலில் அமைக்கவும்.",
+    "btn_print_warranty_cards": "உத்தரவாத அட்டைகளை அச்சிடுக",
+    "warranty_print_success": "உத்தரவாத அட்டைகள் அச்சிட வரிசைப்படுத்தப்பட்டன"
   },
   "receipt": {
     "email_sent": "{email} க்கு ரசீது அனுப்பப்பட்டது.",
@@ -1973,7 +1975,13 @@
       "guide_logo_step2_detail": "58மிமீ காகிதத்திற்கு 384px அல்லது 80மிமீ காகிதத்திற்கு 576px வரை அகலத்தைப் பயன்படுத்தவும்.",
       "guide_logo_step3_title": "சோதனை அச்சு",
       "guide_logo_step3_detail": "பதிவேற்றிய பிறகு, தெளிவை சரிபார்க்க வன்பொருள் அமைப்புகளில் ஒரு சோதனை ரசீதை அச்சிடுங்கள்.",
-      "guide_logo_note": "வண்ண புகைப்படங்கள் அல்லது வெளிர் சாம்பல் நிறங்கள் தெர்மல் காகிதத்தில் புள்ளிகளாக மங்கலாகத் தோன்றும்."
+      "guide_logo_note": "வண்ண புகைப்படங்கள் அல்லது வெளிர் சாம்பல் நிறங்கள் தெர்மல் காகிதத்தில் புள்ளிகளாக மங்கலாகத் தோன்றும்.",
+      "section_warranty": "உத்தரவாதம்",
+      "show_warranty_on_receipt": "ரசீதில் உத்தரவாத விவரங்களைக் காட்டு",
+      "warranty_card_mode": "உத்தரவாத அட்டைகளை அச்சிடுக:",
+      "warranty_card_mode_off": "முடக்கப்பட்டது",
+      "warranty_card_mode_ask": "பணம் செலுத்திய பின் கேளுங்கள்",
+      "warranty_card_mode_always": "எப்பொழுதும் அச்சிடுக"
     },
     "system": {
       "title": "சிஸ்டம்",
@@ -2256,7 +2264,26 @@
     "refund_off_credit": "கடன்ல குறைச்சது: {amount}",
     "loyalty_earned": "பெற்ற புள்ளிகள்:",
     "loyalty_redeemed": "பயன்படுத்திய புள்ளிகள்:",
-    "loyalty_balance": "புள்ளி நிலுவை:"
+    "loyalty_balance": "புள்ளி நிலுவை:",
+    "warranty_label": "உத்தரவாதம்",
+    "warranty_until": "{date} வரை",
+    "warranty_serial": "வரிசை எண்: {serial}",
+    "warranty_terms_title": "உத்தரவாத விதிமுறைகள்",
+    "warranty_exclusions_title": "விலக்குகள்",
+    "warranty_card_title": "உத்தரவாதச் சான்றிதழ்",
+    "warranty_card_invoice": "விலைப் பட்டியல்",
+    "warranty_card_remedy": "பரிகாரம்",
+    "warranty_stamp_title": "அதிகாரப்பூர்வ கடை முத்திரை",
+    "warranty_unit_days": "நாட்கள்",
+    "warranty_unit_months": "மாதங்கள்",
+    "warranty_unit_years": "வருடங்கள்",
+    "warranty_type_shop": "கடை",
+    "warranty_type_manufacturer": "உற்பத்தியாளர்",
+    "warranty_type_extended": "நீட்டிக்கப்பட்ட",
+    "warranty_remedy_repair_or_replace": "பழுதுபார்ப்பு அல்லது மாற்று",
+    "warranty_remedy_repair_only": "பழுதுபார்ப்பு மட்டும்",
+    "warranty_remedy_replace_only": "மாற்று மட்டும்",
+    "warranty_remedy_refund": "பணத்தைத் திரும்பப்பெறுதல்"
   },
   "cash_movement": {
     "record_title_out": "பணப்பெட்டியிலிருந்து காசு எடுங்க",
@@ -2736,7 +2763,9 @@
     "sending": "அனுப்புகிறோம்...",
     "walk_in": "சாதாரண வாடிக்கையாளர்",
     "preview_title": "ரசீது முன்னோட்டம்",
-    "select_to_preview": "ரசீதை முன்னோட்டம் பார்க்க ஒரு விற்பனையைத் தேர்ந்தெடுங்க"
+    "select_to_preview": "ரசீதை முன்னோட்டம் பார்க்க ஒரு விற்பனையைத் தேர்ந்தெடுங்க",
+    "btn_reprint_warranty": "உத்தரவாதத்தை மீண்டும் அச்சிடுக",
+    "no_warranties": "இந்த விற்பனையில் உத்தரவாதங்கள் இல்லை"
   },
   "shift_closing": {
     "title": "ஷிப்ட் மூடல்",
@@ -3360,7 +3389,10 @@
     "bank_account": "கணக்கு எண்: {number}",
     "bank_branch": "கிளை: {name}",
     "authorized_signature": "அங்கீகரிக்கப்பட்ட கையொப்பம்",
-    "received_by": "பெற்றுக்கொண்டவர்"
+    "received_by": "பெற்றுக்கொண்டவர்",
+    "warranty_label": "உத்தரவாதம்",
+    "warranty_terms_title": "உத்தரவாத விதிமுறைகள்",
+    "warranty_exclusions_title": "விலக்குகள்"
   },
   "time": {
     "just_now": "இப்போது",
@@ -3587,5 +3619,9 @@
     "err_required": "வரிசை எண் தேவை",
     "imei_luhn_warning": "IMEI சரிபார்ப்பு எண் பொருந்தவில்லை (எச்சரிக்கை)",
     "active_warranty_warning": "ஏற்கனவே செயலில் உள்ள உத்தரவாதத்தால் மூடப்பட்டுள்ளது: {receipt}"
+  },
+  "warranty_card": {
+    "prompt_title": "உத்தரவாத அட்டைகள்",
+    "prompt_message": "இந்த விற்பனைக்கான உத்தரவாத அட்டைகளை அச்சிடவா?"
   }
 }

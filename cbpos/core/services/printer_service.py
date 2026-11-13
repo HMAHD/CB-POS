@@ -139,6 +139,23 @@ class PrinterService:
         return PrinterService.queue_commands(commands, copies)
 
     @staticmethod
+    def print_warranty_cards(warranties: list[Any], is_reprint: bool = False, copies: int = 1) -> str:
+        """Print thermal warranty cards for the given warranties (#824).
+
+        Args:
+            warranties: List of Warranty model instances.
+            is_reprint: If True, adds DUPLICATE marking.
+            copies: Number of copies (default 1).
+
+        Returns:
+            job_id: The unique identifier for the queued print job.
+        """
+        from cbpos.core.services.warranty_card_builder import WarrantyCardBuilder
+
+        commands = WarrantyCardBuilder.build_escpos(warranties, is_reprint=is_reprint)
+        return PrinterService.queue_commands(commands, copies)
+
+    @staticmethod
     def print_shift_report(summary: dict[str, Any], x_read: bool = False) -> str:
         """Print the shift Z-Report (at close) or the mid-shift X-Read (#682).
 

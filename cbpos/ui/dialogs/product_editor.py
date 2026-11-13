@@ -581,6 +581,15 @@ class ProductEditor(QDialog):
         self._load_warranty_policies()
         layout.addRow(_t("warranty.policies"), self.warranty_policy_combo)
 
+        self.serial_mode_combo = QComboBox()
+        self.serial_mode_combo.addItem(_t("product_editor.serial_mode_off", default="Off"), "OFF")
+        self.serial_mode_combo.addItem(_t("product_editor.serial_mode_optional", default="Optional"), "OPTIONAL")
+        self.serial_mode_combo.addItem(_t("product_editor.serial_mode_required", default="Required"), "REQUIRED")
+        layout.addRow(
+            _t("product_editor.serial_mode", default="Ask for serial / IMEI number when selling"),
+            self.serial_mode_combo,
+        )
+
         self.lbl_warranty_preview = QLabel()
         self.lbl_warranty_preview.setWordWrap(True)
         self.lbl_warranty_preview.setProperty("class", "muted")
@@ -623,10 +632,17 @@ class ProductEditor(QDialog):
         if not getattr(self, "_can_edit_warranty", True):
             self.warranty_override_combo.setEnabled(False)
             self.warranty_policy_combo.setEnabled(False)
+            if hasattr(self, "serial_mode_combo"):
+                self.serial_mode_combo.setEnabled(False)
             self._update_warranty_preview()
             return
         mode = self.warranty_override_combo.currentData()
         self.warranty_policy_combo.setEnabled(mode == "POLICY")
+        if hasattr(self, "serial_mode_combo"):
+            # Serial tracking requires warranty coverage (not NONE) and not weighted
+            self.serial_mode_combo.setEnabled(mode != "NONE" and not self.weighted_check.isChecked())
+            if mode == "NONE":
+                self.serial_mode_combo.setCurrentIndex(self.serial_mode_combo.findData("OFF"))
         self._update_warranty_preview()
 
     def _on_weighted_toggled_warranty(self, checked: bool):
@@ -634,6 +650,10 @@ class ProductEditor(QDialog):
             if not getattr(self, "_can_edit_warranty", True) or checked:
                 self.warranty_override_combo.setEnabled(False)
                 self.warranty_policy_combo.setEnabled(False)
+                if hasattr(self, "serial_mode_combo"):
+                    self.serial_mode_combo.setEnabled(False)
+                    if checked:
+                        self.serial_mode_combo.setCurrentIndex(self.serial_mode_combo.findData("OFF"))
             else:
                 self.warranty_override_combo.setEnabled(True)
                 self._on_warranty_mode_changed()
@@ -779,6 +799,10 @@ class ProductEditor(QDialog):
                 w_idx = self.warranty_policy_combo.findData(self.product.warranty_policy_id)
                 if w_idx >= 0:
                     self.warranty_policy_combo.setCurrentIndex(w_idx)
+            if hasattr(self, "serial_mode_combo"):
+                s_idx = self.serial_mode_combo.findData(self.product.serial_mode or "OFF")
+                if s_idx >= 0:
+                    self.serial_mode_combo.setCurrentIndex(s_idx)
             self._on_warranty_mode_changed()
 
     def _parse_decimal(self, text: str, fallback: str = "0") -> Decimal:
@@ -889,9 +913,31 @@ class ProductEditor(QDialog):
                     )
                     self.tabs.setCurrentWidget(self.tab_warranty)
                     return
+                serial_mode = self.serial_mode_combo.currentData() if hasattr(self, "serial_mode_combo") else "OFF"
+                if data.get("is_weighted") and serial_mode != "OFF":
+                    QMessageBox.warning(
+                        self,
+                        _t("common.validation_error"),
+                        _t(
+                            "errors.serial_weighted_disallowed", default="Weighted products cannot have serial tracking"
+                        ),
+                    )
+                    self.tabs.setCurrentWidget(self.tab_warranty)
+                    return
+                if override == "NONE" and serial_mode != "OFF":
+                    QMessageBox.warning(
+                        self,
+                        _t("common.validation_error"),
+                        _t(
+                            "errors.serial_requires_warranty_policy",
+                            default="Serial tracking requires an active warranty policy",
+                        ),
+                    )
+                    self.tabs.setCurrentWidget(self.tab_warranty)
+                    return
                 data["warranty_override"] = override
                 data["warranty_policy_id"] = policy_id
-                data["serial_mode"] = getattr(self.product, "serial_mode", "OFF") if self.product else "OFF"
+                data["serial_mode"] = serial_mode
 
         curr_user = AuthService.get_current_user()
         curr_id = curr_user.id if curr_user else None

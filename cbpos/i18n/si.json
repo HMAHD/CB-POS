@@ -236,7 +236,9 @@
     "discount_removed_qty": "ප්‍රමාණය වෙනස් වූ නිසා {name} සඳහා තිබූ වට්ටම ඉවත් විය. අවශ්‍ය නම් නැවත යොදන්න.",
     "removed_undo": "අයින් කළා: {product} — නැවත ගන්න Ctrl+Z",
     "item_count": "අයිතම: {count}",
-    "bill_discount_row": "බිල්පත් වට්ටම"
+    "bill_discount_row": "බිල්පත් වට්ටම",
+    "context_edit_serials": "අනුක්‍රමික / IMEI අංක සංස්කරණය",
+    "confirm_discard_serials": "ප්‍රමාණය අඩු කිරීමෙන් සටහන් කළ අනුක්‍රමික අංක ඉවත් වේ: {serials}\n\nඉදිරියට යනවාද?"
   },
   "bill_discount": {
     "title": "බිල්පත් වට්ටම",
@@ -593,7 +595,11 @@
     "warranty_select_policy": "-- වගකීම් ප්‍රතිපත්තිය තෝරන්න --",
     "warranty_preview_none": "මෙම භාණ්ඩය සඳහා වගකීම් ආවරණයක් නොමැත.",
     "warranty_preview_covered": "අද විකිණීම ({sale_date}) {end_date} දක්වා ආවරණය වේ ({policy_name})",
-    "warranty_weighted_hint": "බර අනුව විකුණන භාණ්ඩ සඳහා වගකීම් ආවරණයක් ලබා දිය නොහැක."
+    "warranty_weighted_hint": "බර අනුව විකුණන භාණ්ඩ සඳහා වගකීම් ආවරණයක් ලබා දිය නොහැක.",
+    "serial_mode": "විකිණීමේදී අනුක්‍රමික / IMEI අංකය විමසන්න",
+    "serial_mode_off": "අක්‍රියයි",
+    "serial_mode_optional": "විකල්ප",
+    "serial_mode_required": "අනිවාර්යයි"
   },
   "csv_import": {
     "title": "CSV ආයාතය",
@@ -3262,7 +3268,11 @@
     "customer_not_found": "පාරිභෝගිකයා හම්බ වුනේ නැහැ.",
     "insufficient_stock": "ප්‍රමාණවත් තොග නැහැ",
     "warranty_whole_units": "වගකීම් සහිත භාණ්ඩ සම්පූර්ණ ඒකක වලින් පමණක් විකිණිය යුතුය",
-    "db_connection_lost": "කඩේ ඩේටාබේස් එකත් එක්ක තිබ්බ සම්බන්ධය නැති වුණා. ප්‍රධාන පරිගණකයට (Main PC) යන නෙට්වර්ක් කේබලය හෝ Wi-Fi පරීක්ෂා කරලා ආයෙත් උත්සාහ කරන්න. කිසිවක් සේව් වුණේ නැහැ."
+    "db_connection_lost": "කඩේ ඩේටාබේස් එකත් එක්ක තිබ්බ සම්බන්ධය නැති වුණා. ප්‍රධාන පරිගණකයට (Main PC) යන නෙට්වර්ක් කේබලය හෝ Wi-Fi පරීක්ෂා කරලා ආයෙත් උත්සාහ කරන්න. කිසිවක් සේව් වුණේ නැහැ.",
+    "serial_required": "'{name}' සඳහා අනුක්‍රමික / IMEI අංකය අනිවාර්ය වේ",
+    "duplicate_serial_in_cart": "කරත්තයේ අනුක්‍රමික අංකය දෙවරක් යොදා ඇත: '{serial}'",
+    "serial_requires_warranty_policy": "අනුක්‍රමික අංක ලුහුබැඳීම සඳහා සක්‍රිය වගකීම් ප්‍රතිපත්තියක් අවශ්‍ය වේ",
+    "serial_weighted_disallowed": "බර මනින භාණ්ඩ සඳහා අනුක්‍රමික අංක ලුහුබැඳීම කළ නොහැක"
   },
   "backup_password": {
     "title_set": "බැකප් මුරපදය සෙට් කරන්න",
@@ -3564,5 +3574,18 @@
       "terms_translation_requires_en": "පරිවර්තන ඇති විට ඉංග්‍රීසි කොන්දේසි ලබා දිය යුතුය.",
       "exclusions_translation_requires_en": "පරිවර්තන ඇති විට ඉංග්‍රීසි බැහැර කිරීම් ලබා දිය යුතුය."
     }
+  },
+  "serial_entry": {
+    "title": "අනුක්‍රමික / IMEI අංක ඇතුළත් කරන්න",
+    "hint_required": "කරුණාකර අනුක්‍රමික අංක {count} ක් ඇතුළත් කරන්න හෝ ස්කෑන් කරන්න.",
+    "hint_optional": "ඒකක {count} ක් සඳහා අනුක්‍රමික අංක ඇතුළත් කරන්න, නැතහොත් මඟහරින්න.",
+    "unit_label": "ඒකකය {index}:",
+    "input_placeholder": "අනුක්‍රමික / IMEI ස්කෑන් කරන්න හෝ ඇතුළත් කරන්න",
+    "btn_skip": "මඟහරින්න",
+    "err_duplicate_in_dialog": "ඇතුළත් කළ අනුක්‍රමික අංකය දැනටමත් තිබේ",
+    "err_duplicate_in_cart": "මෙම අනුක්‍රමික අංකය කරත්තයේ වෙනත් පේළියක ඇත",
+    "err_required": "අනුක්‍රමික අංකය අනිවාර්යයි",
+    "imei_luhn_warning": "IMEI පරීක්ෂණ අංකය නොගැලපේ (අවවාදයයි)",
+    "active_warranty_warning": "දැනටමත් සක්‍රිය වගකීමකින් ආවරණය වී ඇත: {receipt}"
   }
 }

@@ -762,8 +762,7 @@ class SalesView(QWidget):
             SoundService.play("scan_success")
             dialog = QuantityDialog(products[0], self)
             if dialog.exec() and self._confirm_age_restriction(products[0]):
-                self.cart_service.add_item(products[0], qty=dialog.get_quantity())
-                self.update_cart_display()
+                self._add_product_to_cart_with_serials(products[0], dialog.get_quantity())
             self.barcode_input.clear()
             self._focus_search()
         elif len(products) > 1:
@@ -806,8 +805,7 @@ class SalesView(QWidget):
         product = matches[0]
         SoundService.play("scan_success")
         if self._confirm_age_restriction(product):
-            self.cart_service.add_item(product, qty=parsed["qty"])
-            self.update_cart_display()
+            self._add_product_to_cart_with_serials(product, parsed["qty"])
         self.barcode_input.clear()
         self._focus_search()
         return True
@@ -1051,6 +1049,10 @@ class SalesView(QWidget):
         if totals["subtotal"] <= 0:
             SoundService.play("scan_error")
             self._flash_pay_button_error()
+            self._focus_search()
+            return
+
+        if not self._ensure_required_serials_captured():
             self._focus_search()
             return
 
@@ -1363,6 +1365,18 @@ class SalesView(QWidget):
         price_action.triggered.connect(self.change_line_price)
         menu.addAction(price_action)
 
+        row = self.cart_table.rowAt(position.y())
+        if 0 <= row < len(self.cart_service.items):
+            item_prod = self.cart_service.items[row]["product"]
+            if getattr(item_prod, "serial_mode", "OFF") != "OFF":
+                serials_action = QAction(
+                    Icons.get("fa5s.barcode", icon_color),
+                    _t("cart.context_edit_serials", default="Edit Serial / IMEI Numbers"),
+                    self,
+                )
+                serials_action.triggered.connect(self.edit_line_serials)
+                menu.addAction(serials_action)
+
         # Deliberately no Delete-key shortcut here: Delete is already bound
         # globally to void_bill() (voiding the *entire* sale) -- binding it
         # here too would make one keypress do two different destructive
@@ -1420,8 +1434,39 @@ class SalesView(QWidget):
             dialog = QuantityDialog(item["product"], parent=self, initial_qty=current_qty)
             if dialog.exec():
                 new_qty = dialog.get_quantity()
-                approver = None
+                prod = item["product"]
+                s_mode = getattr(prod, "serial_mode", "OFF") or "OFF"
+
+                # Check whole units if serial tracked
+                if s_mode in ("OPTIONAL", "REQUIRED") and (
+                    new_qty <= Decimal("0") or new_qty % Decimal("1") != Decimal("0")
+                ):
+                    QMessageBox.warning(
+                        self,
+                        _t("common.validation_error"),
+                        _t("errors.warranty_whole_units", default="Warranty items must be sold in whole units"),
+                    )
+                    self._focus_search()
+                    return
+
+                # Check discard confirmation on serial reduction
                 if new_qty < current_qty:
+                    discarded = self.cart_service.would_discard_serials(row, new_qty)
+                    if discarded:
+                        reply = QMessageBox.question(
+                            self,
+                            _t("common.warning"),
+                            _t(
+                                "cart.confirm_discard_serials",
+                                serials=", ".join(discarded),
+                                default=f"Reducing quantity will discard entered serial number(s): {', '.join(discarded)}. Proceed?",
+                            ),
+                            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                        )
+                        if reply != QMessageBox.StandardButton.Yes:
+                            self._focus_search()
+                            return
+
                     from cbpos.core.constants.permissions import Permissions
                     from cbpos.core.utils.permission_helper import check_permission_with_override
 
@@ -1429,6 +1474,16 @@ class SalesView(QWidget):
                     if not approver:
                         self._focus_search()
                         return
+
+                # If increasing quantity on serial-tracked item, prompt for additional units
+                if new_qty > current_qty and s_mode in ("OPTIONAL", "REQUIRED"):
+                    added_count = int(new_qty - current_qty)
+                    added_serials = self._prompt_serial_capture(prod, added_count, exclude_cart_index=row)
+                    if added_serials is None:
+                        self._focus_search()
+                        return
+                    cur_serials = list(item.get("serials", []))
+                    item["serials"] = cur_serials + added_serials
 
                 notice = self.cart_service.update_quantity(row, new_qty)
                 self.update_cart_display()
@@ -1649,8 +1704,7 @@ class SalesView(QWidget):
         """Handle product selection from advanced search."""
         dialog = QuantityDialog(product, self)
         if dialog.exec() and self._confirm_age_restriction(product):
-            self.cart_service.add_item(product, qty=dialog.get_quantity())
-            self.update_cart_display()
+            self._add_product_to_cart_with_serials(product, dialog.get_quantity())
         self._focus_search()
 
     def _confirm_age_restriction(self, product) -> bool:
@@ -1664,6 +1718,97 @@ class SalesView(QWidget):
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         return reply == QMessageBox.StandardButton.Yes
+
+    def _prompt_serial_capture(
+        self,
+        product,
+        unit_count: int,
+        existing_serials: list[str | None] | None = None,
+        exclude_cart_index: int | None = None,
+    ) -> list[str | None] | None:
+        """Prompt cashier for serial numbers if product requires or optionally tracks serials.
+
+        Returns list of serials (str or None) on confirmation, or None if cashier cancelled.
+        """
+        mode = getattr(product, "serial_mode", "OFF") or "OFF"
+        if mode == "OFF":
+            return [None] * int(unit_count)
+
+        from cbpos.ui.dialogs.serial_entry_dialog import SerialEntryDialog
+
+        external_serials = self.cart_service.get_all_cart_serials(exclude_index=exclude_cart_index)
+        dlg = SerialEntryDialog(
+            product=product,
+            unit_count=unit_count,
+            parent=self,
+            serial_mode=mode,
+            existing_serials=existing_serials,
+            external_cart_serials=external_serials,
+        )
+        if dlg.exec():
+            return dlg.get_serials()
+        return None
+
+    def _add_product_to_cart_with_serials(self, product, qty: Decimal) -> bool:
+        """Add product to cart, prompting for serial/IMEI capture if serial_mode is OPTIONAL or REQUIRED."""
+        s_mode = getattr(product, "serial_mode", "OFF") or "OFF"
+        serials = None
+        if s_mode in ("OPTIONAL", "REQUIRED"):
+            if qty <= Decimal("0") or qty % Decimal("1") != Decimal("0"):
+                QMessageBox.warning(
+                    self,
+                    _t("common.validation_error"),
+                    _t("errors.warranty_whole_units", default="Warranty items must be sold in whole units"),
+                )
+                return False
+            serials = self._prompt_serial_capture(product, int(qty))
+            if serials is None:
+                return False
+        self.cart_service.add_item(product, qty=qty, serials=serials)
+        self.update_cart_display()
+        return True
+
+    def _ensure_required_serials_captured(self) -> bool:
+        """Verify that all REQUIRED serial lines have serials entered.
+
+        Prompts cashier for any missing serials. Returns True if all valid, False if cashier cancels.
+        """
+        for idx, item in enumerate(self.cart_service.items):
+            prod = item["product"]
+            s_mode = getattr(prod, "serial_mode", "OFF") or "OFF"
+            if s_mode == "REQUIRED":
+                int_qty = int(item["qty"]) if (item["qty"] > 0 and item["qty"] % Decimal("1") == Decimal("0")) else 0
+                serials = item.get("serials", [])
+                missing = len(serials) < int_qty or any(not s or not str(s).strip() for s in serials[:int_qty])
+                if missing:
+                    res = self._prompt_serial_capture(
+                        prod,
+                        int_qty,
+                        existing_serials=serials,
+                        exclude_cart_index=idx,
+                    )
+                    if res is None:
+                        return False
+                    self.cart_service.set_item_serials(idx, res)
+        return True
+
+    def edit_line_serials(self) -> None:
+        """Edit serial numbers on selected cart line."""
+        row = self.cart_table.currentRow()
+        if 0 <= row < len(self.cart_service.items):
+            item = self.cart_service.items[row]
+            prod = item["product"]
+            qty = item["qty"]
+            res = self._prompt_serial_capture(
+                prod,
+                int(qty),
+                existing_serials=item.get("serials", []),
+                exclude_cart_index=row,
+            )
+            if res is not None:
+                self.cart_service.set_item_serials(row, res)
+                self.update_cart_display()
+        self._focus_search()
 
     def switch_to_order(self, suspended_id):
         """
@@ -1863,6 +2008,10 @@ class SalesView(QWidget):
 
         totals = self.cart_service.get_totals()
         if not self.cart_service.items or totals["subtotal"] <= 0:
+            self._focus_search()
+            return
+
+        if not self._ensure_required_serials_captured():
             self._focus_search()
             return
 

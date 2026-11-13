@@ -279,14 +279,18 @@ class WarrantyService:
         cls,
         session: Session,
         sale: Sale,
-        sale_items_with_policies: list[tuple[SaleItem, WarrantyPolicy]],
+        sale_items_with_policies: list[
+            tuple[SaleItem, WarrantyPolicy] | tuple[SaleItem, WarrantyPolicy, list[str | None]]
+        ],
         receipt_lang: str | None = None,
+        item_serials: dict[int, list[str | None]] | None = None,
     ) -> list[Warranty]:
         """Create per-unit Warranty rows for sold lines in the current session.
 
         - Validates that qty is an exact integer.
         - Generates codes: <sale.document_number>-01..NN across all warranty units of the sale.
         - Sets unit_index per line (1..int(qty)).
+        - Assigns serial_number per unit in order if provided.
         - Computes start_date = sale.date.date(), end_date = compute_end_date(...).
         - Snapshots terms/exclusions in receipt language (falling back to English).
         - Snapshots customer name and phone.
@@ -319,7 +323,18 @@ class WarrantyService:
         created_warranties = []
         global_seq = 0
 
-        for sale_item, policy in sale_items_with_policies:
+        for entry in sale_items_with_policies:
+            if len(entry) == 3:
+                sale_item, policy, line_serials = entry
+            else:
+                sale_item, policy = entry
+                line_serials = None
+
+            if line_serials is None and item_serials and sale_item.id in item_serials:
+                line_serials = item_serials[sale_item.id]
+            if line_serials is None:
+                line_serials = getattr(sale_item, "_serials", None) or getattr(sale_item, "serials", None) or []
+
             qty = sale_item.qty
             if qty <= Decimal("0") or qty % Decimal("1") != Decimal("0"):
                 from cbpos.i18n import _t
@@ -340,6 +355,12 @@ class WarrantyService:
                 global_seq += 1
                 code = f"{sale.document_number}-{global_seq:02d}"
 
+                sn = None
+                if line_serials and unit_idx <= len(line_serials):
+                    raw_sn = line_serials[unit_idx - 1]
+                    if raw_sn and str(raw_sn).strip():
+                        sn = str(raw_sn).strip().upper()
+
                 warranty = Warranty(
                     code=code,
                     unit_index=unit_idx,
@@ -350,6 +371,7 @@ class WarrantyService:
                     policy_id=policy.id,
                     customer_name_snapshot=customer_name,
                     customer_phone_snapshot=customer_phone,
+                    serial_number=sn,
                     warranty_type=policy.warranty_type,
                     duration=policy.duration,
                     duration_unit=policy.duration_unit,
@@ -392,6 +414,34 @@ class WarrantyService:
         )
 
         return created_warranties
+
+    @classmethod
+    def find_active_warranties_by_serials(
+        cls,
+        product_id: int,
+        serials: list[str],
+        session: Session | None = None,
+    ) -> dict[str, str]:
+        """Find active warranties for a product with matching serials.
+
+        Returns mapping of {serial_number: sale_document_number} for advisory warnings.
+        """
+        clean_serials = [str(s).strip().upper() for s in serials if s and str(s).strip()]
+        if not clean_serials:
+            return {}
+
+        with _session_scope(session) as s:
+            stmt = (
+                select(Warranty.serial_number, Sale.document_number)
+                .join(Sale, Sale.id == Warranty.sale_id)
+                .where(
+                    Warranty.product_id == product_id,
+                    Warranty.serial_number.in_(clean_serials),
+                    Warranty.status == "ACTIVE",
+                )
+            )
+            rows = s.execute(stmt).all()
+            return {r[0]: (r[1] or str(r[0])) for r in rows if r[0]}
 
     @classmethod
     def void_sale_warranties_in_session(
@@ -896,6 +946,8 @@ class WarrantyService:
         is_weighted: bool = False,
         existing_policy_id: int | None = None,
         session: Session | None = None,
+        serial_mode: str | None = None,
+        category_id: int | None = None,
     ) -> None:
         """Validate product/category warranty assignment rules."""
         clean_override = (override or "INHERIT").strip().upper()
@@ -913,3 +965,36 @@ class WarrantyService:
                 raise ValueError(f"Warranty policy {policy_id} not found")
             if not pol.is_active:
                 raise ValueError("Cannot assign inactive warranty policy")
+
+        # Serial mode validation and policy coupling (#823)
+        if serial_mode is not None:
+            clean_serial = str(serial_mode).strip().upper()
+            if clean_serial not in ("OFF", "OPTIONAL", "REQUIRED"):
+                raise ValueError(f"Invalid serial mode: {serial_mode}")
+            if is_weighted and clean_serial != "OFF":
+                raise ValueError("Weighted products cannot have serial tracking")
+            if clean_serial != "OFF":
+                if clean_override == "NONE":
+                    raise ValueError("Serial tracking requires an active warranty policy")
+                elif clean_override == "POLICY":
+                    if not policy_id:
+                        raise ValueError("Serial tracking requires an active warranty policy")
+                elif clean_override == "INHERIT":
+                    cat_pol = None
+                    if category_id:
+                        from cbpos.core.services.category_service import CategoryService
+
+                        cat = (
+                            session.get(Category, category_id) if session else CategoryService.get_category(category_id)
+                        )
+                        while cat:
+                            if cat.default_warranty_policy_id:
+                                cat_pol = (
+                                    session.get(WarrantyPolicy, cat.default_warranty_policy_id)
+                                    if session
+                                    else cls.get_policy(cat.default_warranty_policy_id)
+                                )
+                                break
+                            cat = cat.parent if cat.parent_id else None
+                    if not cat_pol or not cat_pol.is_active:
+                        raise ValueError("Serial tracking requires an active warranty policy")

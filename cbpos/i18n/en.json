@@ -236,7 +236,9 @@
     "discount_removed_qty": "Discount on {name} was removed because the quantity changed. Apply it again if needed.",
     "removed_undo": "Removed: {product} — Ctrl+Z to undo",
     "item_count": "Items: {count}",
-    "bill_discount_row": "Bill discount"
+    "bill_discount_row": "Bill discount",
+    "context_edit_serials": "Edit Serial / IMEI Numbers",
+    "confirm_discard_serials": "Reducing quantity will discard recorded serial numbers: {serials}\n\nProceed?"
   },
   "bill_discount": {
     "title": "Bill discount",
@@ -593,7 +595,11 @@
     "warranty_select_policy": "-- Select Warranty Policy --",
     "warranty_preview_none": "No warranty coverage for this product.",
     "warranty_preview_covered": "Sale today ({sale_date}) covered until {end_date} ({policy_name})",
-    "warranty_weighted_hint": "Weighted products cannot receive warranty coverage."
+    "warranty_weighted_hint": "Weighted products cannot receive warranty coverage.",
+    "serial_mode": "Ask for serial / IMEI number when selling",
+    "serial_mode_off": "Off",
+    "serial_mode_optional": "Optional",
+    "serial_mode_required": "Required"
   },
   "csv_import": {
     "title": "Import Products from CSV",
@@ -3262,7 +3268,11 @@
     "customer_not_found": "Customer not found.",
     "insufficient_stock": "Insufficient stock",
     "warranty_whole_units": "Warranty items must be sold in whole units",
-    "db_connection_lost": "Lost connection to the shop database. Check the network cable or Wi-Fi to the Main PC, then try again. Nothing was saved."
+    "db_connection_lost": "Lost connection to the shop database. Check the network cable or Wi-Fi to the Main PC, then try again. Nothing was saved.",
+    "serial_required": "Serial/IMEI number is required for '{name}'",
+    "duplicate_serial_in_cart": "Duplicate serial number '{serial}' in cart",
+    "serial_requires_warranty_policy": "Serial tracking requires an active warranty policy",
+    "serial_weighted_disallowed": "Weighted products cannot have serial tracking"
   },
   "backup_password": {
     "title_set": "Set Backup Password",
@@ -3564,5 +3574,18 @@
       "terms_translation_requires_en": "English terms must be provided when translations are present.",
       "exclusions_translation_requires_en": "English exclusions must be provided when translations are present."
     }
+  },
+  "serial_entry": {
+    "title": "Enter Serial / IMEI Numbers",
+    "hint_required": "Please enter or scan {count} serial number(s).",
+    "hint_optional": "Enter serial numbers for {count} unit(s), or Skip.",
+    "unit_label": "Unit {index}:",
+    "input_placeholder": "Scan or enter serial / IMEI",
+    "btn_skip": "Skip",
+    "err_duplicate_in_dialog": "Duplicate serial entered",
+    "err_duplicate_in_cart": "Serial already in another cart line",
+    "err_required": "Serial number is required",
+    "imei_luhn_warning": "IMEI check digit mismatch (warning)",
+    "active_warranty_warning": "Already covered by active warranty: {receipt}"
   }
 }

@@ -619,23 +619,59 @@ class TransactionService:
             )
             TransactionService._check_stock(session, cart_items, composite_map)
 
-            # Batched warranty policy resolution and whole-unit validation (#822)
+            # Batched warranty policy resolution, whole-unit and serial validation (#822, #823)
             from cbpos.core.services.warranty_service import WarrantyService
 
             policy_map: dict[int, Any] = {}
             if WarrantyService.is_enabled(session=session):
                 cart_pids = [item["product"].id for item in cart_items]
                 policy_map = WarrantyService.resolve_policies_for_products(session, cart_pids)
+                all_entered_serials: set[str] = set()
+
                 for item in cart_items:
-                    p_id = item["product"].id
-                    if policy_map.get(p_id) is not None:
-                        qty = item["qty"]
+                    prod = item["product"]
+                    p_id = prod.id
+                    has_policy = policy_map.get(p_id) is not None
+                    s_mode = getattr(prod, "serial_mode", "OFF") or "OFF"
+                    qty = item["qty"]
+
+                    if has_policy or s_mode in ("OPTIONAL", "REQUIRED"):
                         if qty <= Decimal("0") or qty % Decimal("1") != Decimal("0"):
                             from cbpos.i18n import _t
 
                             raise ValueError(
                                 _t("errors.warranty_whole_units", default="Warranty items must be sold in whole units")
                             )
+
+                    if s_mode == "REQUIRED":
+                        int_qty = int(qty)
+                        serials = item.get("serials", [])
+                        if len(serials) < int_qty or any(not s or not str(s).strip() for s in serials[:int_qty]):
+                            from cbpos.i18n import _t
+
+                            raise ValueError(
+                                _t(
+                                    "errors.serial_required",
+                                    name=getattr(prod, "name_en", ""),
+                                    default=f"Serial/IMEI number is required for '{getattr(prod, 'name_en', '')}'",
+                                )
+                            )
+
+                    # Validate cart-wide uniqueness of entered serials
+                    for s in item.get("serials", []):
+                        if s and str(s).strip():
+                            clean_s = str(s).strip().upper()
+                            if clean_s in all_entered_serials:
+                                from cbpos.i18n import _t
+
+                                raise ValueError(
+                                    _t(
+                                        "errors.duplicate_serial_in_cart",
+                                        serial=clean_s,
+                                        default=f"Duplicate serial number '{clean_s}' in cart",
+                                    )
+                                )
+                            all_entered_serials.add(clean_s)
 
             current_user = AuthService.get_current_user()
             if not current_user:
@@ -675,13 +711,15 @@ class TransactionService:
             written_items = TransactionService._write_sale_lines(session, sale, cart_items, composite_map)
             session.flush()
 
-            # 4a. Register per-unit warranties for covered lines (#822)
+            # 4a. Register per-unit warranties for covered lines (#822, #823)
             if WarrantyService.is_enabled(session=session) and policy_map:
-                items_with_policies = [
-                    (si, policy_map[si.product_id]) for si in written_items if policy_map.get(si.product_id) is not None
+                items_with_policies_and_serials = [
+                    (si, policy_map[si.product_id], c_item.get("serials", []))
+                    for si, c_item in zip(written_items, cart_items, strict=True)
+                    if policy_map.get(si.product_id) is not None
                 ]
-                if items_with_policies:
-                    WarrantyService.register_for_sale_in_session(session, sale, items_with_policies)
+                if items_with_policies_and_serials:
+                    WarrantyService.register_for_sale_in_session(session, sale, items_with_policies_and_serials)
 
             # 4b. Loyalty redemption deduction (ADR-0002)
             if sale.loyalty_points_redeemed > 0:

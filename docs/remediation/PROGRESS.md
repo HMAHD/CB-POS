@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 8 · Batch: 8.3 · Branch: feat/p8-b3-legal-about · PR: #1018 · Last session: 2026-11-12
+- Phase: 9 · Batch: 9.2 · Branch: feat/p9-b2-per-unit-warranty · PR: #1022 (pr-open) · Last session: 2026-11-12
 
 ## Issues
 
@@ -198,8 +198,8 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 | # | Title | Sev | Batch | Status | PR | Notes |
 |---|---|---|---|---|---|---|
-| #821 | Warranty W1: Warranty policies and assignment to products and categories | — | 9.1 | pr-open | | Decision D28; WarrantyPolicy model, migration, WarrantyService, product/category assignment, feature gating, UI dialogs & views |
-| #822 | Warranty W2: Register a warranty per sold unit and cascade on void or refund | — | 9.2 | todo | | |
+| #821 | Warranty W1: Warranty policies and assignment to products and categories | — | 9.1 | done | #1021 | d787378 · Decisions D28/D29; WarrantyPolicy model, migration, WarrantyService, product/category assignment, feature gating, UI dialogs & views |
+| #822 | Warranty W2: Register a warranty per sold unit and cascade on void or refund | — | 9.2 | pr-open | #1022 | Decision D30; Warranty model, migration, per-unit registration at checkout, whole-unit guard, void/refund cascades, LAN sync 1.4 |
 | #823 | Warranty W3: Optional serial/IMEI capture at checkout | — | 9.3 | todo | | |
 | #824 | Warranty W4: Print the warranty on the receipt, the A4 invoice and a standalo… | — | 9.3 | todo | | |
 | #825 | Warranty W5: Warranty lookup by receipt, serial, phone or customer | — | 9.4 | todo | | |
@@ -310,8 +310,9 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #819 | Physical print of product labels on 50x30 mm, 40x25 mm, 58 mm receipt paper with Sinhala/Tamil text and real barcode scanning | pending |
 
 ## Handoff
-Batch 8.4 merged in PR #1020 (9215d115e4787a2d4808383f2dc5a7ce6b825be6).
-Phase 9 Batch 9.1 started on branch `feat/p9-b1-warranty-policies` (Decision D28):
-- Working on #821 (Warranty policies and assignment to products and categories).
+Batch 9.1 merged in PR #1021 (d7873780e3a1407df1d3c877f10ced718b9cb4ae).
+Phase 9 Batch 9.2 implemented on branch `feat/p9-b2-per-unit-warranty`:
+- Implemented #822 (Warranty W2: Register a warranty per sold unit and cascade on void or refund) with Decision D30 adherence, technical design note (`docs/remediation/designs/822-per-unit-warranty.md`), EGM Goldfish review approval, Alembic migration (`f2a3b4c5d6e7`), `Warranty` model, whole-unit guard, void/refund cascades, LAN sync protocol 1.4, and full test suite passing.
+- PR is open for review. Do not merge until human review.
 - #817 and #819 release gates remain active blockers for public distribution.
 

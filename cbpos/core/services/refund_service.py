@@ -748,6 +748,16 @@ class RefundService:
                 )
                 session.add(sp)
 
+            # 9b. Per-unit warranty cancellation (#822)
+            from cbpos.core.services.warranty_service import WarrantyService
+
+            WarrantyService.cancel_units_for_refund_in_session(
+                session=session,
+                refund_sale=refund_sale,
+                refund_lines=[(req.sale_item_id, req.qty) for req in lines],
+                actor_id=user_id,
+            )
+
             # 10. Audit log entries
             session.add(
                 AuditLog(

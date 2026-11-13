@@ -600,9 +600,14 @@ class TaxInvoiceService:
 
         db = Database()
         with db.get_session() as session:
+            from cbpos.core.models import Sale
+
             inv = (
                 session.query(TaxInvoice)
-                .options(joinedload(TaxInvoice.lines))
+                .options(
+                    joinedload(TaxInvoice.lines),
+                    joinedload(TaxInvoice.sale).joinedload(Sale.warranties),
+                )
                 .filter_by(id=invoice_id)
                 .with_for_update()
                 .first()

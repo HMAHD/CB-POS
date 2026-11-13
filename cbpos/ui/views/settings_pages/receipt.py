@@ -302,6 +302,37 @@ class ReceiptPage(SettingsPage):
         staff_form.addRow("", self.chk_show_terminal)
         vbox_display.addLayout(staff_form)
 
+        # Section: Warranty (#824)
+        self.warranty_container = QWidget()
+        w_layout = QVBoxLayout(self.warranty_container)
+        w_layout.setContentsMargins(0, 0, 0, 0)
+        w_layout.setSpacing(10)
+
+        self._header_warranty = self._make_section_header("settings.receipt.section_warranty")
+        w_layout.addWidget(self._header_warranty)
+
+        warranty_form = QFormLayout()
+        self.configure_form_layout(warranty_form)
+        warranty_form.setContentsMargins(0, 0, 0, 0)
+        warranty_form.setVerticalSpacing(10)
+
+        self.chk_show_warranty = QCheckBox()
+        warranty_form.addRow("", self.chk_show_warranty)
+
+        self.combo_warranty_card_mode = QComboBox()
+        self.combo_warranty_card_mode.addItem(_t("settings.receipt.warranty_card_mode_off", default="Off"), "OFF")
+        self.combo_warranty_card_mode.addItem(
+            _t("settings.receipt.warranty_card_mode_ask", default="Ask after checkout"), "ASK"
+        )
+        self.combo_warranty_card_mode.addItem(
+            _t("settings.receipt.warranty_card_mode_always", default="Always print"), "ALWAYS"
+        )
+        self._lbl_warranty_card_mode = QLabel()
+        warranty_form.addRow(self._lbl_warranty_card_mode, self.combo_warranty_card_mode)
+
+        w_layout.addLayout(warranty_form)
+        vbox_display.addWidget(self.warranty_container)
+
         vbox_display.addStretch()
 
         self.tabs.addTab(tab_display, "")
@@ -377,6 +408,23 @@ class ReceiptPage(SettingsPage):
         self.chk_show_cashier.setToolTip(_t("settings.receipt.tooltip_show_cashier"))
         self.chk_show_terminal.setText(_t("settings.receipt.chk_show_terminal"))
         self.chk_show_terminal.setToolTip(_t("settings.receipt.tooltip_show_terminal"))
+
+        # Warranty section (#824)
+        if hasattr(self, "chk_show_warranty"):
+            self.chk_show_warranty.setText(
+                _t("settings.receipt.show_warranty_on_receipt", default="Show warranty details on receipt")
+            )
+            self._lbl_warranty_card_mode.setText(
+                _t("settings.receipt.warranty_card_mode", default="Print warranty cards")
+            )
+            self.combo_warranty_card_mode.setItemText(0, _t("settings.receipt.warranty_card_mode_off", default="Off"))
+            self.combo_warranty_card_mode.setItemText(
+                1, _t("settings.receipt.warranty_card_mode_ask", default="Ask after checkout")
+            )
+            self.combo_warranty_card_mode.setItemText(
+                2, _t("settings.receipt.warranty_card_mode_always", default="Always print")
+            )
+
         self.equalize_form_labels()
 
     # ------------------------------------------------------------------
@@ -399,6 +447,9 @@ class ReceiptPage(SettingsPage):
         self.txt_qr_content.textChanged.connect(trigger)
         self.chk_show_cashier.stateChanged.connect(trigger)
         self.chk_show_terminal.stateChanged.connect(trigger)
+        if hasattr(self, "chk_show_warranty"):
+            self.chk_show_warranty.stateChanged.connect(trigger)
+            self.combo_warranty_card_mode.currentIndexChanged.connect(trigger)
 
     def _schedule_refresh(self) -> None:
         """Restart the debounce timer -- preview refreshes after 300 ms of inactivity."""
@@ -501,6 +552,20 @@ class ReceiptPage(SettingsPage):
         self.chk_show_cashier.setChecked(settings.get("show_cashier_on_receipt", _d["show_cashier_on_receipt"]))
         self.chk_show_terminal.setChecked(settings.get("show_terminal_on_receipt", _d["show_terminal_on_receipt"]))
 
+        # Warranty section (#824)
+        if hasattr(self, "warranty_container"):
+            from cbpos.core.services.warranty_service import WarrantyService
+
+            w_enabled = WarrantyService.is_enabled()
+            self.warranty_container.setVisible(w_enabled)
+            self.chk_show_warranty.setChecked(
+                settings.get("show_warranty_on_receipt", _d.get("show_warranty_on_receipt", True))
+            )
+            w_mode = settings.get("warranty_card_mode", _d.get("warranty_card_mode", "ASK"))
+            idx_m = self.combo_warranty_card_mode.findData(w_mode)
+            if idx_m >= 0:
+                self.combo_warranty_card_mode.setCurrentIndex(idx_m)
+
         # Receipt language
         receipt_lang = settings.get("receipt_language", "")
         idx = self.combo_receipt_lang.findData(receipt_lang)
@@ -531,6 +596,12 @@ class ReceiptPage(SettingsPage):
             "receipt_qr_content": self.txt_qr_content.text().strip(),
             "show_cashier_on_receipt": self.chk_show_cashier.isChecked(),
             "show_terminal_on_receipt": self.chk_show_terminal.isChecked(),
+            "show_warranty_on_receipt": self.chk_show_warranty.isChecked()
+            if hasattr(self, "chk_show_warranty")
+            else True,
+            "warranty_card_mode": self.combo_warranty_card_mode.currentData()
+            if hasattr(self, "combo_warranty_card_mode")
+            else "ASK",
             "receipt_language": self.combo_receipt_lang.currentData() or "",
         }
 

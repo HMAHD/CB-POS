@@ -236,7 +236,9 @@
     "discount_removed_qty": "Discount on {name} was removed because the quantity changed. Apply it again if needed.",
     "removed_undo": "Removed: {product} — Ctrl+Z to undo",
     "item_count": "Items: {count}",
-    "bill_discount_row": "Bill discount"
+    "bill_discount_row": "Bill discount",
+    "context_edit_serials": "&Edit Serial / IMEI Numbers",
+    "confirm_discard_serials": "Reducing quantity will discard recorded serial numbers: {serials}\n\nProceed?"
   },
   "bill_discount": {
     "title": "Bill discount",
@@ -360,7 +362,9 @@
     "pdf_error_message": "Failed to save receipt PDF: {error}",
     "email_sent": "Receipt sent to {email}.",
     "email_failed": "Couldn't send the email: {reason}. The sale is saved; you can resend it from Sale History.",
-    "email_not_configured": "Email isn't set up. Set it up in Settings → Email."
+    "email_not_configured": "Email isn't set up. Set it up in Settings → Email.",
+    "btn_print_warranty_cards": "Print Warranty Card(s)",
+    "warranty_print_success": "Warranty card(s) queued for printing"
   },
   "receipt": {
     "email_sent": "Receipt sent to {email}.",
@@ -593,7 +597,11 @@
     "warranty_select_policy": "-- Select Warranty Policy --",
     "warranty_preview_none": "No warranty coverage for this product.",
     "warranty_preview_covered": "Sale today ({sale_date}) covered until {end_date} ({policy_name})",
-    "warranty_weighted_hint": "Weighted products cannot receive warranty coverage."
+    "warranty_weighted_hint": "Weighted products cannot receive warranty coverage.",
+    "serial_mode": "Ask for serial / IMEI number when selling",
+    "serial_mode_off": "Off",
+    "serial_mode_optional": "Optional",
+    "serial_mode_required": "Required"
   },
   "csv_import": {
     "title": "Import Products from CSV",
@@ -2004,7 +2012,13 @@
       "section_receipt_language": "Receipt Language",
       "receipt_language": "Print language:",
       "receipt_language_hint": "Print receipts in a different language than the UI. Useful when operators work in English but customers need receipts in Sinhala or Tamil.",
-      "lang_same_as_ui": "Same as UI language"
+      "lang_same_as_ui": "Same as UI language",
+      "section_warranty": "Warranty",
+      "show_warranty_on_receipt": "Show warranty details on receipt",
+      "warranty_card_mode": "Print warranty cards:",
+      "warranty_card_mode_off": "Off",
+      "warranty_card_mode_ask": "Ask after checkout",
+      "warranty_card_mode_always": "Always print"
     },
     "system": {
       "title": "System",
@@ -2287,7 +2301,26 @@
     "refund_off_credit": "Off credit: {amount}",
     "loyalty_earned": "Points Earned:",
     "loyalty_redeemed": "Points Redeemed:",
-    "loyalty_balance": "Points Balance:"
+    "loyalty_balance": "Points Balance:",
+    "warranty_label": "Warranty",
+    "warranty_until": "until {date}",
+    "warranty_serial": "S/N: {serial}",
+    "warranty_terms_title": "WARRANTY TERMS & CONDITIONS",
+    "warranty_exclusions_title": "Exclusions",
+    "warranty_card_title": "WARRANTY CERTIFICATE",
+    "warranty_card_invoice": "Invoice",
+    "warranty_card_remedy": "Remedy",
+    "warranty_stamp_title": "OFFICIAL SHOP STAMP",
+    "warranty_unit_days": "Days",
+    "warranty_unit_months": "Months",
+    "warranty_unit_years": "Years",
+    "warranty_type_shop": "Shop",
+    "warranty_type_manufacturer": "Manufacturer",
+    "warranty_type_extended": "Extended",
+    "warranty_remedy_repair_or_replace": "Repair or Replace",
+    "warranty_remedy_repair_only": "Repair Only",
+    "warranty_remedy_replace_only": "Replace Only",
+    "warranty_remedy_refund": "Refund"
   },
   "cash_movement": {
     "record_title_out": "Take money out of the drawer",
@@ -2767,7 +2800,9 @@
     "sending": "Sending...",
     "walk_in": "Walk-in",
     "preview_title": "Receipt Preview",
-    "select_to_preview": "Select a transaction to preview receipt"
+    "select_to_preview": "Select a transaction to preview receipt",
+    "btn_reprint_warranty": "Reprint Warranty",
+    "no_warranties": "No warranties on this sale"
   },
   "shift_closing": {
     "title": "Close Shift",
@@ -3262,7 +3297,11 @@
     "customer_not_found": "Customer not found.",
     "insufficient_stock": "Insufficient stock",
     "warranty_whole_units": "Warranty items must be sold in whole units",
-    "db_connection_lost": "Lost connection to the shop database. Check the network cable or Wi-Fi to the Main PC, then try again. Nothing was saved."
+    "db_connection_lost": "Lost connection to the shop database. Check the network cable or Wi-Fi to the Main PC, then try again. Nothing was saved.",
+    "serial_required": "Serial/IMEI number is required for '{name}'",
+    "duplicate_serial_in_cart": "Duplicate serial number '{serial}' in cart",
+    "serial_requires_warranty_policy": "Serial tracking requires an active warranty policy",
+    "serial_weighted_disallowed": "Weighted products cannot have serial tracking"
   },
   "backup_password": {
     "title_set": "Set Backup Password",
@@ -3350,7 +3389,10 @@
     "bank_account": "Account No: {number}",
     "bank_branch": "Branch: {name}",
     "authorized_signature": "Authorized Signature",
-    "received_by": "Received By"
+    "received_by": "Received By",
+    "warranty_label": "Warranty",
+    "warranty_terms_title": "Warranty Terms & Conditions",
+    "warranty_exclusions_title": "Exclusions"
   },
   "time": {
     "just_now": "Just now",
@@ -3564,5 +3606,22 @@
       "terms_translation_requires_en": "English terms must be provided when translations are present.",
       "exclusions_translation_requires_en": "English exclusions must be provided when translations are present."
     }
+  },
+  "serial_entry": {
+    "title": "Enter Serial / IMEI Numbers",
+    "hint_required": "Please enter or scan {count} serial number(s).",
+    "hint_optional": "Enter serial numbers for {count} unit(s), or Skip.",
+    "unit_label": "Unit {index}:",
+    "input_placeholder": "Scan or enter serial / IMEI",
+    "btn_skip": "Skip",
+    "err_duplicate_in_dialog": "Duplicate serial entered",
+    "err_duplicate_in_cart": "Serial already in another cart line",
+    "err_required": "Serial number is required",
+    "imei_luhn_warning": "IMEI check digit mismatch (warning)",
+    "active_warranty_warning": "Already covered by active warranty: {receipt}"
+  },
+  "warranty_card": {
+    "prompt_title": "Warranty Cards",
+    "prompt_message": "Print warranty card(s) for this sale?"
   }
 }

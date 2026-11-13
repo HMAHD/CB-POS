@@ -236,7 +236,9 @@
     "discount_removed_qty": "ප්‍රමාණය වෙනස් වූ නිසා {name} සඳහා තිබූ වට්ටම ඉවත් විය. අවශ්‍ය නම් නැවත යොදන්න.",
     "removed_undo": "අයින් කළා: {product} — නැවත ගන්න Ctrl+Z",
     "item_count": "අයිතම: {count}",
-    "bill_discount_row": "බිල්පත් වට්ටම"
+    "bill_discount_row": "බිල්පත් වට්ටම",
+    "context_edit_serials": "&අනුක්‍රමික / IMEI අංක සංස්කරණය",
+    "confirm_discard_serials": "ප්‍රමාණය අඩු කිරීමෙන් සටහන් කළ අනුක්‍රමික අංක ඉවත් වේ: {serials}\n\nඉදිරියට යනවාද?"
   },
   "bill_discount": {
     "title": "බිල්පත් වට්ටම",
@@ -360,7 +362,9 @@
     "pdf_error_message": "රිසිට් PDF එක සේව් කරන්න බැරි උනා: {error}",
     "email_sent": "{email} ට රිසිට්පත යැව්වා.",
     "email_failed": "ඊමේල් එක යවන්න බැරි වුණා: {reason}. විකිණීම සේව් වෙලා තියෙන්නේ; විකුණුම් ඉතිහාසයෙන් ආයෙත් යවන්න පුළුවන්.",
-    "email_not_configured": "ඊමේල් සකස් කර නැත. සැකසුම් → ඊමේල් වෙතින් සකසන්න."
+    "email_not_configured": "ඊමේල් සකස් කර නැත. සැකසුම් → ඊමේල් වෙතින් සකසන්න.",
+    "btn_print_warranty_cards": "වගකීම් කාඩ්පත් මුද්‍රණය",
+    "warranty_print_success": "වගකීම් කාඩ්පත් මුද්‍රණය සඳහා යොමු කෙරිණි"
   },
   "receipt": {
     "email_sent": "{email} ට රිසිට්පත යැව්වා.",
@@ -593,7 +597,11 @@
     "warranty_select_policy": "-- වගකීම් ප්‍රතිපත්තිය තෝරන්න --",
     "warranty_preview_none": "මෙම භාණ්ඩය සඳහා වගකීම් ආවරණයක් නොමැත.",
     "warranty_preview_covered": "අද විකිණීම ({sale_date}) {end_date} දක්වා ආවරණය වේ ({policy_name})",
-    "warranty_weighted_hint": "බර අනුව විකුණන භාණ්ඩ සඳහා වගකීම් ආවරණයක් ලබා දිය නොහැක."
+    "warranty_weighted_hint": "බර අනුව විකුණන භාණ්ඩ සඳහා වගකීම් ආවරණයක් ලබා දිය නොහැක.",
+    "serial_mode": "විකිණීමේදී අනුක්‍රමික / IMEI අංකය විමසන්න",
+    "serial_mode_off": "අක්‍රියයි",
+    "serial_mode_optional": "විකල්ප",
+    "serial_mode_required": "අනිවාර්යයි"
   },
   "csv_import": {
     "title": "CSV ආයාතය",
@@ -1967,7 +1975,13 @@
       "section_receipt_language": "රිසිට් භාෂාව",
       "receipt_language": "ප්‍රින්ට් භාෂාව:",
       "receipt_language_hint": "UI එකට වඩා වෙනස් භාෂාවකින් රිසිට් ප්‍රින්ට් කරන්න. ක්‍රියාකරුවෝ ඉංග්‍රීසියෙන් වැඩ කරද්දී පාරිභෝගිකයන්ට සිංහල හෝ දෙමළ රිසිට් ඕන නම් ප්‍රයෝජනවත්.",
-      "lang_same_as_ui": "UI භාෂාවම"
+      "lang_same_as_ui": "UI භාෂාවම",
+      "section_warranty": "වගකීම",
+      "show_warranty_on_receipt": "රිසිට්පතෙහි වගකීම් විස්තර පෙන්වන්න",
+      "warranty_card_mode": "වගකීම් කාඩ්පත් මුද්‍රණය:",
+      "warranty_card_mode_off": "අක්‍රියයි",
+      "warranty_card_mode_ask": "ගෙවීමෙන් පසු විමසන්න",
+      "warranty_card_mode_always": "සෑමවිටම මුද්‍රණය කරන්න"
     },
     "system": {
       "title": "සිස්ටම් එක",
@@ -2250,7 +2264,26 @@
     "refund_off_credit": "ණයෙන් අඩු කළා: {amount}",
     "loyalty_earned": "ලබාගත් ලකුණු:",
     "loyalty_redeemed": "භාවිත කළ ලකුණු:",
-    "loyalty_balance": "ලකුණු ශේෂය:"
+    "loyalty_balance": "ලකුණු ශේෂය:",
+    "warranty_label": "වගකීම",
+    "warranty_until": "{date} දක්වා",
+    "warranty_serial": "අනුක්‍රමික අංකය: {serial}",
+    "warranty_terms_title": "වගකීම් කොන්දේසි",
+    "warranty_exclusions_title": "බැහැර කිරීම්",
+    "warranty_card_title": "වගකීම් සහතිකය",
+    "warranty_card_invoice": "ඉන්වොයිසිය",
+    "warranty_card_remedy": "ප්‍රතිකර්මය",
+    "warranty_stamp_title": "නිල වෙළඳසැල් මුද්‍රාව",
+    "warranty_unit_days": "දින",
+    "warranty_unit_months": "මාස",
+    "warranty_unit_years": "වසර",
+    "warranty_type_shop": "කඩේ",
+    "warranty_type_manufacturer": "නිෂ්පාදක",
+    "warranty_type_extended": "දීර්ඝ කළ",
+    "warranty_remedy_repair_or_replace": "අලුත්වැඩියාව හෝ ආදේශනය",
+    "warranty_remedy_repair_only": "අලුත්වැඩියාව පමණි",
+    "warranty_remedy_replace_only": "ආදේශනය පමණි",
+    "warranty_remedy_refund": "මුදල් ආපසු ගෙවීම"
   },
   "cash_movement": {
     "record_title_out": "ලාච්චුවෙන් මුදල් ගන්න",
@@ -2730,7 +2763,9 @@
     "sending": "යවමින්...",
     "walk_in": "සාමාන්‍ය පාරිභෝගිකයා",
     "preview_title": "රිසිට් පෙරදසුන",
-    "select_to_preview": "පෙරදසුන බලන්න විකුණුමක් තෝරන්න"
+    "select_to_preview": "පෙරදසුන බලන්න විකුණුමක් තෝරන්න",
+    "btn_reprint_warranty": "වගකීම් පත්‍රය නැවත මුද්‍රණය",
+    "no_warranties": "මෙම විකිණුමේ වගකීම් නොමැත"
   },
   "shift_closing": {
     "title": "මුරය වසීම",
@@ -3262,7 +3297,11 @@
     "customer_not_found": "පාරිභෝගිකයා හම්බ වුනේ නැහැ.",
     "insufficient_stock": "ප්‍රමාණවත් තොග නැහැ",
     "warranty_whole_units": "වගකීම් සහිත භාණ්ඩ සම්පූර්ණ ඒකක වලින් පමණක් විකිණිය යුතුය",
-    "db_connection_lost": "කඩේ ඩේටාබේස් එකත් එක්ක තිබ්බ සම්බන්ධය නැති වුණා. ප්‍රධාන පරිගණකයට (Main PC) යන නෙට්වර්ක් කේබලය හෝ Wi-Fi පරීක්ෂා කරලා ආයෙත් උත්සාහ කරන්න. කිසිවක් සේව් වුණේ නැහැ."
+    "db_connection_lost": "කඩේ ඩේටාබේස් එකත් එක්ක තිබ්බ සම්බන්ධය නැති වුණා. ප්‍රධාන පරිගණකයට (Main PC) යන නෙට්වර්ක් කේබලය හෝ Wi-Fi පරීක්ෂා කරලා ආයෙත් උත්සාහ කරන්න. කිසිවක් සේව් වුණේ නැහැ.",
+    "serial_required": "'{name}' සඳහා අනුක්‍රමික / IMEI අංකය අනිවාර්ය වේ",
+    "duplicate_serial_in_cart": "කරත්තයේ අනුක්‍රමික අංකය දෙවරක් යොදා ඇත: '{serial}'",
+    "serial_requires_warranty_policy": "අනුක්‍රමික අංක ලුහුබැඳීම සඳහා සක්‍රිය වගකීම් ප්‍රතිපත්තියක් අවශ්‍ය වේ",
+    "serial_weighted_disallowed": "බර මනින භාණ්ඩ සඳහා අනුක්‍රමික අංක ලුහුබැඳීම කළ නොහැක"
   },
   "backup_password": {
     "title_set": "බැකප් මුරපදය සෙට් කරන්න",
@@ -3350,7 +3389,10 @@
     "bank_account": "ගිණුම් අංකය: {number}",
     "bank_branch": "ශාඛාව: {name}",
     "authorized_signature": "බලයලත් අත්සන",
-    "received_by": "භාර ගත්තේ"
+    "received_by": "භාර ගත්තේ",
+    "warranty_label": "වගකීම",
+    "warranty_terms_title": "වගකීම් කොන්දේසි",
+    "warranty_exclusions_title": "බැහැර කිරීම්"
   },
   "time": {
     "just_now": "දැන්",
@@ -3564,5 +3606,22 @@
       "terms_translation_requires_en": "පරිවර්තන ඇති විට ඉංග්‍රීසි කොන්දේසි ලබා දිය යුතුය.",
       "exclusions_translation_requires_en": "පරිවර්තන ඇති විට ඉංග්‍රීසි බැහැර කිරීම් ලබා දිය යුතුය."
     }
+  },
+  "serial_entry": {
+    "title": "අනුක්‍රමික / IMEI අංක ඇතුළත් කරන්න",
+    "hint_required": "කරුණාකර අනුක්‍රමික අංක {count} ක් ඇතුළත් කරන්න හෝ ස්කෑන් කරන්න.",
+    "hint_optional": "ඒකක {count} ක් සඳහා අනුක්‍රමික අංක ඇතුළත් කරන්න, නැතහොත් මඟහරින්න.",
+    "unit_label": "ඒකකය {index}:",
+    "input_placeholder": "අනුක්‍රමික / IMEI ස්කෑන් කරන්න හෝ ඇතුළත් කරන්න",
+    "btn_skip": "මඟහරින්න",
+    "err_duplicate_in_dialog": "ඇතුළත් කළ අනුක්‍රමික අංකය දැනටමත් තිබේ",
+    "err_duplicate_in_cart": "මෙම අනුක්‍රමික අංකය කරත්තයේ වෙනත් පේළියක ඇත",
+    "err_required": "අනුක්‍රමික අංකය අනිවාර්යයි",
+    "imei_luhn_warning": "IMEI පරීක්ෂණ අංකය නොගැලපේ (අවවාදයයි)",
+    "active_warranty_warning": "දැනටමත් සක්‍රිය වගකීමකින් ආවරණය වී ඇත: {receipt}"
+  },
+  "warranty_card": {
+    "prompt_title": "වගකීම් කාඩ්පත්",
+    "prompt_message": "මෙම විකිණුම සඳහා වගකීම් කාඩ්පත් මුද්‍රණය කරනවාද?"
   }
 }

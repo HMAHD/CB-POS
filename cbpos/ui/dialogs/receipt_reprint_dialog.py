@@ -197,6 +197,13 @@ class ReceiptReprintDialog(QDialog):
         self.btn_reprint.clicked.connect(self.reprint_selected)
         btn_layout.addWidget(self.btn_reprint)
 
+        self.btn_reprint_warranty = QPushButton(_t("receipt_reprint.btn_reprint_warranty", default="Reprint Warranty"))
+        self.btn_reprint_warranty.setObjectName("BtnReprintWarranty")
+        self.btn_reprint_warranty.setProperty("class", "secondary")
+        self.btn_reprint_warranty.setEnabled(False)
+        self.btn_reprint_warranty.clicked.connect(self.reprint_warranty_selected)
+        btn_layout.addWidget(self.btn_reprint_warranty)
+
         self.btn_close = QPushButton(_t("common.close"))
         self.btn_close.setObjectName("BtnCancel")
         self.btn_close.setProperty("class", "secondary")
@@ -220,6 +227,7 @@ class ReceiptReprintDialog(QDialog):
             self.lbl_preview_prompt.setVisible(True)
             self.preview_scroll.setVisible(False)
             self.btn_reprint.setEnabled(False)
+            self.btn_reprint_warranty.setEnabled(False)
             return
 
         row = current.row()
@@ -232,6 +240,7 @@ class ReceiptReprintDialog(QDialog):
             self.lbl_preview_prompt.setVisible(True)
             self.preview_scroll.setVisible(False)
             self.btn_reprint.setEnabled(False)
+            self.btn_reprint_warranty.setEnabled(False)
             self.btn_reprint.setToolTip(_t("reprint.void_blocked"))
             return
 
@@ -258,11 +267,13 @@ class ReceiptReprintDialog(QDialog):
             self.lbl_preview_prompt.setVisible(False)
             self.preview_scroll.setVisible(True)
             self.btn_reprint.setEnabled(True)
+            self.btn_reprint_warranty.setEnabled(bool(getattr(sale, "warranties", [])))
         except Exception as e:
             logger.error("Failed to build reprint preview for sale %s: %s", getattr(sale, "id", None), e)
             self.lbl_preview_prompt.setVisible(True)
             self.preview_scroll.setVisible(False)
             self.btn_reprint.setEnabled(False)
+            self.btn_reprint_warranty.setEnabled(False)
 
     def _on_filter_clicked(self, key: str) -> None:
         """Handle quick filter button click."""
@@ -435,6 +446,65 @@ class ReceiptReprintDialog(QDialog):
                 QMessageBox.critical(self, _t("common.error"), _t("receipt_reprint.reprint_failed"))
         except Exception as e:
             logger.error(f"Reprint failed: {e}")
+            QMessageBox.critical(self, _t("common.error"), _t("receipt_reprint.reprint_failed"))
+
+    def reprint_warranty_selected(self) -> None:
+        """Reprint warranty cards for the selected sale (#824)."""
+        row = self.results_table.currentRow()
+        if row < 0:
+            QMessageBox.warning(self, _t("receipt_reprint.no_selection"), _t("receipt_reprint.select_sale"))
+            return
+
+        sale = self.results[row]
+        if getattr(sale, "status", "") == "VOID":
+            QMessageBox.warning(self, _t("common.warning"), _t("reprint.void_blocked"))
+            return
+
+        from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.services.auth_service import AuthService
+        from cbpos.core.services.receipt_reprint_service import ReceiptReprintService
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+
+        authorized_user = check_permission_with_override(Permissions.SALES_REPRINT, self)
+        if not authorized_user:
+            return
+
+        current_user = AuthService.get_current_user()
+        if not current_user and hasattr(self, "user"):
+            current_user = self.user
+
+        def _get_id(u):
+            try:
+                return u.id
+            except Exception:
+                return None
+
+        curr_id = _get_id(current_user)
+        auth_id = _get_id(authorized_user)
+        user_id = curr_id or auth_id
+        approver_id = auth_id if (auth_id and curr_id and auth_id != curr_id) else None
+
+        try:
+            commands = ReceiptReprintService.reprint_warranty_cards(
+                sale.id,
+                user_id=user_id,
+                approver_id=approver_id,
+            )
+            worker = PrintWorker.instance()
+            self._reprint_job_id = worker.add_job("print_commands", commands)
+        except ValueError as e:
+            if str(e) == "reprint_void":
+                QMessageBox.warning(self, _t("common.warning"), _t("reprint.void_blocked"))
+            elif str(e) == "no_warranties":
+                QMessageBox.warning(
+                    self,
+                    _t("common.warning"),
+                    _t("receipt_reprint.no_warranties", default="No warranties on this sale"),
+                )
+            else:
+                QMessageBox.critical(self, _t("common.error"), _t("receipt_reprint.reprint_failed"))
+        except Exception as e:
+            logger.error(f"Reprint warranty failed: {e}")
             QMessageBox.critical(self, _t("common.error"), _t("receipt_reprint.reprint_failed"))
 
     def _on_reprint_job_result(self, job_id: str, ok: bool, message: str) -> None:

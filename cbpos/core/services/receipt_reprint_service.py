@@ -70,6 +70,8 @@ class ReceiptReprintService:
                 session.query(Sale)
                 .options(
                     joinedload(Sale.items).joinedload(SaleItem.product),
+                    joinedload(Sale.items).joinedload(SaleItem.warranties),
+                    joinedload(Sale.warranties),
                     joinedload(Sale.payments),
                     joinedload(Sale.customer),
                     joinedload(Sale.user),
@@ -147,3 +149,79 @@ class ReceiptReprintService:
                 is_refund=is_refund,
                 sale_id=sale.id,
             )
+
+    @classmethod
+    def reprint_warranty_cards(
+        cls,
+        sale_id: int,
+        user_id: int,
+        approver_id: int | None = None,
+        config_override: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Reprint warranty cards for the specified sale (#824).
+
+        Enforces:
+        - Permission check: authorizer has Permissions.SALES_REPRINT or Permissions.WARRANTY_VIEW.
+        - Refuses VOID sales: raises ValueError("reprint_void").
+        - Requires warranties on sale: raises ValueError("no_warranties").
+        - Builds thermal command list via WarrantyCardBuilder with is_reprint=True.
+        - Writes exactly one REPRINT_WARRANTY_CARD AuditLog row.
+        """
+        db = Database()
+        with db.get_session() as session:
+            actor = session.get(User, user_id)
+            approver = session.get(User, approver_id) if approver_id else None
+            authorizing_user = approver or actor
+
+            can_reprint = authorizing_user and (
+                PermissionService.user_has_permission(authorizing_user, Permissions.SALES_REPRINT)
+                or PermissionService.user_has_permission(authorizing_user, Permissions.WARRANTY_VIEW)
+            )
+            if not can_reprint:
+                raise PermissionError("permission_denied")
+
+            sale = (
+                session.query(Sale)
+                .options(
+                    joinedload(Sale.warranties),
+                    joinedload(Sale.customer),
+                    joinedload(Sale.user),
+                )
+                .filter(Sale.id == sale_id)
+                .first()
+            )
+            if not sale:
+                raise ValueError("sale_not_found")
+
+            if sale.status == "VOID":
+                raise ValueError("reprint_void")
+
+            if not getattr(sale, "warranties", None):
+                raise ValueError("no_warranties")
+
+            from cbpos.core.constants.audit import REPRINT_WARRANTY_CARD, WARRANTY_EVENT
+            from cbpos.core.services.warranty_card_builder import WarrantyCardBuilder
+
+            commands = WarrantyCardBuilder.build_escpos(
+                sale.warranties,
+                config_override=config_override,
+                is_reprint=True,
+            )
+
+            doc_number = sale.document_number or str(sale.id)
+            actor_name = actor.username if actor else str(user_id)
+            if approver:
+                details = f"Reprinted warranty cards for sale {doc_number} ({len(sale.warranties)} units) (Actor: {actor_name}, Approver: {approver.username})"
+            else:
+                details = f"Reprinted warranty cards for sale {doc_number} ({len(sale.warranties)} units) (User: {actor_name})"
+
+            audit = AuditLog(
+                user_id=authorizing_user.id,
+                action=REPRINT_WARRANTY_CARD,
+                event_type=WARRANTY_EVENT,
+                details=details,
+            )
+            session.add(audit)
+            session.commit()
+
+            return commands

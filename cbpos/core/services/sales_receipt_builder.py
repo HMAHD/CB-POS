@@ -21,7 +21,16 @@ logger = logging.getLogger(__name__)
 class ItemDisplay:
     """Helper class for merged items display."""
 
-    __slots__ = ("is_manual_price", "name", "original_price", "product", "qty", "subtotal", "unit_price")
+    __slots__ = (
+        "is_manual_price",
+        "name",
+        "original_price",
+        "product",
+        "qty",
+        "subtotal",
+        "unit_price",
+        "warranties",
+    )
 
     def __init__(
         self,
@@ -32,6 +41,7 @@ class ItemDisplay:
         name: str,
         original_price: Any = None,
         is_manual_price: bool = False,
+        warranties: list[Any] | None = None,
     ) -> None:
         """Store the fields needed to render one (possibly merged) receipt line."""
         self.product = product
@@ -41,6 +51,25 @@ class ItemDisplay:
         self.name = name
         self.original_price = original_price
         self.is_manual_price = is_manual_price
+        self.warranties = list(warranties or [])
+
+
+def _safe_warranties(obj: Any) -> list[Any]:
+    from sqlalchemy import inspect as sa_inspect
+    from sqlalchemy.orm.state import InstanceState
+
+    try:
+        insp = sa_inspect(obj, raiseerr=False)
+        if isinstance(insp, InstanceState):
+            if insp.detached and "warranties" not in insp.dict:
+                return []
+    except Exception:
+        pass
+    try:
+        val = getattr(obj, "warranties", None)
+        return list(val) if val else []
+    except Exception:
+        return []
 
 
 class SalesReceiptBuilder(BaseReceiptBuilder):
@@ -167,6 +196,31 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
                 detail = f"   {qty_text} x {format_currency(price)}"
                 commands.append(cls._split_row(detail, format_currency(total), line_chars))
 
+            # Warranty coverage sub-lines (#824)
+            if gc("show_warranty_on_receipt", True, config_override):
+                item_warranties = getattr(item, "warranties", []) or []
+                if item_warranties:
+                    first_w = item_warranties[0]
+                    u_key = f"warranty_unit_{first_w.duration_unit.lower()}"
+                    u_str = cls._rt(u_key, default=first_w.duration_unit.capitalize())
+                    p_str = f" ({first_w.provider_name})" if first_w.provider_name else ""
+                    dt_str = first_w.end_date.strftime("%Y-%m-%d") if first_w.end_date else ""
+                    until_str = cls._rt("warranty_until", date=dt_str, default=f"until {dt_str}")
+                    status_note = ""
+                    if is_reprint and first_w.status in ("VOID", "CANCELLED"):
+                        status_note = f" [{first_w.status}]"
+                    w_text = f"   {cls._rt('warranty_label', default='Warranty')}: {first_w.duration} {u_str}{p_str} {until_str}{status_note}"
+                    commands.append({"type": "text", "val": w_text, "align": "left"})
+
+                    for w in item_warranties:
+                        if w.serial_number:
+                            sn_text = cls._rt(
+                                "warranty_serial",
+                                serial=w.serial_number,
+                                default=f"S/N: {w.serial_number}",
+                            )
+                            commands.append({"type": "text", "val": f"   {sn_text}", "align": "left"})
+
         # Items count + totals
         commands.append(_sep())
         item_count = len(display_items)
@@ -242,6 +296,37 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
                 commands.append(cls._split_row(cls._rt("change_label"), format_currency(change), line_chars, bold=True))
 
         commands.append(_sep())
+
+        # Warranty terms & conditions snapshot (#824)
+        sale_warranties = _safe_warranties(sale)
+        if gc("show_warranty_on_receipt", True, config_override) and sale_warranties:
+            distinct_terms = []
+            seen_policies = set()
+            for w in sale_warranties:
+                t_key = (w.terms_text or "", w.exclusions_text or "")
+                if (w.terms_text or w.exclusions_text) and t_key not in seen_policies:
+                    seen_policies.add(t_key)
+                    distinct_terms.append(w)
+
+            if distinct_terms:
+                commands.append(
+                    {
+                        "type": "text",
+                        "val": cls._rt("warranty_terms_title", default="WARRANTY TERMS & CONDITIONS"),
+                        "align": "center",
+                        "bold": True,
+                    }
+                )
+                for dt in distinct_terms:
+                    if dt.terms_text:
+                        for line in cls._wrap_free_text(dt.terms_text, line_chars):
+                            commands.append({"type": "text", "val": line, "align": "left"})
+                    if dt.exclusions_text:
+                        excl_label = f"{cls._rt('warranty_exclusions_title', default='Exclusions')}:"
+                        commands.append({"type": "text", "val": excl_label, "align": "left", "bold": True})
+                        for line in cls._wrap_free_text(dt.exclusions_text, line_chars):
+                            commands.append({"type": "text", "val": line, "align": "left"})
+                commands.append(_sep())
 
         # Loyalty points block
         if cls._should_show_loyalty(sale, config_override):
@@ -330,9 +415,11 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
             orig_price = getattr(item, "original_price", None)
             is_manual = bool(getattr(item, "is_manual_price", False))
             key = (pid, u_price, orig_price, is_manual)
+            item_warranties = _safe_warranties(item)
             if key in merged:
                 merged[key].qty += item.qty
                 merged[key].subtotal += item.subtotal
+                merged[key].warranties.extend(item_warranties)
             else:
                 p_name = (
                     ProductService.display_name(item.product, lang)
@@ -347,6 +434,7 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
                     name=p_name,
                     original_price=orig_price,
                     is_manual_price=is_manual,
+                    warranties=item_warranties,
                 )
         return list(merged.values())
 

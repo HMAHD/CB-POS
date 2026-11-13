@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 9 · Batch: 9.2 · Branch: feat/p9-b2-per-unit-warranty · PR: #1022 (pr-open) · Last session: 2026-11-12
+- Phase: 9 · Batch: 9.3 · Branch: feat/p9-b3-serial-capture-printing · PR: open pending review · Last session: 2026-11-13
 
 ## Issues
 
@@ -199,9 +199,9 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | # | Title | Sev | Batch | Status | PR | Notes |
 |---|---|---|---|---|---|---|
 | #821 | Warranty W1: Warranty policies and assignment to products and categories | — | 9.1 | done | #1021 | d787378 · Decisions D28/D29; WarrantyPolicy model, migration, WarrantyService, product/category assignment, feature gating, UI dialogs & views |
-| #822 | Warranty W2: Register a warranty per sold unit and cascade on void or refund | — | 9.2 | pr-open | #1022 | Decision D30; Warranty model, migration, per-unit registration at checkout, whole-unit guard, void/refund cascades, LAN sync 1.4 |
-| #823 | Warranty W3: Optional serial/IMEI capture at checkout | — | 9.3 | todo | | |
-| #824 | Warranty W4: Print the warranty on the receipt, the A4 invoice and a standalo… | — | 9.3 | todo | | |
+| #822 | Warranty W2: Register a warranty per sold unit and cascade on void or refund | — | 9.2 | done | #1022 | 62498f3 · Decision D30; Warranty model, migration, per-unit registration at checkout, whole-unit guard, void/refund cascades, LAN sync 1.4 |
+| #823 | Warranty W3: Optional serial/IMEI capture at checkout | — | 9.3 | in-progress | | |
+| #824 | Warranty W4: Print the warranty on the receipt, the A4 invoice and a standalo… | — | 9.3 | in-progress | | |
 | #825 | Warranty W5: Warranty lookup by receipt, serial, phone or customer | — | 9.4 | todo | | |
 | #826 | Warranty W6: Warranty claims: intake, inspection, resolution and collection | — | 9.4 | todo | | |
 | #827 | Warranty W7: Claim replacement and refund with correct stock movements | — | 9.5 | todo | | |
@@ -310,9 +310,8 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #819 | Physical print of product labels on 50x30 mm, 40x25 mm, 58 mm receipt paper with Sinhala/Tamil text and real barcode scanning | pending |
 
 ## Handoff
-Batch 9.1 merged in PR #1021 (d7873780e3a1407df1d3c877f10ced718b9cb4ae).
-Phase 9 Batch 9.2 implemented on branch `feat/p9-b2-per-unit-warranty`:
-- Implemented #822 (Warranty W2: Register a warranty per sold unit and cascade on void or refund) with Decision D30 adherence, technical design note (`docs/remediation/designs/822-per-unit-warranty.md`), EGM Goldfish review approval, Alembic migration (`f2a3b4c5d6e7`), `Warranty` model, whole-unit guard, void/refund cascades, LAN sync protocol 1.4, and full test suite passing.
-- PR is open for review. Do not merge until human review.
-- #817 and #819 release gates remain active blockers for public distribution.
+Batch 9.2 merged in PR #1022 (62498f3bbba4339ea1f3698eb4385e8d5bc4c49f).
+Phase 9 Batch 9.3 started on branch `feat/p9-b3-serial-capture-printing`:
+- Working on #823 (Warranty W3: Optional serial/IMEI capture at checkout) and #824 (Warranty W4: Print warranty details on receipt, A4 invoice, and standalone warranty cards).
+- #817 and #819 release gates remain active blockers for public distribution. Statutory wording gate unresolved for #824 (terms snapshot only, no fixed statutory sentence).
 

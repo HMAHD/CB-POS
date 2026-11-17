@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 9 · Batch: 9.3 · Branch: feat/p9-b3-serial-capture-printing · PR: open pending review · Last session: 2026-11-13
+- Phase: 9 · Batch: 9.4 · Branch: feat/p9-b4-lookup-claims · PR: not opened · Last session: 2026-11-17
 
 ## Issues
 
@@ -200,10 +200,10 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 |---|---|---|---|---|---|---|
 | #821 | Warranty W1: Warranty policies and assignment to products and categories | — | 9.1 | done | #1021 | d787378 · Decisions D28/D29; WarrantyPolicy model, migration, WarrantyService, product/category assignment, feature gating, UI dialogs & views |
 | #822 | Warranty W2: Register a warranty per sold unit and cascade on void or refund | — | 9.2 | done | #1022 | 62498f3 · Decision D30; Warranty model, migration, per-unit registration at checkout, whole-unit guard, void/refund cascades, LAN sync 1.4 |
-| #823 | Warranty W3: Optional serial/IMEI capture at checkout | — | 9.3 | in-progress | | |
-| #824 | Warranty W4: Print the warranty on the receipt, the A4 invoice and a standalo… | — | 9.3 | in-progress | | |
-| #825 | Warranty W5: Warranty lookup by receipt, serial, phone or customer | — | 9.4 | todo | | |
-| #826 | Warranty W6: Warranty claims: intake, inspection, resolution and collection | — | 9.4 | todo | | |
+| #823 | Warranty W3: Optional serial/IMEI capture at checkout | — | 9.3 | done | #1023 | 0aedb47, 03ed8de · Serial/IMEI capture at checkout, IMEI Luhn validator, cart serial bookkeeping, held bill persistence, checkout guard, serial-aware partial refunds, SerialEntryDialog |
+| #824 | Warranty W4: Print the warranty on the receipt, the A4 invoice and a standalo… | — | 9.3 | done (ready-for-human: ⚠️ Verify on Windows) | #1023 | 0aedb47, 03ed8de · Sales receipt warranty blocks & terms, A4 invoice warranty lines, standalone thermal cards (58/80mm) with cut, A5/A4 PDF cards, reprint workflows, audit logging; pending physical printer & statutory text verification |
+| #825 | Warranty W5: Warranty lookup by receipt, serial, phone or customer | — | 9.4 | in-progress | | |
+| #826 | Warranty W6: Warranty claims: intake, inspection, resolution and collection | — | 9.4 | in-progress | | |
 | #827 | Warranty W7: Claim replacement and refund with correct stock movements | — | 9.5 | todo | | |
 | #828 | Warranty W8: Supplier and manufacturer RMA tracking | — | 9.5 | todo | | |
 | #829 | Warranty W9: Extended warranty sold as a paid add-on | — | 9.6 | todo | | |
@@ -308,10 +308,11 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #878 | Physical print-and-scan check of CODE128 receipt invoice barcode on 58 mm and 80 mm thermal printers | pending |
 | #877 | Physical 58 mm thermal receipt print of wrapped Sinhala and Tamil lines (shop address, item names) | pending |
 | #819 | Physical print of product labels on 50x30 mm, 40x25 mm, 58 mm receipt paper with Sinhala/Tamil text and real barcode scanning | pending |
+| #824 | Physical print check of 58mm/80mm thermal warranty cards with cut and A4 PDF warranty certificates | pending |
 
 ## Handoff
-Batch 9.2 merged in PR #1022 (62498f3bbba4339ea1f3698eb4385e8d5bc4c49f).
-Phase 9 Batch 9.3 started on branch `feat/p9-b3-serial-capture-printing`:
-- Working on #823 (Warranty W3: Optional serial/IMEI capture at checkout) and #824 (Warranty W4: Print warranty details on receipt, A4 invoice, and standalone warranty cards).
+Batch 9.3 merged in PR #1023 (555485d).
+Phase 9 Batch 9.4 started on branch `feat/p9-b4-lookup-claims`:
+- Working on #825 (Warranty W5: Warranty lookup by receipt, serial, phone or customer) and #826 (Warranty W6: Warranty claims: intake, inspection, resolution and collection).
 - #817 and #819 release gates remain active blockers for public distribution. Statutory wording gate unresolved for #824 (terms snapshot only, no fixed statutory sentence).
 

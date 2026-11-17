@@ -1,6 +1,7 @@
 """Unit tests for ModalDimmer overlay and alternating row colors enforcement (#538)."""
 
 import pytest
+from PyQt6 import sip
 from PyQt6.QtCore import QEvent, Qt
 from PyQt6.QtWidgets import (
     QApplication,
@@ -19,10 +20,21 @@ from cbpos.ui.dialogs.stock_history_dialog import StockHistoryDialog
 from cbpos.ui.dialogs.valuation_dialog import ValuationDialog
 from cbpos.ui.widgets.modal_dimmer import (
     ModalDimmer,
+    ModalDimmerManager,
     install_modal_dimmer_filter,
+    uninstall_modal_dimmer_filter,
 )
 
 pytestmark = pytest.mark.usefixtures("qapp")
+
+
+@pytest.fixture(autouse=True)
+def _cleanup_modal_dimmer():
+    """Ensure ModalDimmer filter and tracked state never leak across tests."""
+    yield
+    uninstall_modal_dimmer_filter()
+    if ModalDimmerManager._instance is not None:
+        ModalDimmerManager._instance.reset()
 
 
 class TestModalDimmerWidget:
@@ -94,7 +106,7 @@ class TestModalDimmerManagerLifecycle:
         dlg.show()
 
         dimmer = mgr._dimmers.get(win)
-        assert dimmer is None or not dimmer.isVisible()
+        assert dimmer is None or sip.isdeleted(dimmer) or not dimmer.isVisible()
         dlg.hide()
 
     def test_nested_modals_maintain_dimmer_until_all_closed(self):

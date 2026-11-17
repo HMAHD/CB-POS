@@ -474,7 +474,23 @@ class CustomerEditor(QDialog):
         self.history_table.setAlternatingRowColors(True)
         layout.addWidget(self.history_table)
 
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        btn_warranties = QPushButton(_t("warranty.btn_lookup"))
+        btn_warranties.setIcon(Icons.get(Icons.WARRANTY))
+        btn_warranties.clicked.connect(self._open_customer_warranties)
+        btn_layout.addWidget(btn_warranties)
+        layout.addLayout(btn_layout)
+
         return widget
+
+    def _open_customer_warranties(self) -> None:
+        """Open WarrantyLookupDialog for this customer."""
+        from cbpos.ui.dialogs.warranty_lookup_dialog import WarrantyLookupDialog
+
+        query = getattr(self.customer, "phone", None) or getattr(self.customer, "name", "")
+        dlg = WarrantyLookupDialog(initial_query=query, parent=self)
+        dlg.exec()
 
     def on_tab_changed(self, index):
         """Lazily load purchase history or points history when their tabs are opened."""

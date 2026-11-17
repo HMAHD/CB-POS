@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # Sync Protocol Version — bump when envelope format changes.
 # Server and client must agree on the major version.
 # ---------------------------------------------------------------------------
-SYNC_PROTOCOL_VERSION = "1.4"
+SYNC_PROTOCOL_VERSION = "1.5"
 
 # ---------------------------------------------------------------------------
 # Default sync server port
@@ -96,6 +96,8 @@ TRANSACTION_TABLES = [
     "sale_items",
     "sale_payments",
     "warranties",
+    "warranty_claims",
+    "warranty_claim_events",
     "purchases",
     "purchase_items",
     "stock_movements",
@@ -402,6 +404,8 @@ def get_table_model_map() -> dict[str, type[Base]]:
         User,
         VoidReason,
         Warranty,
+        WarrantyClaim,
+        WarrantyClaimEvent,
         WarrantyPolicy,
     )
 
@@ -411,6 +415,8 @@ def get_table_model_map() -> dict[str, type[Base]]:
         "users": User,
         "warranty_policies": WarrantyPolicy,
         "warranties": Warranty,
+        "warranty_claims": WarrantyClaim,
+        "warranty_claim_events": WarrantyClaimEvent,
         "price_lists": PriceList,
         "price_list_items": PriceListItem,
         "promotions": Promotion,

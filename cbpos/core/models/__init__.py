@@ -1067,6 +1067,10 @@ from cbpos.core.models.tax_invoice import (  # noqa: E402, F401
     TaxInvoiceSequence,
 )
 from cbpos.core.models.warranty import Warranty, WarrantyPolicy  # noqa: E402
+from cbpos.core.models.warranty_claim import (  # noqa: E402, F401
+    WarrantyClaim,
+    WarrantyClaimEvent,
+)
 
 # Registers the session hook that re-sends a till row to the Main PC when it
 # changes after its first push (#677). Imported here so it is active wherever

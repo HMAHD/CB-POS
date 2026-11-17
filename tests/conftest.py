@@ -92,6 +92,48 @@ def _restore_app_wide_qt_state(request):
     ThemeService.current_theme = theme
 
 
+@pytest.fixture(autouse=True)
+def _restore_config_service_settings():
+    """Ensure ConfigService memory and disk state never leak across tests (#821, #825, #826)."""
+    from cbpos.core.services.config_service import ConfigService
+
+    if not ConfigService._settings:
+        ConfigService.load()
+
+    saved_settings = ConfigService._settings.copy()
+    saved_frozen = ConfigService._frozen
+    saved_undecryptable = set(ConfigService._undecryptable_keys)
+    saved_recovery = ConfigService._recovery_reason
+    saved_corrupt = ConfigService._corrupt_filename
+    saved_rename_failed = ConfigService._rename_failed
+    saved_defaults_failure = ConfigService._loaded_from_defaults_after_failure
+    saved_file = ConfigService.SETTINGS_FILE
+
+    yield
+
+    mutated = (
+        ConfigService._settings != saved_settings
+        or ConfigService._frozen != saved_frozen
+        or ConfigService._undecryptable_keys != saved_undecryptable
+        or saved_file != ConfigService.SETTINGS_FILE
+    )
+
+    ConfigService._settings = saved_settings
+    ConfigService._frozen = saved_frozen
+    ConfigService._undecryptable_keys = saved_undecryptable
+    ConfigService._recovery_reason = saved_recovery
+    ConfigService._corrupt_filename = saved_corrupt
+    ConfigService._rename_failed = saved_rename_failed
+    ConfigService._loaded_from_defaults_after_failure = saved_defaults_failure
+    ConfigService.SETTINGS_FILE = saved_file
+
+    if mutated and not saved_frozen:
+        try:
+            ConfigService.save()
+        except Exception:
+            pass
+
+
 @pytest.fixture(scope="session")
 def test_engine():
     """

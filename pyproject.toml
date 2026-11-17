@@ -144,6 +144,7 @@ line-ending = "auto"
 # test from its folder. Fast loop: pytest -m "domain or guardrails" -n auto
 testpaths = ["tests"]
 addopts = "--strict-markers"
+faulthandler_timeout = 60
 markers = [
     "domain: service behaviour through public interfaces on an in-memory DB (fast, every commit)",
     "guardrails: codebase-wide static rules (fast, every commit)",

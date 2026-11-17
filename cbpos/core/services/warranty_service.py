@@ -19,6 +19,7 @@ from cbpos.core.database import Database
 from cbpos.core.models import (
     AuditLog,
     Category,
+    Customer,
     Product,
     Role,
     Sale,
@@ -30,6 +31,7 @@ from cbpos.core.models import (
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.permission_service import PermissionService
+from cbpos.core.services.warranty_dto import WarrantyDTO
 from cbpos.core.utils.terminal_guard import require_catalog_writable
 
 logger = logging.getLogger(__name__)
@@ -71,18 +73,20 @@ class WarrantyService:
                 user_id = curr.id
 
         if user_id is None:
-            raise PermissionError(f"Permission denied: {perm_code} required (no authenticated actor)")
+            raise PermissionError(
+                f"permission_denied: Permission denied: {perm_code} required (no authenticated actor)"
+            )
 
         if session is not None:
             user = session.get(User, user_id, options=[joinedload(User.role).joinedload(Role.permissions)])
             if not user or not PermissionService.user_has_permission(user, perm_code):
-                raise PermissionError(f"Permission denied: {perm_code} required")
+                raise PermissionError(f"permission_denied: Permission denied: {perm_code} required")
         else:
             db = Database()
             with db.get_session() as s:
                 user = s.get(User, user_id, options=[joinedload(User.role).joinedload(Role.permissions)])
                 if not user or not PermissionService.user_has_permission(user, perm_code):
-                    raise PermissionError(f"Permission denied: {perm_code} required")
+                    raise PermissionError(f"permission_denied: Permission denied: {perm_code} required")
         return user_id
 
     @classmethod
@@ -451,6 +455,20 @@ class WarrantyService:
         actor_id: int,
     ) -> int:
         """Atomically transition all ACTIVE warranties for sale_id to VOID."""
+        from cbpos.core.models.warranty_claim import WarrantyClaim
+
+        # Guard: Fail closed if any warranty on the voided sale has an active claim (#826)
+        active_claims_count = session.scalar(
+            select(func.count(WarrantyClaim.id))
+            .join(Warranty, WarrantyClaim.warranty_id == Warranty.id)
+            .where(
+                Warranty.sale_id == sale_id,
+                WarrantyClaim.claim_status.not_in(["COLLECTED", "REJECTED", "VOID", "CANCELLED"]),
+            )
+        )
+        if active_claims_count:
+            raise ValueError("cannot_void_sale_with_open_claim")
+
         stmt = (
             select(Warranty)
             .where(
@@ -508,12 +526,15 @@ class WarrantyService:
         refund_lines: list[tuple[int, Decimal]],  # (sale_item_id, qty)
         actor_id: int,
         selected_serials: dict[int, list[str]] | None = None,
+        claim_id: int | None = None,
     ) -> list[Warranty]:
         """Cancel ACTIVE warranties per refunded line item.
 
         If selected_serials is provided for a line, cancels exactly those matching active
         warranties. Otherwise cancels highest unit_index first.
         """
+        from cbpos.core.models.warranty_claim import WarrantyClaimEvent
+
         cancelled_warranties = []
         now = datetime.now()
 
@@ -545,10 +566,11 @@ class WarrantyService:
                     Warranty.sale_item_id == sale_item_id,
                     Warranty.status == "ACTIVE",
                 )
+                .options(joinedload(Warranty.claims))
                 .order_by(Warranty.unit_index.desc())
                 .with_for_update()
             )
-            active_units = list(session.scalars(stmt).all())
+            active_units = list(session.scalars(stmt).unique().all())
 
             if len(active_units) < units_to_cancel:
                 raise ValueError(
@@ -581,6 +603,36 @@ class WarrantyService:
                 to_cancel = active_units[:units_to_cancel]
 
             for w in to_cancel:
+                # Check for active claims on this warranty unit (#826)
+                active_claims = [
+                    c for c in (w.claims or []) if c.claim_status not in ("COLLECTED", "REJECTED", "VOID", "CANCELLED")
+                ]
+
+                if active_claims:
+                    matching_claim = next((c for c in active_claims if c.id == claim_id), None)
+                    if matching_claim is not None and matching_claim.resolution == "REFUNDED":
+                        from_status = matching_claim.claim_status
+                        matching_claim.claim_status = "COLLECTED"
+                        matching_claim.collected_at = now
+                        matching_claim.resolution_notes = (
+                            (matching_claim.resolution_notes or "")
+                            + f" Refund issued in credit note {refund_sale.document_number}"
+                        ).strip()
+                        matching_claim.synced = False
+                        session.add(
+                            WarrantyClaimEvent(
+                                claim_id=matching_claim.id,
+                                from_status=from_status,
+                                to_status="COLLECTED",
+                                user_id=actor_id,
+                                event_time=now,
+                                notes=f"Refund issued in credit note {refund_sale.document_number}",
+                                synced=False,
+                            )
+                        )
+                    else:
+                        raise ValueError("cannot_refund_unit_with_open_claim")
+
                 w.status = "CANCELLED"
                 w.cancelled_by_sale_id = refund_sale.id
                 w.last_modified = now
@@ -1078,3 +1130,309 @@ class WarrantyService:
                 )
             )
             return out
+
+    @classmethod
+    def calculate_effective_status(
+        cls,
+        status: str,
+        end_date: date,
+        today: date | None = None,
+    ) -> tuple[str, int]:
+        """Calculate dynamic effective status and remaining days for a warranty (#825).
+
+        Returns:
+            (effective_status, days_remaining)
+        """
+        if today is None:
+            today = date.today()
+
+        if status != "ACTIVE":
+            return (status, 0)
+
+        days_left = (end_date - today).days
+        if days_left < 0:
+            return ("EXPIRED", days_left)
+        elif days_left <= 30:
+            return ("EXPIRING", days_left)
+        else:
+            return ("ACTIVE", days_left)
+
+    @classmethod
+    def _to_dto(
+        cls,
+        w: Warranty,
+        today: date | None = None,
+        session: Session | None = None,
+    ) -> WarrantyDTO:
+        """Convert a Warranty ORM model to a decoupled WarrantyDTO (#825)."""
+        eff_status, days_left = cls.calculate_effective_status(w.status, w.end_date, today=today)
+
+        prod_name = ""
+        if w.product:
+            prod_name = w.product.name_en or ""
+        elif w.product_id and session:
+            p = session.get(Product, w.product_id)
+            if p:
+                prod_name = p.name_en or ""
+
+        doc_num = ""
+        sold_dt = datetime.min
+        if w.sale:
+            doc_num = w.sale.document_number or ""
+            sold_dt = w.sale.date or datetime.min
+        elif w.sale_id and session:
+            s = session.get(Sale, w.sale_id)
+            if s:
+                doc_num = s.document_number or ""
+                sold_dt = s.date or datetime.min
+
+        cust_name = w.customer_name_snapshot
+        cust_phone = w.customer_phone_snapshot
+        if not cust_name and w.customer:
+            cust_name = w.customer.name
+        if not cust_phone and w.customer:
+            cust_phone = w.customer.phone
+
+        has_claim = False
+        claim_id = None
+        if hasattr(w, "claims") and w.claims:
+            active_c = next(
+                (c for c in w.claims if c.claim_status not in ("COLLECTED", "REJECTED", "VOID", "CANCELLED")),
+                None,
+            )
+            if active_c:
+                has_claim = True
+                claim_id = active_c.id
+
+        return WarrantyDTO(
+            id=w.id,
+            code=w.code,
+            serial_number=w.serial_number,
+            product_id=w.product_id,
+            product_name=prod_name,
+            customer_id=w.customer_id,
+            customer_name=cust_name,
+            customer_phone=cust_phone,
+            sale_id=w.sale_id,
+            sale_document_number=doc_num,
+            sold_date=sold_dt,
+            start_date=w.start_date,
+            end_date=w.end_date,
+            duration=w.duration,
+            duration_unit=w.duration_unit,
+            warranty_type=w.warranty_type,
+            remedy=w.remedy,
+            terms_snapshot=w.terms_text,
+            exclusions_snapshot=w.exclusions_text,
+            status=w.status,
+            effective_status=eff_status,
+            days_remaining=days_left,
+            has_active_claim=has_claim,
+            active_claim_id=claim_id,
+        )
+
+    @classmethod
+    def search(
+        cls,
+        query: str,
+        limit: int = 200,
+        today: date | None = None,
+        session: Session | None = None,
+    ) -> list[WarrantyDTO]:
+        """Search warranties across code, receipt number, serial/IMEI, customer phone, and name (#825).
+
+        Precedence:
+        1. Exact / case-insensitive warranty code
+        2. Receipt document number
+        3. Serial / IMEI (exact, or suffix if query length >= 6)
+        4. Customer phone (with +94/0 normalization)
+        5. Customer name substring
+        """
+        if not query or not query.strip():
+            return []
+
+        clean_q = query.strip()
+
+        def _execute(s: Session) -> list[WarrantyDTO]:
+            options = [
+                joinedload(Warranty.product),
+                joinedload(Warranty.sale),
+                joinedload(Warranty.customer),
+            ]
+
+            # Tier 1: Warranty Code
+            t1 = (
+                s.query(Warranty)
+                .options(*options)
+                .filter(Warranty.code.ilike(clean_q))
+                .order_by(Warranty.start_date.desc(), Warranty.id.asc())
+                .limit(limit)
+                .all()
+            )
+            if t1:
+                return [cls._to_dto(w, today=today, session=s) for w in t1]
+
+            # Tier 2: Receipt Document Number
+            t2 = (
+                s.query(Warranty)
+                .join(Sale, Warranty.sale_id == Sale.id)
+                .options(*options)
+                .filter(Sale.document_number.ilike(clean_q))
+                .order_by(Warranty.unit_index.asc(), Warranty.id.asc())
+                .limit(limit)
+                .all()
+            )
+            if t2:
+                return [cls._to_dto(w, today=today, session=s) for w in t2]
+
+            # Tier 3: Serial Number (exact or suffix if len >= 6)
+            from sqlalchemy import or_
+
+            serial_filters = [Warranty.serial_number.ilike(clean_q)]
+            if len(clean_q) >= 6:
+                serial_filters.append(Warranty.serial_number.ilike(f"%{clean_q}"))
+            t3 = (
+                s.query(Warranty)
+                .options(*options)
+                .filter(or_(*serial_filters))
+                .order_by(Warranty.start_date.desc(), Warranty.id.asc())
+                .limit(limit)
+                .all()
+            )
+            if t3:
+                return [cls._to_dto(w, today=today, session=s) for w in t3]
+
+            # Tier 4: Phone Normalization
+            digits = "".join(c for c in clean_q if c.isdigit())
+            if len(digits) >= 7:
+                variants = {digits}
+                if digits.startswith("94") and len(digits) >= 11:
+                    variants.add("0" + digits[2:])
+                    variants.add(digits[2:])
+                    variants.add("+94" + digits[2:])
+                elif digits.startswith("0") and len(digits) == 10:
+                    variants.add(digits[1:])
+                    variants.add("94" + digits[1:])
+                    variants.add("+94" + digits[1:])
+                elif len(digits) == 9 and not digits.startswith("0"):
+                    variants.add("0" + digits)
+                    variants.add("94" + digits)
+                    variants.add("+94" + digits)
+
+                phone_conds = []
+                for v in variants:
+                    phone_conds.append(Warranty.customer_phone_snapshot.ilike(f"%{v}%"))
+                    phone_conds.append(Customer.phone.ilike(f"%{v}%"))
+
+                t4 = (
+                    s.query(Warranty)
+                    .outerjoin(Customer, Warranty.customer_id == Customer.id)
+                    .options(*options)
+                    .filter(or_(*phone_conds))
+                    .order_by(Warranty.start_date.desc(), Warranty.id.asc())
+                    .limit(limit)
+                    .all()
+                )
+                if t4:
+                    return [cls._to_dto(w, today=today, session=s) for w in t4]
+
+            # Tier 5: Customer Name
+            t5 = (
+                s.query(Warranty)
+                .outerjoin(Customer, Warranty.customer_id == Customer.id)
+                .options(*options)
+                .filter(
+                    or_(
+                        Warranty.customer_name_snapshot.ilike(f"%{clean_q}%"),
+                        Customer.name.ilike(f"%{clean_q}%"),
+                    )
+                )
+                .order_by(Warranty.start_date.desc(), Warranty.id.asc())
+                .limit(limit)
+                .all()
+            )
+            if t5:
+                return [cls._to_dto(w, today=today, session=s) for w in t5]
+
+            return []
+
+        if session is not None:
+            return _execute(session)
+        else:
+            db = Database()
+            with db.get_session() as s:
+                return _execute(s)
+
+    @classmethod
+    def update_warranty_admin(
+        cls,
+        warranty_id: int,
+        user_id: int,
+        reason: str,
+        serial_number: str | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        session: Session | None = None,
+    ) -> WarrantyDTO:
+        """Admin correction of serial number and/or coverage dates with mandatory audit (#825)."""
+        if not reason or not reason.strip():
+            raise ValueError("reason_required")
+
+        clean_reason = reason.strip()
+
+        with _session_scope(session) as s:
+            user = s.get(User, user_id, options=[joinedload(User.role).joinedload(Role.permissions)])
+            if not user or not PermissionService.user_has_permission(user, Permissions.WARRANTY_EDIT):
+                raise PermissionError("permission_denied: warranty.edit required")
+
+            w = s.get(
+                Warranty,
+                warranty_id,
+                options=[
+                    joinedload(Warranty.product),
+                    joinedload(Warranty.sale),
+                    joinedload(Warranty.customer),
+                ],
+            )
+            if not w:
+                raise ValueError("warranty_not_found")
+
+            if w.status in ("VOID", "CANCELLED"):
+                raise ValueError(f"cannot_edit_{w.status.lower()}_warranty")
+
+            target_start = start_date if start_date is not None else w.start_date
+            target_end = end_date if end_date is not None else w.end_date
+
+            if target_start > target_end:
+                raise ValueError("invalid_date_range")
+
+            changes: list[str] = []
+
+            if serial_number is not None:
+                clean_sn = serial_number.strip() if serial_number.strip() else None
+                if clean_sn != w.serial_number:
+                    changes.append(f"serial: {w.serial_number} -> {clean_sn}")
+                    w.serial_number = clean_sn
+
+            if start_date is not None and start_date != w.start_date:
+                changes.append(f"start_date: {w.start_date} -> {start_date}")
+                w.start_date = start_date
+
+            if end_date is not None and end_date != w.end_date:
+                changes.append(f"end_date: {w.end_date} -> {end_date}")
+                w.end_date = end_date
+
+            sn_display = w.serial_number or "None"
+            s.add(
+                AuditLog(
+                    user_id=user_id,
+                    action="WARRANTY_CORRECTION",
+                    event_type=WARRANTY_EVENT,
+                    details=(
+                        f"Warranty {w.code} (ID {w.id}) corrected by user {user_id}. "
+                        f"Reason: {clean_reason}. Changes: {', '.join(changes)}. Serial: {sn_display}"
+                    ),
+                )
+            )
+            s.flush()
+            return cls._to_dto(w, session=s)

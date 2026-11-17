@@ -33,6 +33,7 @@ from cbpos.ui.views.history_view import HistoryView
 @pytest.fixture
 def tax_ui_setup(db_session):
     Base.metadata.create_all(bind=db_session.bind)
+    saved_config = ConfigService.get_all()
 
     ConfigService.set("vat_registered", True)
     ConfigService.set("tax_vat_enabled", True)
@@ -75,11 +76,13 @@ def tax_ui_setup(db_session):
 
     db_session.commit()
 
-    return {
+    yield {
         "user": user,
         "cust_with_tin": cust_with_tin,
         "cust_without_tin": cust_without_tin,
     }
+
+    ConfigService.update_all(saved_config)
 
 
 class TestBuyerDetailsDialog:
@@ -131,15 +134,21 @@ class TestBuyerDetailsDialog:
 
 class TestPaymentDialogTaxInvoice:
     def test_checkbox_disabled_when_vat_not_configured(self, qapp, tax_ui_setup):
-        ConfigService.set("company_tax_id", "")
-        dialog = PaymentDialog(Decimal("1000.00"))
-        assert not dialog.chk_tax_invoice.isEnabled()
-        assert dialog.chk_tax_invoice.toolTip() != ""
+        try:
+            ConfigService.set("company_tax_id", "")
+            dialog = PaymentDialog(Decimal("1000.00"))
+            assert not dialog.chk_tax_invoice.isEnabled()
+            assert dialog.chk_tax_invoice.toolTip() != ""
+        finally:
+            ConfigService.set("company_tax_id", "123456789")
 
     def test_checkbox_disabled_in_terminal_mode(self, qapp, tax_ui_setup):
-        ConfigService.set("terminal_mode", "terminal")
-        dialog = PaymentDialog(Decimal("1000.00"))
-        assert not dialog.chk_tax_invoice.isEnabled()
+        try:
+            ConfigService.set("terminal_mode", "terminal")
+            dialog = PaymentDialog(Decimal("1000.00"))
+            assert not dialog.chk_tax_invoice.isEnabled()
+        finally:
+            ConfigService.set("terminal_mode", "standalone")
 
     def test_checkbox_enabled_in_standalone_with_vat(self, qapp, tax_ui_setup):
         dialog = PaymentDialog(Decimal("1000.00"))

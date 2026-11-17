@@ -75,6 +75,18 @@ class WarrantyPoliciesView(QWidget, Activatable):
         self.search_input.textChanged.connect(self._filter_table)
         toolbar.addWidget(self.search_input)
 
+        self.btn_lookup = QPushButton()
+        self.btn_lookup.setProperty("class", "secondary")
+        self.btn_lookup.setIcon(Icons.get(Icons.SEARCH))
+        self.btn_lookup.clicked.connect(self._on_lookup)
+        toolbar.addWidget(self.btn_lookup)
+
+        self.btn_claims = QPushButton()
+        self.btn_claims.setProperty("class", "secondary")
+        self.btn_claims.setIcon(Icons.get("fa5s.clipboard-list"))
+        self.btn_claims.clicked.connect(self._on_claims_board)
+        toolbar.addWidget(self.btn_claims)
+
         self.btn_new = QPushButton()
         self.btn_new.setProperty("class", "primary")
         self.btn_new.setIcon(Icons.get(Icons.ADD))
@@ -121,6 +133,8 @@ class WarrantyPoliciesView(QWidget, Activatable):
         """Update localized text for view components."""
         self.lbl_title.setText(_t("warranty.policies"))
         self.search_input.setPlaceholderText(_t("common.search"))
+        self.btn_lookup.setText(_t("warranty.btn_lookup"))
+        self.btn_claims.setText(_t("warranty_claim.btn_claims_board", default="Claims"))
         self.btn_new.setText(_t("warranty.new_policy"))
         if hasattr(self, "lbl_error"):
             self.lbl_error.setText(_t("warranty.load_error_banner"))
@@ -271,6 +285,12 @@ class WarrantyPoliciesView(QWidget, Activatable):
         if dialog.exec():
             self.load_data()
 
+    def _on_lookup(self) -> None:
+        from cbpos.ui.dialogs.warranty_lookup_dialog import WarrantyLookupDialog
+
+        dialog = WarrantyLookupDialog(parent=self)
+        dialog.exec()
+
     def _on_row_double_clicked(self, row: int, col: int) -> None:
         if getattr(self, "read_only", False) or catalog_is_read_only():
             return
@@ -322,3 +342,10 @@ class WarrantyPoliciesView(QWidget, Activatable):
             self.load_data()
         except Exception as e:
             QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))
+
+    def _on_claims_board(self) -> None:
+        """Open WarrantyClaimsBoardDialog (#826)."""
+        from cbpos.ui.views.warranty_claims_board_view import WarrantyClaimsBoardDialog
+
+        dlg = WarrantyClaimsBoardDialog(parent=self)
+        dlg.exec()

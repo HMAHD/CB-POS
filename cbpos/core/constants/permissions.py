@@ -74,10 +74,12 @@ class Permissions:
     MANAGEMENT_VIEW = "management.view"
     SETTINGS_VIEW = "settings.view"
 
-    # Warranty Group (#821, #820)
+    # Warranty Group (#821, #820, #826)
     WARRANTY_VIEW = "warranty.view"
     WARRANTY_EDIT = "warranty.edit"
     WARRANTY_MANAGE_POLICIES = "warranty.manage_policies"
+    WARRANTY_CLAIM_CREATE = "warranty.claim_create"
+    WARRANTY_CLAIM_RESOLVE = "warranty.claim_resolve"
 
     # Admin
     ADMIN_MANAGE_USERS = "admin.manage_users"
@@ -157,6 +159,8 @@ class Permissions:
                 cls.WARRANTY_VIEW,
                 cls.WARRANTY_EDIT,
                 cls.WARRANTY_MANAGE_POLICIES,
+                cls.WARRANTY_CLAIM_CREATE,
+                cls.WARRANTY_CLAIM_RESOLVE,
             ],
             "Admin": [
                 cls.ADMIN_MANAGE_USERS,

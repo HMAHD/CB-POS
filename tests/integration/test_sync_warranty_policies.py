@@ -5,7 +5,18 @@ from unittest.mock import patch
 
 import pytest
 
-from cbpos.core.models import Category, Product, Sale, SyncIdMap, User, Warranty, WarrantyPolicy
+from cbpos.core.constants.permissions import Permissions
+from cbpos.core.models import (
+    Category,
+    Permission,
+    Product,
+    Sale,
+    SyncIdMap,
+    User,
+    Warranty,
+    WarrantyClaim,
+    WarrantyPolicy,
+)
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.transaction_service import TransactionService
@@ -192,3 +203,97 @@ def test_issue_822_till_sale_with_warranties_syncs_to_main_pc(shop, tmp_path):
         refreshed_warranties = s.query(Warranty).filter(Warranty.id.in_(till_w_ids)).all()
         assert len(refreshed_warranties) == 2
         assert all(w.synced is True for w in refreshed_warranties)
+
+
+def test_issue_826_warranty_claim_syncs_to_main(shop, tmp_path):
+    """Warranty claims and lifecycle events created on till sync to Main PC (#826)."""
+    # 1. Setup catalog on Main PC
+    catalog = shop.seed_catalog()
+    with shop.on("main"), shop.session("main") as s:
+        p_claim = Permission(code=Permissions.WARRANTY_CLAIM_CREATE)
+        s.add(p_claim)
+        s.flush()
+        main_user = s.get(User, catalog["user"])
+        main_user.role.permissions.append(p_claim)
+
+        policy = WarrantyPolicy(
+            name="1 Year Store Warranty",
+            warranty_type="SHOP",
+            duration=1,
+            duration_unit="YEARS",
+            remedy="REPAIR_OR_REPLACE",
+            is_active=True,
+        )
+        s.add(policy)
+        s.flush()
+        policy_id = policy.id
+
+        prod = Product(
+            barcode="8909998887776",
+            name_en="Bluetooth Earbuds",
+            price=Decimal("12000.00"),
+            stock_qty=Decimal("15.0"),
+            warranty_override="POLICY",
+            warranty_policy_id=policy_id,
+            serial_mode="OFF",
+        )
+        s.add(prod)
+        s.commit()
+        prod_id = prod.id
+
+    # 2. Pull catalog to till
+    with isolated_settings(str(tmp_path), terminal_id=TILL, terminal_mode="terminal"):
+        shop.pull(TILL, full=True)
+
+        # 3. Sell covered product on till to create a warranty
+        with shop.on(TILL), shop.session(TILL) as s:
+            till_prod = s.get(Product, prod_id)
+            till_user = s.get(User, catalog["user"])
+
+            with patch.object(AuthService, "get_current_user", return_value=till_user):
+                cart = CartService()
+                cart.add_item(till_prod, qty=Decimal("1.0"))
+                sale = TransactionService.process_sale(cart, [{"method": "Cash", "amount": Decimal("12000.00")}])
+                assert sale is not None
+
+                till_w = s.query(Warranty).filter_by(sale_id=sale.id).first()
+                assert till_w is not None
+
+                # Create a claim for this warranty on till
+                from cbpos.core.services.warranty_claim_service import WarrantyClaimService
+
+                claim_dto = WarrantyClaimService.create_claim(
+                    warranty_id=till_w.id,
+                    defect_description="Left earbud not charging",
+                    user_id=till_user.id,
+                    session=s,
+                )
+                assert claim_dto.id is not None
+                till_claim_id = claim_dto.id
+                till_claim_doc = claim_dto.document_number
+
+        # 4. Push transactions to Main PC
+        pushed = shop.push(TILL)
+        assert pushed > 0
+
+    # 5. Verify Main PC received the warranty claim and event
+    with shop.on("main"), shop.session("main") as s:
+        main_claim = s.query(WarrantyClaim).filter_by(document_number=till_claim_doc).one()
+        assert main_claim.defect_description == "Left earbud not charging"
+        assert main_claim.origin_terminal_id == TILL
+        assert main_claim.warranty_id is not None
+
+        # Verify linked warranty on Main PC matches the pushed warranty
+        main_w = s.get(Warranty, main_claim.warranty_id)
+        assert main_w is not None
+        assert main_w.product_id == prod_id
+
+        # Verify event on Main PC
+        assert len(main_claim.events) == 1
+        assert main_claim.events[0].to_status == "INTAKE"
+
+    # 6. Verify till marked claim and event synced
+    with shop.on(TILL), shop.session(TILL) as s:
+        till_claim = s.get(WarrantyClaim, till_claim_id)
+        assert till_claim.synced is True
+        assert all(ev.synced is True for ev in till_claim.events)

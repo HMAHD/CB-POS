@@ -79,22 +79,44 @@ class _IdKeyedDict(dict):
     """Dictionary that transparently normalizes QWidget/QObject keys to id(widget).
 
     Prevents keeping strong Python references to widgets in process-wide manager dicts (#918).
+    Safely prunes dead C++ wrappers when underlying Qt objects are deleted.
     """
 
     def __getitem__(self, key: Any) -> Any:
-        return super().__getitem__(id(key) if not isinstance(key, int) else key)
+        int_key = id(key) if not isinstance(key, int) else key
+        val = super().__getitem__(int_key)
+        if isinstance(val, QObject) and sip.isdeleted(val):
+            super().pop(int_key, None)
+            raise KeyError(key)
+        return val
 
     def __setitem__(self, key: Any, value: Any) -> None:
         super().__setitem__(id(key) if not isinstance(key, int) else key, value)
 
     def __contains__(self, key: Any) -> bool:
-        return super().__contains__(id(key) if not isinstance(key, int) else key)
+        int_key = id(key) if not isinstance(key, int) else key
+        if not super().__contains__(int_key):
+            return False
+        val = super().get(int_key)
+        if isinstance(val, QObject) and sip.isdeleted(val):
+            super().pop(int_key, None)
+            return False
+        return True
 
     def get(self, key: Any, default: Any = None) -> Any:
-        return super().get(id(key) if not isinstance(key, int) else key, default)
+        int_key = id(key) if not isinstance(key, int) else key
+        val = super().get(int_key, default)
+        if isinstance(val, QObject) and sip.isdeleted(val):
+            super().pop(int_key, None)
+            return default
+        return val
 
     def pop(self, key: Any, *args: Any) -> Any:
-        return super().pop(id(key) if not isinstance(key, int) else key, *args)
+        int_key = id(key) if not isinstance(key, int) else key
+        val = super().pop(int_key, *args)
+        if isinstance(val, QObject) and sip.isdeleted(val):
+            return args[0] if args else None
+        return val
 
 
 class ModalDimmerManager(QObject):
@@ -109,6 +131,17 @@ class ModalDimmerManager(QObject):
         self._modal_to_target: dict[int, int] = {}
         self._connected_targets: set[int] = set()
         self._connected_modals: set[int] = set()
+
+    def reset(self) -> None:
+        """Clear all active dimmers, tracked modals, and connection tracking (e.g. between tests)."""
+        for dimmer in list(self._dimmers.values()):
+            if isinstance(dimmer, QObject) and not sip.isdeleted(dimmer):
+                dimmer.hide()
+        self._dimmers.clear()
+        self._active_modals.clear()
+        self._modal_to_target.clear()
+        self._connected_targets.clear()
+        self._connected_modals.clear()
 
     @classmethod
     def instance(cls) -> ModalDimmerManager:
@@ -244,7 +277,9 @@ def install_modal_dimmer_filter(app: QApplication | None = None) -> ModalDimmerM
 
 
 def uninstall_modal_dimmer_filter(app: QApplication | None = None):
-    """Uninstalls the ModalDimmerManager event filter."""
+    """Uninstalls the ModalDimmerManager event filter and resets tracked state."""
     qapp = app or QApplication.instance()
     if qapp is not None and ModalDimmerManager._instance is not None:
         qapp.removeEventFilter(ModalDimmerManager._instance)
+    if ModalDimmerManager._instance is not None:
+        ModalDimmerManager._instance.reset()

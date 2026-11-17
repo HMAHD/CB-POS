@@ -159,6 +159,7 @@ class SideMenu(QWidget):
     receive_payment_clicked = pyqtSignal()
     reprint_receipt_clicked = pyqtSignal()
     refund_clicked = pyqtSignal()
+    warranty_clicked = pyqtSignal()
     shift_clicked = pyqtSignal()
     help_clicked = pyqtSignal()
     logout_clicked = pyqtSignal()
@@ -258,6 +259,11 @@ class SideMenu(QWidget):
         self.btn_refund.clicked.connect(self._on_refund)
         nav_layout.addWidget(self.btn_refund)
         self._nav_buttons.append(self.btn_refund)
+
+        self.btn_warranty = NavTile("side_menu.warranty_check", "fa5s.shield-alt")
+        self.btn_warranty.clicked.connect(self._on_warranty)
+        nav_layout.addWidget(self.btn_warranty)
+        self._nav_buttons.append(self.btn_warranty)
 
         # One Shift tile: X-read, Cash In/Out and End Shift live in one dialog (#605)
         self.btn_shift = NavTile("side_menu.shift", "fa5s.user-clock")
@@ -436,6 +442,10 @@ class SideMenu(QWidget):
         self._set_active(self.btn_refund)
         self.refund_clicked.emit()
 
+    def _on_warranty(self) -> None:
+        self._set_active(self.btn_warranty)
+        self.warranty_clicked.emit()
+
     def _on_shift(self) -> None:
         self._set_active(self.btn_shift)
         self.shift_clicked.emit()
@@ -475,11 +485,16 @@ class SideMenu(QWidget):
             # By permission, never by role name: renaming a role must not change access (#549)
             self.btn_management.setVisible(PermissionService.can_open_management(user))
             self.btn_settings.setVisible(PermissionService.can_open_settings(user))
+
+            from cbpos.core.services.warranty_service import WarrantyService
+
+            self.btn_warranty.setVisible(WarrantyService.is_enabled())
         else:
             self.lbl_username.setText(_t("side_menu.guest"))
             self.lbl_role.setText(_t("side_menu.not_logged_in"))
             self.btn_management.setVisible(False)
             self.btn_settings.setVisible(False)
+            self.btn_warranty.setVisible(False)
 
     def clear_active(self) -> None:
         """Reset all nav tiles to inactive state."""

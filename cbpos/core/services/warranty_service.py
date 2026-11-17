@@ -479,14 +479,41 @@ class WarrantyService:
         return len(active_warranties)
 
     @classmethod
+    def get_active_serials_for_sale_item(cls, sale_item_id: int, session: Session | None = None) -> list[str]:
+        """Return list of active serial numbers for a given sale item (#823, #824)."""
+
+        def _get(s: Session) -> list[str]:
+            stmt = (
+                select(Warranty.serial_number)
+                .where(
+                    Warranty.sale_item_id == sale_item_id,
+                    Warranty.status == "ACTIVE",
+                    Warranty.serial_number.is_not(None),
+                )
+                .order_by(Warranty.unit_index.asc())
+            )
+            return [str(sn).strip().upper() for sn in s.scalars(stmt).all() if sn and str(sn).strip()]
+
+        if session is not None:
+            return _get(session)
+        db = Database()
+        with db.get_session() as s:
+            return _get(s)
+
+    @classmethod
     def cancel_units_for_refund_in_session(
         cls,
         session: Session,
         refund_sale: Sale,
         refund_lines: list[tuple[int, Decimal]],  # (sale_item_id, qty)
         actor_id: int,
+        selected_serials: dict[int, list[str]] | None = None,
     ) -> list[Warranty]:
-        """Cancel ACTIVE warranties per refunded line item (highest unit_index first)."""
+        """Cancel ACTIVE warranties per refunded line item.
+
+        If selected_serials is provided for a line, cancels exactly those matching active
+        warranties. Otherwise cancels highest unit_index first.
+        """
         cancelled_warranties = []
         now = datetime.now()
 
@@ -528,7 +555,32 @@ class WarrantyService:
                     f"insufficient_active_warranties: {len(active_units)} active warranties available for line {sale_item_id}, {units_to_cancel} requested"
                 )
 
-            for w in active_units[:units_to_cancel]:
+            line_serials = (selected_serials or {}).get(sale_item_id)
+            if line_serials is not None:
+                clean_serials = [str(s).strip().upper() for s in line_serials if str(s).strip()]
+                if len(clean_serials) != units_to_cancel:
+                    raise ValueError(
+                        f"refund quantity mismatch: {len(clean_serials)} serials provided for {units_to_cancel} units"
+                    )
+                if len(set(clean_serials)) != len(clean_serials):
+                    raise ValueError("Duplicate serial numbers selected for refund")
+
+                active_by_sn = {
+                    (w.serial_number or "").strip().upper(): w
+                    for w in active_units
+                    if w.serial_number and str(w.serial_number).strip()
+                }
+
+                chosen_units = []
+                for sn in clean_serials:
+                    if sn not in active_by_sn:
+                        raise ValueError(f"Serial '{sn}' is not an active warranty for line {sale_item_id}")
+                    chosen_units.append(active_by_sn[sn])
+                to_cancel = chosen_units
+            else:
+                to_cancel = active_units[:units_to_cancel]
+
+            for w in to_cancel:
                 w.status = "CANCELLED"
                 w.cancelled_by_sale_id = refund_sale.id
                 w.last_modified = now
@@ -998,3 +1050,31 @@ class WarrantyService:
                             cat = cat.parent if cat.parent_id else None
                     if not cat_pol or not cat_pol.is_active:
                         raise ValueError("Serial tracking requires an active warranty policy")
+
+    @classmethod
+    def export_warranty_pdf(
+        cls,
+        sale_id: int,
+        destination_path: str,
+        user_id: int,
+        lang: str = "en",
+        session: Session | None = None,
+    ) -> str:
+        """Export standalone warranty certificate PDF for a sale and record an audit log entry (#824)."""
+        from cbpos.core.services.warranty_card_builder import WarrantyCardBuilder
+
+        with _session_scope(session) as s_db:
+            s = s_db.get(Sale, sale_id, options=[joinedload(Sale.warranties)])
+            warranties = list(s.warranties) if s and s.warranties else []
+            if not warranties:
+                raise ValueError("no_warranties")
+            out = WarrantyCardBuilder.build_pdf(warranties, destination_path, lang=lang)
+            s_db.add(
+                AuditLog(
+                    user_id=user_id,
+                    action="EXPORT_WARRANTY_PDF",
+                    event_type=WARRANTY_EVENT,
+                    details=f"Exported warranty PDF for sale {s.document_number} (ID {s.id}) to {destination_path}",
+                )
+            )
+            return out

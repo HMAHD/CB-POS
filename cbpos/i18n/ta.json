@@ -364,7 +364,9 @@
     "email_failed": "மின்னஞ்சல் அனுப்ப முடியவில்லை: {reason}. விற்பனை சேமிக்கப்பட்டுள்ளது; விற்பனை வரலாற்றிலிருந்து மீண்டும் அனுப்பலாம்.",
     "email_not_configured": "மின்னஞ்சல் அமைக்கப்படவில்லை. அமைப்புகள் → மின்னஞ்சலில் அமைக்கவும்.",
     "btn_print_warranty_cards": "உத்தரவாத அட்டைகளை அச்சிடுக",
-    "warranty_print_success": "உத்தரவாத அட்டைகள் அச்சிட வரிசைப்படுத்தப்பட்டன"
+    "btn_save_warranty_pdf": "உத்தரவாத PDF சேமிக்கவும்",
+    "warranty_print_success": "உத்தரவாத அட்டைகள் அச்சிட வரிசைப்படுத்தப்பட்டன",
+    "warranty_pdf_saved": "உத்தரவாத PDF {path} இல் சேமிக்கப்பட்டது"
   },
   "receipt": {
     "email_sent": "{email} க்கு ரசீது அனுப்பப்பட்டது.",
@@ -418,6 +420,9 @@
     "give_back": "திருப்பித் தர வேண்டியவை",
     "change_tender": "மாற்று…",
     "tender_cash": "பணம்",
+    "select_serials_title": "திருப்பியளிக்க தொடர் எண்களைத் தேர்ந்தெடுக்கவும்",
+    "select_serials_hint": "திருப்பியளிக்க {count} தொடர் எண்(களை) தேர்ந்தெடுக்கவும்:",
+    "serials_selected_count": "தேவையான {required}ல் {selected} தேர்ந்தெடுக்கப்பட்டது",
     "tender_credit": "கடன் புத்தகம்",
     "tender_card_note": "கார்ட் மெஷினில் {amount} திருப்பியளிக்கவும்",
     "tender_qr_note": "QR டெர்மினலில் {amount} திருப்பியளிக்கவும்",
@@ -2765,6 +2770,8 @@
     "preview_title": "ரசீது முன்னோட்டம்",
     "select_to_preview": "ரசீதை முன்னோட்டம் பார்க்க ஒரு விற்பனையைத் தேர்ந்தெடுங்க",
     "btn_reprint_warranty": "உத்தரவாதத்தை மீண்டும் அச்சிடுக",
+    "btn_export_warranty_pdf": "உத்தரவாத PDF ஏற்றுமதி செய்க",
+    "warranty_pdf_exported": "உத்தரவாத PDF {path} இல் ஏற்றுமதி செய்யப்பட்டது",
     "no_warranties": "இந்த விற்பனையில் உத்தரவாதங்கள் இல்லை"
   },
   "shift_closing": {

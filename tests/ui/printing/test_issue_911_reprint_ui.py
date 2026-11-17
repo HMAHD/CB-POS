@@ -234,3 +234,65 @@ def test_issue_911_document_browser_reprint_routes_to_service(qapp, sample_sales
         mock_add_job.assert_called_once_with("print_receipt", mock_job.commands)
         mock_box.critical.assert_not_called()
     view.deleteLater()
+
+
+def test_issue_824_reprint_dialog_warranty_reprint(qapp, qtbot, sample_sales, test_user):
+    """ReceiptReprintDialog.reprint_warranty_selected launches worker and handles job result (#824)."""
+    sale_ok, _ = sample_sales
+    dlg = ReceiptReprintDialog()
+    dlg.results = [sale_ok]
+    dlg._populate_table()
+    dlg.results_table.setCurrentCell(0, 1)
+
+    with (
+        patch("cbpos.core.utils.permission_helper.check_permission_with_override", return_value=test_user),
+        patch(
+            "cbpos.core.services.receipt_reprint_service.ReceiptReprintService.reprint_warranty_cards",
+            return_value=[{"type": "text", "val": "WARRANTY"}],
+        ),
+        patch.object(PrintWorker, "add_job", return_value="job-warranty-123") as mock_add_job,
+        patch("cbpos.ui.dialogs.receipt_reprint_dialog.QMessageBox") as mock_box,
+    ):
+        dlg.reprint_warranty_selected()
+        qtbot.waitUntil(lambda: dlg._warranty_reprint_job_id == "job-warranty-123", timeout=3000)
+
+        assert dlg._warranty_reprint_job_id == "job-warranty-123"
+        mock_add_job.assert_called_once_with("print_commands", [{"type": "text", "val": "WARRANTY"}])
+
+        # Simulate job completion
+        dlg._on_reprint_job_result("job-warranty-123", True, "OK")
+        mock_box.information.assert_called_once()
+        assert dlg._warranty_reprint_job_id is None
+        assert dlg.btn_reprint_warranty.isEnabled() is True
+    dlg.deleteLater()
+
+
+def test_issue_824_reprint_dialog_export_warranty_pdf(qapp, qtbot, sample_sales, test_user):
+    """ReceiptReprintDialog.export_warranty_pdf_selected launches worker to export PDF (#824)."""
+    sale_ok, _ = sample_sales
+    dlg = ReceiptReprintDialog()
+    dlg.results = [sale_ok]
+    dlg._populate_table()
+    dlg.results_table.setCurrentCell(0, 1)
+
+    with (
+        patch("cbpos.core.utils.permission_helper.check_permission_with_override", return_value=test_user),
+        patch(
+            "cbpos.ui.dialogs.receipt_reprint_dialog.QFileDialog.getSaveFileName",
+            return_value=("/tmp/warranty.pdf", "PDF"),
+        ),
+        patch("cbpos.ui.workers.WarrantyExportPdfWorker.run", autospec=True) as mock_worker_run,
+        patch("cbpos.ui.dialogs.receipt_reprint_dialog.QMessageBox") as mock_box,
+    ):
+
+        def _fake_run(worker_self):
+            worker_self.result.emit("/tmp/warranty.pdf")
+
+        mock_worker_run.side_effect = _fake_run
+
+        dlg.export_warranty_pdf_selected()
+        qtbot.waitUntil(lambda: mock_box.information.called, timeout=3000)
+
+        mock_box.information.assert_called_once()
+        assert dlg.btn_export_warranty_pdf.isEnabled() is True
+    dlg.deleteLater()

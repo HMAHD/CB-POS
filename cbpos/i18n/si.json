@@ -364,7 +364,9 @@
     "email_failed": "ඊමේල් එක යවන්න බැරි වුණා: {reason}. විකිණීම සේව් වෙලා තියෙන්නේ; විකුණුම් ඉතිහාසයෙන් ආයෙත් යවන්න පුළුවන්.",
     "email_not_configured": "ඊමේල් සකස් කර නැත. සැකසුම් → ඊමේල් වෙතින් සකසන්න.",
     "btn_print_warranty_cards": "වගකීම් කාඩ්පත් මුද්‍රණය",
-    "warranty_print_success": "වගකීම් කාඩ්පත් මුද්‍රණය සඳහා යොමු කෙරිණි"
+    "btn_save_warranty_pdf": "වගකීම් PDF සුරකින්න",
+    "warranty_print_success": "වගකීම් කාඩ්පත් මුද්‍රණය සඳහා යොමු කෙරිණි",
+    "warranty_pdf_saved": "වගකීම් PDF එක {path} වෙත සුරැකිණි"
   },
   "receipt": {
     "email_sent": "{email} ට රිසිට්පත යැව්වා.",
@@ -418,6 +420,9 @@
     "give_back": "ආපසු දිය යුතු",
     "change_tender": "වෙනස් කරන්න…",
     "tender_cash": "මුදල්",
+    "select_serials_title": "ආපසු ගෙවීමට ශ්‍රේණි අංක තෝරන්න",
+    "select_serials_hint": "ආපසු ගෙවීමට ශ්‍රේණි අංක {count}ක් තෝරන්න:",
+    "serials_selected_count": "අවශ්‍ය {required}න් {selected}ක් තෝරා ඇත",
     "tender_credit": "ණය පොත",
     "tender_card_note": "කාඩ් මැෂිමෙන් {amount} ආපසු හරවන්න",
     "tender_qr_note": "QR ටර්මිනලයෙන් {amount} ආපසු හරවන්න",
@@ -2765,6 +2770,8 @@
     "preview_title": "රිසිට් පෙරදසුන",
     "select_to_preview": "පෙරදසුන බලන්න විකුණුමක් තෝරන්න",
     "btn_reprint_warranty": "වගකීම් පත්‍රය නැවත මුද්‍රණය",
+    "btn_export_warranty_pdf": "වගකීම් PDF අපනයනය",
+    "warranty_pdf_exported": "වගකීම් PDF එක {path} වෙත අපනයනය කෙරිණි",
     "no_warranties": "මෙම විකිණුමේ වගකීම් නොමැත"
   },
   "shift_closing": {

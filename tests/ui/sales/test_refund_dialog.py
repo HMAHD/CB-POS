@@ -207,3 +207,36 @@ class TestRefundDialogUI:
         assert not dialog.btn_refund.isEnabled()
 
         dialog.deleteLater()
+
+    def test_partial_refund_with_serials_invokes_selection_dialog(self, db_session, sample_sale, manager_user):
+        dialog = RefundDialog()
+        dialog.load_sale(sample_sale)
+
+        # Set qty 1 for line 0
+        dialog._spinboxes[0].setValue(1)
+
+        with (
+            patch("cbpos.ui.dialogs.refund_dialog.check_permission_with_override", return_value=manager_user),
+            patch(
+                "cbpos.core.services.warranty_service.WarrantyService.get_active_serials_for_sale_item",
+                return_value=["SN-A", "SN-B"],
+            ),
+            patch(
+                "cbpos.ui.dialogs.serial_refund_selection_dialog.SerialRefundSelectionDialog.exec",
+                return_value=QDialog.DialogCode.Accepted,
+            ),
+            patch(
+                "cbpos.ui.dialogs.serial_refund_selection_dialog.SerialRefundSelectionDialog.get_selected_serials",
+                return_value=["SN-B"],
+            ),
+            patch.object(QMessageBox, "question", return_value=QMessageBox.StandardButton.Yes),
+            patch.object(QMessageBox, "information"),
+            patch.object(RefundService, "refund") as mock_refund,
+            patch.object(dialog, "accept"),
+        ):
+            dialog.process_refund()
+            mock_refund.assert_called_once()
+            called_lines = mock_refund.call_args[1]["lines"]
+            assert called_lines[0].selected_serials == ["SN-B"]
+
+        dialog.deleteLater()

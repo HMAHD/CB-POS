@@ -5,6 +5,7 @@ from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
     QDateEdit,
     QDialog,
+    QFileDialog,
     QFrame,
     QHBoxLayout,
     QHeaderView,
@@ -23,6 +24,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.receipt_builder import ReceiptBuilder
 from cbpos.core.services.sale_query_service import SaleQueryService
+from cbpos.core.utils.error_messages import translate_error
 from cbpos.core.utils.formatters import format_currency, format_datetime
 from cbpos.i18n import _t
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
@@ -54,6 +56,7 @@ class ReceiptReprintDialog(QDialog):
         self._selected_sale = None
         self._active_filter = "today"
         self._reprint_job_id: str | None = None
+        self._warranty_reprint_job_id: str | None = None
         PrintWorker.instance().job_result.connect(self._on_reprint_job_result)
         self._init_ui()
         install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)
@@ -204,6 +207,15 @@ class ReceiptReprintDialog(QDialog):
         self.btn_reprint_warranty.clicked.connect(self.reprint_warranty_selected)
         btn_layout.addWidget(self.btn_reprint_warranty)
 
+        self.btn_export_warranty_pdf = QPushButton(
+            _t("receipt_reprint.btn_export_warranty_pdf", default="Export Warranty PDF")
+        )
+        self.btn_export_warranty_pdf.setObjectName("BtnExportWarrantyPdf")
+        self.btn_export_warranty_pdf.setProperty("class", "secondary")
+        self.btn_export_warranty_pdf.setEnabled(False)
+        self.btn_export_warranty_pdf.clicked.connect(self.export_warranty_pdf_selected)
+        btn_layout.addWidget(self.btn_export_warranty_pdf)
+
         self.btn_close = QPushButton(_t("common.close"))
         self.btn_close.setObjectName("BtnCancel")
         self.btn_close.setProperty("class", "secondary")
@@ -228,6 +240,8 @@ class ReceiptReprintDialog(QDialog):
             self.preview_scroll.setVisible(False)
             self.btn_reprint.setEnabled(False)
             self.btn_reprint_warranty.setEnabled(False)
+            if hasattr(self, "btn_export_warranty_pdf"):
+                self.btn_export_warranty_pdf.setEnabled(False)
             return
 
         row = current.row()
@@ -241,6 +255,8 @@ class ReceiptReprintDialog(QDialog):
             self.preview_scroll.setVisible(False)
             self.btn_reprint.setEnabled(False)
             self.btn_reprint_warranty.setEnabled(False)
+            if hasattr(self, "btn_export_warranty_pdf"):
+                self.btn_export_warranty_pdf.setEnabled(False)
             self.btn_reprint.setToolTip(_t("reprint.void_blocked"))
             return
 
@@ -267,13 +283,18 @@ class ReceiptReprintDialog(QDialog):
             self.lbl_preview_prompt.setVisible(False)
             self.preview_scroll.setVisible(True)
             self.btn_reprint.setEnabled(True)
-            self.btn_reprint_warranty.setEnabled(bool(getattr(sale, "warranties", [])))
+            has_w = bool(getattr(sale, "warranties", []))
+            self.btn_reprint_warranty.setEnabled(has_w)
+            if hasattr(self, "btn_export_warranty_pdf"):
+                self.btn_export_warranty_pdf.setEnabled(has_w)
         except Exception as e:
             logger.error("Failed to build reprint preview for sale %s: %s", getattr(sale, "id", None), e)
             self.lbl_preview_prompt.setVisible(True)
             self.preview_scroll.setVisible(False)
             self.btn_reprint.setEnabled(False)
             self.btn_reprint_warranty.setEnabled(False)
+            if hasattr(self, "btn_export_warranty_pdf"):
+                self.btn_export_warranty_pdf.setEnabled(False)
 
     def _on_filter_clicked(self, key: str) -> None:
         """Handle quick filter button click."""
@@ -462,7 +483,6 @@ class ReceiptReprintDialog(QDialog):
 
         from cbpos.core.constants.permissions import Permissions
         from cbpos.core.services.auth_service import AuthService
-        from cbpos.core.services.receipt_reprint_service import ReceiptReprintService
         from cbpos.core.utils.permission_helper import check_permission_with_override
 
         authorized_user = check_permission_with_override(Permissions.SALES_REPRINT, self)
@@ -484,31 +504,120 @@ class ReceiptReprintDialog(QDialog):
         user_id = curr_id or auth_id
         approver_id = auth_id if (auth_id and curr_id and auth_id != curr_id) else None
 
-        try:
-            commands = ReceiptReprintService.reprint_warranty_cards(
-                sale.id,
-                user_id=user_id,
-                approver_id=approver_id,
-            )
-            worker = PrintWorker.instance()
-            self._reprint_job_id = worker.add_job("print_commands", commands)
-        except ValueError as e:
-            if str(e) == "reprint_void":
+        self.btn_reprint_warranty.setEnabled(False)
+
+        from cbpos.ui.workers import WarrantyReprintWorker, start_background_job
+
+        worker = WarrantyReprintWorker(sale.id, user_id=user_id, approver_id=approver_id, parent=self)
+
+        def _on_result(commands: bytes) -> None:
+            worker_inst = PrintWorker.instance()
+            self._warranty_reprint_job_id = worker_inst.add_job("print_commands", commands)
+
+        def _on_error(err_str: str) -> None:
+            self.btn_reprint_warranty.setEnabled(True)
+            if err_str == "reprint_void":
                 QMessageBox.warning(self, _t("common.warning"), _t("reprint.void_blocked"))
-            elif str(e) == "no_warranties":
+            elif err_str == "no_warranties":
                 QMessageBox.warning(
                     self,
                     _t("common.warning"),
-                    _t("receipt_reprint.no_warranties", default="No warranties on this sale"),
+                    _t("receipt_reprint.no_warranties"),
                 )
             else:
+                logger.error("Reprint warranty failed: %s", err_str)
                 QMessageBox.critical(self, _t("common.error"), _t("receipt_reprint.reprint_failed"))
-        except Exception as e:
-            logger.error(f"Reprint warranty failed: {e}")
-            QMessageBox.critical(self, _t("common.error"), _t("receipt_reprint.reprint_failed"))
+
+        worker.result.connect(_on_result)
+        worker.error.connect(_on_error)
+        start_background_job(worker)
+
+    def export_warranty_pdf_selected(self) -> None:
+        """Export standalone warranty certificate PDF for the selected sale (#824)."""
+        row = self.results_table.currentRow()
+        if row < 0:
+            QMessageBox.warning(self, _t("receipt_reprint.no_selection"), _t("receipt_reprint.select_sale"))
+            return
+
+        sale = self.results[row]
+        if getattr(sale, "status", "") == "VOID":
+            QMessageBox.warning(self, _t("common.warning"), _t("reprint.void_blocked"))
+            return
+
+        from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.i18n import get_language
+
+        authorized_user = check_permission_with_override(Permissions.SALES_REPRINT, self)
+        if not authorized_user:
+            return
+
+        doc_num = getattr(sale, "document_number", "warranty")
+        default_name = f"warranty_{doc_num}.pdf"
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            _t("receipt_reprint.btn_export_warranty_pdf"),
+            default_name,
+            _t("receipt_options.pdf_filter"),
+        )
+        if not file_path:
+            return
+
+        self.btn_export_warranty_pdf.setEnabled(False)
+        user_id = authorized_user.id
+
+        from cbpos.ui.workers import WarrantyExportPdfWorker, start_background_job
+
+        worker = WarrantyExportPdfWorker(
+            sale_id=sale.id,
+            destination_path=file_path,
+            user_id=user_id,
+            lang=get_language(),
+            parent=self,
+        )
+
+        def _on_export_done(out: str) -> None:
+            self.btn_export_warranty_pdf.setEnabled(True)
+            QMessageBox.information(
+                self,
+                _t("common.success"),
+                _t("receipt_reprint.warranty_pdf_exported", path=out),
+            )
+
+        def _on_export_error(err_str: str) -> None:
+            self.btn_export_warranty_pdf.setEnabled(True)
+            if err_str == "no_warranties":
+                QMessageBox.warning(
+                    self,
+                    _t("common.warning"),
+                    _t("receipt_reprint.no_warranties"),
+                )
+            else:
+                logger.error("Failed to export warranty PDF: %s", err_str)
+                QMessageBox.critical(
+                    self,
+                    _t("common.error"),
+                    _t("receipt_options.pdf_error_message", error=translate_error(err_str)),
+                )
+
+        worker.result.connect(_on_export_done)
+        worker.error.connect(_on_export_error)
+        start_background_job(worker)
 
     def _on_reprint_job_result(self, job_id: str, ok: bool, message: str) -> None:
         """Called when a print job completes. Ignores jobs other than this dialog's reprint (#842)."""
+        if self._warranty_reprint_job_id and job_id == self._warranty_reprint_job_id:
+            self._warranty_reprint_job_id = None
+            self.btn_reprint_warranty.setEnabled(True)
+            if ok:
+                QMessageBox.information(self, _t("receipt_reprint.title"), _t("receipt_options.warranty_print_success"))
+            else:
+                logger.error("Reprint warranty failed: %s", message)
+                QMessageBox.critical(
+                    self, _t("common.error"), _t("receipt_options.print_error_message", error=translate_error(message))
+                )
+            return
+
         if not self._reprint_job_id or job_id != self._reprint_job_id:
             return
         self._reprint_job_id = None

@@ -20,6 +20,7 @@ from cbpos.core.models import (
     User,
     WarrantyPolicy,
 )
+from cbpos.core.models.warranty import Warranty
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.config_service import ConfigService
@@ -62,6 +63,7 @@ def policy_and_user(db_session):
             Permissions.INVENTORY_EDIT,
             Permissions.SALES_VIEW,
             Permissions.SALES_ADD_ITEM,
+            Permissions.SALES_REFUND,
         ],
     )
 
@@ -416,3 +418,196 @@ class TestTransactionServiceSerialEnforcement:
             assert sale is not None
             assert len(sale.warranties) == 1
             assert sale.warranties[0].serial_number is None
+
+
+class TestSerialAwareRefunds:
+    def test_refund_specific_serial_cancels_exact_warranty_unit(self, db_session, policy_and_user):
+        user = policy_and_user["user"]
+        policy = policy_and_user["policy"]
+
+        product = Product(
+            name_en="Smartphone Pro",
+            price=Decimal("50000.00"),
+            stock_qty=Decimal("10.0"),
+            barcode="SMP-01",
+            serial_mode="REQUIRED",
+            warranty_override="POLICY",
+            warranty_policy_id=policy.id,
+        )
+        db_session.add(product)
+        db_session.commit()
+
+        cart = CartService()
+        cart.add_item(product, Decimal("3"))
+        cart.set_item_serials(0, ["SN-AAA", "SN-BBB", "SN-CCC"])
+
+        with patch.object(AuthService, "get_current_user", return_value=user):
+            sale = TransactionService.process_sale(
+                cart,
+                [{"method": "CASH", "amount": Decimal("150000.00")}],
+            )
+
+        sale_item_id = sale.items[0].id
+        warranties = db_session.scalars(
+            select(Warranty).where(Warranty.sale_id == sale.id).order_by(Warranty.unit_index)
+        ).all()
+        assert len(warranties) == 3
+        assert [w.serial_number for w in warranties] == ["SN-AAA", "SN-BBB", "SN-CCC"]
+        assert all(w.status == "ACTIVE" for w in warranties)
+
+        # Refund ONLY serial 'SN-BBB'
+        from cbpos.core.services.refund_service import RefundLineRequest, RefundService
+
+        req = RefundLineRequest(
+            sale_item_id=sale_item_id,
+            qty=Decimal("1.000"),
+            reason="Customer preference",
+            selected_serials=["SN-BBB"],
+        )
+
+        with patch.object(AuthService, "get_current_user", return_value=user):
+            res = RefundService.refund(
+                sale_id=sale.id,
+                lines=[req],
+                reason="Unit B refund",
+                user_id=user.id,
+            )
+
+        assert res is not None
+        db_session.expire_all()
+
+        w_a = db_session.scalar(select(Warranty).where(Warranty.serial_number == "SN-AAA"))
+        w_b = db_session.scalar(select(Warranty).where(Warranty.serial_number == "SN-BBB"))
+        w_c = db_session.scalar(select(Warranty).where(Warranty.serial_number == "SN-CCC"))
+
+        assert w_a.status == "ACTIVE"
+        assert w_b.status == "CANCELLED"
+        assert w_c.status == "ACTIVE"
+
+    def test_refund_selected_serial_mismatch_fails_closed(self, db_session, policy_and_user):
+        user = policy_and_user["user"]
+        policy = policy_and_user["policy"]
+
+        product = Product(
+            name_en="Tablet Mini",
+            price=Decimal("30000.00"),
+            stock_qty=Decimal("5.0"),
+            barcode="TAB-01",
+            serial_mode="REQUIRED",
+            warranty_override="POLICY",
+            warranty_policy_id=policy.id,
+        )
+        db_session.add(product)
+        db_session.commit()
+
+        cart = CartService()
+        cart.add_item(product, Decimal("2"))
+        cart.set_item_serials(0, ["TAB-01", "TAB-02"])
+
+        with patch.object(AuthService, "get_current_user", return_value=user):
+            sale = TransactionService.process_sale(
+                cart,
+                [{"method": "CASH", "amount": Decimal("60000.00")}],
+            )
+
+        sale_item_id = sale.items[0].id
+        from cbpos.core.services.refund_service import RefundLineRequest, RefundService
+
+        # 1. Non-existent serial
+        req_wrong = RefundLineRequest(
+            sale_item_id=sale_item_id,
+            qty=Decimal("1.000"),
+            selected_serials=["NON-EXISTENT"],
+        )
+        with pytest.raises(ValueError, match="is not an active warranty"):
+            RefundService.refund(
+                sale_id=sale.id,
+                lines=[req_wrong],
+                reason="Test",
+                user_id=user.id,
+            )
+
+        # 2. Count mismatch (refund 1 qty, but 2 serials supplied)
+        req_count_mismatch = RefundLineRequest(
+            sale_item_id=sale_item_id,
+            qty=Decimal("1.000"),
+            selected_serials=["TAB-01", "TAB-02"],
+        )
+        with pytest.raises(ValueError, match="refund quantity"):
+            RefundService.refund(
+                sale_id=sale.id,
+                lines=[req_count_mismatch],
+                reason="Test",
+                user_id=user.id,
+            )
+
+        # 3. Duplicate serials
+        req_duplicate = RefundLineRequest(
+            sale_item_id=sale_item_id,
+            qty=Decimal("2.000"),
+            selected_serials=["TAB-01", "TAB-01"],
+        )
+        with pytest.raises(ValueError, match="Duplicate serial"):
+            RefundService.refund(
+                sale_id=sale.id,
+                lines=[req_duplicate],
+                reason="Test",
+                user_id=user.id,
+            )
+
+        # Verify nothing was cancelled
+        warranties = db_session.scalars(select(Warranty).where(Warranty.sale_id == sale.id)).all()
+        assert all(w.status == "ACTIVE" for w in warranties)
+
+    def test_refund_without_selected_serials_cancels_highest_unit_index_first(self, db_session, policy_and_user):
+        user = policy_and_user["user"]
+        policy = policy_and_user["policy"]
+
+        product = Product(
+            name_en="Smartwatch",
+            price=Decimal("15000.00"),
+            stock_qty=Decimal("5.0"),
+            barcode="SW-01",
+            serial_mode="REQUIRED",
+            warranty_override="POLICY",
+            warranty_policy_id=policy.id,
+        )
+        db_session.add(product)
+        db_session.commit()
+
+        cart = CartService()
+        cart.add_item(product, Decimal("3"))
+        cart.set_item_serials(0, ["SW-01", "SW-02", "SW-03"])
+
+        with patch.object(AuthService, "get_current_user", return_value=user):
+            sale = TransactionService.process_sale(
+                cart,
+                [{"method": "CASH", "amount": Decimal("45000.00")}],
+            )
+
+        sale_item_id = sale.items[0].id
+        from cbpos.core.services.refund_service import RefundLineRequest, RefundService
+
+        # Refund without selected_serials
+        req = RefundLineRequest(
+            sale_item_id=sale_item_id,
+            qty=Decimal("1.000"),
+            reason="Default refund",
+        )
+
+        with patch.object(AuthService, "get_current_user", return_value=user):
+            RefundService.refund(
+                sale_id=sale.id,
+                lines=[req],
+                reason="Default refund",
+                user_id=user.id,
+            )
+
+        db_session.expire_all()
+        w1 = db_session.scalar(select(Warranty).where(Warranty.serial_number == "SW-01"))
+        w2 = db_session.scalar(select(Warranty).where(Warranty.serial_number == "SW-02"))
+        w3 = db_session.scalar(select(Warranty).where(Warranty.serial_number == "SW-03"))
+
+        assert w1.status == "ACTIVE"
+        assert w2.status == "ACTIVE"
+        assert w3.status == "CANCELLED"  # Highest unit_index was unit 3

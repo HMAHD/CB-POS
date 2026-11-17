@@ -38,6 +38,7 @@ class ReceiptOptionsDialog(QDialog):
         super().__init__(parent)
         self.sale = sale
         self._print_job_id: str | None = None
+        self._warranty_job_id: str | None = None
         PrintWorker.instance().job_result.connect(self._on_print_job_result)
         self.setWindowTitle(_t("receipt_options.title"))
         self.setMinimumSize(440, 528)
@@ -141,6 +142,16 @@ class ReceiptOptionsDialog(QDialog):
             self.btn_print_warranties.clicked.connect(self.print_warranty_cards)
             layout.addWidget(self.btn_print_warranties)
 
+            layout.addSpacing(6)
+            self.btn_save_warranty_pdf = QPushButton("")
+            self.btn_save_warranty_pdf.setObjectName("ReceiptBtnWarrantyPdf")
+            self.btn_save_warranty_pdf.setIcon(Icons.get("fa5s.file-pdf", icon_clr))
+            self.btn_save_warranty_pdf.setIconSize(QSize(18, 18))
+            self.btn_save_warranty_pdf.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.btn_save_warranty_pdf.setFixedHeight(44)
+            self.btn_save_warranty_pdf.clicked.connect(self.save_warranty_pdf)
+            layout.addWidget(self.btn_save_warranty_pdf)
+
         layout.addStretch(1)
 
         # ── Close Button (centered, subtle) ────────────────────────
@@ -170,9 +181,9 @@ class ReceiptOptionsDialog(QDialog):
         self.btn_email.setText("  " + _t("receipt_options.btn_email"))
         self.btn_save_pdf.setText("  " + _t("receipt_options.btn_save_pdf"))
         if hasattr(self, "btn_print_warranties"):
-            self.btn_print_warranties.setText(
-                "  " + _t("receipt_options.btn_print_warranty_cards", default="Print Warranty Card(s)")
-            )
+            self.btn_print_warranties.setText("  " + _t("receipt_options.btn_print_warranty_cards"))
+        if hasattr(self, "btn_save_warranty_pdf"):
+            self.btn_save_warranty_pdf.setText("  " + _t("receipt_options.btn_save_warranty_pdf"))
         self.btn_close.setText(_t("receipt_options.btn_close"))
 
         configured = EmailService.is_configured()
@@ -212,18 +223,15 @@ class ReceiptOptionsDialog(QDialog):
             )
 
     def print_warranty_cards(self) -> None:
-        """Print thermal warranty cards for the sale."""
+        """Print thermal warranty cards for the sale (#824)."""
         warranties = getattr(self.sale, "warranties", [])
         if not warranties:
             return
         try:
-            PrinterService.print_warranty_cards(warranties)
-            QMessageBox.information(
-                self,
-                _t("receipt_options.title"),
-                _t("receipt_options.warranty_print_success", default="Warranty card(s) queued for printing"),
-            )
+            self.btn_print_warranties.setEnabled(False)
+            self._warranty_job_id = PrinterService.print_warranty_cards(warranties)
         except Exception as e:
+            self.btn_print_warranties.setEnabled(True)
             logger.error("Failed to print warranty cards: %s", e)
             QMessageBox.warning(
                 self,
@@ -231,8 +239,74 @@ class ReceiptOptionsDialog(QDialog):
                 _t("receipt_options.print_error_message", error=translate_error(str(e))),
             )
 
+    def save_warranty_pdf(self) -> None:
+        """Export standalone warranty certificate PDF (#824)."""
+        warranties = getattr(self.sale, "warranties", [])
+        if not warranties:
+            return
+
+        doc_num = getattr(self.sale, "document_number", "warranty")
+        default_name = f"warranty_{doc_num}.pdf"
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            _t("receipt_options.btn_save_warranty_pdf"),
+            default_name,
+            _t("receipt_options.pdf_filter"),
+        )
+        if not file_path:
+            return
+
+        if hasattr(self, "btn_save_warranty_pdf"):
+            self.btn_save_warranty_pdf.setEnabled(False)
+
+        from cbpos.i18n import get_language
+        from cbpos.ui.workers import WarrantyCardPdfWorker, start_background_job
+
+        worker = WarrantyCardPdfWorker(warranties, file_path, lang=get_language())
+
+        def _on_result(out_path: str):
+            if hasattr(self, "btn_save_warranty_pdf"):
+                self.btn_save_warranty_pdf.setEnabled(True)
+            QMessageBox.information(
+                self,
+                _t("receipt_options.pdf_saved_title"),
+                _t("receipt_options.warranty_pdf_saved", path=out_path),
+            )
+
+        def _on_error(err: str):
+            if hasattr(self, "btn_save_warranty_pdf"):
+                self.btn_save_warranty_pdf.setEnabled(True)
+            logger.error("Failed to save warranty PDF: %s", err)
+            QMessageBox.critical(
+                self,
+                _t("receipt_options.pdf_error_title"),
+                _t("receipt_options.pdf_error_message", error=translate_error(err)),
+            )
+
+        worker.result.connect(_on_result)
+        worker.error.connect(_on_error)
+        start_background_job(worker)
+
     def _on_print_job_result(self, job_id: str, ok: bool, message: str) -> None:
         """Handle print job completion for receipt options."""
+        if self._warranty_job_id and job_id == self._warranty_job_id:
+            self._warranty_job_id = None
+            if hasattr(self, "btn_print_warranties"):
+                self.btn_print_warranties.setEnabled(True)
+            if ok:
+                QMessageBox.information(
+                    self,
+                    _t("receipt_options.title"),
+                    _t("receipt_options.warranty_print_success"),
+                )
+            else:
+                QMessageBox.warning(
+                    self,
+                    _t("receipt_options.print_error_title"),
+                    _t("receipt_options.print_error_message", error=translate_error(message)),
+                )
+            return
+
         if self._print_job_id is None or job_id != self._print_job_id:
             return
         self._print_job_id = None

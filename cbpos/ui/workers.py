@@ -943,6 +943,110 @@ class TaxInvoiceArtifactWorker(QThread):
             self.error.emit(str(e))
 
 
+class WarrantyCardPdfWorker(QThread):
+    """Generates a standalone warranty certificate PDF in a background thread (#824)."""
+
+    result = pyqtSignal(str)
+    error = pyqtSignal(str)
+
+    def __init__(
+        self,
+        warranties: list[Any],
+        destination_path: str,
+        lang: str = "en",
+        parent: QObject | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.finished.connect(self.deleteLater)
+        self.warranties = list(warranties)
+        self.destination_path = destination_path
+        self.lang = lang
+
+    def run(self) -> None:
+        """Generate the warranty certificate PDF and emit its output path."""
+        try:
+            from cbpos.core.services.warranty_card_builder import WarrantyCardBuilder
+
+            out = WarrantyCardBuilder.build_pdf(self.warranties, self.destination_path, lang=self.lang)
+            self.result.emit(out)
+        except Exception as e:
+            logger.exception("Warranty card PDF generation failed: %s", e)
+            self.error.emit(str(e))
+
+
+class WarrantyReprintWorker(QThread):
+    """Loads warranties and builds thermal print commands in a background thread (#824)."""
+
+    result = pyqtSignal(list)
+    error = pyqtSignal(str)
+
+    def __init__(
+        self,
+        sale_id: int,
+        user_id: int,
+        approver_id: int | None = None,
+        parent: QObject | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.finished.connect(self.deleteLater)
+        self.sale_id = sale_id
+        self.user_id = user_id
+        self.approver_id = approver_id
+
+    def run(self) -> None:
+        """Generate reprint ESC/POS commands and emit them."""
+        try:
+            from cbpos.core.services.receipt_reprint_service import ReceiptReprintService
+
+            commands = ReceiptReprintService.reprint_warranty_cards(
+                self.sale_id,
+                user_id=self.user_id,
+                approver_id=self.approver_id,
+            )
+            self.result.emit(commands)
+        except Exception as e:
+            logger.exception("Warranty reprint failed: %s", e)
+            self.error.emit(str(e))
+
+
+class WarrantyExportPdfWorker(QThread):
+    """Loads sale warranties from DB and exports PDF in a background thread (#824)."""
+
+    result = pyqtSignal(str)
+    error = pyqtSignal(str)
+
+    def __init__(
+        self,
+        sale_id: int,
+        destination_path: str,
+        user_id: int,
+        lang: str = "en",
+        parent: QObject | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.finished.connect(self.deleteLater)
+        self.sale_id = sale_id
+        self.destination_path = destination_path
+        self.user_id = user_id
+        self.lang = lang
+
+    def run(self) -> None:
+        """Fetch sale warranties, generate the PDF, log audit entry, and emit path."""
+        try:
+            from cbpos.core.services.warranty_service import WarrantyService
+
+            out = WarrantyService.export_warranty_pdf(
+                self.sale_id,
+                self.destination_path,
+                self.user_id,
+                lang=self.lang,
+            )
+            self.result.emit(out)
+        except Exception as e:
+            logger.exception("Warranty export PDF failed: %s", e)
+            self.error.emit(str(e))
+
+
 # Alias PrintWorker as ReceiptWorker for backwards/audit naming compatibility
 def __getattr__(name: str):
     if name == "ReceiptWorker":

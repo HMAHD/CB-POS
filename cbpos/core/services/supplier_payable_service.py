@@ -133,6 +133,41 @@ class SupplierPayableService:
         session.add(entry)
 
     @staticmethod
+    def record_credit_note_in_session(
+        session: Any,
+        supplier_id: int,
+        amount: Decimal,
+        claim_id: int,
+        claim_number: str,
+        user_id: int,
+        note: str | None = None,
+    ) -> SupplierLedgerEntry:
+        """Record a credit note issued by supplier for a claim in an existing session (#828)."""
+        if amount <= 0:
+            raise ValueError("Credit note amount must be greater than zero.")
+
+        supplier = session.get(Supplier, supplier_id, with_for_update=True)
+        if not supplier:
+            raise ValueError(f"Supplier {supplier_id} not found.")
+
+        # Decrement payable (credit note reduces shop liability to supplier)
+        supplier.current_payable -= amount
+
+        entry = SupplierLedgerEntry(
+            supplier_id=supplier_id,
+            entry_type="CREDIT_NOTE",
+            amount=-amount,
+            balance_after=supplier.current_payable,
+            reference_id=claim_id,
+            reference_doc=claim_number,
+            note=note or f"Credit note for claim {claim_number}",
+            user_id=user_id,
+        )
+        session.add(entry)
+        session.flush()
+        return entry
+
+    @staticmethod
     def record_adjustment(
         supplier_id: int,
         amount: Decimal,
@@ -223,7 +258,7 @@ class SupplierPayableService:
         return oldest_open_charge(
             entries,
             charge_types={"PURCHASE", "ADJUSTMENT"},
-            credit_types={"PAYMENT", "REFUND", "ADJUSTMENT"},
+            credit_types={"PAYMENT", "REFUND", "ADJUSTMENT", "CREDIT_NOTE"},
         )
 
     @staticmethod
@@ -275,7 +310,7 @@ class SupplierPayableService:
                 oldest_charge_date = oldest_open_charge(
                     entries,
                     charge_types={"PURCHASE", "ADJUSTMENT"},
-                    credit_types={"PAYMENT", "REFUND", "ADJUSTMENT"},
+                    credit_types={"PAYMENT", "REFUND", "ADJUSTMENT", "CREDIT_NOTE"},
                 )
                 if oldest_charge_date is None:
                     continue

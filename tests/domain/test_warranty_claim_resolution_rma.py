@@ -11,11 +11,14 @@ from cbpos.core.models import (
     Customer,
     Permission,
     Product,
+    Purchase,
+    PurchaseItem,
     Role,
     Sale,
     SaleItem,
     StockMovement,
     Supplier,
+    SupplierLedgerEntry,
     User,
     Warranty,
     WarrantyClaim,
@@ -80,7 +83,8 @@ def rma_setup(db_session):
         stock_qty=Decimal("10.000"),
         is_active=True,
         default_supplier_id=supplier.id,
-        warranty_policy=policy,
+        warranty_policy_id=policy.id,
+        warranty_override="POLICY",
     )
 
     replacement_product = Product(
@@ -91,7 +95,8 @@ def rma_setup(db_session):
         stock_qty=Decimal("5.000"),
         is_active=True,
         default_supplier_id=supplier.id,
-        warranty_policy=policy,
+        warranty_policy_id=policy.id,
+        warranty_override="POLICY",
     )
 
     customer = Customer(
@@ -351,3 +356,250 @@ class TestIssue827ClaimRefund:
                 user_id=cashier.id,
                 session=db_session,
             )
+
+
+class TestIssue828SupplierRMA:
+    """Test suite for Issue #828 Supplier and Manufacturer RMA tracking."""
+
+    def test_send_to_supplier_and_receive(self, db_session, rma_setup):
+        """Verify send_to_supplier transitions status and receive_from_supplier returns it."""
+        admin = rma_setup["admin"]
+        claim_dto = rma_setup["claim_dto"]
+        supplier = rma_setup["supplier"]
+
+        # Send to supplier
+        dispatched_dto = WarrantyClaimService.send_to_supplier(
+            claim_id=claim_dto.id,
+            supplier_id=supplier.id,
+            user_id=admin.id,
+            supplier_rma_ref="RMA-LANKA-9988",
+            notes="Sent via Prompt Express courier",
+            session=db_session,
+        )
+
+        assert dispatched_dto.claim_status == "SUPPLIER_DISPATCHED"
+        assert dispatched_dto.defective_unit_status == "SENT_TO_SUPPLIER"
+        assert dispatched_dto.supplier_id == supplier.id
+        assert dispatched_dto.supplier_name == supplier.company_name
+        assert dispatched_dto.supplier_rma_ref == "RMA-LANKA-9988"
+        assert dispatched_dto.sent_to_supplier_at is not None
+
+        # Receive back from supplier
+        returned_dto = WarrantyClaimService.receive_from_supplier(
+            claim_id=claim_dto.id,
+            user_id=admin.id,
+            to_status="SUPPLIER_RETURNED",
+            notes="Courier delivered back to shop",
+            session=db_session,
+        )
+
+        assert returned_dto.claim_status == "SUPPLIER_RETURNED"
+        assert returned_dto.defective_unit_status == "RETURNED_FROM_SUPPLIER"
+        assert returned_dto.returned_from_supplier_at is not None
+
+    def test_send_to_supplier_advance_resolution_preserves_status(self, db_session, rma_setup):
+        """Verify dispatching defective unit after customer replacement preserves resolved state."""
+        admin = rma_setup["admin"]
+        claim_dto = rma_setup["claim_dto"]
+        rep_prod = rma_setup["replacement_product"]
+        supplier = rma_setup["supplier"]
+
+        # Advance replacement to customer
+        resolved = WarrantyClaimService.replace_from_stock(
+            claim_id=claim_dto.id,
+            replacement_product_id=rep_prod.id,
+            user_id=admin.id,
+            session=db_session,
+        )
+        assert resolved.claim_status == "RESOLVED"
+        assert resolved.defective_unit_status == "HELD"
+
+        # Now dispatch defective unit to supplier
+        dispatched = WarrantyClaimService.send_to_supplier(
+            claim_id=claim_dto.id,
+            supplier_id=supplier.id,
+            user_id=admin.id,
+            supplier_rma_ref="RMA-ADV-001",
+            session=db_session,
+        )
+        # Customer status stays RESOLVED!
+        assert dispatched.claim_status == "RESOLVED"
+        assert dispatched.defective_unit_status == "SENT_TO_SUPPLIER"
+
+    def test_supplier_outcome_credit_note_updates_ledger_and_aging(self, db_session, rma_setup):
+        """Verify CREDIT_NOTE outcome decrements supplier payable and writes ledger entry."""
+        admin = rma_setup["admin"]
+        claim_dto = rma_setup["claim_dto"]
+        supplier = rma_setup["supplier"]
+        initial_payable = supplier.current_payable
+
+        # Dispatch first
+        WarrantyClaimService.send_to_supplier(
+            claim_id=claim_dto.id,
+            supplier_id=supplier.id,
+            user_id=admin.id,
+            session=db_session,
+        )
+
+        # Record supplier credit note of 35000.00
+        credit_amt = Decimal("35000.00")
+        outcome_dto = WarrantyClaimService.record_supplier_outcome(
+            claim_id=claim_dto.id,
+            outcome="CREDIT_NOTE",
+            user_id=admin.id,
+            credit_amount=credit_amt,
+            notes="Credit note issued per RMA credit agreement",
+            session=db_session,
+        )
+
+        assert outcome_dto.supplier_outcome == "CREDIT_NOTE"
+        assert outcome_dto.supplier_credit_amount == credit_amt
+        assert outcome_dto.defective_unit_status == "SCRAPPED"
+
+        # Verify supplier payable balance decremented
+        db_session.refresh(supplier)
+        assert supplier.current_payable == initial_payable - credit_amt
+
+        # Verify ledger entry written
+        entry = (
+            db_session.query(SupplierLedgerEntry)
+            .filter_by(supplier_id=supplier.id, reference_id=claim_dto.id, entry_type="CREDIT_NOTE")
+            .first()
+        )
+        assert entry is not None
+        assert entry.amount == -credit_amt
+        assert entry.balance_after == initial_payable - credit_amt
+
+    def test_supplier_outcome_replacement_restocks_shop_after_advance_replacement(self, db_session, rma_setup):
+        """Supplier replacement unit restocks shop inventory when shop gave advance replacement."""
+        admin = rma_setup["admin"]
+        claim_dto = rma_setup["claim_dto"]
+        prod = rma_setup["product"]
+        rep_prod = rma_setup["replacement_product"]
+        supplier = rma_setup["supplier"]
+
+        # Step 1: Shop gives replacement from shelf
+        WarrantyClaimService.replace_from_stock(
+            claim_id=claim_dto.id,
+            replacement_product_id=rep_prod.id,
+            user_id=admin.id,
+            session=db_session,
+        )
+
+        # Step 2: Send defective unit to supplier
+        WarrantyClaimService.send_to_supplier(
+            claim_id=claim_dto.id,
+            supplier_id=supplier.id,
+            user_id=admin.id,
+            session=db_session,
+        )
+
+        # Step 3: Receive back
+        WarrantyClaimService.receive_from_supplier(
+            claim_id=claim_dto.id,
+            user_id=admin.id,
+            session=db_session,
+        )
+
+        # Record initial stock of product
+        initial_stock = prod.stock_qty
+
+        # Step 4: Record supplier replaced unit
+        outcome_dto = WarrantyClaimService.record_supplier_outcome(
+            claim_id=claim_dto.id,
+            outcome="REPLACED",
+            user_id=admin.id,
+            replacement_serial="SUPP-REPLACEMENT-SN-001",
+            session=db_session,
+        )
+        assert outcome_dto.supplier_outcome == "REPLACED"
+
+        # Verify product stock incremented by 1 with WARRANTY movement
+        db_session.refresh(prod)
+        assert prod.stock_qty == initial_stock + Decimal("1.000")
+
+        mv = (
+            db_session.query(StockMovement)
+            .filter_by(product_id=prod.id, document_id=claim_dto.id, type=MovementType.WARRANTY)
+            .order_by(StockMovement.id.desc())
+            .first()
+        )
+        assert mv is not None
+        assert mv.qty_change == Decimal("1.000")
+
+    def test_estimate_supplier_coverage(self, db_session, rma_setup):
+        """Verify estimate_supplier_coverage calculates validity from latest purchase GRN."""
+        admin = rma_setup["admin"]
+        supplier = rma_setup["supplier"]
+        product = rma_setup["product"]
+
+        # Create a purchase 60 days ago
+        purchase = Purchase(
+            document_number="GRN-2026-0005",
+            date=datetime.now() - timedelta(days=60),
+            status="COMPLETED",
+            supplier_id=supplier.id,
+            user_id=admin.id,
+        )
+        db_session.add(purchase)
+        db_session.flush()
+
+        p_item = PurchaseItem(
+            purchase_id=purchase.id,
+            product_id=product.id,
+            qty_received=Decimal("10.000"),
+            unit_cost=Decimal("35000.00"),
+        )
+        db_session.add(p_item)
+        db_session.flush()
+
+        estimate = WarrantyClaimService.estimate_supplier_coverage(
+            product_id=product.id,
+            supplier_id=supplier.id,
+            session=db_session,
+        )
+
+        assert estimate["has_estimate"] is True
+        assert estimate["supplier_name"] == supplier.company_name
+        assert estimate["supplier_cover_months"] == 12
+        assert estimate["is_valid"] is True
+        assert estimate["days_remaining"] > 290
+
+    def test_supplier_dispatch_receipt_omits_customer_pii(self, rma_setup):
+        """Verify thermal RMA dispatch receipt strictly omits customer name and phone."""
+        from cbpos.core.services.warranty_claim_receipt_builder import WarrantyClaimReceiptBuilder
+
+        claim_dto = rma_setup["claim_dto"]
+        # Ensure customer data exists on DTO
+        assert claim_dto.customer_name == "Kamal Jayasuriya"
+        assert claim_dto.customer_phone == "0719876543"
+
+        commands = WarrantyClaimReceiptBuilder.build_supplier_dispatch_receipt(claim_dto)
+        all_text = " ".join(c.get("val", "") for c in commands if isinstance(c.get("val"), str))
+
+        # PII Check: Customer Name and Phone MUST NOT BE IN TEXT!
+        assert "Kamal" not in all_text
+        assert "Jayasuriya" not in all_text
+        assert "0719876543" not in all_text
+
+        # RMA Information must be in text
+        assert claim_dto.document_number in all_text
+
+    def test_supplier_dispatch_pdf_omits_customer_pii(self, tmp_path, rma_setup):
+        """Verify vector PDF dispatch waybill strictly omits customer name and phone."""
+        from cbpos.core.services.warranty_claim_receipt_builder import WarrantyClaimReceiptBuilder
+
+        claim_dto = rma_setup["claim_dto"]
+        pdf_path = str(tmp_path / "supplier_rma.pdf")
+
+        result_path = WarrantyClaimReceiptBuilder.build_supplier_dispatch_pdf(claim_dto, pdf_path)
+        assert result_path == pdf_path
+
+        with open(pdf_path, "rb") as f:
+            pdf_bytes = f.read()
+
+        assert len(pdf_bytes) > 1000
+        # Check PII not in PDF raw text stream
+        assert b"Kamal" not in pdf_bytes
+        assert b"Jayasuriya" not in pdf_bytes
+        assert b"0719876543" not in pdf_bytes

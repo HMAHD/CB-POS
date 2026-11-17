@@ -256,12 +256,12 @@ class WarrantyLookupDialog(QDialog):
 
         detail_form_layout.addLayout(actions_row)
 
-        # Claim Button Row (#826 placeholder in #825)
+        # Claim Button Row (#826)
         claim_row = QHBoxLayout()
         self.btn_start_claim = QPushButton(_t("warranty_lookup.btn_start_claim"))
         self.btn_start_claim.setProperty("class", "primary")
         self.btn_start_claim.setEnabled(False)
-        self.btn_start_claim.setToolTip(_t("warranty_lookup.claim_not_available"))
+        self.btn_start_claim.clicked.connect(self._on_start_claim)
         claim_row.addWidget(self.btn_start_claim)
         detail_form_layout.addLayout(claim_row)
 
@@ -436,6 +436,20 @@ class WarrantyLookupDialog(QDialog):
         can_edit = bool(curr and PermissionService.user_has_permission(curr, Permissions.WARRANTY_EDIT))
         self.btn_edit_admin.setEnabled(can_edit and dto.status not in ("VOID", "CANCELLED"))
 
+        # Claim button state (#826)
+        if dto.has_active_claim:
+            self.btn_start_claim.setEnabled(False)
+            self.btn_start_claim.setText(_t("warranty_lookup.claim_in_progress"))
+            self.btn_start_claim.setToolTip(_t("warranty_lookup.active_claim_tooltip"))
+        elif dto.status in ("VOID", "CANCELLED"):
+            self.btn_start_claim.setEnabled(False)
+            self.btn_start_claim.setText(_t("warranty_lookup.btn_start_claim"))
+            self.btn_start_claim.setToolTip(_t("warranty_lookup.claim_void_disabled"))
+        else:
+            self.btn_start_claim.setEnabled(True)
+            self.btn_start_claim.setText(_t("warranty_lookup.btn_start_claim"))
+            self.btn_start_claim.setToolTip("")
+
     def _on_reprint_card(self) -> None:
         """Reprint warranty card via background worker."""
         if not self._selected_dto:
@@ -516,4 +530,15 @@ class WarrantyLookupDialog(QDialog):
         dlg = WarrantyCorrectionDialog(self._selected_dto, parent=self)
         if dlg.exec():
             # Refresh search results
+            self._do_search()
+
+    def _on_start_claim(self) -> None:
+        """Open WarrantyClaimIntakeDialog for the selected warranty (#826)."""
+        if not self._selected_dto:
+            return
+
+        from cbpos.ui.dialogs.warranty_claim_intake_dialog import WarrantyClaimIntakeDialog
+
+        dlg = WarrantyClaimIntakeDialog(warranty=self._selected_dto, parent=self)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
             self._do_search()

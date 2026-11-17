@@ -20,7 +20,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from cbpos.core.database import Base
 
 if TYPE_CHECKING:
-    from cbpos.core.models import Customer, Product, Sale, SaleItem
+    from cbpos.core.models import Customer, Product, Sale, SaleItem, WarrantyClaim
 
 
 class WarrantyPolicy(Base):
@@ -178,6 +178,9 @@ class Warranty(Base):
     )
     replaced_warranty: Mapped[Optional["Warranty"]] = relationship(
         "Warranty", foreign_keys=[replaces_warranty_id], remote_side=[id]
+    )
+    claims: Mapped[list["WarrantyClaim"]] = relationship(
+        "WarrantyClaim", foreign_keys="[WarrantyClaim.warranty_id]", back_populates="warranty"
     )
 
     __table_args__ = (

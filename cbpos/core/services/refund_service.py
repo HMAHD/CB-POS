@@ -551,6 +551,7 @@ class RefundService:
         override_reason: str | None = None,
         peripherals: TransactionPeripherals | None = None,
         selected_serials: dict[int, list[str]] | None = None,
+        claim_id: int | None = None,
     ) -> RefundResult:
         """Execute a refund transaction atomically."""
         db = Database()
@@ -766,6 +767,7 @@ class RefundService:
                 refund_lines=[(req.sale_item_id, req.qty) for req in lines],
                 actor_id=user_id,
                 selected_serials=merged_selected_serials or None,
+                claim_id=claim_id,
             )
 
             # 10. Audit log entries

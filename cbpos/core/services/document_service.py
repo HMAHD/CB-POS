@@ -28,13 +28,14 @@ DEFAULT_PATTERNS: dict[str, str] = {
     "STOCK_COUNT": "STK-{Y}-{seq:05d}",
     "ADJUSTMENT": "ADJ-{Y}-{seq:05d}",
     "PROFORMA": "QUO-{Y}-{seq:05d}",
+    "WARRANTY_CLAIM": "WC-{Y}-{seq:05d}",
 }
 _FALLBACK_PATTERN = "DOC-{Y}-{seq:05d}"
 # Documents that synced tills (terminal_mode "main"/"terminal") number in
 # their own local database and later push to the Main PC (receipts, credit
 # notes and GRNs, #674/#679). Purchase orders, quotations and stock counts
 # never leave the till, so they keep one series.
-_TERMINAL_SCOPED_TYPES = ("SALE", "RETURN", "PURCHASE")
+_TERMINAL_SCOPED_TYPES = ("SALE", "RETURN", "PURCHASE", "WARRANTY_CLAIM")
 _SYNC_TERMINAL_MODES = ("main", "terminal")
 
 
@@ -188,6 +189,7 @@ class DocumentService:
         "STOCK_COUNT": "STK",
         "ADJUSTMENT": "ADJ",
         "PROFORMA": "QUO",
+        "WARRANTY_CLAIM": "WC",
     }
 
     @staticmethod

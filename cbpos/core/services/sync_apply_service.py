@@ -60,7 +60,7 @@ logger = logging.getLogger(__name__)
 # Sales and purchases are joined-table subclasses of Document: a sale's
 # id *is* its documents.id, so the three share one id space in the map.
 DOCUMENT_ID_SPACE = "documents"
-_DOCUMENT_TABLES = frozenset({"documents", "sales", "purchases"})
+_DOCUMENT_TABLES = frozenset({"documents", "sales", "purchases", "warranty_claims"})
 
 # Order rows are applied in -- parents before anything that points at
 # them. This is deliberately not the payload's order: the till lists
@@ -73,10 +73,12 @@ APPLY_ORDER: tuple[str, ...] = (
     "shifts",
     "sales",
     "purchases",
-    "documents",
     "sale_items",
     "sale_payments",
     "warranties",
+    "warranty_claims",
+    "documents",
+    "warranty_claim_events",
     "purchase_items",
     "stock_movements",
     "cash_movements",
@@ -107,6 +109,13 @@ TERMINAL_REFS: dict[str, dict[str, str]] = {
         "covers_warranty_id": "warranties",
         "replaces_warranty_id": "warranties",
     },
+    "warranty_claims": {
+        "warranty_id": "warranties",
+        "replacement_warranty_id": "warranties",
+    },
+    "warranty_claim_events": {
+        "claim_id": DOCUMENT_ID_SPACE,
+    },
     "purchase_items": {"purchase_id": DOCUMENT_ID_SPACE},
     "stock_movements": {"document_id": DOCUMENT_ID_SPACE},
     "cash_movements": {"shift_id": "shifts"},
@@ -132,7 +141,15 @@ LEDGER_REFS: dict[str, dict[str, str]] = {
 # Tables whose customer_id may point at a customer the till created and
 # pushed in the same batch (#680). Any other customer_id is a Main PC id.
 _CUSTOMER_REF_TABLES = frozenset(
-    {"sales", "warranties", "customer_payments", "customer_ledger", "loyalty_ledger", "suspended_transactions"}
+    {
+        "sales",
+        "warranties",
+        "warranty_claims",
+        "customer_payments",
+        "customer_ledger",
+        "loyalty_ledger",
+        "suspended_transactions",
+    }
 )
 
 # Columns that point at till rows that are never pushed (purchase orders

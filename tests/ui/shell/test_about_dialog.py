@@ -251,6 +251,7 @@ def test_main_window_wires_help_signal(qapp, monkeypatch):
         receive_payment_clicked = pyqtSignal()
         reprint_receipt_clicked = pyqtSignal()
         refund_clicked = pyqtSignal()
+        warranty_clicked = pyqtSignal()
         history_clicked = pyqtSignal()
         shift_clicked = pyqtSignal()
         help_clicked = pyqtSignal()
@@ -283,6 +284,9 @@ def test_main_window_wires_help_signal(qapp, monkeypatch):
             pass
 
         def open_refund(self):
+            pass
+
+        def open_warranty_lookup(self):
             pass
 
         def open_sale_history(self):

@@ -20,6 +20,7 @@ from cbpos.core.services.warranty_dto import WarrantyDTO
 from cbpos.core.services.warranty_service import WarrantyService
 from cbpos.i18n import _t
 from cbpos.ui.widgets.dialog_footer import make_dialog_footer
+from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,7 @@ class WarrantyCorrectionDialog(QDialog):
         self._user_id = user_id
         self.setObjectName("WarrantyCorrectionDialog")
         self.setWindowTitle(_t("warranty_lookup.correction_title"))
+        install_wheel_guard(self)
         self.setMinimumWidth(480)
         self.init_ui()
 

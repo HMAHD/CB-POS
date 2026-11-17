@@ -227,6 +227,7 @@ class DatabaseSetupService:
             cashier_role.permissions.append(perm_map[Permissions.CASH_OPEN_DRAWER])
             cashier_role.permissions.append(perm_map[Permissions.SALES_REPRINT])
             cashier_role.permissions.append(perm_map[Permissions.WARRANTY_VIEW])
+            cashier_role.permissions.append(perm_map[Permissions.WARRANTY_CLAIM_CREATE])
 
             session.add_all([admin_role, manager_role, cashier_role])
             session.flush()

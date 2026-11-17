@@ -104,7 +104,8 @@ class MainWindow(QMainWindow):
         self.sales_view.side_menu.receive_payment_clicked.connect(self.sales_view.open_receive_payment)
         self.sales_view.side_menu.reprint_receipt_clicked.connect(self.sales_view.open_reprint_receipt)
         self.sales_view.side_menu.refund_clicked.connect(self.sales_view.open_refund)
-        self.sales_view.side_menu.warranty_clicked.connect(self.sales_view.open_warranty_lookup)
+        if hasattr(self.sales_view.side_menu, "warranty_clicked") and hasattr(self.sales_view, "open_warranty_lookup"):
+            self.sales_view.side_menu.warranty_clicked.connect(self.sales_view.open_warranty_lookup)
         self.sales_view.side_menu.history_clicked.connect(self.sales_view.open_sale_history)
         self.sales_view.side_menu.shift_clicked.connect(self.sales_view.open_shift_management)
         self.sales_view.side_menu.help_clicked.connect(self.open_about_dialog)

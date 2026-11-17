@@ -45,6 +45,8 @@ from cbpos.core.models import (
     SupplierLedgerEntry,
     SupplierPayment,
     Warranty,
+    WarrantyClaim,
+    WarrantyClaimEvent,
 )
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.sync_change_tracking import SKIP_CHANGE_TRACKING
@@ -87,6 +89,7 @@ _FLAT_PUSH_TABLES: tuple[tuple[str, type], ...] = (
 _PUSHED_CHILDREN: dict[type, tuple[str, ...]] = {
     Sale: ("items", "payments"),
     Purchase: ("items",),
+    WarrantyClaim: ("events",),
 }
 
 
@@ -196,9 +199,12 @@ def _fingerprint(obj: Any) -> str:
     row = model_to_dict(obj)
     row.pop("synced", None)
     for relationship in _PUSHED_CHILDREN.get(type(obj), ()):
-        row[relationship] = sorted(
-            (model_to_dict(child) for child in getattr(obj, relationship)), key=lambda c: c.get("id") or 0
-        )
+        children = []
+        for child in getattr(obj, relationship):
+            c_dict = model_to_dict(child)
+            c_dict.pop("synced", None)
+            children.append(c_dict)
+        row[relationship] = sorted(children, key=lambda c: c.get("id") or 0)
     return sync_json_dumps(row)
 
 
@@ -786,6 +792,34 @@ class SyncClient(QThread):
                 payload.setdefault("documents", []).extend(p_docs)
                 payload["purchases"] = purchases
                 payload["purchase_items"] = p_items
+
+            # Find unsynced warranty claims (with events)
+            unsynced_claims = session.query(WarrantyClaim).filter_by(synced=False).all()
+            if unsynced_claims:
+                c_docs = []
+                claims = []
+                c_events = []
+                for claim in unsynced_claims:
+                    c_docs.append(self._document_row(claim))
+                    claims.append(model_to_dict(claim))
+                    for evt in claim.events:
+                        c_events.append(model_to_dict(evt))
+                        fingerprints[("warranty_claim_events", evt.id)] = _fingerprint(evt)
+                    fingerprints[("warranty_claims", claim.id)] = _fingerprint(claim)
+                payload.setdefault("documents", []).extend(c_docs)
+                payload["warranty_claims"] = claims
+                if c_events:
+                    payload["warranty_claim_events"] = c_events
+
+            # Any remaining unsynced warranty claim events whose claim was already synced
+            unsynced_events = session.query(WarrantyClaimEvent).filter_by(synced=False).all()
+            if unsynced_events:
+                existing_evts = payload.setdefault("warranty_claim_events", [])
+                existing_evt_ids = {e["id"] for e in existing_evts}
+                for evt in unsynced_events:
+                    if evt.id not in existing_evt_ids:
+                        existing_evts.append(model_to_dict(evt))
+                        fingerprints[("warranty_claim_events", evt.id)] = _fingerprint(evt)
 
             for table_name, model_class in _FLAT_PUSH_TABLES:
                 query = session.query(model_class).filter_by(synced=False)

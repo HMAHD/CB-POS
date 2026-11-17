@@ -455,6 +455,20 @@ class WarrantyService:
         actor_id: int,
     ) -> int:
         """Atomically transition all ACTIVE warranties for sale_id to VOID."""
+        from cbpos.core.models.warranty_claim import WarrantyClaim
+
+        # Guard: Fail closed if any warranty on the voided sale has an active claim (#826)
+        active_claims_count = session.scalar(
+            select(func.count(WarrantyClaim.id))
+            .join(Warranty, WarrantyClaim.warranty_id == Warranty.id)
+            .where(
+                Warranty.sale_id == sale_id,
+                WarrantyClaim.claim_status.not_in(["COLLECTED", "REJECTED", "VOID", "CANCELLED"]),
+            )
+        )
+        if active_claims_count:
+            raise ValueError("cannot_void_sale_with_open_claim")
+
         stmt = (
             select(Warranty)
             .where(
@@ -512,12 +526,15 @@ class WarrantyService:
         refund_lines: list[tuple[int, Decimal]],  # (sale_item_id, qty)
         actor_id: int,
         selected_serials: dict[int, list[str]] | None = None,
+        claim_id: int | None = None,
     ) -> list[Warranty]:
         """Cancel ACTIVE warranties per refunded line item.
 
         If selected_serials is provided for a line, cancels exactly those matching active
         warranties. Otherwise cancels highest unit_index first.
         """
+        from cbpos.core.models.warranty_claim import WarrantyClaimEvent
+
         cancelled_warranties = []
         now = datetime.now()
 
@@ -549,10 +566,11 @@ class WarrantyService:
                     Warranty.sale_item_id == sale_item_id,
                     Warranty.status == "ACTIVE",
                 )
+                .options(joinedload(Warranty.claims))
                 .order_by(Warranty.unit_index.desc())
                 .with_for_update()
             )
-            active_units = list(session.scalars(stmt).all())
+            active_units = list(session.scalars(stmt).unique().all())
 
             if len(active_units) < units_to_cancel:
                 raise ValueError(
@@ -585,6 +603,36 @@ class WarrantyService:
                 to_cancel = active_units[:units_to_cancel]
 
             for w in to_cancel:
+                # Check for active claims on this warranty unit (#826)
+                active_claims = [
+                    c for c in (w.claims or []) if c.claim_status not in ("COLLECTED", "REJECTED", "VOID", "CANCELLED")
+                ]
+
+                if active_claims:
+                    matching_claim = next((c for c in active_claims if c.id == claim_id), None)
+                    if matching_claim is not None and matching_claim.resolution == "REFUNDED":
+                        from_status = matching_claim.claim_status
+                        matching_claim.claim_status = "COLLECTED"
+                        matching_claim.collected_at = now
+                        matching_claim.resolution_notes = (
+                            (matching_claim.resolution_notes or "")
+                            + f" Refund issued in credit note {refund_sale.document_number}"
+                        ).strip()
+                        matching_claim.synced = False
+                        session.add(
+                            WarrantyClaimEvent(
+                                claim_id=matching_claim.id,
+                                from_status=from_status,
+                                to_status="COLLECTED",
+                                user_id=actor_id,
+                                event_time=now,
+                                notes=f"Refund issued in credit note {refund_sale.document_number}",
+                                synced=False,
+                            )
+                        )
+                    else:
+                        raise ValueError("cannot_refund_unit_with_open_claim")
+
                 w.status = "CANCELLED"
                 w.cancelled_by_sale_id = refund_sale.id
                 w.last_modified = now
@@ -1145,6 +1193,17 @@ class WarrantyService:
         if not cust_phone and w.customer:
             cust_phone = w.customer.phone
 
+        has_claim = False
+        claim_id = None
+        if hasattr(w, "claims") and w.claims:
+            active_c = next(
+                (c for c in w.claims if c.claim_status not in ("COLLECTED", "REJECTED", "VOID", "CANCELLED")),
+                None,
+            )
+            if active_c:
+                has_claim = True
+                claim_id = active_c.id
+
         return WarrantyDTO(
             id=w.id,
             code=w.code,
@@ -1168,8 +1227,8 @@ class WarrantyService:
             status=w.status,
             effective_status=eff_status,
             days_remaining=days_left,
-            has_active_claim=False,
-            active_claim_id=None,
+            has_active_claim=has_claim,
+            active_claim_id=claim_id,
         )
 
     @classmethod

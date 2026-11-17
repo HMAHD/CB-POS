@@ -27,7 +27,7 @@ def upgrade() -> None:
     if "warranty_claims" in existing_tables:
         existing_cols = {c["name"] for c in insp.get_columns("warranty_claims")}
 
-        with op.batch_alter_table("warranty_claims") as batch_op:
+        with op.batch_alter_table("warranty_claims", reflect_kwargs={"resolve_fks": False}) as batch_op:
             if "defective_unit_status" not in existing_cols:
                 batch_op.add_column(
                     sa.Column(
@@ -146,7 +146,7 @@ def downgrade() -> None:
         existing_checks = {c["name"] for c in insp.get_check_constraints("warranty_claims")}
         existing_indexes = {c["name"] for c in insp.get_indexes("warranty_claims")}
 
-        with op.batch_alter_table("warranty_claims") as batch_op:
+        with op.batch_alter_table("warranty_claims", reflect_kwargs={"resolve_fks": False}) as batch_op:
             if "ck_warranty_claims_supplier_outcome" in existing_checks or conn.dialect.name != "sqlite":
                 batch_op.drop_constraint("ck_warranty_claims_supplier_outcome", type_="check")
             if "ck_warranty_claims_defective_status" in existing_checks or conn.dialect.name != "sqlite":

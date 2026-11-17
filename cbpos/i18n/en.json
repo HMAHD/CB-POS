@@ -238,7 +238,16 @@
     "item_count": "Items: {count}",
     "bill_discount_row": "Bill discount",
     "context_edit_serials": "&Edit Serial / IMEI Numbers",
-    "confirm_discard_serials": "Reducing quantity will discard recorded serial numbers: {serials}\n\nProceed?"
+    "confirm_discard_serials": "Reducing quantity will discard recorded serial numbers: {serials}\n\nProceed?",
+    "extended_plan_requires_covered_item": "An eligible covered product must be in the cart to add an extended warranty plan.",
+    "choose_covered_item_title": "Select Covered Product",
+    "choose_covered_item_prompt": "Select the covered product for '{plan}':",
+    "col_item": "Item",
+    "col_price": "Price",
+    "col_qty": "Qty",
+    "covers": "Covers",
+    "plan_qty_exceeds_covered": "Cannot add more extended warranty plans than covered product quantity ({covered_qty}).",
+    "plan_qty_adjusted_for_covered": "Extended warranty plan quantities adjusted to match covered item"
   },
   "bill_discount": {
     "title": "Bill discount",
@@ -265,6 +274,7 @@
     "recall_notices_title": "Bill recalled with changes",
     "recall_price_changed": "{name}: price is now {new}; the held price {old} was kept.",
     "recall_item_missing": "{name} is no longer available and was left out.",
+    "recall_plan_missing_covered_item": "Extended warranty plan '{plan}' omitted because covered product is no longer available.",
     "void_title": "Void Bill",
     "void_confirm": "Are you sure you want to clear the current bill?",
     "title": "ORDERS:",
@@ -438,7 +448,8 @@
     "override_tender_label": "Tender to give back:",
     "override_reason_label": "Reason for tender override:",
     "override_reason_placeholder": "Why is this not returning to original tenders?",
-    "override_btn_apply": "Apply Override"
+    "override_btn_apply": "Apply Override",
+    "suggest_plan_refund": "Note: Linked extended warranty plan available: {plans}. Adjust its return quantity if you wish to include it."
   },
   "refund_split": {
     "confirm_question": "Refund {doc_number}? Total {amount}.",
@@ -606,7 +617,11 @@
     "serial_mode": "Ask for serial / IMEI number when selling",
     "serial_mode_off": "Off",
     "serial_mode_optional": "Optional",
-    "serial_mode_required": "Required"
+    "serial_mode_required": "Required",
+    "is_warranty_plan": "This product is an extended warranty plan",
+    "warranty_select_plan_policy": "Select extended warranty policy...",
+    "plan_policy": "Extended Policy:",
+    "select_plan_policy_prompt": "Select an active extended warranty policy."
   },
   "csv_import": {
     "title": "Import Products from CSV",
@@ -2326,7 +2341,9 @@
     "warranty_remedy_repair_or_replace": "Repair or Replace",
     "warranty_remedy_repair_only": "Repair Only",
     "warranty_remedy_replace_only": "Replace Only",
-    "warranty_remedy_refund": "Refund"
+    "warranty_remedy_refund": "Refund",
+    "warranty_extended_label": "Ext. Warranty",
+    "warranty_covers_linked": "Linked Base Warranty"
   },
   "cash_movement": {
     "record_title_out": "Take money out of the drawer",
@@ -3403,6 +3420,7 @@
     "authorized_signature": "Authorized Signature",
     "received_by": "Received By",
     "warranty_label": "Warranty",
+    "warranty_extended_label": "Ext. Warranty",
     "warranty_terms_title": "Warranty Terms & Conditions",
     "warranty_exclusions_title": "Exclusions"
   },
@@ -3635,7 +3653,11 @@
     "terms_label": "Terms & Conditions",
     "exclusions_label": "Exclusions",
     "export_pdf_title": "Export Warranty Certificate PDF",
-    "pdf_exported_to": "Warranty certificate exported to {path}"
+    "pdf_exported_to": "Warranty certificate exported to {path}",
+    "type_extended": "Extended",
+    "covers_base": "Covers",
+    "starts_after_base": "after base warranty",
+    "starts_from_sale": "from sale date"
   },
   "serial_entry": {
     "title": "Enter Serial / IMEI Numbers",

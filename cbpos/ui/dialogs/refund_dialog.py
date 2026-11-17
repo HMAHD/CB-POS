@@ -245,6 +245,12 @@ class RefundDialog(QDialog):
         give_back_box.addWidget(self.btn_change_tender)
         preview_layout.addLayout(give_back_box)
 
+        self.lbl_plan_suggestion = QLabel()
+        self.lbl_plan_suggestion.setProperty("class", "info-note")
+        self.lbl_plan_suggestion.setWordWrap(True)
+        self.lbl_plan_suggestion.hide()
+        preview_layout.addWidget(self.lbl_plan_suggestion)
+
         layout.addWidget(self.preview_group)
 
         # 6. Overall Reason Input
@@ -485,6 +491,34 @@ class RefundDialog(QDialog):
         """Recalculate preview values from current spinbox quantities."""
         if not self.found_sale:
             return
+
+        # Check for unselected linked extended plans to suggest
+        suggested_plans = []
+        for i, sb in enumerate(self._spinboxes):
+            if sb is not None and sb.value() > 0:
+                line = self._refundable_lines[i]
+                for j, other in enumerate(self._refundable_lines):
+                    if getattr(other, "covered_item_id", None) == line.sale_item_id and other.remaining_qty > Decimal(
+                        "0"
+                    ):
+                        other_sb = self._spinboxes[j]
+                        if other_sb is not None and other_sb.value() == 0:
+                            suggested_plans.append(
+                                f"{other.product_name} ({_t('cart.covers', default='covers')} {line.product_name})"
+                            )
+
+        if hasattr(self, "lbl_plan_suggestion"):
+            if suggested_plans:
+                self.lbl_plan_suggestion.setText(
+                    _t(
+                        "refund.suggest_plan_refund",
+                        plans=", ".join(suggested_plans),
+                        default=f"Note: Linked extended warranty plan available: {', '.join(suggested_plans)}. Adjust its return quantity if you wish to include it.",
+                    )
+                )
+                self.lbl_plan_suggestion.show()
+            else:
+                self.lbl_plan_suggestion.hide()
 
         requests = self._collect_requests()
         if not requests:

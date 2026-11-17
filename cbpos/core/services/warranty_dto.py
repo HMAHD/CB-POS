@@ -33,6 +33,8 @@ class WarrantyDTO:
     days_remaining: int
     has_active_claim: bool = False
     active_claim_id: int | None = None
+    covers_warranty_id: int | None = None
+    plan_sale_item_id: int | None = None
 
 
 @dataclass(frozen=True)
@@ -93,4 +95,6 @@ class WarrantyClaimDTO:
     returned_from_supplier_at: datetime | None = None
     supplier_outcome: str | None = None
     supplier_credit_amount: Decimal = Decimal("0.00")
+    expected_ready_date: date | None = None
+    replacement_cost_snapshot: Decimal | None = None
     events: tuple[WarrantyClaimEventDTO, ...] = ()

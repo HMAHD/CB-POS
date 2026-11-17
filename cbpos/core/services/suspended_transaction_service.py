@@ -57,6 +57,8 @@ class SuspendedTransactionService:
                             "discount_value": str(item.get("discount_value", Decimal("0.00"))),
                             "notes": item.get("note") or item.get("notes") or "",
                             "serials": item.get("serials", []),
+                            "line_id": item.get("line_id"),
+                            "covered_line_id": item.get("covered_line_id"),
                         }
                     )
 
@@ -125,6 +127,7 @@ class SuspendedTransactionService:
                 if isinstance(payload, dict) and payload.get("v") == 2:
                     # v2 format
                     lines = payload.get("lines", [])
+                    restored_line_ids: set[str] = set()
                     for line in lines:
                         product_id = line.get("product_id")
                         barcode = line.get("barcode")
@@ -139,8 +142,22 @@ class SuspendedTransactionService:
                             notices.append(_t("orders.recall_item_missing", name=name))
                             continue
 
+                        line_id = line.get("line_id")
+                        covered_line_id = line.get("covered_line_id")
+                        if covered_line_id and covered_line_id not in restored_line_ids:
+                            notices.append(
+                                _t(
+                                    "orders.recall_plan_missing_covered_item",
+                                    default=f"Extended warranty plan for missing item was removed: {product.name_en}",
+                                    plan=product.name_en,
+                                )
+                            )
+                            continue
+
                         qty = Decimal(str(line.get("qty", "1.000"))).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
-                        cart_service.add_item(product, qty)
+                        cart_service.add_item(product, qty, covered_line_id=covered_line_id, line_id=line_id)
+                        if line_id:
+                            restored_line_ids.add(line_id)
                         line_idx = len(cart_service.items) - 1
                         if line.get("serials") is not None:
                             cart_service.items[line_idx]["serials"] = list(line.get("serials"))

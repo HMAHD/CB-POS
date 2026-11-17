@@ -46,6 +46,9 @@ class WarrantyPolicy(Base):
     exclusions_text_si: Mapped[str | None] = mapped_column(Text, nullable=True)
     exclusions_text_ta: Mapped[str | None] = mapped_column(Text, nullable=True)
     supplier_cover_months: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
+    extended_starts: Mapped[str] = mapped_column(
+        String(20), default="AFTER_BASE", server_default="AFTER_BASE", nullable=False
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1", nullable=False, index=True)
     is_template: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0", nullable=False)
     synced: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0", nullable=False)
@@ -155,6 +158,9 @@ class Warranty(Base):
     replaces_warranty_id: Mapped[int | None] = mapped_column(
         ForeignKey("warranties.id", ondelete="RESTRICT"), nullable=True, index=True
     )
+    plan_sale_item_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sale_items.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
 
     # Multi-terminal & Auditing
     terminal_id: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
@@ -169,6 +175,7 @@ class Warranty(Base):
     # Relationships
     sale: Mapped["Sale"] = relationship("Sale", foreign_keys=[sale_id], back_populates="warranties")
     sale_item: Mapped["SaleItem"] = relationship("SaleItem", foreign_keys=[sale_item_id], back_populates="warranties")
+    plan_sale_item: Mapped[Optional["SaleItem"]] = relationship("SaleItem", foreign_keys=[plan_sale_item_id])
     product: Mapped["Product"] = relationship("Product", foreign_keys=[product_id])
     customer: Mapped[Optional["Customer"]] = relationship("Customer", foreign_keys=[customer_id])
     policy: Mapped[Optional["WarrantyPolicy"]] = relationship("WarrantyPolicy", foreign_keys=[policy_id])

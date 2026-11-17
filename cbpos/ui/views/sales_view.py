@@ -831,12 +831,24 @@ class SalesView(QWidget):
             self.cart_table.insertRow(row)
             self.cart_table.setRowHeight(row, CART_TABLE_ROW_HEIGHT)
 
-            # Product Name (with note indicator)
+            # Product Name (with note and plan indicators)
+            is_plan = getattr(item["product"], "is_warranty_plan", False)
             name = item["product"].name_en
+            if is_plan:
+                name = f"  \u21b3 {name}"
             if item.get("note"):
                 name = f"\U0001f4dd {name}"
             name_item = QTableWidgetItem(name)
-            name_item.setToolTip(item["product"].name_en)
+            tooltip = item["product"].name_en
+            if is_plan and item.get("covered_line_id"):
+                cov = next(
+                    (it for it in self.cart_service.items if it.get("line_id") == item.get("covered_line_id")), None
+                )
+                if cov:
+                    tooltip = (
+                        f"{item['product'].name_en} ({_t('cart.covers', default='Covers')}: {cov['product'].name_en})"
+                    )
+            name_item.setToolTip(tooltip)
             name_item.setForeground(text_brush)
 
             # Whole-row highlight if discounted (theme-aware) -- computed
@@ -1754,7 +1766,49 @@ class SalesView(QWidget):
         return None
 
     def _add_product_to_cart_with_serials(self, product, qty: Decimal) -> bool:
-        """Add product to cart, prompting for serial/IMEI capture if serial_mode is OPTIONAL or REQUIRED."""
+        """Add product to cart, prompting for serial/IMEI capture or plan covered item selection."""
+        covered_line_id = None
+        if getattr(product, "is_warranty_plan", False):
+            eligible_lines = []
+            for it in self.cart_service.items:
+                p = it["product"]
+                if getattr(p, "is_warranty_plan", False):
+                    continue
+                if getattr(product, "plan_category_id", None) and p.category_id != product.plan_category_id:
+                    continue
+                attached_qty = sum(
+                    (
+                        other["qty"]
+                        for other in self.cart_service.items
+                        if other.get("covered_line_id") == it.get("line_id")
+                    ),
+                    Decimal("0"),
+                )
+                if attached_qty < it["qty"]:
+                    eligible_lines.append(it)
+
+            if not eligible_lines:
+                QMessageBox.warning(
+                    self,
+                    _t("common.validation_error"),
+                    _t(
+                        "cart.extended_plan_requires_covered_item",
+                        default="An eligible covered product must be in the cart to add an extended warranty plan.",
+                    ),
+                )
+                return False
+
+            if len(eligible_lines) == 1:
+                covered_line_id = eligible_lines[0].get("line_id")
+            else:
+                from cbpos.ui.dialogs.plan_covered_item_chooser_dialog import PlanCoveredItemChooserDialog
+
+                dlg = PlanCoveredItemChooserDialog(product, eligible_lines, parent=self)
+                if dlg.exec():
+                    covered_line_id = dlg.get_selected_line_id()
+                else:
+                    return False
+
         s_mode = getattr(product, "serial_mode", "OFF") or "OFF"
         serials = None
         if s_mode in ("OPTIONAL", "REQUIRED"):
@@ -1768,7 +1822,7 @@ class SalesView(QWidget):
             serials = self._prompt_serial_capture(product, int(qty))
             if serials is None:
                 return False
-        self.cart_service.add_item(product, qty=qty, serials=serials)
+        self.cart_service.add_item(product, qty=qty, serials=serials, covered_line_id=covered_line_id)
         self.update_cart_display()
         return True
 

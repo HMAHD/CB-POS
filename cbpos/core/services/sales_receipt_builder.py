@@ -196,21 +196,39 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
                 detail = f"   {qty_text} x {format_currency(price)}"
                 commands.append(cls._split_row(detail, format_currency(total), line_chars))
 
-            # Warranty coverage sub-lines (#824)
+            # Warranty coverage sub-lines (#824, #829)
             if gc("show_warranty_on_receipt", True, config_override):
                 item_warranties = getattr(item, "warranties", []) or []
                 if item_warranties:
-                    first_w = item_warranties[0]
-                    u_key = f"warranty_unit_{first_w.duration_unit.lower()}"
-                    u_str = cls._rt(u_key, default=first_w.duration_unit.capitalize())
-                    p_str = f" ({first_w.provider_name})" if first_w.provider_name else ""
-                    dt_str = first_w.end_date.strftime("%Y-%m-%d") if first_w.end_date else ""
-                    until_str = cls._rt("warranty_until", date=dt_str, default=f"until {dt_str}")
-                    status_note = ""
-                    if is_reprint and first_w.status in ("VOID", "CANCELLED"):
-                        status_note = f" [{first_w.status}]"
-                    w_text = f"   {cls._rt('warranty_label', default='Warranty')}: {first_w.duration} {u_str}{p_str} {until_str}{status_note}"
-                    commands.append({"type": "text", "val": w_text, "align": "left"})
+                    base_ws = [w for w in item_warranties if w.warranty_type != "EXTENDED"]
+                    ext_ws = [w for w in item_warranties if w.warranty_type == "EXTENDED"]
+
+                    if base_ws:
+                        first_w = base_ws[0]
+                        u_key = f"warranty_unit_{first_w.duration_unit.lower()}"
+                        u_str = cls._rt(u_key, default=first_w.duration_unit.capitalize())
+                        p_str = f" ({first_w.provider_name})" if first_w.provider_name else ""
+                        dt_str = first_w.end_date.strftime("%Y-%m-%d") if first_w.end_date else ""
+                        until_str = cls._rt("warranty_until", date=dt_str, default=f"until {dt_str}")
+                        status_note = ""
+                        if is_reprint and first_w.status in ("VOID", "CANCELLED"):
+                            status_note = f" [{first_w.status}]"
+                        w_text = f"   {cls._rt('warranty_label', default='Warranty')}: {first_w.duration} {u_str}{p_str} {until_str}{status_note}"
+                        commands.append({"type": "text", "val": w_text, "align": "left"})
+
+                    if ext_ws:
+                        first_ext = ext_ws[0]
+                        u_key = f"warranty_unit_{first_ext.duration_unit.lower()}"
+                        u_str = cls._rt(u_key, default=first_ext.duration_unit.capitalize())
+                        p_str = f" ({first_ext.provider_name})" if first_ext.provider_name else ""
+                        dt_str = first_ext.end_date.strftime("%Y-%m-%d") if first_ext.end_date else ""
+                        until_str = cls._rt("warranty_until", date=dt_str, default=f"until {dt_str}")
+                        status_note = ""
+                        if is_reprint and first_ext.status in ("VOID", "CANCELLED"):
+                            status_note = f" [{first_ext.status}]"
+                        ext_label = cls._rt("warranty_extended_label", default="Ext. Warranty")
+                        ext_text = f"   {ext_label}: {first_ext.duration} {u_str}{p_str} {until_str}{status_note}"
+                        commands.append({"type": "text", "val": ext_text, "align": "left"})
 
                     for w in item_warranties:
                         if w.serial_number:

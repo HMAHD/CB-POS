@@ -238,7 +238,16 @@
     "item_count": "අයිතම: {count}",
     "bill_discount_row": "බිල්පත් වට්ටම",
     "context_edit_serials": "&අනුක්‍රමික / IMEI අංක සංස්කරණය",
-    "confirm_discard_serials": "ප්‍රමාණය අඩු කිරීමෙන් සටහන් කළ අනුක්‍රමික අංක ඉවත් වේ: {serials}\n\nඉදිරියට යනවාද?"
+    "confirm_discard_serials": "ප්‍රමාණය අඩු කිරීමෙන් සටහන් කළ අනුක්‍රමික අංක ඉවත් වේ: {serials}\n\nඉදිරියට යනවාද?",
+    "extended_plan_requires_covered_item": "දීර්ඝ කළ වගකීම් සැලැස්මක් එක් කිරීමට ආවරණය වන භාණ්ඩයක් කරත්තයේ තිබිය යුතුය.",
+    "choose_covered_item_title": "ආවරණය වන භාණ්ඩය තෝරන්න",
+    "choose_covered_item_prompt": "'{plan}' සඳහා ආවරණය වන භාණ්ඩය තෝරන්න:",
+    "col_item": "භාණ්ඩය",
+    "col_price": "මිල",
+    "col_qty": "ප්‍රමාණය",
+    "covers": "ආවරණය වන්නේ",
+    "plan_qty_exceeds_covered": "ආවරණය වන භාණ්ඩ ප්‍රමාණයට ({covered_qty}) වඩා දීර්ඝ කළ සැලසුම් එක් කළ නොහැක.",
+    "plan_qty_adjusted_for_covered": "දීර්ඝ කළ වගකීම් ප්‍රමාණය ආවරණය කළ භාණ්ඩයට සරිලන පරිදි වෙනස් කරන ලදී"
   },
   "bill_discount": {
     "title": "බිල්පත් වට්ටම",
@@ -265,6 +274,7 @@
     "recall_notices_title": "වෙනස්කම් සමඟ බිල ආපසු ගත්තා",
     "recall_price_changed": "{name}: දැන් මිල {new}; තියාගත් මිල {old} එලෙසම තබා ගත්තා.",
     "recall_item_missing": "{name} තවදුරටත් ලබා ගත නොහැකි බැවින් ඉවත් කරන ලදී.",
+    "recall_plan_missing_covered_item": "ආවරණය වන භාණ්ඩය නොමැති බැවින් '{plan}' දීර්ඝ කළ සැලැස්ම ඉවත් කරන ලදී.",
     "void_title": "බිල් එක අවලංගු කරන්න",
     "void_confirm": "දැන් තියෙන බිල් එක මකන්න ෂුවර්ද?",
     "title": "ඇණවුම් කළමනාකරණය",
@@ -438,7 +448,8 @@
     "override_tender_label": "ආපසු ලබා දෙන ක්‍රමය:",
     "override_reason_label": "ක්‍රමය වෙනස් කිරීමට හේතුව:",
     "override_reason_placeholder": "මුල් ගෙවීම් ක්‍රමයට ආපසු නොදෙන්නේ ඇයි?",
-    "override_btn_apply": "වෙනස්කම යොදන්න"
+    "override_btn_apply": "වෙනස්කම යොදන්න",
+    "suggest_plan_refund": "සටහන: සම්බන්ධිත දීර්ඝ කළ වගකීම් සැලැස්ම ඇත: {plans}. මුදල් ආපසු ගෙවීමට අවශ්‍ය නම් එහි ප්‍රමාණය සකසන්න."
   },
   "refund_split": {
     "confirm_question": "{doc_number} බිල ආපසු ගෙවන්නද? මුළු මුදල {amount}.",
@@ -606,7 +617,11 @@
     "serial_mode": "විකිණීමේදී අනුක්‍රමික / IMEI අංකය විමසන්න",
     "serial_mode_off": "අක්‍රියයි",
     "serial_mode_optional": "විකල්ප",
-    "serial_mode_required": "අනිවාර්යයි"
+    "serial_mode_required": "අනිවාර්යයි",
+    "is_warranty_plan": "මෙම භාණ්ඩය දීර්ඝ කළ වගකීම් සැලැස්මකි",
+    "warranty_select_plan_policy": "දීර්ඝ කළ වගකීම් ප්‍රතිපත්තියක් තෝරන්න...",
+    "plan_policy": "දීර්ඝ කළ ප්‍රතිපත්තිය:",
+    "select_plan_policy_prompt": "සක්‍රිය දීර්ඝ කළ වගකීම් ප්‍රතිපත්තියක් තෝරන්න."
   },
   "csv_import": {
     "title": "CSV ආයාතය",
@@ -2289,7 +2304,9 @@
     "warranty_remedy_repair_or_replace": "අලුත්වැඩියාව හෝ ආදේශනය",
     "warranty_remedy_repair_only": "අලුත්වැඩියාව පමණි",
     "warranty_remedy_replace_only": "ආදේශනය පමණි",
-    "warranty_remedy_refund": "මුදල් ආපසු ගෙවීම"
+    "warranty_remedy_refund": "මුදල් ආපසු ගෙවීම",
+    "warranty_extended_label": "දීර්ඝ කළ වගකීම",
+    "warranty_covers_linked": "සම්බන්ධිත මූලික වගකීම"
   },
   "cash_movement": {
     "record_title_out": "ලාච්චුවෙන් මුදල් ගන්න",
@@ -3403,6 +3420,7 @@
     "authorized_signature": "බලයලත් අත්සන",
     "received_by": "භාර ගත්තේ",
     "warranty_label": "වගකීම",
+    "warranty_extended_label": "දීර්ඝ කළ වගකීම",
     "warranty_terms_title": "වගකීම් කොන්දේසි",
     "warranty_exclusions_title": "බැහැර කිරීම්"
   },
@@ -3635,7 +3653,11 @@
     "terms_label": "නියමයන් සහ කොන්දේසි",
     "exclusions_label": "බැහැර කිරීම්",
     "export_pdf_title": "වගකීම් සහතික PDF එක බාගන්න",
-    "pdf_exported_to": "වගකීම් සහතිකය {path} වෙත යවන ලදී"
+    "pdf_exported_to": "වගකීම් සහතිකය {path} වෙත යවන ලදී",
+    "type_extended": "දීර්ඝ කළ",
+    "covers_base": "මූලික ආවරණය",
+    "starts_after_base": "මූලික වගකීම අවසන් වූ පසු",
+    "starts_from_sale": "විකිණුම් දිනයේ සිට"
   },
   "serial_entry": {
     "title": "අනුක්‍රමික / IMEI අංක ඇතුළත් කරන්න",

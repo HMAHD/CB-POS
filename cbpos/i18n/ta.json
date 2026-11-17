@@ -238,7 +238,16 @@
     "item_count": "பொருட்கள்: {count}",
     "bill_discount_row": "பில் தள்ளுபடி",
     "context_edit_serials": "&வரிசை / IMEI எண்களைத் திருத்து",
-    "confirm_discard_serials": "அளவைக் குறைத்தால் பதிவு செய்யப்பட்ட வரிசை எண்கள் நீக்கப்படும்: {serials}\n\nதொடரவா?"
+    "confirm_discard_serials": "அளவைக் குறைத்தால் பதிவு செய்யப்பட்ட வரிசை எண்கள் நீக்கப்படும்: {serials}\n\nதொடரவா?",
+    "extended_plan_requires_covered_item": "நீட்டிக்கப்பட்ட உத்தரவாத திட்டத்தை சேர்க்க தகுதியான பொருள் கூடையில் இருக்க வேண்டும்.",
+    "choose_covered_item_title": "காப்பீட்டு பொருளைத் தேர்ந்தெடுக்கவும்",
+    "choose_covered_item_prompt": "'{plan}' க்கான பொருளைத் தேர்ந்தெடுக்கவும்:",
+    "col_item": "பொருள்",
+    "col_price": "விலை",
+    "col_qty": "அளவு",
+    "covers": "பாதுகாக்கிறது",
+    "plan_qty_exceeds_covered": "பொருளின் அளவிற்கு ({covered_qty}) மேல் நீட்டிக்கப்பட்ட உத்தரவாதத்தை சேர்க்க முடியாது.",
+    "plan_qty_adjusted_for_covered": "நீட்டிக்கப்பட்ட உத்தரவாத அளவு பொருளுக்கு ஏற்ப சரிசெய்யப்பட்டது"
   },
   "bill_discount": {
     "title": "பில் தள்ளுபடி",
@@ -265,6 +274,7 @@
     "recall_notices_title": "மாற்றங்களுடன் பில் மீட்கப்பட்டது",
     "recall_price_changed": "{name}: இப்போது விலை {new}; நிறுத்தி வைக்கப்பட்ட விலை {old} அப்படியே வைக்கப்பட்டது.",
     "recall_item_missing": "{name} இனி கிடைக்காது என்பதால் சேர்க்கப்படவில்லை.",
+    "recall_plan_missing_covered_item": "பொருள் இல்லாததால் '{plan}' நீட்டிக்கப்பட்ட திட்டம் தவிர்க்கப்பட்டது.",
     "void_title": "பில்லை ரத்து பண்ணுங்க",
     "void_confirm": "இப்ப இருக்கிற பில்லை நீக்க வேணுமா?",
     "title": "ஆர்டர் மேலாண்மை",
@@ -438,7 +448,8 @@
     "override_tender_label": "திருப்பித் தரும் முறை:",
     "override_reason_label": "முறையை மாற்றுவதற்கான காரணம்:",
     "override_reason_placeholder": "அசல் கட்டண முறைக்கு திருப்பியளிக்காததற்கான காரணம் என்ன?",
-    "override_btn_apply": "மாற்றத்தைப் பயன்படுத்து"
+    "override_btn_apply": "மாற்றத்தைப் பயன்படுத்து",
+    "suggest_plan_refund": "குறிப்பு: நீட்டிக்கப்பட்ட திட்டம் உள்ளது: {plans}. திரும்பப் பெற விரும்பினால் அதன் அளவை மாற்றவும்."
   },
   "refund_split": {
     "confirm_question": "{doc_number} பில்லுக்கு திருப்பிச் செலுத்தணுமா? மொத்தம் {amount}.",
@@ -606,7 +617,11 @@
     "serial_mode": "விற்பனை செய்யும் போது வரிசை / IMEI எண்ணைக் கேட்கவும்",
     "serial_mode_off": "முடக்கப்பட்டது",
     "serial_mode_optional": "விருப்பத்திற்குரியது",
-    "serial_mode_required": "தேவை"
+    "serial_mode_required": "தேவை",
+    "is_warranty_plan": "இந்த பொருள் ஒரு நீட்டிக்கப்பட்ட உத்தரவாத திட்டம்",
+    "warranty_select_plan_policy": "நீட்டிக்கப்பட்ட உத்தரவாதக் கொள்கையைத் தேர்ந்தெடுக்கவும்...",
+    "plan_policy": "நீட்டிக்கப்பட்ட கொள்கை:",
+    "select_plan_policy_prompt": "செயலில் உள்ள நீட்டிக்கப்பட்ட உத்தரவாதக் கொள்கையைத் தேர்ந்தெடுக்கவும்."
   },
   "csv_import": {
     "title": "CSV இம்போர்ட்",
@@ -2289,7 +2304,9 @@
     "warranty_remedy_repair_or_replace": "பழுதுபார்ப்பு அல்லது மாற்று",
     "warranty_remedy_repair_only": "பழுதுபார்ப்பு மட்டும்",
     "warranty_remedy_replace_only": "மாற்று மட்டும்",
-    "warranty_remedy_refund": "பணத்தைத் திரும்பப்பெறுதல்"
+    "warranty_remedy_refund": "பணத்தைத் திரும்பப்பெறுதல்",
+    "warranty_extended_label": "நீட்டிக்கப்பட்ட உத்தரவாதம்",
+    "warranty_covers_linked": "இணைக்கப்பட்ட அடிப்படை உத்தரவாதம்"
   },
   "cash_movement": {
     "record_title_out": "பணப்பெட்டியிலிருந்து காசு எடுங்க",
@@ -3403,6 +3420,7 @@
     "authorized_signature": "அங்கீகரிக்கப்பட்ட கையொப்பம்",
     "received_by": "பெற்றுக்கொண்டவர்",
     "warranty_label": "உத்தரவாதம்",
+    "warranty_extended_label": "நீட்டிக்கப்பட்ட உத்தரவாதம்",
     "warranty_terms_title": "உத்தரவாத விதிமுறைகள்",
     "warranty_exclusions_title": "விலக்குகள்"
   },
@@ -3635,7 +3653,11 @@
     "terms_label": "விதிமுறைகள் மற்றும் நிபந்தனைகள்",
     "exclusions_label": "விலக்குகள்",
     "export_pdf_title": "உத்தரவாத சான்றிதழ் PDF ஏற்றுமதி",
-    "pdf_exported_to": "உத்தரவாத சான்றிதழ் {path} க்கு ஏற்றுமதி செய்யப்பட்டது"
+    "pdf_exported_to": "உத்தரவாத சான்றிதழ் {path} க்கு ஏற்றுமதி செய்யப்பட்டது",
+    "type_extended": "நீட்டிக்கப்பட்ட",
+    "covers_base": "அடிப்படை உத்தரவாதம்",
+    "starts_after_base": "அடிப்படை உத்தரவாதத்திற்குப் பின்",
+    "starts_from_sale": "விற்பனை நாளிலிருந்து"
   },
   "serial_entry": {
     "title": "வரிசை / IMEI எண்களை உள்ளிடவும்",

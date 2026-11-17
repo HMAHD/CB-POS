@@ -1,12 +1,13 @@
 """Warranty claim models for Phase 9 (#826, #820)."""
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -47,6 +48,7 @@ class WarrantyClaim(Document):
     intake_date: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now, server_default=func.now(), nullable=False, index=True
     )
+    expected_ready_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
     defect_description: Mapped[str] = mapped_column(Text, nullable=False)
     item_condition: Mapped[str | None] = mapped_column(Text, nullable=True)
     accessories_received: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -58,6 +60,7 @@ class WarrantyClaim(Document):
         ForeignKey("warranties.id", ondelete="SET NULL"), nullable=True, index=True
     )
     replacement_serial: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    replacement_cost_snapshot: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     repair_cost: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0.00"), nullable=False)
     charge_customer: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0.00"), nullable=False)
     resolved_by_user_id: Mapped[int | None] = mapped_column(

@@ -451,6 +451,7 @@ class TransactionService:
             list[SaleItem]: The created sale items.
         """
         written_items: list[SaleItem] = []
+        line_map: dict[str, SaleItem] = {}
         for item in cart_items:
             product = item["product"]
             qty = item["qty"]
@@ -475,10 +476,20 @@ class TransactionService:
             )
             # In-memory warranties initialization to avoid N+1 query
             sale_item.warranties = []
+            line_id = item.get("line_id")
+            if line_id:
+                line_map[line_id] = sale_item
             session.add(sale_item)
             written_items.append(sale_item)
 
             TransactionService._move_stock(session, composite_map, product.id, -qty, "SALE", sale.id, sale.user_id)
+
+        # Wire covered_item relationships
+        for item, sale_item in zip(cart_items, written_items, strict=True):
+            cov_id = item.get("covered_line_id")
+            if cov_id and cov_id in line_map:
+                sale_item.covered_item = line_map[cov_id]
+
         return written_items
 
     @staticmethod
@@ -712,15 +723,21 @@ class TransactionService:
             written_items = TransactionService._write_sale_lines(session, sale, cart_items, composite_map)
             session.flush()
 
-            # 4a. Register per-unit warranties for covered lines (#822, #823)
-            if WarrantyService.is_enabled(session=session) and policy_map:
+            # 4a. Register per-unit warranties for covered lines (#822, #823, #829)
+            if WarrantyService.is_enabled(session=session):
+                plan_sale_items = [si for si in written_items if getattr(si.product, "is_warranty_plan", False)]
                 items_with_policies_and_serials = [
                     (si, policy_map[si.product_id], c_item.get("serials", []))
                     for si, c_item in zip(written_items, cart_items, strict=True)
                     if policy_map.get(si.product_id) is not None
                 ]
-                if items_with_policies_and_serials:
-                    WarrantyService.register_for_sale_in_session(session, sale, items_with_policies_and_serials)
+                if items_with_policies_and_serials or plan_sale_items:
+                    WarrantyService.register_for_sale_in_session(
+                        session,
+                        sale,
+                        items_with_policies_and_serials,
+                        plan_sale_items=plan_sale_items,
+                    )
 
             # 4b. Loyalty redemption deduction (ADR-0002)
             if sale.loyalty_points_redeemed > 0:

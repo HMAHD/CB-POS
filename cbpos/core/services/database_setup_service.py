@@ -329,6 +329,20 @@ class DatabaseSetupService:
                     is_active=False,
                     is_template=True,
                 ),
+                WarrantyPolicy(
+                    name="1 year extended warranty",
+                    name_si="වසර 1ක දීර්ඝ කළ වගකීම",
+                    name_ta="1 வருட நீட்டிக்கப்பட்ட உத்தரவாதம்",
+                    warranty_type="EXTENDED",
+                    duration=1,
+                    duration_unit="YEARS",
+                    remedy="REPAIR_OR_REPLACE",
+                    extended_starts="AFTER_BASE",
+                    provider_name=None,
+                    supplier_cover_months=0,
+                    is_active=False,
+                    is_template=True,
+                ),
             ]
             session.add_all(templates)
 

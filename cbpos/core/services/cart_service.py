@@ -1,4 +1,5 @@
 import logging
+import uuid
 from decimal import Decimal
 from typing import Any
 
@@ -40,20 +41,45 @@ class CartService:
         """Return the customer currently attached to the cart, if any."""
         return self._customer
 
-    def add_item(self, product: Product, qty: Decimal = Decimal("1.000"), serials: list[str | None] | None = None):
+    def add_item(
+        self,
+        product: Product,
+        qty: Decimal = Decimal("1.000"),
+        serials: list[str | None] | None = None,
+        covered_line_id: str | None = None,
+        line_id: str | None = None,
+    ):
         """
         Add a product to the cart.
-        If product exists, update quantity and append serial slots.
+        If product exists (matching product_id and covered_line_id), update quantity and append serial slots.
         """
         if qty <= Decimal("0"):
             raise ValueError("Quantity must be positive")
 
+        if covered_line_id is not None:
+            covered_item = next((it for it in self.items if it.get("line_id") == covered_line_id), None)
+            if not covered_item:
+                raise ValueError(
+                    _t(
+                        "cart.extended_plan_requires_covered_item",
+                        default="Extended warranty requires a covered item in the cart",
+                    )
+                )
+            existing_plan_qty = sum(it["qty"] for it in self.items if it.get("covered_line_id") == covered_line_id)
+            if existing_plan_qty + qty > covered_item["qty"]:
+                raise ValueError(
+                    _t(
+                        "cart.plan_qty_exceeds_covered",
+                        default="Plan quantity cannot exceed covered item quantity",
+                    )
+                )
+
         int_qty = int(qty) if (qty > 0 and qty % Decimal("1") == Decimal("0")) else 0
         new_slots = list(serials) if serials is not None else [None] * int_qty
 
-        # Check if product already in cart
+        # Check if product already in cart with matching covered_line_id
         for idx, item in enumerate(self.items):
-            if item["product"].id == product.id:
+            if item["product"].id == product.id and item.get("covered_line_id") == covered_line_id:
                 old_serials = list(item.get("serials", []))
                 item["serials"] = old_serials + new_slots
                 self.update_quantity(idx, item["qty"] + qty)
@@ -64,6 +90,8 @@ class CartService:
 
         flags = self._resolve_effective_flags(product)
         new_item = {
+            "line_id": line_id or str(uuid.uuid4()),
+            "covered_line_id": covered_line_id,
             "product": product,
             "qty": qty,
             "unit_price": pricing["final_price"],
@@ -100,8 +128,46 @@ class CartService:
         if new_qty <= Decimal("0"):
             raise ValueError("Quantity must be positive")
 
+        cov_id = item.get("covered_line_id")
+        if cov_id:
+            covered_item = next((it for it in self.items if it.get("line_id") == cov_id), None)
+            if covered_item:
+                other_plan_qty = sum(
+                    it["qty"] for i, it in enumerate(self.items) if i != index and it.get("covered_line_id") == cov_id
+                )
+                if other_plan_qty + new_qty > covered_item["qty"]:
+                    raise ValueError(
+                        _t(
+                            "cart.plan_qty_exceeds_covered",
+                            default="Plan quantity cannot exceed covered item quantity",
+                        )
+                    )
+
         item["qty"] = new_qty
         notice = None
+
+        line_id = item.get("line_id")
+        if line_id:
+            linked_plans = [it for it in self.items if it.get("covered_line_id") == line_id]
+            total_plan_qty = sum(it["qty"] for it in linked_plans)
+            if new_qty < total_plan_qty:
+                excess = total_plan_qty - new_qty
+                for p_item in reversed(linked_plans):
+                    if excess <= Decimal("0"):
+                        break
+                    if p_item["qty"] <= excess:
+                        excess -= p_item["qty"]
+                        p_item["qty"] = Decimal("0")
+                    else:
+                        p_item["qty"] -= excess
+                        excess = Decimal("0")
+                    self._recalculate_line(p_item)
+
+                self.items = [it for it in self.items if it["qty"] > Decimal("0")]
+                notice = _t(
+                    "cart.plan_qty_adjusted_for_covered",
+                    default="Extended warranty plan quantities adjusted to match covered item",
+                )
 
         # Adjust serial slots to match integer quantity
         new_int_qty = int(new_qty) if (new_qty > 0 and new_qty % Decimal("1") == Decimal("0")) else 0
@@ -182,9 +248,12 @@ class CartService:
         item["serials"] = normalized
 
     def remove_item(self, index: int):
-        """Remove an item by its index in the list."""
+        """Remove an item by its index in the list, and remove any linked plan items."""
         if 0 <= index < len(self.items):
-            self.items.pop(index)
+            item = self.items.pop(index)
+            line_id = item.get("line_id")
+            if line_id:
+                self.items = [it for it in self.items if it.get("covered_line_id") != line_id]
 
     def clear(self):
         """Empty the cart."""

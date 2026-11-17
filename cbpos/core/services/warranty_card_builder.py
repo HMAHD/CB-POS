@@ -195,8 +195,17 @@ class WarrantyCardBuilder(BaseReceiptBuilder):
             # Duration and dates
             unit_key = f"warranty_unit_{w.duration_unit.lower()}"
             unit_name = cls._rt(unit_key, default=w.duration_unit.capitalize())
-            coverage_text = f"{cls._rt('warranty_label', default='Warranty')}: {w.duration} {unit_name}"
-            provider = w.provider_name or cls._rt("warranty_type_shop", default="Shop")
+            w_type_label = (
+                cls._rt("warranty_type_extended", default="Extended Warranty")
+                if w.warranty_type == "EXTENDED"
+                else cls._rt("warranty_label", default="Warranty")
+            )
+            coverage_text = f"{w_type_label}: {w.duration} {unit_name}"
+            provider = w.provider_name or (
+                cls._rt("warranty_type_extended", default="Extended")
+                if w.warranty_type == "EXTENDED"
+                else cls._rt("warranty_type_shop", default="Shop")
+            )
             commands.append(cls._split_row(coverage_text, f"({provider})", line_chars))
 
             valid_until_str = cls._rt(
@@ -205,6 +214,14 @@ class WarrantyCardBuilder(BaseReceiptBuilder):
                 default=f"until {w.end_date.strftime('%Y-%m-%d')}",
             )
             commands.append({"type": "text", "val": f"   {valid_until_str}", "align": "left"})
+            if w.covers_warranty_id:
+                commands.append(
+                    {
+                        "type": "text",
+                        "val": f"   {cls._rt('warranty_covers_linked', default='Linked Base Warranty')}: #{w.covers_warranty_id}",
+                        "align": "left",
+                    }
+                )
 
             # Remedy
             remedy_key = f"warranty_remedy_{w.remedy.lower()}"
@@ -341,8 +358,12 @@ class WarrantyCardBuilder(BaseReceiptBuilder):
             unit_key = f"warranty_unit_{w.duration_unit.lower()}"
             unit_name = _lt(unit_key, w.duration_unit.capitalize())
             coverage_text = f"{w.duration} {unit_name}"
-            valid_dates = f"{sale_date} — {w.end_date.strftime('%Y-%m-%d')}"
-            provider = w.provider_name or _lt("warranty_type_shop", "Shop")
+            valid_dates = f"{w.start_date.strftime('%Y-%m-%d')} — {w.end_date.strftime('%Y-%m-%d')}"
+            provider = w.provider_name or (
+                _lt("warranty_type_extended", "Extended")
+                if w.warranty_type == "EXTENDED"
+                else _lt("warranty_type_shop", "Shop")
+            )
             remedy_key = f"warranty_remedy_{w.remedy.lower()}"
             remedy_name = _lt(remedy_key, w.remedy.replace("_", " ").title())
 

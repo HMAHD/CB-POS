@@ -143,6 +143,8 @@ def _claim_to_dto(claim: WarrantyClaim) -> WarrantyClaimDTO:
         returned_from_supplier_at=getattr(claim, "returned_from_supplier_at", None),
         supplier_outcome=getattr(claim, "supplier_outcome", None),
         supplier_credit_amount=getattr(claim, "supplier_credit_amount", Decimal("0.00")) or Decimal("0.00"),
+        expected_ready_date=getattr(claim, "expected_ready_date", None),
+        replacement_cost_snapshot=getattr(claim, "replacement_cost_snapshot", None),
         events=events_dto,
     )
 
@@ -164,6 +166,7 @@ class WarrantyClaimService:
         accessories_received: str | None = None,
         item_condition: str | None = None,
         is_covered: bool | None = None,
+        expected_ready_date: date | None = None,
         terminal_id: str | None = None,
         session: Session | None = None,
     ) -> WarrantyClaimDTO:
@@ -246,6 +249,7 @@ class WarrantyClaimService:
                 item_serial=item_serial.strip().upper() if item_serial else None,
                 claim_status="INTAKE",
                 intake_date=now,
+                expected_ready_date=expected_ready_date,
                 defect_description=clean_defect,
                 item_condition=item_condition.strip() if item_condition else None,
                 accessories_received=accessories_received.strip() if accessories_received else None,
@@ -601,6 +605,7 @@ class WarrantyClaimService:
             claim.resolution = "REPLACED_SAME" if replacement_product_id == old_w.product_id else "REPLACED_DIFFERENT"
             claim.replacement_warranty_id = new_w.id
             claim.replacement_serial = clean_sn
+            claim.replacement_cost_snapshot = Decimal(str(rep_prod.cost)) if rep_prod.cost is not None else None
             if from_status == "SUPPLIER_DISPATCHED":
                 claim.defective_unit_status = "SENT_TO_SUPPLIER"
             else:

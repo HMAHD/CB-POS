@@ -11,6 +11,11 @@ from cbpos.core.services.warranty_dto import WarrantyClaimDTO, WarrantyClaimEven
 from cbpos.ui.dialogs.warranty_claim_intake_dialog import WarrantyClaimIntakeDialog
 from cbpos.ui.dialogs.warranty_claim_resolve_dialog import WarrantyClaimResolveDialog
 from cbpos.ui.dialogs.warranty_lookup_dialog import WarrantyLookupDialog
+from cbpos.ui.dialogs.warranty_supplier_dialogs import (
+    WarrantySupplierDispatchDialog,
+    WarrantySupplierOutcomeDialog,
+    WarrantySupplierReceiveDialog,
+)
 from cbpos.ui.views.warranty_claims_board_view import WarrantyClaimsBoardDialog, WarrantyClaimsBoardView
 
 
@@ -141,16 +146,76 @@ class TestWarrantyClaimResolveDialog:
 
         # Initially REPAIRED (default 0 index) -> replacement serial disabled
         assert dialog.txt_replacement_serial.isEnabled() is False
+        assert dialog.cmb_replacement_product.isHidden() is True
 
         # Select REPLACED_SAME
         idx = dialog.cmb_resolution.findData("REPLACED_SAME")
         dialog.cmb_resolution.setCurrentIndex(idx)
         assert dialog.txt_replacement_serial.isEnabled() is True
+        assert dialog.cmb_replacement_product.isHidden() is True
+
+        # Select REPLACED_DIFFERENT
+        with patch("cbpos.ui.dialogs.warranty_claim_resolve_dialog.ProductService.get_all_products", return_value=[]):
+            idx_diff = dialog.cmb_resolution.findData("REPLACED_DIFFERENT")
+            dialog.cmb_resolution.setCurrentIndex(idx_diff)
+            assert dialog.txt_replacement_serial.isEnabled() is True
+            assert dialog.cmb_replacement_product.isHidden() is False
+            assert dialog.cmb_replacement_product.isEnabled() is True
 
         # Switch back to REPAIRED
         idx_rep = dialog.cmb_resolution.findData("REPAIRED")
         dialog.cmb_resolution.setCurrentIndex(idx_rep)
         assert dialog.txt_replacement_serial.isEnabled() is False
+        assert dialog.cmb_replacement_product.isHidden() is True
+
+    def test_resolve_dialog_wires_replace_from_stock_on_save(self, qtbot, sample_claim_dto):
+        dialog = WarrantyClaimResolveDialog(claim=sample_claim_dto, user_id=2)
+        qtbot.addWidget(dialog)
+
+        idx = dialog.cmb_resolution.findData("REPLACED_SAME")
+        dialog.cmb_resolution.setCurrentIndex(idx)
+        dialog.txt_replacement_serial.setText("NEW-SN-123")
+
+        with (
+            patch(
+                "cbpos.core.services.warranty_claim_service.WarrantyClaimService.replace_from_stock",
+                return_value=sample_claim_dto,
+            ) as mock_replace,
+            patch("cbpos.ui.dialogs.warranty_claim_resolve_dialog.QMessageBox.information"),
+        ):
+            dialog._on_save()
+            assert mock_replace.called
+            assert mock_replace.call_args.kwargs["new_serial"] == "NEW-SN-123"
+            assert mock_replace.call_args.kwargs["replacement_product_id"] == sample_claim_dto.product_id
+
+    def test_resolve_dialog_wires_refund_claim_on_save(self, qtbot, sample_claim_dto):
+        from cbpos.core.services.refund_service import RefundResult
+
+        mock_refund_res = RefundResult(
+            refund_sale_id=99,
+            refund_document_number="CN-2026-0001",
+            total_refund_amount=Decimal("45000.00"),
+            refund_sale=None,
+            tenders=[],
+        )
+
+        dialog = WarrantyClaimResolveDialog(claim=sample_claim_dto, user_id=2)
+        qtbot.addWidget(dialog)
+
+        idx = dialog.cmb_resolution.findData("REFUNDED")
+        dialog.cmb_resolution.setCurrentIndex(idx)
+        dialog.txt_notes.setText("Unrepairable defect")
+
+        with (
+            patch(
+                "cbpos.core.services.warranty_claim_service.WarrantyClaimService.refund_claim",
+                return_value=(sample_claim_dto, mock_refund_res),
+            ) as mock_refund,
+            patch("cbpos.ui.dialogs.warranty_claim_resolve_dialog.QMessageBox.information"),
+        ):
+            dialog._on_save()
+            assert mock_refund.called
+            assert mock_refund.call_args.kwargs["reason"] == "Unrepairable defect"
 
 
 class TestWarrantyClaimsBoardView:
@@ -204,3 +269,111 @@ class TestWarrantyLookupClaimIntegration:
 
         assert dialog.btn_start_claim.isEnabled() is False
         assert dialog.btn_start_claim.toolTip() != ""
+
+
+class TestWarrantySupplierDialogs:
+    def test_supplier_dispatch_dialog_submit(self, qtbot, sample_claim_dto):
+        from unittest.mock import MagicMock
+
+        mock_supp = MagicMock()
+        mock_supp.id = 1
+        mock_supp.company_name = "Supplier Lanka"
+
+        with patch("cbpos.core.services.supplier_service.SupplierService.get_all_suppliers", return_value=[mock_supp]):
+            dialog = WarrantySupplierDispatchDialog(claim=sample_claim_dto, user_id=2)
+            qtbot.addWidget(dialog)
+
+            assert dialog.cmb_supplier.count() == 1
+            dialog.txt_rma_ref.setText("RMA-12345")
+            dialog.txt_notes.setText("Sent by courier")
+            dialog.chk_print.setChecked(False)
+
+            with (
+                patch(
+                    "cbpos.core.services.warranty_claim_service.WarrantyClaimService.send_to_supplier",
+                    return_value=sample_claim_dto,
+                ) as mock_send,
+                patch("cbpos.ui.dialogs.warranty_supplier_dialogs.QMessageBox.information"),
+            ):
+                dialog._on_save()
+                assert mock_send.called
+                assert mock_send.call_args.kwargs["supplier_id"] == 1
+                assert mock_send.call_args.kwargs["supplier_rma_ref"] == "RMA-12345"
+
+    def test_supplier_receive_dialog_submit(self, qtbot, sample_claim_dto):
+        dialog = WarrantySupplierReceiveDialog(claim=sample_claim_dto, user_id=2)
+        qtbot.addWidget(dialog)
+
+        dialog.txt_notes.setText("Received via Prompt Express")
+
+        with (
+            patch(
+                "cbpos.core.services.warranty_claim_service.WarrantyClaimService.receive_from_supplier",
+                return_value=sample_claim_dto,
+            ) as mock_recv,
+            patch("cbpos.ui.dialogs.warranty_supplier_dialogs.QMessageBox.information"),
+        ):
+            dialog._on_save()
+            assert mock_recv.called
+            assert mock_recv.call_args.kwargs["to_status"] == "SUPPLIER_RETURNED"
+
+    def test_supplier_outcome_dialog_toggle_and_save(self, qtbot, sample_claim_dto):
+        dialog = WarrantySupplierOutcomeDialog(claim=sample_claim_dto, user_id=2)
+        qtbot.addWidget(dialog)
+
+        # REPAIRED (default) -> serial and credit hidden
+        assert dialog.lbl_replacement_serial.isHidden() is True
+        assert dialog.lbl_credit_amount.isHidden() is True
+
+        # REPLACED -> serial visible, credit hidden
+        idx_rep = dialog.cmb_outcome.findData("REPLACED")
+        dialog.cmb_outcome.setCurrentIndex(idx_rep)
+        assert dialog.lbl_replacement_serial.isHidden() is False
+        assert dialog.lbl_credit_amount.isHidden() is True
+        dialog.txt_replacement_serial.setText("NEW-SN-888")
+
+        # CREDIT_NOTE -> serial hidden, credit visible
+        idx_cn = dialog.cmb_outcome.findData("CREDIT_NOTE")
+        dialog.cmb_outcome.setCurrentIndex(idx_cn)
+        assert dialog.lbl_replacement_serial.isHidden() is True
+        assert dialog.lbl_credit_amount.isHidden() is False
+        dialog.spn_credit_amount.setValue(12500.00)
+
+        with (
+            patch(
+                "cbpos.core.services.warranty_claim_service.WarrantyClaimService.record_supplier_outcome",
+                return_value=sample_claim_dto,
+            ) as mock_outcome,
+            patch("cbpos.ui.dialogs.warranty_supplier_dialogs.QMessageBox.information"),
+        ):
+            dialog._on_save()
+            assert mock_outcome.called
+            assert mock_outcome.call_args.kwargs["outcome"] == "CREDIT_NOTE"
+            assert mock_outcome.call_args.kwargs["credit_amount"] == Decimal("12500.00")
+
+
+class TestWarrantyClaimsBoardSupplierRMA:
+    def test_board_view_supplier_columns_and_filter(self, qtbot, sample_claim_dto):
+        rma_claim = WarrantyClaimDTO(
+            **{
+                **sample_claim_dto.__dict__,
+                "supplier_name": "Singer PLC",
+                "defective_unit_status": "SENT_TO_SUPPLIER",
+                "sent_to_supplier_at": datetime(2026, 2, 1, 10, 0),
+            }
+        )
+        with patch(
+            "cbpos.core.services.warranty_claim_service.WarrantyClaimService.list_claims",
+            return_value=[rma_claim],
+        ):
+            view = WarrantyClaimsBoardView()
+            qtbot.addWidget(view)
+
+            assert view.table.columnCount() == 9
+            assert view.table.item(0, 7).text() == "Singer PLC"
+            # Days out should be a number > 0
+            assert view.table.item(0, 8).text() != "-"
+
+            # Verify overdue status combo option exists
+            overdue_idx = view.cmb_status.findData("OVERDUE_SUPPLIER")
+            assert overdue_idx >= 0

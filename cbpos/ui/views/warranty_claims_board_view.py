@@ -5,12 +5,15 @@ and collecting warranty claims.
 """
 
 import logging
+import threading
+from datetime import datetime
 from decimal import Decimal
 
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
     QComboBox,
     QDialog,
+    QFileDialog,
     QFrame,
     QHBoxLayout,
     QHeaderView,
@@ -37,6 +40,11 @@ from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.ui.components.activation import Activatable
 from cbpos.ui.dialogs.warranty_claim_intake_dialog import WarrantyClaimIntakeDialog
 from cbpos.ui.dialogs.warranty_claim_resolve_dialog import WarrantyClaimResolveDialog
+from cbpos.ui.dialogs.warranty_supplier_dialogs import (
+    WarrantySupplierDispatchDialog,
+    WarrantySupplierOutcomeDialog,
+    WarrantySupplierReceiveDialog,
+)
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.dialog_footer import make_close_footer
 from cbpos.ui.widgets.table_helpers import attach_table_empty_state, batch_table_update
@@ -97,6 +105,9 @@ class WarrantyClaimsBoardView(QWidget, Activatable):
         self.cmb_status.addItem(_t("warranty_claim.status_collected", default="Collected"), "COLLECTED")
         self.cmb_status.addItem(_t("warranty_claim.status_rejected", default="Rejected"), "REJECTED")
         self.cmb_status.addItem(_t("warranty_claim.status_void", default="Void"), "VOID")
+        self.cmb_status.addItem(
+            _t("warranty_claim.status_overdue_supplier", default="Overdue at Supplier (> 14 days)"), "OVERDUE_SUPPLIER"
+        )
         self.cmb_status.currentIndexChanged.connect(self._do_search)
         toolbar.addWidget(self.cmb_status)
 
@@ -137,7 +148,7 @@ class WarrantyClaimsBoardView(QWidget, Activatable):
         left_layout.setContentsMargins(0, 0, 0, 0)
 
         self.table = QTableWidget()
-        self.table.setColumnCount(7)
+        self.table.setColumnCount(9)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -240,6 +251,20 @@ class WarrantyClaimsBoardView(QWidget, Activatable):
         res_layout.addWidget(self.lbl_res_content)
         detail_form_layout.addWidget(self.frame_resolution)
 
+        # Supplier RMA details frame
+        self.frame_supplier = QFrame()
+        self.frame_supplier.setStyleSheet("background: #EDE7F6; border-radius: 4px; padding: 8px;")
+        supp_layout = QVBoxLayout(self.frame_supplier)
+        supp_layout.setContentsMargins(8, 8, 8, 8)
+        supp_layout.setSpacing(4)
+        self.lbl_supp_title = QLabel(_t("warranty_claim.supplier_rma_section", default="Supplier RMA Details"))
+        self.lbl_supp_title.setStyleSheet("font-weight: bold; color: #512DA8;")
+        supp_layout.addWidget(self.lbl_supp_title)
+        self.lbl_supp_content = QLabel()
+        self.lbl_supp_content.setWordWrap(True)
+        supp_layout.addWidget(self.lbl_supp_content)
+        detail_form_layout.addWidget(self.frame_supplier)
+
         # Lifecycle Timeline
         lbl_events_title = QLabel(_t("warranty_claim.event_history", default="Event History") + ":")
         lbl_events_title.setStyleSheet("font-weight: bold;")
@@ -270,6 +295,12 @@ class WarrantyClaimsBoardView(QWidget, Activatable):
         self.btn_supplier_returned.clicked.connect(self._on_supplier_returned)
         self.row_state_actions.addWidget(self.btn_supplier_returned)
 
+        self.btn_supplier_outcome = QPushButton(
+            _t("warranty_claim.btn_supplier_outcome", default="Record Supplier Outcome")
+        )
+        self.btn_supplier_outcome.clicked.connect(self._on_supplier_outcome)
+        self.row_state_actions.addWidget(self.btn_supplier_outcome)
+
         self.btn_resolve = QPushButton(_t("warranty_claim.btn_resolve", default="Resolve Claim"))
         self.btn_resolve.setProperty("class", "primary")
         self.btn_resolve.clicked.connect(self._on_resolve_claim)
@@ -295,6 +326,20 @@ class WarrantyClaimsBoardView(QWidget, Activatable):
         self.btn_print_collection.setIcon(Icons.get(Icons.PRINT))
         self.btn_print_collection.clicked.connect(self._on_print_collection_slip)
         self.row_secondary_actions.addWidget(self.btn_print_collection)
+
+        self.btn_print_supplier_slip = QPushButton(
+            _t("warranty_claim.btn_print_supplier_slip", default="Print RMA Slip")
+        )
+        self.btn_print_supplier_slip.setIcon(Icons.get(Icons.PRINT))
+        self.btn_print_supplier_slip.clicked.connect(self._on_print_supplier_slip)
+        self.row_secondary_actions.addWidget(self.btn_print_supplier_slip)
+
+        self.btn_export_supplier_pdf = QPushButton(
+            _t("warranty_claim.btn_supplier_pdf", default="Save RMA Waybill PDF")
+        )
+        self.btn_export_supplier_pdf.setIcon(Icons.get(Icons.PRINT))
+        self.btn_export_supplier_pdf.clicked.connect(self._on_export_supplier_pdf)
+        self.row_secondary_actions.addWidget(self.btn_export_supplier_pdf)
 
         self.btn_reject = QPushButton(_t("warranty_claim.btn_reject", default="Reject Claim"))
         self.btn_reject.setProperty("class", "danger")
@@ -340,6 +385,8 @@ class WarrantyClaimsBoardView(QWidget, Activatable):
             _t("customer", default="Customer"),
             _t("product", default="Product"),
             _t("warranty.serial_number", default="Serial"),
+            _t("supplier", default="Supplier"),
+            _t("warranty_claim.days_out", default="Days Out"),
         ]
         self.table.setHorizontalHeaderLabels(headers)
 
@@ -394,6 +441,15 @@ class WarrantyClaimsBoardView(QWidget, Activatable):
 
                 item_sn = TableItem(dto.item_serial or "-")
                 self.table.setItem(row_idx, 6, item_sn)
+
+                item_supp = TableItem(dto.supplier_name or "-")
+                self.table.setItem(row_idx, 7, item_supp)
+
+                days_out_str = "-"
+                if dto.sent_to_supplier_at and dto.defective_unit_status == "SENT_TO_SUPPLIER":
+                    days_out_str = str((datetime.now() - dto.sent_to_supplier_at).days)
+                item_days = TableItem(days_out_str)
+                self.table.setItem(row_idx, 8, item_days)
 
         if self._claims:
             self.table.selectRow(0)
@@ -516,6 +572,75 @@ class WarrantyClaimsBoardView(QWidget, Activatable):
         else:
             self.frame_resolution.hide()
 
+        # Supplier RMA details & coverage estimate
+        has_rma = bool(
+            claim.supplier_id
+            or claim.sent_to_supplier_at
+            or claim.supplier_outcome
+            or getattr(claim, "defective_unit_status", "HELD") == "SENT_TO_SUPPLIER"
+        )
+        if has_rma:
+            self.frame_supplier.show()
+            supp_lines = []
+            if claim.supplier_name:
+                supp_lines.append(
+                    f"<b>{_t('warranty_claim.supplier_select', default='Supplier')}:</b> {claim.supplier_name}"
+                )
+            if claim.supplier_rma_ref:
+                supp_lines.append(
+                    f"<b>{_t('warranty_claim.supplier_rma_ref', default='RMA Ref')}:</b> {claim.supplier_rma_ref}"
+                )
+            if claim.sent_to_supplier_at:
+                s_date = format_datetime(claim.sent_to_supplier_at)
+                def_st = getattr(claim, "defective_unit_status", "HELD")
+                days_out = (datetime.now() - claim.sent_to_supplier_at).days if def_st == "SENT_TO_SUPPLIER" else None
+                days_text = (
+                    f" ({days_out} {_t('warranty_claim.days_out', default='days out')})" if days_out is not None else ""
+                )
+                supp_lines.append(
+                    f"<b>{_t('warranty_claim.sent_to_supplier', default='Sent Date')}:</b> {s_date}{days_text}"
+                )
+            if claim.returned_from_supplier_at:
+                r_date = format_datetime(claim.returned_from_supplier_at)
+                supp_lines.append(
+                    f"<b>{_t('warranty_claim.returned_from_supplier', default='Returned Date')}:</b> {r_date}"
+                )
+            if claim.supplier_outcome:
+                supp_lines.append(
+                    f"<b>{_t('warranty_claim.supplier_outcome', default='Outcome')}:</b> {claim.supplier_outcome}"
+                )
+            if claim.supplier_credit_amount and claim.supplier_credit_amount > Decimal("0.00"):
+                supp_lines.append(
+                    f"<b>{_t('warranty_claim.supplier_credit_amount', default='Credit Note')}:</b> {format_currency(claim.supplier_credit_amount)}"
+                )
+
+            # Estimate supplier coverage
+            try:
+                cov_est = WarrantyClaimService.estimate_supplier_coverage(claim.product_id, claim.supplier_id)
+                if cov_est.get("covered"):
+                    days_rem = cov_est.get("days_remaining", 0)
+                    supp_lines.append(
+                        f"<b>{_t('warranty_claim.supplier_coverage', default='Supplier Coverage')}:</b> {_t('warranty_claim.covered_short', default='Covered')} ({days_rem} {_t('warranty_claim.days_remaining', default='days remaining')})"
+                    )
+                elif cov_est.get("reason") == "NO_PURCHASE":
+                    supp_lines.append(
+                        f"<b>{_t('warranty_claim.supplier_coverage', default='Supplier Coverage')}:</b> {_t('warranty_claim.no_purchase_history', default='No purchase history found')}"
+                    )
+                elif cov_est.get("reason") == "NO_SUPPLIER_POLICY":
+                    supp_lines.append(
+                        f"<b>{_t('warranty_claim.supplier_coverage', default='Supplier Coverage')}:</b> {_t('warranty_claim.no_supplier_policy', default='No supplier policy set')}"
+                    )
+                else:
+                    supp_lines.append(
+                        f"<b>{_t('warranty_claim.supplier_coverage', default='Supplier Coverage')}:</b> {_t('warranty_claim.uncovered_short', default='Out of coverage')}"
+                    )
+            except Exception as ex:
+                logger.debug("Failed to estimate supplier coverage: %s", ex)
+
+            self.lbl_supp_content.setText("<br>".join(supp_lines))
+        else:
+            self.frame_supplier.hide()
+
         # Timeline
         timeline_text = []
         for ev in claim.events:
@@ -531,10 +656,21 @@ class WarrantyClaimsBoardView(QWidget, Activatable):
     def _update_action_buttons(self, claim: WarrantyClaimDTO) -> None:
         """Enable, disable, and show relevant action buttons for claim state."""
         st = claim.claim_status
+        def_st = getattr(claim, "defective_unit_status", "HELD")
 
         self.btn_inspect.setVisible(st in ("INTAKE", "SUPPLIER_RETURNED"))
-        self.btn_dispatch_supplier.setVisible(st == "IN_INSPECTION")
-        self.btn_supplier_returned.setVisible(st == "SUPPLIER_DISPATCHED")
+        self.btn_dispatch_supplier.setVisible(
+            st in ("INTAKE", "IN_INSPECTION") and def_st not in ("SCRAPPED", "RESTOCKED", "SENT_TO_SUPPLIER")
+        )
+        self.btn_supplier_returned.setVisible(def_st == "SENT_TO_SUPPLIER" or st == "SUPPLIER_DISPATCHED")
+        self.btn_supplier_outcome.setVisible(
+            (
+                def_st in ("SENT_TO_SUPPLIER", "RETURNED_FROM_SUPPLIER")
+                or st in ("SUPPLIER_DISPATCHED", "SUPPLIER_RETURNED")
+                or bool(claim.supplier_id)
+            )
+            and not claim.supplier_outcome
+        )
         self.btn_resolve.setVisible(st in ("IN_INSPECTION", "SUPPLIER_RETURNED"))
         self.btn_collect.setVisible(st == "RESOLVED")
 
@@ -546,6 +682,11 @@ class WarrantyClaimsBoardView(QWidget, Activatable):
         # Print buttons
         self.btn_print_intake.setVisible(True)
         self.btn_print_collection.setVisible(st in ("RESOLVED", "COLLECTED"))
+        has_rma = bool(
+            claim.sent_to_supplier_at or claim.supplier_id or st in ("SUPPLIER_DISPATCHED", "SUPPLIER_RETURNED")
+        )
+        self.btn_print_supplier_slip.setVisible(has_rma)
+        self.btn_export_supplier_pdf.setVisible(has_rma)
 
     def _on_new_claim(self) -> None:
         """Open intake dialog for a new claim."""
@@ -560,16 +701,72 @@ class WarrantyClaimsBoardView(QWidget, Activatable):
         self._transition_to("IN_INSPECTION", notes="Inspection started")
 
     def _on_supplier_dispatch(self) -> None:
-        """Transition claim to SUPPLIER_DISPATCHED."""
+        """Open dialog to dispatch defective unit to supplier for RMA."""
         if not self._selected_claim:
             return
-        self._transition_to("SUPPLIER_DISPATCHED", notes="Item dispatched to supplier service center")
+        dlg = WarrantySupplierDispatchDialog(claim=self._selected_claim, parent=self)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            self.load_data()
 
     def _on_supplier_returned(self) -> None:
-        """Transition claim to SUPPLIER_RETURNED."""
+        """Open dialog to receive defective unit back from supplier."""
         if not self._selected_claim:
             return
-        self._transition_to("SUPPLIER_RETURNED", notes="Item returned from supplier service center")
+        dlg = WarrantySupplierReceiveDialog(claim=self._selected_claim, parent=self)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            self.load_data()
+
+    def _on_supplier_outcome(self) -> None:
+        """Open dialog to record final supplier RMA outcome."""
+        if not self._selected_claim:
+            return
+        dlg = WarrantySupplierOutcomeDialog(claim=self._selected_claim, parent=self)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            self.load_data()
+
+    def _on_print_supplier_slip(self) -> None:
+        """Print thermal supplier RMA dispatch slip."""
+        if not self._selected_claim:
+            return
+        try:
+            commands = WarrantyClaimReceiptBuilder.build_supplier_dispatch_receipt(self._selected_claim)
+            PrintWorker.instance().add_job("print_commands", commands)
+            QMessageBox.information(
+                self,
+                _t("common.success", default="Success"),
+                _t("warranty_claim.print_job_sent", default="Print job sent to printer"),
+            )
+        except Exception as e:
+            logger.error("Print supplier slip failed: %s", e)
+            QMessageBox.critical(self, _t("common.error", default="Error"), str(e))
+
+    def _on_export_supplier_pdf(self) -> None:
+        """Export supplier RMA waybill PDF."""
+        if not self._selected_claim:
+            return
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            _t("warranty_claim.save_rma_pdf_title", default="Save Supplier RMA PDF"),
+            f"RMA-{self._selected_claim.document_number}.pdf",
+            "PDF Files (*.pdf)",
+        )
+        if not file_path:
+            return
+
+        claim = self._selected_claim
+
+        def _generate():
+            try:
+                WarrantyClaimReceiptBuilder.build_supplier_dispatch_pdf(claim, file_path)
+            except Exception as e:
+                logger.error("Failed to generate RMA PDF: %s", e)
+
+        threading.Thread(target=_generate, daemon=True).start()
+        QMessageBox.information(
+            self,
+            _t("common.success", default="Success"),
+            _t("warranty_claim.pdf_saved", default="RMA Waybill PDF saved successfully"),
+        )
 
     def _transition_to(self, to_status: str, notes: str | None = None) -> None:
         """Call service to update status and reload."""

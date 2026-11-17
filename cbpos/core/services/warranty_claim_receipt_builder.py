@@ -279,3 +279,313 @@ class WarrantyClaimReceiptBuilder(BaseReceiptBuilder):
         commands.append({"type": "feed", "lines": 2})
         commands.append({"type": "cut"})
         return commands
+
+    @classmethod
+    def build_supplier_dispatch_receipt(
+        cls,
+        claim: WarrantyClaimDTO,
+        config_override: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Generate thermal printer commands for dispatching a claim to supplier (RMA) (#828).
+
+        NOTE: Customer PII (name, phone, address) is STRICTLY OMITTED to protect customer privacy.
+        """
+        cls._resolve_receipt_lang(config_override)
+        commands: list[dict[str, Any]] = []
+
+        line_chars = cls._append_header_block(commands, config_override)
+        paper_width = cls._get_conf("paper_width", "80mm", config_override)
+
+        # Title
+        commands.append({"type": "text", "val": "=" * line_chars, "align": "center"})
+        commands.append(
+            {
+                "type": "text",
+                "val": cls._tr("warranty_claim.supplier_dispatch_slip_title", default="SUPPLIER RMA DISPATCH NOTE"),
+                "align": "center",
+                "bold": True,
+            }
+        )
+        commands.append({"type": "text", "val": "=" * line_chars, "align": "center"})
+        commands.append({"type": "feed", "lines": 1})
+
+        # Claim number and barcode
+        commands.append({"type": "text", "val": f"{claim.document_number}", "align": "center", "bold": True})
+        bw = calculate_barcode_width(claim.document_number, paper_width)
+        if bw is not None:
+            chosen_type, payload = choose_barcode(claim.document_number)
+            commands.append(
+                {
+                    "type": "barcode",
+                    "val": payload,
+                    "code": chosen_type,
+                    "align": "center",
+                    "width": bw,
+                    "height": 50,
+                }
+            )
+        commands.append({"type": "feed", "lines": 1})
+
+        # Metadata
+        disp_time = claim.sent_to_supplier_at or datetime.now()
+        commands.append(
+            cls._split_row(cls._tr("common.date", default="Date"), disp_time.strftime("%Y-%m-%d %H:%M"), line_chars)
+        )
+        commands.append(
+            cls._split_row(
+                cls._tr("warranty_claim.supplier_select", default="Supplier"),
+                claim.supplier_name or "N/A",
+                line_chars,
+            )
+        )
+        if claim.supplier_rma_ref:
+            commands.append(
+                cls._split_row(
+                    cls._tr("warranty_claim.supplier_rma_ref", default="RMA / Waybill Ref"),
+                    claim.supplier_rma_ref,
+                    line_chars,
+                )
+            )
+
+        commands.append({"type": "text", "val": "-" * line_chars, "align": "center"})
+
+        # Product details (NO CUSTOMER PII)
+        commands.append(cls._split_row(cls._tr("common.product", default="Product"), claim.product_name, line_chars))
+        if claim.item_serial:
+            commands.append(
+                cls._split_row(cls._tr("warranty.serial_number", default="Serial/IMEI"), claim.item_serial, line_chars)
+            )
+        if claim.item_condition:
+            commands.append(
+                cls._split_row(
+                    cls._tr("warranty_claim.condition", default="Condition"),
+                    claim.item_condition,
+                    line_chars,
+                )
+            )
+        if claim.accessories_received:
+            commands.append(
+                cls._split_row(
+                    cls._tr("warranty_claim.accessories", default="Accessories"),
+                    claim.accessories_received,
+                    line_chars,
+                )
+            )
+
+        commands.append({"type": "text", "val": "-" * line_chars, "align": "center"})
+
+        # Defect details
+        commands.append(
+            {
+                "type": "text",
+                "val": f"{cls._tr('warranty_claim.defect', default='Reported Fault')}:",
+                "align": "left",
+                "bold": True,
+            }
+        )
+        commands.append(
+            {
+                "type": "text",
+                "val": f"{claim.defect_description}",
+                "align": "left",
+            }
+        )
+
+        commands.append({"type": "feed", "lines": 2})
+
+        # Signatures
+        commands.append(
+            {
+                "type": "text",
+                "val": f"{cls._tr('warranty_claim.dispatched_by', default='Dispatched By')}: ___________________",
+                "align": "left",
+            }
+        )
+        commands.append({"type": "feed", "lines": 1})
+        commands.append(
+            {
+                "type": "text",
+                "val": f"{cls._tr('warranty_claim.acknowledged_by', default='Received By Supplier/Courier')}: ___________________",
+                "align": "left",
+            }
+        )
+
+        commands.append({"type": "feed", "lines": 2})
+        commands.append({"type": "cut"})
+        return commands
+
+    @classmethod
+    def build_supplier_dispatch_pdf(
+        cls,
+        claim: WarrantyClaimDTO,
+        output_path: str,
+        config_override: dict[str, Any] | None = None,
+    ) -> str:
+        """Generate A5 vector PDF waybill for dispatching defective item to supplier/manufacturer (#828).
+
+        NOTE: Customer PII is strictly excluded.
+        """
+        from html import escape
+        from io import BytesIO
+
+        from reportlab.graphics.barcode import code128
+        from reportlab.lib import colors
+        from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+        from reportlab.lib.pagesizes import A5
+        from reportlab.lib.styles import ParagraphStyle
+        from reportlab.lib.units import mm
+        from reportlab.platypus import Flowable, Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+        from cbpos.core.services.config_service import ConfigService
+        from cbpos.core.utils.text_scripts import needs_raster
+
+        navy = colors.HexColor("#0B2545")
+        border_grey = colors.HexColor("#CBD5E1")
+        grey = colors.HexColor("#64748B")
+        light_bg = colors.HexColor("#F8FAFC")
+
+        styles = {
+            "title": ParagraphStyle(
+                "Title", fontName="Helvetica-Bold", fontSize=15, leading=18, alignment=TA_CENTER, textColor=navy
+            ),
+            "subtitle": ParagraphStyle(
+                "Subtitle", fontName="Helvetica", fontSize=9, leading=12, alignment=TA_CENTER, textColor=grey
+            ),
+            "h2": ParagraphStyle("H2", fontName="Helvetica-Bold", fontSize=11, leading=14, textColor=navy),
+            "bold": ParagraphStyle("Bold", fontName="Helvetica-Bold", fontSize=9, leading=12, textColor=navy),
+            "base": ParagraphStyle("Base", fontName="Helvetica", fontSize=9, leading=12, textColor=colors.black),
+            "right": ParagraphStyle("Right", fontName="Helvetica", fontSize=9, leading=12, alignment=TA_RIGHT),
+            "muted": ParagraphStyle("Muted", fontName="Helvetica", fontSize=8, leading=10, textColor=grey),
+        }
+
+        def _p(text: Any, style: ParagraphStyle) -> Flowable:
+            val = str(text or "")
+            if not needs_raster(val):
+                return Paragraph(escape(val), style)
+            from cbpos.infrastructure.hardware.text_raster import render_text_png
+
+            align = {TA_CENTER: "center", TA_RIGHT: "right"}.get(style.alignment, "left")
+            png, w, h = render_text_png(
+                val,
+                style.fontSize,
+                bold=style.fontName.endswith("Bold"),
+                color="#" + style.textColor.hexval()[2:],
+                align=align,
+            )
+            img = Image(BytesIO(png), width=w, height=h)
+            img.hAlign = align.upper()
+            return img
+
+        doc = SimpleDocTemplate(
+            output_path,
+            pagesize=A5,
+            leftMargin=12 * mm,
+            rightMargin=12 * mm,
+            topMargin=10 * mm,
+            bottomMargin=10 * mm,
+        )
+
+        elements: list[Flowable] = []
+
+        # Shop Header
+        shop_name = ConfigService.get("receipt_header") or ConfigService.get("shop_name") or "CB POS Shop"
+        shop_address = ConfigService.get("receipt_sub_header") or ""
+        elements.append(_p(shop_name, styles["title"]))
+        if shop_address:
+            elements.append(_p(shop_address, styles["subtitle"]))
+        elements.append(Spacer(1, 4 * mm))
+
+        # Title Block
+        elements.append(_p("SUPPLIER RMA DISPATCH WAYBILL", styles["h2"]))
+        elements.append(Spacer(1, 2 * mm))
+
+        # Meta Table: Claim #, Date, Supplier, RMA Ref
+        disp_time = claim.sent_to_supplier_at or datetime.now()
+        meta_data = [
+            [
+                _p("Claim Number:", styles["bold"]),
+                _p(claim.document_number, styles["base"]),
+                _p("Dispatch Date:", styles["bold"]),
+                _p(disp_time.strftime("%Y-%m-%d %H:%M"), styles["base"]),
+            ],
+            [
+                _p("Supplier:", styles["bold"]),
+                _p(claim.supplier_name or "N/A", styles["base"]),
+                _p("RMA / Waybill Ref:", styles["bold"]),
+                _p(claim.supplier_rma_ref or "N/A", styles["base"]),
+            ],
+        ]
+        meta_table = Table(meta_data, colWidths=[30 * mm, 35 * mm, 30 * mm, 35 * mm])
+        meta_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, -1), light_bg),
+                    ("BOX", (0, 0), (-1, -1), 0.5, border_grey),
+                    ("INNERGRID", (0, 0), (-1, -1), 0.5, border_grey),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("TOPPADDING", (0, 0), (-1, -1), 4),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ]
+            )
+        )
+        elements.append(meta_table)
+        elements.append(Spacer(1, 4 * mm))
+
+        # Barcode
+        barcode_flowable = code128.Code128(claim.document_number, barHeight=14 * mm, barWidth=1.2)
+        barcode_flowable.hAlign = "CENTER"
+        elements.append(barcode_flowable)
+        elements.append(Spacer(1, 4 * mm))
+
+        # Product & Defect Table
+        prod_data = [
+            [_p("Product Model:", styles["bold"]), _p(claim.product_name, styles["base"])],
+            [_p("Serial / IMEI:", styles["bold"]), _p(claim.item_serial or "N/A", styles["base"])],
+            [_p("Physical Condition:", styles["bold"]), _p(claim.item_condition or "N/A", styles["base"])],
+            [_p("Accessories Included:", styles["bold"]), _p(claim.accessories_received or "None", styles["base"])],
+            [_p("Reported Defect:", styles["bold"]), _p(claim.defect_description, styles["base"])],
+        ]
+        prod_table = Table(prod_data, colWidths=[40 * mm, 90 * mm])
+        prod_table.setStyle(
+            TableStyle(
+                [
+                    ("BOX", (0, 0), (-1, -1), 0.5, border_grey),
+                    ("INNERGRID", (0, 0), (-1, -1), 0.5, border_grey),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("TOPPADDING", (0, 0), (-1, -1), 5),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ]
+            )
+        )
+        elements.append(prod_table)
+        elements.append(Spacer(1, 8 * mm))
+
+        # Signatures
+        sig_data = [
+            [
+                _p("Dispatched By (Shop Staff):", styles["bold"]),
+                _p("Received By (Supplier / Courier):", styles["bold"]),
+            ],
+            [
+                _p("Signature: _______________________", styles["base"]),
+                _p("Signature: _______________________", styles["base"]),
+            ],
+            [
+                _p("Date: ____________________________", styles["base"]),
+                _p("Date: ____________________________", styles["base"]),
+            ],
+        ]
+        sig_table = Table(sig_data, colWidths=[65 * mm, 65 * mm])
+        sig_table.setStyle(
+            TableStyle(
+                [
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("TOPPADDING", (0, 0), (-1, -1), 3),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                ]
+            )
+        )
+        elements.append(sig_table)
+
+        doc.build(elements)
+        return output_path

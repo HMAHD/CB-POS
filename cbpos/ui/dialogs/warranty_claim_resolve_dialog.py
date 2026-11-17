@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.core.services.auth_service import AuthService
+from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.warranty_claim_service import WarrantyClaimService
 from cbpos.core.services.warranty_dto import WarrantyClaimDTO
 from cbpos.i18n import _t
@@ -75,6 +76,16 @@ class WarrantyClaimResolveDialog(QDialog):
         self.cmb_resolution.currentIndexChanged.connect(self._on_resolution_changed)
         form.addRow(_t("warranty_claim.resolution", default="Resolution") + "*:", self.cmb_resolution)
 
+        # Replacement Product (active for REPLACED_DIFFERENT)
+        self.cmb_replacement_product = QComboBox()
+        self.cmb_replacement_product.setEnabled(False)
+        self.cmb_replacement_product.setVisible(False)
+        self.lbl_replacement_product = QLabel(
+            _t("warranty_claim.replacement_product", default="Replacement Product") + "*:"
+        )
+        self.lbl_replacement_product.setVisible(False)
+        form.addRow(self.lbl_replacement_product, self.cmb_replacement_product)
+
         # Replacement Serial (active for replacements)
         self.txt_replacement_serial = QLineEdit()
         self.txt_replacement_serial.setPlaceholderText(
@@ -122,13 +133,32 @@ class WarrantyClaimResolveDialog(QDialog):
         )
         layout.addLayout(footer_layout)
 
+    def _load_replacement_products(self) -> None:
+        """Populate replacement product dropdown with active products and stock levels."""
+        try:
+            products = ProductService().get_all_products()
+            self.cmb_replacement_product.clear()
+            for p in products:
+                name = p.name_en or f"Product #{p.id}"
+                stock = p.stock_qty or Decimal("0.000")
+                self.cmb_replacement_product.addItem(f"{name} (Stock: {stock:g})", p.id)
+        except Exception as e:
+            logger.error("Failed to load replacement products: %s", e)
+
     def _on_resolution_changed(self) -> None:
-        """Enable or disable replacement serial field based on resolution type."""
+        """Enable or disable replacement serial and product fields based on resolution type."""
         res_data = self.cmb_resolution.currentData()
         is_replacement = res_data in ("REPLACED_SAME", "REPLACED_DIFFERENT")
         self.txt_replacement_serial.setEnabled(is_replacement)
         if not is_replacement:
             self.txt_replacement_serial.clear()
+
+        is_diff = res_data == "REPLACED_DIFFERENT"
+        self.lbl_replacement_product.setVisible(is_diff)
+        self.cmb_replacement_product.setVisible(is_diff)
+        self.cmb_replacement_product.setEnabled(is_diff)
+        if is_diff and self.cmb_replacement_product.count() == 0:
+            self._load_replacement_products()
 
     def _on_save(self) -> None:
         """Validate resolution inputs and call service."""
@@ -153,15 +183,52 @@ class WarrantyClaimResolveDialog(QDialog):
             return
 
         try:
-            dto = WarrantyClaimService.resolve_claim(
-                claim_id=self.claim.id,
-                resolution=res_type,
-                user_id=actor_id,
-                resolution_notes=notes,
-                repair_cost=cost,
-                charge_customer=charge,
-                replacement_serial=rep_serial,
-            )
+            if res_type == "REPLACED_SAME":
+                if not self.claim.product_id:
+                    raise ValueError(_t("warranty_claim.missing_claim_product", default="Claim has no linked product"))
+                dto = WarrantyClaimService.replace_from_stock(
+                    claim_id=self.claim.id,
+                    replacement_product_id=self.claim.product_id,
+                    user_id=actor_id,
+                    new_serial=rep_serial,
+                    resolution_notes=notes,
+                    repair_cost=cost,
+                    charge_customer=charge,
+                )
+            elif res_type == "REPLACED_DIFFERENT":
+                diff_prod_id = self.cmb_replacement_product.currentData()
+                if not diff_prod_id:
+                    raise ValueError(
+                        _t(
+                            "warranty_claim.select_replacement_product",
+                            default="Please select a replacement product",
+                        )
+                    )
+                dto = WarrantyClaimService.replace_from_stock(
+                    claim_id=self.claim.id,
+                    replacement_product_id=int(diff_prod_id),
+                    user_id=actor_id,
+                    new_serial=rep_serial,
+                    resolution_notes=notes,
+                    repair_cost=cost,
+                    charge_customer=charge,
+                )
+            elif res_type == "REFUNDED":
+                dto, _ = WarrantyClaimService.refund_claim(
+                    claim_id=self.claim.id,
+                    user_id=actor_id,
+                    reason=notes,
+                )
+            else:
+                dto = WarrantyClaimService.resolve_claim(
+                    claim_id=self.claim.id,
+                    resolution=res_type,
+                    user_id=actor_id,
+                    resolution_notes=notes,
+                    repair_cost=cost,
+                    charge_customer=charge,
+                    replacement_serial=rep_serial,
+                )
             self.resolved_claim = dto
 
             QMessageBox.information(
@@ -176,6 +243,12 @@ class WarrantyClaimResolveDialog(QDialog):
             )
             self.accept()
 
+        except PermissionError:
+            QMessageBox.critical(
+                self,
+                _t("common.error", default="Error"),
+                _t("errors.permission_denied", default="Permission denied"),
+            )
         except Exception as e:
             logger.error("Error resolving claim: %s", e, exc_info=True)
             QMessageBox.critical(

@@ -20,6 +20,7 @@ _VALID_MOVEMENT_TYPES = frozenset(
         MovementType.RETURN,
         MovementType.VOID,
         MovementType.OPENING,
+        MovementType.WARRANTY,
     }
 )
 

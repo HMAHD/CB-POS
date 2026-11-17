@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 9 · Batch: 9.4 · Branch: feat/p9-b4-lookup-claims · PR: #1026 · Last session: 2026-11-17
+- Phase: 9 · Batch: 9.5 · Branch: feat/p9-b5-claim-resolution-rma · PR: #1027 · Last session: 2026-11-17
 
 ## Issues
 
@@ -202,10 +202,10 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #822 | Warranty W2: Register a warranty per sold unit and cascade on void or refund | — | 9.2 | done | #1022 | 62498f3 · Decision D30; Warranty model, migration, per-unit registration at checkout, whole-unit guard, void/refund cascades, LAN sync 1.4 |
 | #823 | Warranty W3: Optional serial/IMEI capture at checkout | — | 9.3 | done | #1023 | 0aedb47, 03ed8de · Serial/IMEI capture at checkout, IMEI Luhn validator, cart serial bookkeeping, held bill persistence, checkout guard, serial-aware partial refunds, SerialEntryDialog |
 | #824 | Warranty W4: Print the warranty on the receipt, the A4 invoice and a standalo… | — | 9.3 | done (ready-for-human: ⚠️ Verify on Windows) | #1023 | 0aedb47, 03ed8de · Sales receipt warranty blocks & terms, A4 invoice warranty lines, standalone thermal cards (58/80mm) with cut, A5/A4 PDF cards, reprint workflows, audit logging; pending physical printer & statutory text verification |
-| #825 | Warranty W5: Warranty lookup by receipt, serial, phone or customer | — | 9.4 | pr-open | #1026 | ae95ea2 · WarrantyDTO, WarrantyService.search, calculate_effective_status, update_warranty_admin with audit logging, WarrantyLookupDialog, WarrantyCorrectionDialog, F9 shortcut |
-| #826 | Warranty W6: Warranty claims: intake, inspection, resolution and collection | — | 9.4 | pr-open | #1026 | e6e9e9b · WarrantyClaim & WarrantyClaimEvent models, migration, WarrantyClaimService state machine, replacement warranty creation, refund/void claim guards, WarrantyClaimReceiptBuilder thermal slips, WarrantyClaimIntakeDialog, WarrantyClaimResolveDialog, WarrantyClaimsBoardView, sync protocol 1.5 |
-| #827 | Warranty W7: Claim replacement and refund with correct stock movements | — | 9.5 | todo | | |
-| #828 | Warranty W8: Supplier and manufacturer RMA tracking | — | 9.5 | todo | | |
+| #825 | Warranty W5: Warranty lookup by receipt, serial, phone or customer | — | 9.4 | done | #1026 | ae95ea2 · WarrantyDTO, WarrantyService.search, calculate_effective_status, update_warranty_admin with audit logging, WarrantyLookupDialog, WarrantyCorrectionDialog, F9 shortcut |
+| #826 | Warranty W6: Warranty claims: intake, inspection, resolution and collection | — | 9.4 | done | #1026 | e6e9e9b · WarrantyClaim & WarrantyClaimEvent models, migration, WarrantyClaimService state machine, replacement warranty creation, refund/void claim guards, WarrantyClaimReceiptBuilder thermal slips, WarrantyClaimIntakeDialog, WarrantyClaimResolveDialog, WarrantyClaimsBoardView, sync protocol 1.5 |
+| #827 | Warranty W7: Claim replacement and refund with correct stock movements | — | 9.5 | pr-open | #1027 | 1bce4ea · MovementType.WARRANTY stock deduction, atomic replacement with fresh/remaining term, refund claim integration with stock neutralization and audit logging, SQLite/PostgreSQL migration |
+| #828 | Warranty W8: Supplier and manufacturer RMA tracking | — | 9.5 | pr-open | #1027 | 096e049 · Supplier RMA state machine (SENT_TO_SUPPLIER, SUPPLIER_RETURNED), SupplierPayableService.record_credit_note_in_session, FIFO aging credit_types, supplier coverage estimator, privacy-compliant RMA thermal dispatch & vector PDF waybill, WarrantySupplierDispatchDialog, WarrantySupplierReceiveDialog, WarrantySupplierOutcomeDialog, claims board RMA integration & overdue supplier filter |
 | #829 | Warranty W9: Extended warranty sold as a paid add-on | — | 9.6 | todo | | |
 | #830 | Warranty W10: Warranty reports, dashboard alerts and expiry reminders | — | 9.6 | todo | | |
 

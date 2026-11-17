@@ -112,6 +112,7 @@ TERMINAL_REFS: dict[str, dict[str, str]] = {
     "warranty_claims": {
         "warranty_id": "warranties",
         "replacement_warranty_id": "warranties",
+        "refund_sale_id": DOCUMENT_ID_SPACE,
     },
     "warranty_claim_events": {
         "claim_id": DOCUMENT_ID_SPACE,
@@ -135,7 +136,11 @@ LEDGER_REFS: dict[str, dict[str, str]] = {
         "REVERSAL": DOCUMENT_ID_SPACE,
         "REDEEM": DOCUMENT_ID_SPACE,
     },
-    "supplier_ledger": {"PURCHASE": DOCUMENT_ID_SPACE, "PAYMENT": "supplier_payments"},
+    "supplier_ledger": {
+        "PURCHASE": DOCUMENT_ID_SPACE,
+        "PAYMENT": "supplier_payments",
+        "CREDIT_NOTE": DOCUMENT_ID_SPACE,
+    },
 }
 
 # Tables whose customer_id may point at a customer the till created and

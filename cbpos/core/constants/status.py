@@ -52,6 +52,7 @@ class MovementType:
     RETURN = "RETURN"
     VOID = "VOID"
     OPENING = "OPENING"
+    WARRANTY = "WARRANTY"
 
 
 class PaymentMethodKind(StrEnum):

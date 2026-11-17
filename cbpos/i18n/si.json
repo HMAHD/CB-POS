@@ -2868,6 +2868,7 @@
     "type_adjustment": "සකස් කිරීම",
     "type_return": "ආපසු එවීම",
     "type_void": "අවලංගු කිරීම",
+    "type_warranty": "වගකීම්",
     "system": "සිස්ටම් එක"
   },
   "supplier_payment": {
@@ -3752,6 +3753,9 @@
     "res_rejected": "ප්‍රතික්ෂේපිතයි (ආවරණය රහිත)",
     "resolution_notes_placeholder": "අලුත්වැඩියා විස්තර, මාරු කළ කොටස් හෝ තීරණයට හේතුව...",
     "claim_resolved_success": "{number} හිමිකම {resolution} ලෙස විසඳන ලදී",
+    "replacement_product": "ප්‍රතිස්ථාපන භාණ්ඩය",
+    "select_replacement_product": "කරුණාකර ප්‍රතිස්ථාපන භාණ්ඩයක් තෝරන්න",
+    "missing_claim_product": "හිමිකම්පෑමට අදාළ භාණ්ඩයක් සම්බන්ධ කර නැත",
     "collect_title": "භාණ්ඩය භාරදීම සටහන් කරන්න",
     "collector_name_prompt": "භාණ්ඩය ලබාගන්නා අයගේ නම:",
     "collected_success": "භාණ්ඩය භාරදීම සාර්ථකව සටහන් කරන ලදී",

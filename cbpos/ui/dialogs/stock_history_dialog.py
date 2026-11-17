@@ -97,6 +97,7 @@ class StockHistoryDialog(QDialog):
                 "ADJUSTMENT": _t("stock_history.type_adjustment"),
                 "RETURN": _t("stock_history.type_return"),
                 "VOID": _t("stock_history.type_void"),
+                "WARRANTY": _t("stock_history.type_warranty", default="Warranty"),
             }
             type_meanings = {
                 "SALE": "neutral",
@@ -104,6 +105,7 @@ class StockHistoryDialog(QDialog):
                 "ADJUSTMENT": "info",
                 "RETURN": "warning",
                 "VOID": "danger",
+                "WARRANTY": "info",
             }
 
             TableItem = QTableWidgetItem

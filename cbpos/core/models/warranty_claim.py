@@ -22,11 +22,11 @@ from cbpos.core.database import Base
 from cbpos.core.models import Document
 
 if TYPE_CHECKING:
-    from cbpos.core.models import Customer, Product, User, Warranty
+    from cbpos.core.models import Customer, Product, Sale, Supplier, User, Warranty
 
 
 class WarrantyClaim(Document):
-    """Warranty claim document tracking intake, defect, inspection, supplier dispatch, resolution, and collection (#826)."""
+    """Warranty claim document tracking intake, defect, inspection, supplier dispatch, resolution, and collection (#826, #827, #828)."""
 
     __tablename__ = "warranty_claims"
 
@@ -67,6 +67,24 @@ class WarrantyClaim(Document):
     collected_by_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     collected_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
+    # Resolution & Supplier RMA extensions (#827, #828)
+    defective_unit_status: Mapped[str] = mapped_column(
+        String(30), default="HELD", server_default="HELD", nullable=False, index=True
+    )
+    refund_sale_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sales.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    supplier_id: Mapped[int | None] = mapped_column(
+        ForeignKey("suppliers.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    supplier_rma_ref: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    sent_to_supplier_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    returned_from_supplier_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    supplier_outcome: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    supplier_credit_amount: Mapped[Decimal] = mapped_column(
+        Numeric(12, 2), default=Decimal("0.00"), server_default="0", nullable=False
+    )
+
     warranty: Mapped[Optional["Warranty"]] = relationship(
         "Warranty", foreign_keys=[warranty_id], back_populates="claims"
     )
@@ -76,6 +94,8 @@ class WarrantyClaim(Document):
     replacement_warranty: Mapped[Optional["Warranty"]] = relationship(
         "Warranty", foreign_keys=[replacement_warranty_id]
     )
+    refund_sale: Mapped[Optional["Sale"]] = relationship("Sale", foreign_keys=[refund_sale_id])
+    supplier: Mapped[Optional["Supplier"]] = relationship("Supplier", foreign_keys=[supplier_id])
     events: Mapped[list["WarrantyClaimEvent"]] = relationship(
         "WarrantyClaimEvent",
         back_populates="claim",
@@ -95,6 +115,14 @@ class WarrantyClaim(Document):
         CheckConstraint(
             "resolution IS NULL OR resolution IN ('REPAIRED', 'REPLACED_SAME', 'REPLACED_DIFFERENT', 'REFUNDED', 'REJECTED_UNCOVERED')",
             name="ck_warranty_claims_resolution",
+        ),
+        CheckConstraint(
+            "defective_unit_status IN ('HELD', 'SENT_TO_SUPPLIER', 'RETURNED_FROM_SUPPLIER', 'SCRAPPED', 'RETURNED_TO_CUSTOMER')",
+            name="ck_warranty_claims_defective_status",
+        ),
+        CheckConstraint(
+            "supplier_outcome IS NULL OR supplier_outcome IN ('REPAIRED', 'REPLACED', 'CREDIT_NOTE', 'REJECTED')",
+            name="ck_warranty_claims_supplier_outcome",
         ),
         Index(
             "uq_warranty_active_claim",

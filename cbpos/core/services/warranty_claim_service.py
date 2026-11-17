@@ -13,14 +13,19 @@ from sqlalchemy.orm import Session, joinedload
 
 from cbpos.core.constants.audit import WARRANTY_EVENT
 from cbpos.core.constants.permissions import Permissions
+from cbpos.core.constants.status import MovementType
 from cbpos.core.database import Database
 from cbpos.core.models import (
     AuditLog,
+    Product,
     Warranty,
     WarrantyClaim,
     WarrantyClaimEvent,
 )
+from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.document_service import DocumentService
+from cbpos.core.services.refund_service import RefundLineRequest, RefundResult, RefundService
+from cbpos.core.services.stock_service import StockService
 from cbpos.core.services.warranty_dto import WarrantyClaimDTO, WarrantyClaimEventDTO
 from cbpos.core.services.warranty_service import WarrantyService, _require_permission, _session_scope
 
@@ -75,6 +80,8 @@ def _claim_to_dto(claim: WarrantyClaim) -> WarrantyClaimDTO:
         cust_phone = claim.warranty.customer.phone
 
     resolved_username = claim.resolved_by_user.username if claim.resolved_by_user else None
+    refund_doc = claim.refund_sale.document_number if getattr(claim, "refund_sale", None) else None
+    supp_name = claim.supplier.company_name if getattr(claim, "supplier", None) else None
 
     events_dto = tuple(
         WarrantyClaimEventDTO(
@@ -121,6 +128,16 @@ def _claim_to_dto(claim: WarrantyClaim) -> WarrantyClaimDTO:
         collected_at=claim.collected_at,
         user_id=claim.user_id,
         created_at=claim.date or claim.intake_date,
+        defective_unit_status=getattr(claim, "defective_unit_status", "HELD") or "HELD",
+        refund_sale_id=getattr(claim, "refund_sale_id", None),
+        refund_document_number=refund_doc,
+        supplier_id=getattr(claim, "supplier_id", None),
+        supplier_name=supp_name,
+        supplier_rma_ref=getattr(claim, "supplier_rma_ref", None),
+        sent_to_supplier_at=getattr(claim, "sent_to_supplier_at", None),
+        returned_from_supplier_at=getattr(claim, "returned_from_supplier_at", None),
+        supplier_outcome=getattr(claim, "supplier_outcome", None),
+        supplier_credit_amount=getattr(claim, "supplier_credit_amount", Decimal("0.00")) or Decimal("0.00"),
         events=events_dto,
     )
 
@@ -477,6 +494,266 @@ class WarrantyClaimService:
             refreshed = cls._load_claim(s, claim.id)
             assert refreshed is not None
             return _claim_to_dto(refreshed)
+
+    @classmethod
+    def replace_from_stock(
+        cls,
+        claim_id: int,
+        replacement_product_id: int,
+        user_id: int,
+        new_serial: str | None = None,
+        resolution_notes: str | None = None,
+        repair_cost: Decimal = Decimal("0.00"),
+        charge_customer: Decimal = Decimal("0.00"),
+        session: Session | None = None,
+    ) -> WarrantyClaimDTO:
+        """Resolve claim by issuing a replacement unit from shop inventory in one atomic transaction (#827)."""
+        with _session_scope(session) as s:
+            _require_permission(s, Permissions.WARRANTY_CLAIM_RESOLVE, user_id)
+
+            claim = cls._load_claim(s, claim_id)
+            if not claim:
+                raise ValueError(f"Claim {claim_id} not found")
+
+            if claim.claim_status not in ("IN_INSPECTION", "SUPPLIER_RETURNED", "SUPPLIER_DISPATCHED"):
+                raise ValueError(
+                    f"claim_cannot_be_resolved: Current state {claim.claim_status} cannot be replaced from stock"
+                )
+
+            if not claim.warranty:
+                raise ValueError(f"Claim {claim.document_number} has no linked warranty to replace")
+
+            old_w = claim.warranty
+            rep_prod = s.get(Product, replacement_product_id)
+            if not rep_prod:
+                raise ValueError(f"Replacement product {replacement_product_id} not found")
+
+            now = datetime.now()
+            from_status = claim.claim_status
+
+            # Inventory deduction: -1.000 with MovementType.WARRANTY
+            StockService.record_movement(
+                product_id=replacement_product_id,
+                qty_change=Decimal("-1.000"),
+                movement_type=MovementType.WARRANTY,
+                user_id=user_id,
+                document_id=claim.id,
+                session=s,
+                enforce_non_negative=True,
+            )
+
+            # Mark old warranty REPLACED
+            old_w.status = "REPLACED"
+            old_w.last_modified = now
+
+            # Coverage term determination & db constraint guard
+            term_mode = ConfigService.get("warranty_replacement_term") or "REMAINING"
+            start_date = now.date()
+            if term_mode == "FRESH":
+                if old_w.policy:
+                    rep_end_date = WarrantyService.compute_end_date(
+                        start_date, old_w.policy.duration, old_w.policy.duration_unit
+                    )
+                else:
+                    rep_end_date = WarrantyService.compute_end_date(start_date, old_w.duration, old_w.duration_unit)
+            else:  # REMAINING
+                rep_end_date = max(start_date, old_w.end_date)
+
+            # Generate replacement warranty code
+            rep_code = f"{old_w.code}-R"
+            existing_code = s.scalar(select(func.count(Warranty.id)).where(Warranty.code == rep_code))
+            if existing_code:
+                rep_code = f"{old_w.code}-R{now.strftime('%m%d%H%M')}"
+
+            clean_sn = new_serial.strip().upper() if new_serial else None
+            new_w = Warranty(
+                code=rep_code,
+                unit_index=1,
+                sale_id=old_w.sale_id,
+                sale_item_id=old_w.sale_item_id,
+                product_id=replacement_product_id,
+                customer_id=old_w.customer_id,
+                policy_id=old_w.policy_id,
+                warranty_type=old_w.warranty_type,
+                duration=old_w.duration,
+                duration_unit=old_w.duration_unit,
+                remedy=old_w.remedy,
+                provider_name=old_w.provider_name,
+                start_date=start_date,
+                end_date=rep_end_date,
+                serial_number=clean_sn,
+                terms_text=old_w.terms_text,
+                exclusions_text=old_w.exclusions_text,
+                status="ACTIVE",
+                replaces_warranty_id=old_w.id,
+                synced=False,
+            )
+            s.add(new_w)
+            s.flush()
+
+            # Claim state mutation
+            claim.claim_status = "RESOLVED"
+            claim.resolution = "REPLACED_SAME" if replacement_product_id == old_w.product_id else "REPLACED_DIFFERENT"
+            claim.replacement_warranty_id = new_w.id
+            claim.replacement_serial = clean_sn
+            if from_status == "SUPPLIER_DISPATCHED":
+                claim.defective_unit_status = "SENT_TO_SUPPLIER"
+            else:
+                claim.defective_unit_status = "HELD"
+            claim.resolved_by_user_id = user_id
+            claim.resolved_at = now
+            claim.resolution_notes = resolution_notes.strip() if resolution_notes else None
+            claim.repair_cost = Decimal(str(repair_cost or 0))
+            claim.charge_customer = Decimal(str(charge_customer or 0))
+            claim.synced = False
+
+            # Add event
+            event = WarrantyClaimEvent(
+                claim_id=claim.id,
+                from_status=from_status,
+                to_status="RESOLVED",
+                user_id=user_id,
+                event_time=now,
+                notes=f"Resolved via stock replacement ({claim.resolution}). {resolution_notes or ''}".strip(),
+                synced=False,
+            )
+            s.add(event)
+
+            # Add audit log
+            s.add(
+                AuditLog(
+                    user_id=user_id,
+                    action="WARRANTY_REPLACEMENT_FROM_STOCK",
+                    event_type=WARRANTY_EVENT,
+                    details=(
+                        f"Warranty claim {claim.document_number} (ID {claim.id}) resolved via stock replacement "
+                        f"with product {rep_prod.name_en} (ID {rep_prod.id}), new warranty {new_w.code} (ID {new_w.id})"
+                    ),
+                )
+            )
+            s.flush()
+            s.expire_all()
+
+            refreshed = cls._load_claim(s, claim.id)
+            assert refreshed is not None
+            return _claim_to_dto(refreshed)
+
+    @classmethod
+    def refund_claim(
+        cls,
+        claim_id: int,
+        user_id: int,
+        reason: str | None = None,
+        tender_override: str | None = None,
+        override_reason: str | None = None,
+        session: Session | None = None,
+    ) -> tuple[WarrantyClaimDTO, RefundResult]:
+        """Resolve claim by refunding the claimed unit through RefundService.refund (#827)."""
+        with _session_scope(session) as s:
+            _require_permission(s, Permissions.WARRANTY_CLAIM_RESOLVE, user_id)
+
+            claim = cls._load_claim(s, claim_id)
+            if not claim:
+                raise ValueError(f"Claim {claim_id} not found")
+
+            if claim.claim_status in FINAL_STATUSES:
+                raise ValueError(f"claim_cannot_be_resolved: Current state {claim.claim_status} cannot be refunded")
+
+            if not claim.warranty:
+                raise ValueError(f"Claim {claim.document_number} has no linked warranty to refund")
+
+            old_w = claim.warranty
+            if not old_w.sale_id or not old_w.sale_item_id:
+                raise ValueError(f"Warranty {old_w.code} has no linked sale item for refund")
+
+            now = datetime.now()
+            from_status = claim.claim_status
+
+            # Pre-set claim resolution to "REFUNDED" so WarrantyService.cancel_units_for_refund_in_session
+            # recognizes this claim as authorized for refund and transitions matching_claim.claim_status = "COLLECTED"
+            claim.resolution = "REFUNDED"
+            claim.defective_unit_status = "HELD"
+            claim.resolved_by_user_id = user_id
+            claim.resolved_at = now
+            claim.resolution_notes = reason.strip() if reason else None
+            claim.synced = False
+            s.flush()
+
+            # Execute refund through RefundService
+            clean_reason = (reason or f"Warranty claim {claim.document_number}").strip()
+            refund_lines = [
+                RefundLineRequest(
+                    sale_item_id=old_w.sale_item_id,
+                    qty=Decimal("1.000"),
+                    reason=clean_reason,
+                )
+            ]
+            selected_serials = {old_w.sale_item_id: [old_w.serial_number]} if old_w.serial_number else None
+
+            refund_result = RefundService.refund(
+                sale_id=old_w.sale_id,
+                lines=refund_lines,
+                reason=clean_reason,
+                user_id=user_id,
+                tender_override=tender_override,
+                override_reason=override_reason,
+                selected_serials=selected_serials,
+                claim_id=claim.id,
+                session=s,
+            )
+
+            # Neutralize stock: RefundService recorded MovementType.RETURN (+1).
+            # Because the defective unit is broken and cannot be sold, offset with MovementType.ADJUSTMENT (-1).
+            StockService.record_movement(
+                product_id=old_w.product_id,
+                qty_change=Decimal("-1.000"),
+                movement_type=MovementType.ADJUSTMENT,
+                user_id=user_id,
+                document_id=claim.id,
+                session=s,
+                enforce_non_negative=False,
+            )
+
+            # Update claim with refund document linkage
+            claim.refund_sale_id = refund_result.refund_sale_id
+            claim.claim_status = "COLLECTED"
+
+            # Check if event already created by cancel_units_for_refund_in_session
+            existing_event = s.scalar(
+                select(func.count(WarrantyClaimEvent.id)).where(
+                    WarrantyClaimEvent.claim_id == claim.id,
+                    WarrantyClaimEvent.to_status == "COLLECTED",
+                )
+            )
+            if not existing_event:
+                event = WarrantyClaimEvent(
+                    claim_id=claim.id,
+                    from_status=from_status,
+                    to_status="COLLECTED",
+                    user_id=user_id,
+                    event_time=now,
+                    notes=f"Resolved via refund {refund_result.refund_document_number}. {reason or ''}".strip(),
+                    synced=False,
+                )
+                s.add(event)
+
+            s.add(
+                AuditLog(
+                    user_id=user_id,
+                    action="WARRANTY_CLAIM_REFUND",
+                    event_type=WARRANTY_EVENT,
+                    details=(
+                        f"Warranty claim {claim.document_number} (ID {claim.id}) resolved via refund "
+                        f"{refund_result.refund_document_number} (Sale ID {refund_result.refund_sale_id})"
+                    ),
+                )
+            )
+            s.flush()
+            s.expire_all()
+
+            refreshed = cls._load_claim(s, claim.id)
+            assert refreshed is not None
+            return _claim_to_dto(refreshed), refund_result
 
     @classmethod
     def mark_collected(

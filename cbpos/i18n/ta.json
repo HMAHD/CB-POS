@@ -2868,6 +2868,7 @@
     "type_adjustment": "சரிசெய்தல்",
     "type_return": "திருப்பி அனுப்புதல்",
     "type_void": "ரத்து",
+    "type_warranty": "உத்தரவாதம்",
     "system": "சிஸ்டம்"
   },
   "supplier_payment": {
@@ -3752,6 +3753,9 @@
     "res_rejected": "நிராகரிக்கப்பட்டது (காப்பீடு இல்லை)",
     "resolution_notes_placeholder": "பழுதுபார்ப்பு விவரங்கள், மாற்றப்பட்ட பாகங்கள் அல்லது முடிவுக்கான காரணம்...",
     "claim_resolved_success": "{number} கோரிக்கை {resolution} ஆகத் தீர்க்கப்பட்டது",
+    "replacement_product": "மாற்றுப் பொருள்",
+    "select_replacement_product": "தயவுசெய்து ஒரு மாற்றுப் பொருளைத் தேர்ந்தெடுக்கவும்",
+    "missing_claim_product": "கோரிக்கைக்கு இணைக்கப்பட்ட தயாரிப்பு இல்லை",
     "collect_title": "பொருளைப் பெற்றதை பதிவு செய்யவும்",
     "collector_name_prompt": "பொருளைப் பெற்றுக்கொள்பவரின் பெயர்:",
     "collected_success": "பொருள் பெறப்பட்டது வெற்றிகரமாக பதிவு செய்யப்பட்டது",

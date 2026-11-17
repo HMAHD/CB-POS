@@ -141,16 +141,76 @@ class TestWarrantyClaimResolveDialog:
 
         # Initially REPAIRED (default 0 index) -> replacement serial disabled
         assert dialog.txt_replacement_serial.isEnabled() is False
+        assert dialog.cmb_replacement_product.isHidden() is True
 
         # Select REPLACED_SAME
         idx = dialog.cmb_resolution.findData("REPLACED_SAME")
         dialog.cmb_resolution.setCurrentIndex(idx)
         assert dialog.txt_replacement_serial.isEnabled() is True
+        assert dialog.cmb_replacement_product.isHidden() is True
+
+        # Select REPLACED_DIFFERENT
+        with patch("cbpos.ui.dialogs.warranty_claim_resolve_dialog.ProductService.get_all_products", return_value=[]):
+            idx_diff = dialog.cmb_resolution.findData("REPLACED_DIFFERENT")
+            dialog.cmb_resolution.setCurrentIndex(idx_diff)
+            assert dialog.txt_replacement_serial.isEnabled() is True
+            assert dialog.cmb_replacement_product.isHidden() is False
+            assert dialog.cmb_replacement_product.isEnabled() is True
 
         # Switch back to REPAIRED
         idx_rep = dialog.cmb_resolution.findData("REPAIRED")
         dialog.cmb_resolution.setCurrentIndex(idx_rep)
         assert dialog.txt_replacement_serial.isEnabled() is False
+        assert dialog.cmb_replacement_product.isHidden() is True
+
+    def test_resolve_dialog_wires_replace_from_stock_on_save(self, qtbot, sample_claim_dto):
+        dialog = WarrantyClaimResolveDialog(claim=sample_claim_dto, user_id=2)
+        qtbot.addWidget(dialog)
+
+        idx = dialog.cmb_resolution.findData("REPLACED_SAME")
+        dialog.cmb_resolution.setCurrentIndex(idx)
+        dialog.txt_replacement_serial.setText("NEW-SN-123")
+
+        with (
+            patch(
+                "cbpos.core.services.warranty_claim_service.WarrantyClaimService.replace_from_stock",
+                return_value=sample_claim_dto,
+            ) as mock_replace,
+            patch("cbpos.ui.dialogs.warranty_claim_resolve_dialog.QMessageBox.information"),
+        ):
+            dialog._on_save()
+            assert mock_replace.called
+            assert mock_replace.call_args.kwargs["new_serial"] == "NEW-SN-123"
+            assert mock_replace.call_args.kwargs["replacement_product_id"] == sample_claim_dto.product_id
+
+    def test_resolve_dialog_wires_refund_claim_on_save(self, qtbot, sample_claim_dto):
+        from cbpos.core.services.refund_service import RefundResult
+
+        mock_refund_res = RefundResult(
+            refund_sale_id=99,
+            refund_document_number="CN-2026-0001",
+            total_refund_amount=Decimal("45000.00"),
+            refund_sale=None,
+            tenders=[],
+        )
+
+        dialog = WarrantyClaimResolveDialog(claim=sample_claim_dto, user_id=2)
+        qtbot.addWidget(dialog)
+
+        idx = dialog.cmb_resolution.findData("REFUNDED")
+        dialog.cmb_resolution.setCurrentIndex(idx)
+        dialog.txt_notes.setText("Unrepairable defect")
+
+        with (
+            patch(
+                "cbpos.core.services.warranty_claim_service.WarrantyClaimService.refund_claim",
+                return_value=(sample_claim_dto, mock_refund_res),
+            ) as mock_refund,
+            patch("cbpos.ui.dialogs.warranty_claim_resolve_dialog.QMessageBox.information"),
+        ):
+            dialog._on_save()
+            assert mock_refund.called
+            assert mock_refund.call_args.kwargs["reason"] == "Unrepairable defect"
 
 
 class TestWarrantyClaimsBoardView:

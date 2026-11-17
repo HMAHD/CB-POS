@@ -2905,6 +2905,7 @@
     "type_adjustment": "Adjustment",
     "type_return": "Return",
     "type_void": "Void",
+    "type_warranty": "Warranty",
     "system": "System"
   },
   "supplier_payment": {
@@ -3752,6 +3753,9 @@
     "res_rejected": "Rejected (Uncovered)",
     "resolution_notes_placeholder": "Details of repair, parts replaced, or reason for decision...",
     "claim_resolved_success": "Claim {number} resolved as {resolution}",
+    "replacement_product": "Replacement Product",
+    "select_replacement_product": "Please select a replacement product",
+    "missing_claim_product": "Claim has no linked product",
     "collect_title": "Mark Claim Collected",
     "collector_name_prompt": "Name of person collecting item:",
     "collected_success": "Item collection recorded successfully",

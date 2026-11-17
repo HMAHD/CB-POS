@@ -83,4 +83,14 @@ class WarrantyClaimDTO:
     collected_at: datetime | None
     user_id: int
     created_at: datetime
+    defective_unit_status: str = "HELD"
+    refund_sale_id: int | None = None
+    refund_document_number: str | None = None
+    supplier_id: int | None = None
+    supplier_name: str | None = None
+    supplier_rma_ref: str | None = None
+    sent_to_supplier_at: datetime | None = None
+    returned_from_supplier_at: datetime | None = None
+    supplier_outcome: str | None = None
+    supplier_credit_amount: Decimal = Decimal("0.00")
     events: tuple[WarrantyClaimEventDTO, ...] = ()

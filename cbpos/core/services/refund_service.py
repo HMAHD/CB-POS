@@ -14,6 +14,7 @@ Handles:
 
 import logging
 import math
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -132,6 +133,16 @@ class RefundResult:
     refund_sale: Sale
     tenders: list[TenderRefundItem]
     voucher: list[dict] | None = None
+
+
+@contextmanager
+def _session_scope(session: Session | None = None):
+    if session is not None:
+        yield session
+    else:
+        db = Database()
+        with db.get_session() as s:
+            yield s
 
 
 class RefundService:
@@ -552,10 +563,11 @@ class RefundService:
         peripherals: TransactionPeripherals | None = None,
         selected_serials: dict[int, list[str]] | None = None,
         claim_id: int | None = None,
+        session: Session | None = None,
     ) -> RefundResult:
         """Execute a refund transaction atomically."""
-        db = Database()
-        with db.get_session() as session:
+        caller_session = session is not None
+        with _session_scope(session) as session:
             # 1. Permission checks
             all_system_perms = set(Permissions.get_all())
             user = session.get(User, user_id, options=[joinedload(User.role).joinedload(Role.permissions)])
@@ -814,11 +826,12 @@ class RefundService:
             completed = RefundCompleted(refund_sale, voucher)
             refund_id = refund_sale.id
 
-        # 12. Hardware notification after successful commit
-        try:
-            (peripherals or TransactionService._peripherals).refund_completed(completed)
-        except Exception as e:
-            logger.error("Refund voucher for %s failed: %s", refund_receipt_no, e)
+        # 12. Hardware notification after successful commit (skip if caller owns transaction)
+        if not caller_session:
+            try:
+                (peripherals or TransactionService._peripherals).refund_completed(completed)
+            except Exception as e:
+                logger.error("Refund voucher for %s failed: %s", refund_receipt_no, e)
 
         return RefundResult(
             refund_sale_id=refund_id,

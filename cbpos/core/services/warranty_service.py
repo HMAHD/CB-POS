@@ -211,7 +211,7 @@ class WarrantyService:
         needed_category_ids = set()
 
         for p in products:
-            if p.is_weighted or getattr(p, "is_warranty_plan", False):
+            if p.is_weighted or (getattr(p, "is_warranty_plan", False) is True):
                 continue
             override = p.warranty_override or "INHERIT"
             if override == "NONE":
@@ -242,7 +242,7 @@ class WarrantyService:
         result: dict[int, WarrantyPolicy | None] = {}
         for pid in unique_ids:
             p = prod_map.get(pid)
-            if not p or p.is_weighted or getattr(p, "is_warranty_plan", False):
+            if not p or p.is_weighted or (getattr(p, "is_warranty_plan", False) is True):
                 result[pid] = None
                 continue
 

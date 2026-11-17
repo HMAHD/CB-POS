@@ -149,10 +149,12 @@ class DashboardView(QWidget):
         self._current_year = date.today().year
         self._yearly_loading: bool = False
         self._periodic_loading: bool = False
+        self._warranty_loading: bool = False
         self._yearly_generation: int = 0
         self._periodic_generation: int = 0
         self._yearly_worker: _YearlyWorker | None = None
         self._periodic_worker: _PeriodicWorker | None = None
+        self._warranty_worker: _WarrantyTileWorker | None = None
         self.init_ui()
 
         from cbpos.ui.widgets.loading_overlay import LoadingOverlay
@@ -211,8 +213,6 @@ class DashboardView(QWidget):
         self._build_customers_panel(row4)
         self._build_warranty_claims_panel(row4)
         layout.addLayout(row4, 3)
-
-        self._refresh_warranty_tile()
 
         scroll.setWidget(container)
         outer.addWidget(scroll)
@@ -633,15 +633,25 @@ class DashboardView(QWidget):
 
     def _refresh_warranty_tile(self) -> None:
         """Start worker to load warranty tile counts off UI thread (#830)."""
+        if self._warranty_loading:
+            return
+        self._warranty_loading = True
         worker = _WarrantyTileWorker(self)
+        self._warranty_worker = worker
         worker.loaded.connect(self._on_warranty_tile_ready)
+        worker.error_occurred.connect(self._on_warranty_tile_error)
         start_background_job(worker)
 
     def _on_warranty_tile_ready(self, summary: dict[str, int]) -> None:
         """Update warranty tile counts safely on UI thread."""
+        self._warranty_loading = False
         self.lbl_open_claims_val.setText(str(summary.get("open_claims", 0)))
         self.lbl_ready_pickup_val.setText(str(summary.get("ready_for_pickup", 0)))
         self.lbl_overdue_supplier_val.setText(str(summary.get("overdue_supplier", 0)))
+
+    def _on_warranty_tile_error(self, message: str) -> None:
+        """Handle worker failure by clearing in-flight flag."""
+        self._warranty_loading = False
 
     # ------------------------------------------------------------------
     # Translation
@@ -688,7 +698,6 @@ class DashboardView(QWidget):
         """Refresh yearly, periodic, and warranty data."""
         self.tax_today_panel.setVisible(TaxService.is_vat_active())
         self._refresh_yearly()
-        self._fetch_periodic_data()
         self._refresh_warranty_tile()
         self.refresh_periodic()
 

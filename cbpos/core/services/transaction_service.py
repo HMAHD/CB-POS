@@ -725,7 +725,9 @@ class TransactionService:
 
             # 4a. Register per-unit warranties for covered lines (#822, #823, #829)
             if WarrantyService.is_enabled(session=session):
-                plan_sale_items = [si for si in written_items if getattr(si.product, "is_warranty_plan", False)]
+                plan_sale_items = [
+                    si for si in written_items if (getattr(si.product, "is_warranty_plan", False) is True)
+                ]
                 items_with_policies_and_serials = [
                     (si, policy_map[si.product_id], c_item.get("serials", []))
                     for si, c_item in zip(written_items, cart_items, strict=True)

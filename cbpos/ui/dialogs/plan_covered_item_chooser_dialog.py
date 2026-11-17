@@ -4,7 +4,6 @@ from PyQt6.QtWidgets import (
     QDialog,
     QHeaderView,
     QLabel,
-    QPushButton,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -12,7 +11,8 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
-from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, make_dialog_footer
+from cbpos.ui.widgets.dialog_footer import make_dialog_footer
+from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT
 
 
 class PlanCoveredItemChooserDialog(QDialog):
@@ -79,16 +79,15 @@ class PlanCoveredItemChooserDialog(QDialog):
         layout.addWidget(self.table)
 
         # Footer with OK / Cancel
-        self.btn_ok = QPushButton(_t("common.ok", default="OK"))
-        self.btn_ok.setProperty("class", "primary")
+        footer_layout, self.btn_ok, self.btn_cancel = make_dialog_footer(
+            primary_key="common.ok",
+            on_primary=self._on_ok,
+            cancel_key="common.cancel",
+            on_cancel=self.reject,
+            primary_object_name="BtnOk",
+        )
         self.btn_ok.setEnabled(False)
-        self.btn_ok.clicked.connect(self._on_ok)
-
-        self.btn_cancel = QPushButton(_t("common.cancel", default="Cancel"))
-        self.btn_cancel.clicked.connect(self.reject)
-
-        footer = make_dialog_footer(self.btn_cancel, self.btn_ok)
-        layout.addWidget(footer)
+        layout.addLayout(footer_layout)
 
         # Select first row by default
         if self.eligible_lines:

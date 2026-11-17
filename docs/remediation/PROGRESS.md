@@ -204,10 +204,10 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #824 | Warranty W4: Print the warranty on the receipt, the A4 invoice and a standalo… | — | 9.3 | done (ready-for-human: ⚠️ Verify on Windows) | #1023 | 0aedb47, 03ed8de · Sales receipt warranty blocks & terms, A4 invoice warranty lines, standalone thermal cards (58/80mm) with cut, A5/A4 PDF cards, reprint workflows, audit logging; pending physical printer & statutory text verification |
 | #825 | Warranty W5: Warranty lookup by receipt, serial, phone or customer | — | 9.4 | done | #1026 | ae95ea2 · WarrantyDTO, WarrantyService.search, calculate_effective_status, update_warranty_admin with audit logging, WarrantyLookupDialog, WarrantyCorrectionDialog, F9 shortcut |
 | #826 | Warranty W6: Warranty claims: intake, inspection, resolution and collection | — | 9.4 | done | #1026 | e6e9e9b · WarrantyClaim & WarrantyClaimEvent models, migration, WarrantyClaimService state machine, replacement warranty creation, refund/void claim guards, WarrantyClaimReceiptBuilder thermal slips, WarrantyClaimIntakeDialog, WarrantyClaimResolveDialog, WarrantyClaimsBoardView, sync protocol 1.5 |
-| #827 | Warranty W7: Claim replacement and refund with correct stock movements | — | 9.5 | pr-open | #1027 | 1bce4ea · MovementType.WARRANTY stock deduction, atomic replacement with fresh/remaining term, refund claim integration with stock neutralization and audit logging, SQLite/PostgreSQL migration |
-| #828 | Warranty W8: Supplier and manufacturer RMA tracking | — | 9.5 | pr-open | #1027 | 096e049 · Supplier RMA state machine (SENT_TO_SUPPLIER, SUPPLIER_RETURNED), SupplierPayableService.record_credit_note_in_session, FIFO aging credit_types, supplier coverage estimator, privacy-compliant RMA thermal dispatch & vector PDF waybill, WarrantySupplierDispatchDialog, WarrantySupplierReceiveDialog, WarrantySupplierOutcomeDialog, claims board RMA integration & overdue supplier filter |
-| #829 | Warranty W9: Extended warranty sold as a paid add-on | — | 9.6 | todo | | |
-| #830 | Warranty W10: Warranty reports, dashboard alerts and expiry reminders | — | 9.6 | todo | | |
+| #827 | Warranty W7: Claim replacement and refund with correct stock movements | — | 9.5 | done | #1027 | 1bce4ea · MovementType.WARRANTY stock deduction, atomic replacement with fresh/remaining term, refund claim integration with stock neutralization and audit logging, SQLite/PostgreSQL migration |
+| #828 | Warranty W8: Supplier and manufacturer RMA tracking | — | 9.5 | done | #1027 | 096e049 · Supplier RMA state machine (SENT_TO_SUPPLIER, SUPPLIER_RETURNED), SupplierPayableService.record_credit_note_in_session, FIFO aging credit_types, supplier coverage estimator, privacy-compliant RMA thermal dispatch & vector PDF waybill, WarrantySupplierDispatchDialog, WarrantySupplierReceiveDialog, WarrantySupplierOutcomeDialog, claims board RMA integration & overdue supplier filter |
+| #829 | Warranty W9: Extended warranty sold as a paid add-on | — | 9.6 | in-progress (pr-open) | | 496e5a5 · Product.is_warranty_plan/plan_policy_id, stable cart line IDs, atomic base+extended creation, void/refund cascade, receipt/card builders, PlanCoveredItemChooserDialog |
+| #830 | Warranty W10: Warranty reports, dashboard alerts and expiry reminders | — | 9.6 | in-progress (pr-open) | | 7c225ef · Active/Expiring/Claims/Product-Supplier/Cost reports, dual permissions seam, clickable Management dashboard tile, SchedulerService alerts & reminders, translations, seed update |
 
 ### Phase 10A — [spec](phases/phase-10a-packaging-printing.md)
 
@@ -311,8 +311,10 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #824 | Physical print check of 58mm/80mm thermal warranty cards with cut and A4 PDF warranty certificates | pending |
 
 ## Handoff
-Batch 9.4 implemented on branch `feat/p9-b4-lookup-claims`:
-- #825 (`ae95ea2`) and #826 (`e6e9e9b`) implemented with verified domain, UI, and sync integration tests.
-- PR opened for Batch 9.4: #1026 (Fixes #825, Fixes #826). Stopped with PR open pending review.
-- #817 and #819 release gates remain active blockers for public distribution. Statutory wording gate unresolved for #824 (terms snapshot only, no fixed statutory sentence).
+Batch 9.6 implemented on branch `feat/p9-b6-extended-plans-reports`:
+- #829 (`496e5a5`): Paid extended warranty plans, stable cart line IDs, atomic registration of base+extended warranties, void/refund cascade, receipt/card builders, PlanCoveredItemChooserDialog.
+- #830 (`7c225ef`): 5 warranty reports registered in `CATEGORY_WARRANTY`, dual permissions seam (`reports.view_sales`/`reports.view_profit` + `warranty.view`), clickable Management dashboard tile with shared query helper, background SchedulerService reminders/alerts for overdue claims/RMAs, trilingual translations.
+- Review fixes & UI gate: dialog footer pattern, in-flight dashboard loading coalescing, test suite fixes, dark/light EN/SI/TA screenshots captured.
+- PR opened for Batch 9.6: Fixes #829, Fixes #830. Stopped with PR open pending review.
+- Epic #820 remains open pending #824 physical-printer verification and legal statutory text verification.
 

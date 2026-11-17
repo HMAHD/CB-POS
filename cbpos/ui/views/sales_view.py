@@ -832,7 +832,7 @@ class SalesView(QWidget):
             self.cart_table.setRowHeight(row, CART_TABLE_ROW_HEIGHT)
 
             # Product Name (with note and plan indicators)
-            is_plan = getattr(item["product"], "is_warranty_plan", False)
+            is_plan = getattr(item["product"], "is_warranty_plan", False) is True
             name = item["product"].name_en
             if is_plan:
                 name = f"  \u21b3 {name}"
@@ -1768,11 +1768,11 @@ class SalesView(QWidget):
     def _add_product_to_cart_with_serials(self, product, qty: Decimal) -> bool:
         """Add product to cart, prompting for serial/IMEI capture or plan covered item selection."""
         covered_line_id = None
-        if getattr(product, "is_warranty_plan", False):
+        if getattr(product, "is_warranty_plan", False) is True:
             eligible_lines = []
             for it in self.cart_service.items:
                 p = it["product"]
-                if getattr(p, "is_warranty_plan", False):
+                if getattr(p, "is_warranty_plan", False) is True:
                     continue
                 if getattr(product, "plan_category_id", None) and p.category_id != product.plan_category_id:
                     continue

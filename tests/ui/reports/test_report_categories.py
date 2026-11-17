@@ -17,7 +17,7 @@ from cbpos.core.services.config_service import ConfigService
 from cbpos.i18n import get_language, set_language, translate_in
 from cbpos.ui.views.reports.report_viewer import ReportViewer
 
-FIXED_ORDER = ["sales", "inventory", "financial", "audit"]
+FIXED_ORDER = ["sales", "inventory", "financial", "audit", "warranty"]
 
 
 @pytest.fixture
@@ -47,7 +47,7 @@ def test_sidebar_shows_category_names_in_business_order(language):
 
     viewer = ReportViewer()
 
-    assert _category_labels(viewer) == ["Sales", "Inventory", "Financial", "Audit"]
+    assert _category_labels(viewer) == ["Sales", "Inventory", "Financial", "Audit", "Warranty"]
 
 
 def _nav_items(viewer) -> list[QPushButton]:
@@ -62,7 +62,7 @@ def test_switching_language_updates_category_names(language):
 
     language("si")
 
-    assert _category_labels(viewer) == ["විකුණුම්", "තොග", "මූල්‍ය", "විගණනය"]
+    assert _category_labels(viewer) == ["විකුණුම්", "තොග", "මූල්‍ය", "විගණනය", "වගකීම් සහතික"]
 
 
 @pytest.mark.usefixtures("qapp", "db_session")

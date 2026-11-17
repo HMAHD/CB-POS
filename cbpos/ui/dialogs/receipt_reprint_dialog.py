@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime, timedelta
 
+from PyQt6 import sip
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
     QDateEdit,
@@ -283,7 +284,11 @@ class ReceiptReprintDialog(QDialog):
             self.lbl_preview_prompt.setVisible(False)
             self.preview_scroll.setVisible(True)
             self.btn_reprint.setEnabled(True)
-            has_w = bool(getattr(sale, "warranties", []))
+            has_w = False
+            try:
+                has_w = bool(getattr(sale, "warranties", None))
+            except Exception:
+                has_w = False
             self.btn_reprint_warranty.setEnabled(has_w)
             if hasattr(self, "btn_export_warranty_pdf"):
                 self.btn_export_warranty_pdf.setEnabled(has_w)
@@ -508,13 +513,17 @@ class ReceiptReprintDialog(QDialog):
 
         from cbpos.ui.workers import WarrantyReprintWorker, start_background_job
 
-        worker = WarrantyReprintWorker(sale.id, user_id=user_id, approver_id=approver_id, parent=self)
+        worker = WarrantyReprintWorker(sale.id, user_id=user_id, approver_id=approver_id, parent=None)
 
-        def _on_result(commands: bytes) -> None:
+        def _on_result(commands: list) -> None:
+            if sip.isdeleted(self):
+                return
             worker_inst = PrintWorker.instance()
             self._warranty_reprint_job_id = worker_inst.add_job("print_commands", commands)
 
         def _on_error(err_str: str) -> None:
+            if sip.isdeleted(self):
+                return
             self.btn_reprint_warranty.setEnabled(True)
             if err_str == "reprint_void":
                 QMessageBox.warning(self, _t("common.warning"), _t("reprint.void_blocked"))
@@ -573,10 +582,12 @@ class ReceiptReprintDialog(QDialog):
             destination_path=file_path,
             user_id=user_id,
             lang=get_language(),
-            parent=self,
+            parent=None,
         )
 
         def _on_export_done(out: str) -> None:
+            if sip.isdeleted(self):
+                return
             self.btn_export_warranty_pdf.setEnabled(True)
             QMessageBox.information(
                 self,
@@ -585,6 +596,8 @@ class ReceiptReprintDialog(QDialog):
             )
 
         def _on_export_error(err_str: str) -> None:
+            if sip.isdeleted(self):
+                return
             self.btn_export_warranty_pdf.setEnabled(True)
             if err_str == "no_warranties":
                 QMessageBox.warning(

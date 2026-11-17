@@ -1478,7 +1478,7 @@ class SalesView(QWidget):
                 # If increasing quantity on serial-tracked item, prompt for additional units
                 if new_qty > current_qty and s_mode in ("OPTIONAL", "REQUIRED"):
                     added_count = int(new_qty - current_qty)
-                    added_serials = self._prompt_serial_capture(prod, added_count, exclude_cart_index=row)
+                    added_serials = self._prompt_serial_capture(prod, added_count)
                     if added_serials is None:
                         self._focus_search()
                         return

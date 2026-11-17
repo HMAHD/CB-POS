@@ -588,6 +588,10 @@ class SalesView(QWidget):
         self.shortcut_f8 = QShortcut(QKeySequence("F8"), self)
         self.shortcut_f8.activated.connect(self.open_cash_drawer)
 
+        # F9 — Warranty Lookup & Status (#825)
+        self.shortcut_f9 = QShortcut(QKeySequence("F9"), self)
+        self.shortcut_f9.activated.connect(self.open_warranty_lookup)
+
         # F10 — Open Payment (alias for F5)
         self.shortcut_f10 = QShortcut(QKeySequence("F10"), self)
         self.shortcut_f10.activated.connect(self.process_payment)
@@ -1899,6 +1903,18 @@ class SalesView(QWidget):
         if self.side_menu.isVisible():
             self.toggle_side_menu()
         dialog = RefundDialog(parent=self)
+        dialog.exec()
+        self.side_menu.clear_active()
+        self._focus_search()
+
+    def open_warranty_lookup(self, query: str = "") -> None:
+        """Open Warranty Lookup dialog (#825)."""
+        from cbpos.ui.dialogs.warranty_lookup_dialog import WarrantyLookupDialog
+
+        if self.side_menu.isVisible():
+            self.toggle_side_menu()
+        initial = query if isinstance(query, str) else ""
+        dialog = WarrantyLookupDialog(initial_query=initial, parent=self)
         dialog.exec()
         self.side_menu.clear_active()
         self._focus_search()

@@ -26,6 +26,7 @@ class ShortcutsHelpDialog(QDialog):
             ("F6", _t("shortcuts.hold_bill")),
             ("F7", _t("shortcuts.recall_bill")),
             ("F8", _t("shortcuts.open_drawer")),
+            ("F9", _t("shortcuts.warranty_check")),
             ("F10", _t("shortcuts.process_payment")),
             ("F12", _t("shortcuts.quick_close")),
             ("Ctrl+B", _t("shortcuts.bill_discount")),

@@ -777,7 +777,8 @@
     "fullscreen_tooltip": "Toggle Fullscreen",
     "exit_tooltip": "Exit Application",
     "help_about": "Help & About",
-    "help_tooltip": "Help, documentation, updates and licence information"
+    "help_tooltip": "Help, documentation, updates and licence information",
+    "warranty_check": "Warranty Check"
   },
   "about": {
     "title": "About CB POS",
@@ -2887,7 +2888,8 @@
     "void_bill": "Void current bill",
     "undo_remove": "Undo remove cart item",
     "calculator": "Open calculator",
-    "close_cancel": "Close dialog / Cancel"
+    "close_cancel": "Close dialog / Cancel",
+    "warranty_check": "Warranty check"
   },
   "stock_history": {
     "title": "Stock History",
@@ -3612,7 +3614,25 @@
       "duration_required": "Duration must be greater than zero.",
       "terms_translation_requires_en": "English terms must be provided when translations are present.",
       "exclusions_translation_requires_en": "English exclusions must be provided when translations are present."
-    }
+    },
+    "btn_lookup": "Warranty Lookup",
+    "status_active": "Active",
+    "status_expiring": "Expiring ({days}d)",
+    "status_expired": "Expired",
+    "status_void": "Void",
+    "status_cancelled": "Cancelled",
+    "status_replaced": "Replaced",
+    "unit_days": "Days",
+    "unit_months": "Months",
+    "unit_years": "Years",
+    "remedy_repair_or_replace": "Repair or Replace",
+    "remedy_repair_only": "Repair Only",
+    "remedy_replace_only": "Replace Only",
+    "remedy_refund": "Refund",
+    "terms_label": "Terms & Conditions",
+    "exclusions_label": "Exclusions",
+    "export_pdf_title": "Export Warranty Certificate PDF",
+    "pdf_exported_to": "Warranty certificate exported to {path}"
   },
   "serial_entry": {
     "title": "Enter Serial / IMEI Numbers",
@@ -3630,5 +3650,38 @@
   "warranty_card": {
     "prompt_title": "Warranty Cards",
     "prompt_message": "Print warranty card(s) for this sale?"
+  },
+  "warranty_lookup": {
+    "title": "Warranty Lookup & Status",
+    "search_placeholder": "Search by warranty code, receipt #, serial/IMEI, customer phone or name...",
+    "col_product": "Product",
+    "col_serial": "Serial / IMEI",
+    "col_customer": "Customer",
+    "col_sold_date": "Sold Date",
+    "col_valid_until": "Valid Until",
+    "col_status": "Status",
+    "no_warranties_found": "No matching warranties found",
+    "select_to_view_details": "Select a warranty from the list to view full details",
+    "count_found": "{count} warranty record(s) found",
+    "code_label": "Warranty Code",
+    "product_label": "Product",
+    "sale_label": "Receipt #",
+    "coverage_period": "Coverage Period",
+    "duration_remedy": "Duration & Remedy",
+    "walk_in": "Walk-in Customer",
+    "btn_reprint_card": "Reprint Card",
+    "btn_export_pdf": "Export Certificate PDF",
+    "btn_edit": "Edit Warranty",
+    "btn_start_claim": "Start Claim",
+    "claim_not_available": "Claims workflow will be available shortly",
+    "reprint_sent": "Warranty card print job sent successfully",
+    "correction_title": "Warranty Admin Correction",
+    "serial_placeholder": "Enter serial or IMEI number",
+    "start_date_label": "Coverage Start",
+    "end_date_label": "Coverage End",
+    "reason_label": "Correction Reason",
+    "reason_placeholder": "e.g. Corrected serial number entered incorrectly at checkout",
+    "reason_required": "Reason for correction is required",
+    "error_invalid_dates": "Start date cannot be after end date"
   }
 }

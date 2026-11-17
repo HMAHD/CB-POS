@@ -777,7 +777,8 @@
     "fullscreen_tooltip": "සම්පූර්ණ තිරය",
     "exit_tooltip": "POS එක වහන්න",
     "help_about": "උදවු සහ විස්තර",
-    "help_tooltip": "උදවු, මඟපෙන්වීම්, යාවත්කාලීන සහ බලපත්‍ර තොරතුරු"
+    "help_tooltip": "උදවු, මඟපෙන්වීම්, යාවත්කාලීන සහ බලපත්‍ර තොරතුරු",
+    "warranty_check": "වගකීම් පරීක්ෂාව"
   },
   "about": {
     "title": "CB POS පිළිබඳව",
@@ -2850,7 +2851,8 @@
     "void_bill": "වත්මන් බිල එක අවලංගු කරන්න",
     "undo_remove": "අයින් කළ අයිතමය නැවත ගන්න",
     "calculator": "ගණක යන්ත්‍රය අරින්න",
-    "close_cancel": "කවුළුව වහන්න / අවලංගු කරන්න"
+    "close_cancel": "කවුළුව වහන්න / අවලංගු කරන්න",
+    "warranty_check": "වගකීම් පරීක්ෂාව"
   },
   "stock_history": {
     "title": "තොග ඉතිහාසය - {name}",
@@ -3612,7 +3614,25 @@
       "duration_required": "කාලය බිංදුවට වඩා වැඩි විය යුතුය.",
       "terms_translation_requires_en": "පරිවර්තන ඇති විට ඉංග්‍රීසි කොන්දේසි ලබා දිය යුතුය.",
       "exclusions_translation_requires_en": "පරිවර්තන ඇති විට ඉංග්‍රීසි බැහැර කිරීම් ලබා දිය යුතුය."
-    }
+    },
+    "btn_lookup": "වගකීම් සෙවීම",
+    "status_active": "සක්‍රීයයි",
+    "status_expiring": "කල් ඉකුත්වෙමින් ({days} දින)",
+    "status_expired": "කල් ඉකුත් වූ",
+    "status_void": "අවලංගුයි",
+    "status_cancelled": "අවලංගු කරන ලදී",
+    "status_replaced": "වෙනස් කරන ලදී",
+    "unit_days": "දින",
+    "unit_months": "මාස",
+    "unit_years": "වසර",
+    "remedy_repair_or_replace": "අලුත්වැඩියාව හෝ මාරු කිරීම",
+    "remedy_repair_only": "අලුත්වැඩියාව පමණි",
+    "remedy_replace_only": "මාරු කිරීම පමණි",
+    "remedy_refund": "මුදල් ආපසු ගෙවීම",
+    "terms_label": "නියමයන් සහ කොන්දේසි",
+    "exclusions_label": "බැහැර කිරීම්",
+    "export_pdf_title": "වගකීම් සහතික PDF එක බාගන්න",
+    "pdf_exported_to": "වගකීම් සහතිකය {path} වෙත යවන ලදී"
   },
   "serial_entry": {
     "title": "අනුක්‍රමික / IMEI අංක ඇතුළත් කරන්න",
@@ -3630,5 +3650,38 @@
   "warranty_card": {
     "prompt_title": "වගකීම් කාඩ්පත්",
     "prompt_message": "මෙම විකිණුම සඳහා වගකීම් කාඩ්පත් මුද්‍රණය කරනවාද?"
+  },
+  "warranty_lookup": {
+    "title": "වගකීම් සෙවීම සහ තත්ත්වය",
+    "search_placeholder": "වගකීම් අංකය, රිසිට්පත් #, අනුක්‍රමික/IMEI, දුරකථන අංකය හෝ නමෙන් සොයන්න...",
+    "col_product": "භාණ්ඩය",
+    "col_serial": "අනුක්‍රමික අංකය / IMEI",
+    "col_customer": "පාරිභෝගිකයා",
+    "col_sold_date": "විකිණූ දිනය",
+    "col_valid_until": "වලංගු කාලය",
+    "col_status": "තත්ත්වය",
+    "no_warranties_found": "ගැළපෙන වගකීම් හමු නොවීය",
+    "select_to_view_details": "සම්පූර්ණ තොරතුරු බැලීමට ලැයිස්තුවෙන් වගකීමක් තෝරන්න",
+    "count_found": "වගකීම් වාර්තා {count}ක් හමුවිය",
+    "code_label": "වගකීම් අංකය",
+    "product_label": "භාණ්ඩය",
+    "sale_label": "රිසිට්පත් අංකය",
+    "coverage_period": "ආවරණ කාලය",
+    "duration_remedy": "කාලය සහ පිළියම",
+    "walk_in": "සාමාන්‍ය පාරිභෝගිකයා",
+    "btn_reprint_card": "කාඩ්පත නැවත මුද්‍රණය",
+    "btn_export_pdf": "සහතික PDF එක බාගන්න",
+    "btn_edit": "වගකීම සංස්කරණය",
+    "btn_start_claim": "හිමිකම් පෑමක් අරඹන්න",
+    "claim_not_available": "හිමිකම් පෑමේ ක්‍රියාවලිය ළඟදීම ලබාගත හැක",
+    "reprint_sent": "වගකීම් කාඩ්පත් මුද්‍රණ කාර්යය සාර්ථකව යවන ලදී",
+    "correction_title": "වගකීම් පරිපාලන සංශෝධනය",
+    "serial_placeholder": "අනුක්‍රමික හෝ IMEI අංකය ඇතුළත් කරන්න",
+    "start_date_label": "ආවරණය ඇරඹුම",
+    "end_date_label": "ආවරණ අවසානය",
+    "reason_label": "සංශෝධනයට හේතුව",
+    "reason_placeholder": "උදා. විකිණීමේදී වැරදියට ඇතුළත් කළ අනුක්‍රමික අංකය නිවැරදි කිරීම",
+    "reason_required": "සංශෝධනයට හේතුවක් ඇතුළත් කිරීම අනිවාර්ය වේ",
+    "error_invalid_dates": "ඇරඹුම් දිනය අවසන් දිනයට පසු විය නොහැක"
   }
 }

@@ -80,6 +80,24 @@ def _dec(value: Any) -> Decimal:
     return Decimal(str(value)) if value is not None else Decimal("0")
 
 
+def _safe_warranties(obj: Any) -> list[Any]:
+    from sqlalchemy import inspect as sa_inspect
+    from sqlalchemy.orm.state import InstanceState
+
+    try:
+        insp = sa_inspect(obj, raiseerr=False)
+        if isinstance(insp, InstanceState):
+            if insp.detached and "warranties" not in insp.dict:
+                return []
+    except Exception:
+        pass
+    try:
+        val = getattr(obj, "warranties", None)
+        return list(val) if val else []
+    except Exception:
+        return []
+
+
 def _pct(value: Any, default: str) -> str:
     """A rate for a label: 18.0 -> "18", 2.5 -> "2.5"."""
     rate = _dec(value if value not in (None, "") else default).normalize()
@@ -207,14 +225,42 @@ class InvoiceService:
             lang: Language for the product names.
         """
         lines = []
+        warranties_by_prod: dict[int, list[Any]] = {}
+        sale_warranties = _safe_warranties(sale)
+        if sale_warranties:
+            for w in sale_warranties:
+                warranties_by_prod.setdefault(w.product_id, []).append(w)
+
         for item in sale.items:
             qty = _dec(item.qty)
             charged = _dec(item.unit_price)
             listed = max(_dec(item.original_price) if item.original_price is not None else charged, charged)
             unit = item.product.unit
+            desc = ProductService.display_name(item.product, lang)
+
+            item_w = _safe_warranties(item) or warranties_by_prod.get(item.product_id, [])
+            if item_w:
+                first_w = item_w[0]
+                unit_str = translate_in(
+                    lang,
+                    f"receipt_strings.warranty_unit_{first_w.duration_unit.lower()}",
+                    default=first_w.duration_unit.capitalize(),
+                )
+                until_str = translate_in(
+                    lang,
+                    "receipt_strings.warranty_until",
+                    date=first_w.end_date.strftime("%Y-%m-%d"),
+                    default=f"until {first_w.end_date.strftime('%Y-%m-%d')}",
+                )
+                w_lbl = translate_in(lang, "invoice.warranty_label", default="Warranty")
+                desc += f"\n{w_lbl}: {first_w.duration} {unit_str} {until_str}"
+                serials = [w.serial_number for w in item_w if w.serial_number]
+                if serials:
+                    desc += f"\nS/N: {', '.join(serials)}"
+
             lines.append(
                 InvoiceLine(
-                    description=ProductService.display_name(item.product, lang),
+                    description=desc,
                     qty=format_quantity(qty, quantity_decimals(unit) if unit is not None else 0),
                     unit_price=listed,
                     discount=round_money((listed - charged) * qty),
@@ -288,6 +334,35 @@ class InvoiceService:
             Spacer(1, 3 * mm),
             InvoiceService._totals(sale, lines, show_vat, t, st),
         ]
+
+        # Warranty terms & conditions snapshot (#824)
+        sale_warranties = _safe_warranties(sale)
+        if sale_warranties:
+            distinct_terms = []
+            seen_policies = set()
+            for w in sale_warranties:
+                t_key = (w.terms_text or "", w.exclusions_text or "")
+                if (w.terms_text or w.exclusions_text) and t_key not in seen_policies:
+                    seen_policies.add(t_key)
+                    distinct_terms.append(w)
+
+            if distinct_terms:
+                elements.append(Spacer(1, 4 * mm))
+                elements.append(
+                    _text(t("warranty_terms_title", default="Warranty Terms & Conditions"), st["bold"], _WIDTH)
+                )
+                for dt in distinct_terms:
+                    if dt.terms_text:
+                        elements.append(_text(dt.terms_text, st["base"], _WIDTH))
+                    if dt.exclusions_text:
+                        elements.append(
+                            _text(
+                                f"{t('warranty_exclusions_title', default='Exclusions')}: {dt.exclusions_text}",
+                                st["base"],
+                                _WIDTH,
+                            )
+                        )
+
         bank_lines = InvoiceService.bank_detail_lines(lang)
         if bank_lines:
             elements.append(Spacer(1, 6 * mm))

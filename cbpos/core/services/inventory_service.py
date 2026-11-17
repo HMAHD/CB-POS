@@ -112,7 +112,12 @@ class InventoryService:
         warr_actor_id = None
         override = data.get("warranty_override")
         policy_id = data.get("warranty_policy_id")
-        if (override is not None and override != "INHERIT") or policy_id is not None:
+        serial_mode = data.get("serial_mode")
+        if (
+            (override is not None and override != "INHERIT")
+            or policy_id is not None
+            or (serial_mode is not None and str(serial_mode).upper() != "OFF")
+        ):
             from cbpos.core.services.warranty_service import WarrantyService
 
             warr_actor_id = WarrantyService._resolve_actor(user_id, Permissions.WARRANTY_EDIT)
@@ -121,6 +126,8 @@ class InventoryService:
                 policy_id=policy_id,
                 is_weighted=bool(data.get("is_weighted")),
                 session=session,
+                serial_mode=serial_mode,
+                category_id=data.get("category_id"),
             )
 
         product = Product(**data)
@@ -137,6 +144,7 @@ class InventoryService:
                         "product_id": product.id,
                         "override": product.warranty_override,
                         "policy_id": product.warranty_policy_id,
+                        "serial_mode": product.serial_mode,
                     }
                 ),
             )
@@ -204,16 +212,20 @@ class InventoryService:
             warr_actor_id = None
             override_in_data = "warranty_override" in data
             policy_in_data = "warranty_policy_id" in data
+            serial_in_data = "serial_mode" in data
             new_override = data.get("warranty_override") if override_in_data else product.warranty_override
             new_policy_id = data.get("warranty_policy_id") if policy_in_data else product.warranty_policy_id
+            new_serial_mode = data.get("serial_mode") if serial_in_data else product.serial_mode
 
             override_changed = override_in_data and new_override != product.warranty_override
             policy_changed = policy_in_data and new_policy_id != product.warranty_policy_id
+            serial_changed = serial_in_data and new_serial_mode != product.serial_mode
 
-            if override_changed or policy_changed:
+            if override_changed or policy_changed or serial_changed:
                 effective_override = new_override or "INHERIT"
                 effective_policy_id = new_policy_id
                 effective_weighted = data.get("is_weighted", product.is_weighted)
+                effective_category_id = data.get("category_id", product.category_id)
 
                 from cbpos.core.services.warranty_service import WarrantyService
 
@@ -224,6 +236,8 @@ class InventoryService:
                     is_weighted=bool(effective_weighted),
                     existing_policy_id=product.warranty_policy_id,
                     session=session,
+                    serial_mode=new_serial_mode,
+                    category_id=effective_category_id,
                 )
 
             if data.get("price") is not None:
@@ -262,6 +276,7 @@ class InventoryService:
                             "product_id": product.id,
                             "override": product.warranty_override,
                             "policy_id": product.warranty_policy_id,
+                            "serial_mode": product.serial_mode,
                         }
                     ),
                 )

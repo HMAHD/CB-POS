@@ -40,17 +40,22 @@ class CartService:
         """Return the customer currently attached to the cart, if any."""
         return self._customer
 
-    def add_item(self, product: Product, qty: Decimal = Decimal("1.000")):
+    def add_item(self, product: Product, qty: Decimal = Decimal("1.000"), serials: list[str | None] | None = None):
         """
         Add a product to the cart.
-        If product exists, update quantity.
+        If product exists, update quantity and append serial slots.
         """
         if qty <= Decimal("0"):
             raise ValueError("Quantity must be positive")
 
+        int_qty = int(qty) if (qty > 0 and qty % Decimal("1") == Decimal("0")) else 0
+        new_slots = list(serials) if serials is not None else [None] * int_qty
+
         # Check if product already in cart
         for idx, item in enumerate(self.items):
             if item["product"].id == product.id:
+                old_serials = list(item.get("serials", []))
+                item["serials"] = old_serials + new_slots
                 self.update_quantity(idx, item["qty"] + qty)
                 return
 
@@ -76,6 +81,7 @@ class CartService:
             "sscl_exempt": flags["sscl_exempt"],
             "note": None,
             "override_approved_by": None,
+            "serials": new_slots,
         }
         self._recalculate_line(new_item)
         self.items.append(new_item)
@@ -97,6 +103,15 @@ class CartService:
         item["qty"] = new_qty
         notice = None
 
+        # Adjust serial slots to match integer quantity
+        new_int_qty = int(new_qty) if (new_qty > 0 and new_qty % Decimal("1") == Decimal("0")) else 0
+        cur_serials = list(item.get("serials", []))
+        if new_int_qty > len(cur_serials):
+            cur_serials.extend([None] * (new_int_qty - len(cur_serials)))
+            item["serials"] = cur_serials
+        elif new_int_qty < len(cur_serials):
+            item["serials"] = cur_serials[:new_int_qty]
+
         if item.get("discount_type") == "FIXED" and old_qty > Decimal("0"):
             old_discount = item["discount_value"]
             scaled_discount = round_money(old_discount * new_qty / old_qty)
@@ -113,6 +128,58 @@ class CartService:
 
         self._recalculate_line(item)
         return notice
+
+    def would_discard_serials(self, index: int, new_qty: Decimal) -> list[str]:
+        """Return non-empty serials that would be truncated if line index is reduced to new_qty."""
+        if not (0 <= index < len(self.items)):
+            return []
+        item = self.items[index]
+        cur_serials = item.get("serials", [])
+        target_len = int(new_qty) if (new_qty > 0 and new_qty % Decimal("1") == Decimal("0")) else 0
+        if target_len < len(cur_serials):
+            return [str(s).strip().upper() for s in cur_serials[target_len:] if s and str(s).strip()]
+        return []
+
+    def get_all_cart_serials(self, exclude_index: int | None = None) -> set[str]:
+        """Return set of all non-empty serials across all lines in the cart, optionally excluding one line."""
+        serials: set[str] = set()
+        for idx, item in enumerate(self.items):
+            if exclude_index is not None and idx == exclude_index:
+                continue
+            for s in item.get("serials", []):
+                if s and str(s).strip():
+                    serials.add(str(s).strip().upper())
+        return serials
+
+    def set_item_serials(self, index: int, serials: list[str | None]) -> None:
+        """Set normalized serial numbers on a cart line with cart-wide uniqueness validation."""
+        if not (0 <= index < len(self.items)):
+            raise IndexError("Cart item index out of range")
+
+        item = self.items[index]
+        normalized: list[str | None] = []
+        line_seen: set[str] = set()
+        external_serials = self.get_all_cart_serials(exclude_index=index)
+
+        for s in serials:
+            if s is None or not str(s).strip():
+                normalized.append(None)
+            else:
+                clean = str(s).strip().upper()
+                if clean in line_seen or clean in external_serials:
+                    raise ValueError(f"Duplicate serial number '{clean}' in cart")
+                line_seen.add(clean)
+                normalized.append(clean)
+
+        expected_len = (
+            int(item["qty"]) if (item["qty"] > 0 and item["qty"] % Decimal("1") == Decimal("0")) else len(serials)
+        )
+        if len(normalized) < expected_len:
+            normalized.extend([None] * (expected_len - len(normalized)))
+        elif len(normalized) > expected_len:
+            normalized = normalized[:expected_len]
+
+        item["serials"] = normalized
 
     def remove_item(self, index: int):
         """Remove an item by its index in the list."""

@@ -141,3 +141,80 @@ class TestSaveAsPdf:
         mock_warning.assert_not_called()
         mock_info.assert_called_once()
         assert target.read_bytes().startswith(b"%PDF-")
+
+
+class TestSaveWarrantyPdfAndPrintJobIsolation:
+    @pytest.fixture
+    def warranty_sale(self, sale):
+        from cbpos.core.models.warranty import Warranty
+
+        w = Warranty(
+            code="REC-01",
+            duration=12,
+            duration_unit="MONTHS",
+            start_date=datetime.now().date(),
+            end_date=datetime.now().date(),
+            status="ACTIVE",
+            remedy="REPAIR",
+        )
+        sale.warranties = [w]
+        return sale
+
+    @pytest.fixture
+    def warranty_dialog(self, qapp, warranty_sale):
+        dlg = ReceiptOptionsDialog(warranty_sale)
+        yield dlg
+        PrintWorker.shutdown()
+        dlg.deleteLater()
+
+    def test_warranty_buttons_exist_when_warranties_present(self, warranty_dialog):
+        assert hasattr(warranty_dialog, "btn_print_warranties")
+        assert hasattr(warranty_dialog, "btn_save_warranty_pdf")
+        assert warranty_dialog.btn_print_warranties is not None
+        assert warranty_dialog.btn_save_warranty_pdf is not None
+
+    def test_save_warranty_pdf_generates_file_in_worker(self, warranty_dialog, tmp_path, qtbot):
+        target = str(tmp_path / "warranty.pdf")
+        with (
+            patch(
+                "cbpos.ui.dialogs.receipt_options_dialog.QFileDialog.getSaveFileName",
+                return_value=(target, "PDF Files (*.pdf)"),
+            ),
+            patch(
+                "cbpos.core.services.warranty_card_builder.WarrantyCardBuilder.build_pdf", return_value=target
+            ) as mock_builder,
+            patch("cbpos.ui.dialogs.receipt_options_dialog.QMessageBox.information") as mock_info,
+        ):
+            warranty_dialog.save_warranty_pdf()
+            # Wait for background thread to complete
+            qtbot.waitUntil(lambda: mock_info.called, timeout=3000)
+
+        mock_builder.assert_called_once()
+        mock_info.assert_called_once()
+
+    def test_warranty_print_job_id_filtering_and_ui_state(self, warranty_dialog, monkeypatch):
+        fake_job_id = "job-warranty-999"
+        monkeypatch.setattr(
+            "cbpos.core.services.printer_service.PrinterService.print_warranty_cards",
+            lambda warranties: fake_job_id,
+        )
+
+        with (
+            patch("cbpos.ui.dialogs.receipt_options_dialog.QMessageBox.information") as mock_info,
+            patch("cbpos.ui.dialogs.receipt_options_dialog.QMessageBox.warning") as mock_warn,
+        ):
+            warranty_dialog.print_warranty_cards()
+            assert warranty_dialog._warranty_job_id == fake_job_id
+            assert warranty_dialog.btn_print_warranties.isEnabled() is False
+
+            # Unrelated job should be ignored
+            warranty_dialog._on_print_job_result("unrelated-job", True, "ok")
+            assert warranty_dialog._warranty_job_id == fake_job_id
+            assert mock_info.called is False
+
+            # Matching job success
+            warranty_dialog._on_print_job_result(fake_job_id, True, "ok")
+            assert warranty_dialog._warranty_job_id is None
+            assert warranty_dialog.btn_print_warranties.isEnabled() is True
+            assert mock_info.called is True
+            assert mock_warn.called is False

@@ -56,6 +56,7 @@ class SuspendedTransactionService:
                             "discount_type": item.get("discount_type", "NONE"),
                             "discount_value": str(item.get("discount_value", Decimal("0.00"))),
                             "notes": item.get("note") or item.get("notes") or "",
+                            "serials": item.get("serials", []),
                         }
                     )
 
@@ -141,6 +142,8 @@ class SuspendedTransactionService:
                         qty = Decimal(str(line.get("qty", "1.000"))).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
                         cart_service.add_item(product, qty)
                         line_idx = len(cart_service.items) - 1
+                        if line.get("serials") is not None:
+                            cart_service.items[line_idx]["serials"] = list(line.get("serials"))
 
                         held_orig = Decimal(str(line.get("original_price", product.price)))
                         held_unit = Decimal(str(line.get("unit_price", product.price)))

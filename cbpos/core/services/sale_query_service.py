@@ -89,6 +89,7 @@ class SaleQueryService:
                     joinedload(Sale.customer),
                     joinedload(Sale.items).joinedload(SaleItem.product),
                     joinedload(Sale.payments),
+                    joinedload(Sale.warranties),
                 )
                 .order_by(Sale.date.desc())
                 .limit(limit)

@@ -89,3 +89,28 @@ class ProductValidator:
             errors.append(stock_err)
 
         return errors
+
+
+def validate_imei_luhn(serial: str | None) -> bool:
+    """Validate 15-digit IMEI checksum using the Luhn algorithm.
+
+    Returns True if valid or if not a 15-digit numeric string (bypassing
+    advisory warnings for non-IMEI serials). Returns False only when a
+    15-digit numeric IMEI fails its Luhn checksum.
+    """
+    if not serial:
+        return True
+    s = str(serial).strip()
+    if len(s) != 15 or not s.isdigit():
+        return True
+
+    digits = [int(c) for c in s]
+    total = 0
+    for idx, d in enumerate(digits):
+        # Odd indices (1, 3, 5, 7, 9, 11, 13) are doubled
+        if idx % 2 == 1:
+            doubled = d * 2
+            total += (doubled // 10) + (doubled % 10)
+        else:
+            total += d
+    return total % 10 == 0

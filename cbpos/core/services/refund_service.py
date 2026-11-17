@@ -60,10 +60,13 @@ class RefundLineRequest:
     sale_item_id: int
     qty: Decimal
     reason: str | None = None
+    selected_serials: list[str] | None = None
 
     def __post_init__(self):
         if not isinstance(self.qty, Decimal):
             self.qty = Decimal(str(self.qty))
+        if self.selected_serials is not None:
+            self.selected_serials = [str(s).strip().upper() for s in self.selected_serials if str(s).strip()]
 
 
 @dataclass
@@ -547,6 +550,7 @@ class RefundService:
         tender_override: str | None = None,
         override_reason: str | None = None,
         peripherals: TransactionPeripherals | None = None,
+        selected_serials: dict[int, list[str]] | None = None,
     ) -> RefundResult:
         """Execute a refund transaction atomically."""
         db = Database()
@@ -748,14 +752,20 @@ class RefundService:
                 )
                 session.add(sp)
 
-            # 9b. Per-unit warranty cancellation (#822)
+            # 9b. Per-unit warranty cancellation (#822, #823)
             from cbpos.core.services.warranty_service import WarrantyService
+
+            merged_selected_serials = dict(selected_serials or {})
+            for req in lines:
+                if req.selected_serials is not None:
+                    merged_selected_serials[req.sale_item_id] = req.selected_serials
 
             WarrantyService.cancel_units_for_refund_in_session(
                 session=session,
                 refund_sale=refund_sale,
                 refund_lines=[(req.sale_item_id, req.qty) for req in lines],
                 actor_id=user_id,
+                selected_serials=merged_selected_serials or None,
             )
 
             # 10. Audit log entries

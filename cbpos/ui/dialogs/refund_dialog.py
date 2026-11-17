@@ -594,6 +594,36 @@ class RefundDialog(QDialog):
             QMessageBox.warning(self, _t("common.warning"), _t("refund.fully_refunded"))
             return
 
+        # Check if any requested lines require serial selection (#823, #824)
+        from cbpos.core.services.warranty_service import WarrantyService
+        from cbpos.ui.dialogs.serial_refund_selection_dialog import SerialRefundSelectionDialog
+
+        for req in requests:
+            active_serials = WarrantyService.get_active_serials_for_sale_item(req.sale_item_id)
+            if active_serials:
+                int_qty = int(req.qty)
+                if int_qty >= len(active_serials):
+                    req.selected_serials = list(active_serials[:int_qty])
+                else:
+                    # Partial refund of serialized units -> prompt cashier to choose
+                    prod_name = ""
+                    for itm in getattr(self.found_sale, "items", []):
+                        if itm.id == req.sale_item_id and itm.product:
+                            from cbpos.core.services.product_service import ProductService
+
+                            prod_name = ProductService.display_name(itm.product)
+                            break
+
+                    dlg = SerialRefundSelectionDialog(
+                        product_name=prod_name or _t("common.item"),
+                        active_serials=active_serials,
+                        required_count=int_qty,
+                        parent=self,
+                    )
+                    if dlg.exec() != QDialog.DialogCode.Accepted:
+                        return
+                    req.selected_serials = dlg.get_selected_serials()
+
         # Confirmation question
         doc_number = self.found_sale.document_number
         breakdown = TransactionService.refund_breakdown(self.found_sale.id) or RefundBreakdown(

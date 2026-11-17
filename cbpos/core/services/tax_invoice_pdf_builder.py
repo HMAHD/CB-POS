@@ -183,6 +183,26 @@ class TaxInvoicePDFBuilder:
         elements.append(TaxInvoicePDFBuilder._build_totals_and_words(invoice, st))
         elements.append(Spacer(1, 6 * mm))
 
+        # 5b. Warranty terms & conditions snapshot (#824)
+        if hasattr(invoice, "sale") and invoice.sale and getattr(invoice.sale, "warranties", None):
+            distinct_terms = []
+            seen_policies = set()
+            for w in invoice.sale.warranties:
+                t_key = (w.terms_text or "", w.exclusions_text or "")
+                if (w.terms_text or w.exclusions_text) and t_key not in seen_policies:
+                    seen_policies.add(t_key)
+                    distinct_terms.append(w)
+
+            if distinct_terms:
+                elements.append(_text("Warranty Terms & Conditions", st["bold"], 180 * mm))
+                elements.append(Spacer(1, 2 * mm))
+                for dt in distinct_terms:
+                    if dt.terms_text:
+                        elements.append(_text(dt.terms_text, st["base"], 180 * mm))
+                    if dt.exclusions_text:
+                        elements.append(_text(f"Exclusions: {dt.exclusions_text}", st["base"], 180 * mm))
+                elements.append(Spacer(1, 4 * mm))
+
         # 6. Signatures & Declarations
         elements.append(TaxInvoicePDFBuilder._build_signature_block(st))
 
@@ -328,10 +348,23 @@ class TaxInvoicePDFBuilder:
         header_row = [_text(h, st["th"]) for h in headers]
         table_rows = [header_row]
 
+        warranties_by_prod: dict[int, list[Any]] = {}
+        if hasattr(invoice, "sale") and invoice.sale and getattr(invoice.sale, "warranties", None):
+            for w in invoice.sale.warranties:
+                warranties_by_prod.setdefault(w.product_id, []).append(w)
+
         for line in invoice.lines or []:
             desc_text = line.product_name_snapshot or ""
             if line.item_code_snapshot:
                 desc_text = f"[{line.item_code_snapshot}] {desc_text}"
+
+            if line.product_id and line.product_id in warranties_by_prod:
+                w_list = warranties_by_prod[line.product_id]
+                first_w = w_list[0]
+                desc_text += f"\nWarranty: {first_w.duration} {first_w.duration_unit.capitalize()} until {first_w.end_date.strftime('%Y-%m-%d')}"
+                serials = [w.serial_number for w in w_list if w.serial_number]
+                if serials:
+                    desc_text += f"\nS/N: {', '.join(serials)}"
 
             unit = line.unit_snapshot or "pcs"
             qty_str = f"{format_quantity(line.quantity)} {unit}"

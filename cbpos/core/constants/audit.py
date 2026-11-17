@@ -4,5 +4,6 @@
 PRICING_EVENT = "PRICING"
 PRICE_LIST_BULK_ADJUST = "PRICE_LIST_BULK_ADJUST"
 
-# Warranty policies, assignments, claims, and RMAs (#820, #821)
+# Warranty policies, assignments, claims, and RMAs (#820, #821, #824)
 WARRANTY_EVENT = "WARRANTY"
+REPRINT_WARRANTY_CARD = "REPRINT_WARRANTY_CARD"

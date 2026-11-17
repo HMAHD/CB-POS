@@ -98,6 +98,8 @@ class ConfigService:
         "show_terminal_on_receipt": False,
         "show_qr_on_receipt": False,
         "receipt_qr_content": "",  # Shop WhatsApp/website URL for QR
+        "show_warranty_on_receipt": True,
+        "warranty_card_mode": "ASK",
         # Network Database Configuration
         "db_mode": "standalone",  # standalone (SQLite) or network (PostgreSQL)
         "network_db_host": "localhost",

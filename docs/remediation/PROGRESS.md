@@ -202,8 +202,8 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #822 | Warranty W2: Register a warranty per sold unit and cascade on void or refund | — | 9.2 | done | #1022 | 62498f3 · Decision D30; Warranty model, migration, per-unit registration at checkout, whole-unit guard, void/refund cascades, LAN sync 1.4 |
 | #823 | Warranty W3: Optional serial/IMEI capture at checkout | — | 9.3 | done | #1023 | 0aedb47, 03ed8de · Serial/IMEI capture at checkout, IMEI Luhn validator, cart serial bookkeeping, held bill persistence, checkout guard, serial-aware partial refunds, SerialEntryDialog |
 | #824 | Warranty W4: Print the warranty on the receipt, the A4 invoice and a standalo… | — | 9.3 | done (ready-for-human: ⚠️ Verify on Windows) | #1023 | 0aedb47, 03ed8de · Sales receipt warranty blocks & terms, A4 invoice warranty lines, standalone thermal cards (58/80mm) with cut, A5/A4 PDF cards, reprint workflows, audit logging; pending physical printer & statutory text verification |
-| #825 | Warranty W5: Warranty lookup by receipt, serial, phone or customer | — | 9.4 | in-progress | | |
-| #826 | Warranty W6: Warranty claims: intake, inspection, resolution and collection | — | 9.4 | in-progress | | |
+| #825 | Warranty W5: Warranty lookup by receipt, serial, phone or customer | — | 9.4 | pr-open | | ae95ea2 · WarrantyDTO, WarrantyService.search, calculate_effective_status, update_warranty_admin with audit logging, WarrantyLookupDialog, WarrantyCorrectionDialog, F9 shortcut |
+| #826 | Warranty W6: Warranty claims: intake, inspection, resolution and collection | — | 9.4 | pr-open | | e6e9e9b · WarrantyClaim & WarrantyClaimEvent models, migration, WarrantyClaimService state machine, replacement warranty creation, refund/void claim guards, WarrantyClaimReceiptBuilder thermal slips, WarrantyClaimIntakeDialog, WarrantyClaimResolveDialog, WarrantyClaimsBoardView, sync protocol 1.5 |
 | #827 | Warranty W7: Claim replacement and refund with correct stock movements | — | 9.5 | todo | | |
 | #828 | Warranty W8: Supplier and manufacturer RMA tracking | — | 9.5 | todo | | |
 | #829 | Warranty W9: Extended warranty sold as a paid add-on | — | 9.6 | todo | | |
@@ -311,8 +311,8 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #824 | Physical print check of 58mm/80mm thermal warranty cards with cut and A4 PDF warranty certificates | pending |
 
 ## Handoff
-Batch 9.3 merged in PR #1023 (555485d).
-Phase 9 Batch 9.4 started on branch `feat/p9-b4-lookup-claims`:
-- Working on #825 (Warranty W5: Warranty lookup by receipt, serial, phone or customer) and #826 (Warranty W6: Warranty claims: intake, inspection, resolution and collection).
+Batch 9.4 implemented on branch `feat/p9-b4-lookup-claims`:
+- #825 (`ae95ea2`) and #826 (`e6e9e9b`) implemented with verified domain, UI, and sync integration tests.
+- PR opened for Batch 9.4 (Fixes #825, Fixes #826). Stopped with PR open pending review.
 - #817 and #819 release gates remain active blockers for public distribution. Statutory wording gate unresolved for #824 (terms snapshot only, no fixed statutory sentence).
 

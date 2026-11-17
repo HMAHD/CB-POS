@@ -93,6 +93,7 @@ class WarrantyClaimsBoardView(QWidget, Activatable):
 
         self.cmb_status = QComboBox()
         self.cmb_status.addItem(_t("common.all", default="All"), "ALL")
+        self.cmb_status.addItem(_t("warranty_claim.status_open", default="Open Claims"), "OPEN")
         self.cmb_status.addItem(_t("warranty_claim.status_intake", default="Intake"), "INTAKE")
         self.cmb_status.addItem(_t("warranty_claim.status_in_inspection", default="In Inspection"), "IN_INSPECTION")
         self.cmb_status.addItem(
@@ -375,6 +376,34 @@ class WarrantyClaimsBoardView(QWidget, Activatable):
         )
         self.btn_refresh.setToolTip(_t("common.refresh", default="Refresh"))
         self.btn_new_claim.setText(_t("warranty_claim.btn_new_claim", default="New Claim"))
+
+        # Localize combo box
+        current_data = self.cmb_status.currentData()
+        self.cmb_status.blockSignals(True)
+        self.cmb_status.clear()
+        self.cmb_status.addItem(_t("common.all", default="All"), "ALL")
+        self.cmb_status.addItem(_t("warranty_claim.status_open", default="Open Claims"), "OPEN")
+        self.cmb_status.addItem(_t("warranty_claim.status_intake", default="Intake"), "INTAKE")
+        self.cmb_status.addItem(_t("warranty_claim.status_in_inspection", default="In Inspection"), "IN_INSPECTION")
+        self.cmb_status.addItem(
+            _t("warranty_claim.status_supplier_dispatched", default="At Supplier"), "SUPPLIER_DISPATCHED"
+        )
+        self.cmb_status.addItem(
+            _t("warranty_claim.status_supplier_returned", default="Supplier Returned"), "SUPPLIER_RETURNED"
+        )
+        self.cmb_status.addItem(_t("warranty_claim.status_resolved", default="Resolved"), "RESOLVED")
+        self.cmb_status.addItem(_t("warranty_claim.status_collected", default="Collected"), "COLLECTED")
+        self.cmb_status.addItem(_t("warranty_claim.status_rejected", default="Rejected"), "REJECTED")
+        self.cmb_status.addItem(_t("warranty_claim.status_void", default="Void"), "VOID")
+        self.cmb_status.addItem(
+            _t("warranty_claim.status_overdue_supplier", default="Overdue at Supplier (> 14 days)"), "OVERDUE_SUPPLIER"
+        )
+        idx = self.cmb_status.findData(current_data)
+        if idx >= 0:
+            self.cmb_status.setCurrentIndex(idx)
+        else:
+            self.cmb_status.setCurrentIndex(0)
+        self.cmb_status.blockSignals(False)
 
         # Table headers
         headers = [
@@ -943,11 +972,17 @@ class WarrantyClaimsBoardView(QWidget, Activatable):
             return None
         return curr.id
 
+    def set_status_filter(self, status: str) -> None:
+        """Programmatically set status filter and refresh table (#830)."""
+        idx = self.cmb_status.findData(status.strip().upper())
+        if idx >= 0:
+            self.cmb_status.setCurrentIndex(idx)
+
 
 class WarrantyClaimsBoardDialog(QDialog):
     """Modal wrapper dialog for WarrantyClaimsBoardView."""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, initial_status: str | None = None):
         super().__init__(parent)
         self.setObjectName("WarrantyClaimsBoardDialog")
         self.setWindowTitle(_t("warranty_claim.board_title", default="Warranty Claims Board"))
@@ -958,6 +993,8 @@ class WarrantyClaimsBoardDialog(QDialog):
         layout.setSpacing(8)
 
         self.board_view = WarrantyClaimsBoardView(parent=self)
+        if initial_status:
+            self.board_view.set_status_filter(initial_status)
         layout.addWidget(self.board_view, 1)
 
         footer_layout, self.btn_close = make_close_footer(on_close=self.accept)

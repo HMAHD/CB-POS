@@ -1317,7 +1317,8 @@ class WarrantyClaimService:
             )
 
             if status and status != "ALL":
-                if status == "OVERDUE_SUPPLIER":
+                status_clean = status.strip().upper()
+                if status_clean == "OVERDUE_SUPPLIER":
                     from datetime import timedelta
 
                     cutoff = datetime.now() - timedelta(days=14)
@@ -1325,8 +1326,14 @@ class WarrantyClaimService:
                         WarrantyClaim.defective_unit_status == "SENT_TO_SUPPLIER",
                         WarrantyClaim.sent_to_supplier_at <= cutoff,
                     )
+                elif status_clean == "OPEN":
+                    stmt = stmt.where(
+                        WarrantyClaim.claim_status.in_(
+                            ["INTAKE", "IN_INSPECTION", "SUPPLIER_DISPATCHED", "SUPPLIER_RETURNED"]
+                        )
+                    )
                 else:
-                    stmt = stmt.where(WarrantyClaim.claim_status == status.strip().upper())
+                    stmt = stmt.where(WarrantyClaim.claim_status == status_clean)
 
             if start_date:
                 stmt = stmt.where(func.date(WarrantyClaim.intake_date) >= start_date)
@@ -1374,3 +1381,122 @@ class WarrantyClaimService:
             )
         )
         return session.scalars(stmt).unique().first()
+
+    @classmethod
+    def get_claims_summary(
+        cls,
+        session: Session | None = None,
+        supplier_threshold_days: int = 14,
+    ) -> dict[str, int]:
+        """Compute claims summary counts for management dashboard and alerts (#830).
+
+        Returns counts for:
+        - open_claims: INTAKE, IN_INSPECTION, SUPPLIER_DISPATCHED, SUPPLIER_RETURNED
+        - ready_for_pickup: RESOLVED
+        - overdue_supplier: SENT_TO_SUPPLIER older than supplier_threshold_days
+        """
+        from datetime import timedelta
+
+        def _run(s: Session) -> dict[str, int]:
+            now = datetime.now()
+            cutoff = now - timedelta(days=supplier_threshold_days)
+
+            open_count = (
+                s.scalar(
+                    select(func.count(WarrantyClaim.id)).where(
+                        WarrantyClaim.claim_status.in_(
+                            ["INTAKE", "IN_INSPECTION", "SUPPLIER_DISPATCHED", "SUPPLIER_RETURNED"]
+                        )
+                    )
+                )
+                or 0
+            )
+
+            ready_count = (
+                s.scalar(select(func.count(WarrantyClaim.id)).where(WarrantyClaim.claim_status == "RESOLVED")) or 0
+            )
+
+            overdue_supplier_count = (
+                s.scalar(
+                    select(func.count(WarrantyClaim.id)).where(
+                        WarrantyClaim.defective_unit_status == "SENT_TO_SUPPLIER",
+                        WarrantyClaim.sent_to_supplier_at <= cutoff,
+                    )
+                )
+                or 0
+            )
+
+            return {
+                "open_claims": int(open_count),
+                "ready_for_pickup": int(ready_count),
+                "overdue_supplier": int(overdue_supplier_count),
+            }
+
+        with _session_scope(session) as s:
+            return _run(s)
+
+    @classmethod
+    def get_overdue_claims_summary(
+        cls,
+        session: Session | None = None,
+        supplier_threshold_days: int = 14,
+    ) -> dict[str, Any]:
+        """Query overdue claims and overdue RMAs for scheduler reminders (#830)."""
+        from datetime import timedelta
+
+        def _run(s: Session) -> dict[str, Any]:
+            today = date.today()
+            cutoff = datetime.now() - timedelta(days=supplier_threshold_days)
+
+            overdue_claims_stmt = (
+                select(WarrantyClaim)
+                .options(
+                    joinedload(WarrantyClaim.customer),
+                    joinedload(WarrantyClaim.product),
+                )
+                .where(
+                    WarrantyClaim.claim_status.in_(
+                        ["INTAKE", "IN_INSPECTION", "SUPPLIER_DISPATCHED", "SUPPLIER_RETURNED"]
+                    ),
+                    WarrantyClaim.expected_ready_date.isnot(None),
+                    WarrantyClaim.expected_ready_date < today,
+                )
+                .order_by(WarrantyClaim.expected_ready_date.asc())
+            )
+            overdue_claims = s.scalars(overdue_claims_stmt).unique().all()
+
+            overdue_rmas_stmt = (
+                select(WarrantyClaim)
+                .options(joinedload(WarrantyClaim.supplier))
+                .where(
+                    WarrantyClaim.defective_unit_status == "SENT_TO_SUPPLIER",
+                    WarrantyClaim.sent_to_supplier_at <= cutoff,
+                )
+                .order_by(WarrantyClaim.sent_to_supplier_at.asc())
+            )
+            overdue_rmas = s.scalars(overdue_rmas_stmt).unique().all()
+
+            return {
+                "overdue_claims_count": len(overdue_claims),
+                "overdue_claims": [
+                    {
+                        "document_number": c.document_number,
+                        "expected_ready_date": c.expected_ready_date.isoformat() if c.expected_ready_date else None,
+                        "customer_name": c.customer_name_snapshot or (c.customer.name if c.customer else ""),
+                        "phone": c.customer_phone_snapshot or (c.customer.phone if c.customer else ""),
+                    }
+                    for c in overdue_claims
+                ],
+                "overdue_rmas_count": len(overdue_rmas),
+                "overdue_rmas": [
+                    {
+                        "document_number": c.document_number,
+                        "sent_to_supplier_at": c.sent_to_supplier_at.isoformat() if c.sent_to_supplier_at else None,
+                        "supplier_name": c.supplier.company_name if c.supplier else "",
+                    }
+                    for c in overdue_rmas
+                ],
+            }
+
+        with _session_scope(session) as s:
+            return _run(s)

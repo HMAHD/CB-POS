@@ -26,8 +26,9 @@ CATEGORY_SALES = "sales"
 CATEGORY_INVENTORY = "inventory"
 CATEGORY_FINANCIAL = "financial"
 CATEGORY_AUDIT = "audit"
+CATEGORY_WARRANTY = "warranty"
 # Fixed business order for the Reports sidebar, Sales first.
-CATEGORY_ORDER = (CATEGORY_SALES, CATEGORY_INVENTORY, CATEGORY_FINANCIAL, CATEGORY_AUDIT)
+CATEGORY_ORDER = (CATEGORY_SALES, CATEGORY_INVENTORY, CATEGORY_FINANCIAL, CATEGORY_AUDIT, CATEGORY_WARRANTY)
 _COL_KEY_RE = re.compile(r"[^a-z0-9]+")
 
 
@@ -84,6 +85,14 @@ class BaseReport(ABC):
         from cbpos.core.constants.permissions import Permissions
 
         return Permissions.REPORTS_VIEW_SALES
+
+    @property
+    def required_permissions(self) -> tuple[str, ...]:
+        """Tuple of permission codes required to view or run this report.
+
+        Defaults to (self.required_permission,).
+        """
+        return (self.required_permission,)
 
     @abstractmethod
     def get_filter_definitions(self) -> list[dict[str, Any]]:

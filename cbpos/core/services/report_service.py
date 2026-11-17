@@ -214,7 +214,16 @@ class ReportService:
         if user is None or getattr(user, "role_id", None) is None:
             return all_reports
 
-        return [r for r in all_reports if PermissionService.user_has_permission(user, r.required_permission)]
+        return [
+            r
+            for r in all_reports
+            if all(
+                PermissionService.user_has_permission(user, p)
+                for p in getattr(r, "required_permissions", (r.required_permission,))
+            )
+        ]
+
+    get_reports_for_user = available_reports
 
     @staticmethod
     def run(report_id: str, params: dict[str, Any], user: Any = None) -> pd.DataFrame:
@@ -232,7 +241,8 @@ class ReportService:
             raise ValueError(f"Unknown report: {report_id}")
 
         if user is not None and getattr(user, "role_id", None) is not None:
-            if not PermissionService.user_has_permission(user, report.required_permission):
-                raise PermissionError(f"Permission denied: {report.required_permission} required")
+            perms = getattr(report, "required_permissions", (report.required_permission,))
+            if not all(PermissionService.user_has_permission(user, p) for p in perms):
+                raise PermissionError(f"Permission denied: {', '.join(perms)} required")
 
         return report.generate(params)

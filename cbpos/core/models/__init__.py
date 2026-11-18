@@ -373,7 +373,7 @@ class Category(Base):
     )
     last_modified: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, index=True)
 
-    products: Mapped[list["Product"]] = relationship(back_populates="category")
+    products: Mapped[list["Product"]] = relationship(back_populates="category", foreign_keys="[Product.category_id]")
     default_warranty_policy: Mapped[Optional["WarrantyPolicy"]] = relationship(
         "WarrantyPolicy", foreign_keys=[default_warranty_policy_id]
     )
@@ -416,15 +416,20 @@ class Product(Base):
     )
     warranty_override: Mapped[str] = mapped_column(String(10), default="INHERIT", server_default="INHERIT")
     serial_mode: Mapped[str] = mapped_column(String(10), default="OFF", server_default="OFF")
+    is_warranty_plan: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0", nullable=False)
+    plan_policy_id: Mapped[int | None] = mapped_column(ForeignKey("warranty_policies.id"), nullable=True, index=True)
+    plan_category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id"), nullable=True, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     version_id: Mapped[int] = mapped_column(Integer, default=1, nullable=False)  # Optimistic Locking
     last_modified: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, index=True)
 
-    category: Mapped["Category"] = relationship(back_populates="products", lazy="joined")
+    category: Mapped["Category"] = relationship(back_populates="products", lazy="joined", foreign_keys=[category_id])
     unit: Mapped[Optional["Unit"]] = relationship(back_populates="products", lazy="joined")
     warranty_policy: Mapped[Optional["WarrantyPolicy"]] = relationship(
         "WarrantyPolicy", foreign_keys=[warranty_policy_id]
     )
+    plan_policy: Mapped[Optional["WarrantyPolicy"]] = relationship("WarrantyPolicy", foreign_keys=[plan_policy_id])
+    plan_category: Mapped[Optional["Category"]] = relationship("Category", foreign_keys=[plan_category_id])
     parent: Mapped["Product"] = relationship("Product", remote_side=[id], back_populates="variants")
     variants: Mapped[list["Product"]] = relationship("Product", back_populates="parent")
     components: Mapped[list["CompositeItem"]] = relationship(
@@ -559,6 +564,7 @@ class SaleItem(Base):
     subtotal: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     notes: Mapped[str | None] = mapped_column(String(500), nullable=True)  # internal-only, never printed
     refund_of_item_id: Mapped[int | None] = mapped_column(ForeignKey("sale_items.id"), nullable=True, index=True)
+    covered_item_id: Mapped[int | None] = mapped_column(ForeignKey("sale_items.id"), nullable=True, index=True)
     refund_reason: Mapped[str | None] = mapped_column(String(200), nullable=True)
     refunded_qty: Mapped[Decimal] = mapped_column(
         Numeric(10, 3), nullable=False, default=Decimal("0.000"), server_default="0.000"
@@ -575,6 +581,7 @@ class SaleItem(Base):
     refund_of_item: Mapped["SaleItem | None"] = relationship(
         "SaleItem", remote_side=[id], foreign_keys=[refund_of_item_id]
     )
+    covered_item: Mapped["SaleItem | None"] = relationship("SaleItem", remote_side=[id], foreign_keys=[covered_item_id])
 
     __table_args__ = (
         CheckConstraint(

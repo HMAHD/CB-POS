@@ -240,20 +240,41 @@ class InvoiceService:
 
             item_w = _safe_warranties(item) or warranties_by_prod.get(item.product_id, [])
             if item_w:
-                first_w = item_w[0]
-                unit_str = translate_in(
-                    lang,
-                    f"receipt_strings.warranty_unit_{first_w.duration_unit.lower()}",
-                    default=first_w.duration_unit.capitalize(),
-                )
-                until_str = translate_in(
-                    lang,
-                    "receipt_strings.warranty_until",
-                    date=first_w.end_date.strftime("%Y-%m-%d"),
-                    default=f"until {first_w.end_date.strftime('%Y-%m-%d')}",
-                )
-                w_lbl = translate_in(lang, "invoice.warranty_label", default="Warranty")
-                desc += f"\n{w_lbl}: {first_w.duration} {unit_str} {until_str}"
+                base_ws = [w for w in item_w if getattr(w, "warranty_type", "SHOP") != "EXTENDED"]
+                ext_ws = [w for w in item_w if getattr(w, "warranty_type", "SHOP") == "EXTENDED"]
+
+                if base_ws:
+                    first_w = base_ws[0]
+                    unit_str = translate_in(
+                        lang,
+                        f"receipt_strings.warranty_unit_{first_w.duration_unit.lower()}",
+                        default=first_w.duration_unit.capitalize(),
+                    )
+                    until_str = translate_in(
+                        lang,
+                        "receipt_strings.warranty_until",
+                        date=first_w.end_date.strftime("%Y-%m-%d"),
+                        default=f"until {first_w.end_date.strftime('%Y-%m-%d')}",
+                    )
+                    w_lbl = translate_in(lang, "invoice.warranty_label", default="Warranty")
+                    desc += f"\n{w_lbl}: {first_w.duration} {unit_str} {until_str}"
+
+                if ext_ws:
+                    first_ext = ext_ws[0]
+                    unit_str = translate_in(
+                        lang,
+                        f"receipt_strings.warranty_unit_{first_ext.duration_unit.lower()}",
+                        default=first_ext.duration_unit.capitalize(),
+                    )
+                    until_str = translate_in(
+                        lang,
+                        "receipt_strings.warranty_until",
+                        date=first_ext.end_date.strftime("%Y-%m-%d"),
+                        default=f"until {first_ext.end_date.strftime('%Y-%m-%d')}",
+                    )
+                    ext_lbl = translate_in(lang, "invoice.warranty_extended_label", default="Ext. Warranty")
+                    desc += f"\n{ext_lbl}: {first_ext.duration} {unit_str} {until_str}"
+
                 serials = [w.serial_number for w in item_w if w.serial_number]
                 if serials:
                     desc += f"\nS/N: {', '.join(serials)}"

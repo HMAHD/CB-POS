@@ -69,3 +69,18 @@ def register_all_reports():
     from cbpos.core.reports.definitions.overdue_report import OverdueCustomersReport
 
     registry.register(OverdueCustomersReport)
+
+    # Warranty
+    from cbpos.core.reports.definitions.warranty_reports import (
+        ActiveWarrantiesReport,
+        ClaimCostReport,
+        ClaimsByProductSupplierReport,
+        ClaimsRegisterReport,
+        ExpiringWarrantiesReport,
+    )
+
+    registry.register(ActiveWarrantiesReport)
+    registry.register(ExpiringWarrantiesReport)
+    registry.register(ClaimsRegisterReport)
+    registry.register(ClaimsByProductSupplierReport)
+    registry.register(ClaimCostReport)

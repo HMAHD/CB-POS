@@ -570,6 +570,17 @@ class ProductEditor(QDialog):
         layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
         layout.setContentsMargins(16, 16, 16, 16)
 
+        self.is_warranty_plan_check = QCheckBox(
+            _t("product_editor.is_warranty_plan", default="This product is an extended warranty plan")
+        )
+        layout.addRow("", self.is_warranty_plan_check)
+
+        self.plan_policy_combo = QComboBox()
+        self.plan_policy_combo.addItem(
+            _t("product_editor.warranty_select_plan_policy", default="Select extended warranty policy..."), None
+        )
+        layout.addRow(_t("product_editor.plan_policy", default="Extended Policy:"), self.plan_policy_combo)
+
         self.warranty_override_combo = QComboBox()
         self.warranty_override_combo.addItem(_t("product_editor.warranty_inherit"), "INHERIT")
         self.warranty_override_combo.addItem(_t("product_editor.warranty_none"), "NONE")
@@ -598,16 +609,21 @@ class ProductEditor(QDialog):
         curr = AuthService.get_current_user()
         self._can_edit_warranty = bool(curr and PermissionService.user_has_permission(curr, Permissions.WARRANTY_EDIT))
 
+        self.is_warranty_plan_check.toggled.connect(self._on_warranty_plan_toggled)
+        self.plan_policy_combo.currentIndexChanged.connect(self._update_warranty_preview)
         self.warranty_override_combo.currentIndexChanged.connect(self._on_warranty_mode_changed)
         self.warranty_policy_combo.currentIndexChanged.connect(self._update_warranty_preview)
         self.category_combo.currentIndexChanged.connect(self._update_warranty_preview)
         self.weighted_check.toggled.connect(self._on_weighted_toggled_warranty)
 
         if not self._can_edit_warranty:
+            self.is_warranty_plan_check.setEnabled(False)
+            self.plan_policy_combo.setEnabled(False)
             self.warranty_override_combo.setEnabled(False)
             self.warranty_policy_combo.setEnabled(False)
             self._update_warranty_preview()
         else:
+            self._on_warranty_plan_toggled(self.is_warranty_plan_check.isChecked())
             self._on_warranty_mode_changed()
 
     def _load_warranty_policies(self):
@@ -615,7 +631,10 @@ class ProductEditor(QDialog):
 
         policies = WarrantyService.list_policies(include_inactive=False)
         for pol in policies:
-            self.warranty_policy_combo.addItem(pol.get_display_name(), pol.id)
+            if pol.warranty_type != "EXTENDED":
+                self.warranty_policy_combo.addItem(pol.get_display_name(), pol.id)
+            else:
+                self.plan_policy_combo.addItem(pol.get_display_name(), pol.id)
 
         # If product already assigned an inactive policy, load it so it is visible
         if self.product and getattr(self.product, "warranty_policy_id", None):
@@ -627,6 +646,41 @@ class ProductEditor(QDialog):
                         f"{inactive_pol.get_display_name()} ({_t('warranty.inactive')})",
                         inactive_pol.id,
                     )
+        if self.product and getattr(self.product, "plan_policy_id", None):
+            pl_id = self.product.plan_policy_id
+            if self.plan_policy_combo.findData(pl_id) < 0:
+                inactive_pol = WarrantyService.get_policy(pl_id)
+                if inactive_pol:
+                    self.plan_policy_combo.addItem(
+                        f"{inactive_pol.get_display_name()} ({_t('warranty.inactive')})",
+                        inactive_pol.id,
+                    )
+
+    def _on_warranty_plan_toggled(self, checked: bool):
+        if not getattr(self, "_can_edit_warranty", True):
+            self.is_warranty_plan_check.setEnabled(False)
+            self.plan_policy_combo.setEnabled(False)
+            return
+
+        self.plan_policy_combo.setEnabled(checked)
+        if checked:
+            self.service_check.setChecked(True)
+            self.service_check.setEnabled(False)
+            idx_none = self.warranty_override_combo.findData("NONE")
+            if idx_none >= 0:
+                self.warranty_override_combo.setCurrentIndex(idx_none)
+            self.warranty_override_combo.setEnabled(False)
+            self.warranty_policy_combo.setEnabled(False)
+            idx_off = self.serial_mode_combo.findData("OFF")
+            if idx_off >= 0:
+                self.serial_mode_combo.setCurrentIndex(idx_off)
+            self.serial_mode_combo.setEnabled(False)
+        else:
+            self.service_check.setEnabled(True)
+            self.warranty_override_combo.setEnabled(True)
+            self.serial_mode_combo.setEnabled(True)
+            self._on_warranty_mode_changed()
+        self._update_warranty_preview()
 
     def _on_warranty_mode_changed(self):
         if not getattr(self, "_can_edit_warranty", True):
@@ -661,6 +715,26 @@ class ProductEditor(QDialog):
 
     def _update_warranty_preview(self):
         if not hasattr(self, "lbl_warranty_preview"):
+            return
+
+        from cbpos.core.services.warranty_service import WarrantyService
+
+        if hasattr(self, "is_warranty_plan_check") and self.is_warranty_plan_check.isChecked():
+            plan_pol_id = self.plan_policy_combo.currentData()
+            if not plan_pol_id:
+                self.lbl_warranty_preview.setText(
+                    _t("product_editor.select_plan_policy_prompt", default="Select an active extended warranty policy.")
+                )
+            else:
+                pol = WarrantyService.get_policy(plan_pol_id)
+                if pol:
+                    unit_str = _t(f"warranty.unit_{pol.duration_unit.lower()}", default=pol.duration_unit.capitalize())
+                    start_str = (
+                        _t("warranty.starts_after_base", default="after base warranty")
+                        if pol.extended_starts == "AFTER_BASE"
+                        else _t("warranty.starts_from_sale", default="from sale date")
+                    )
+                    self.lbl_warranty_preview.setText(f"Extended plan adds {pol.duration} {unit_str} ({start_str}).")
             return
 
         if self.weighted_check.isChecked():
@@ -792,18 +866,27 @@ class ProductEditor(QDialog):
 
         # Load warranty
         if hasattr(self, "warranty_override_combo"):
-            idx = self.warranty_override_combo.findData(self.product.warranty_override or "INHERIT")
-            if idx >= 0:
-                self.warranty_override_combo.setCurrentIndex(idx)
-            if self.product.warranty_policy_id:
-                w_idx = self.warranty_policy_combo.findData(self.product.warranty_policy_id)
-                if w_idx >= 0:
-                    self.warranty_policy_combo.setCurrentIndex(w_idx)
-            if hasattr(self, "serial_mode_combo"):
-                s_idx = self.serial_mode_combo.findData(self.product.serial_mode or "OFF")
-                if s_idx >= 0:
-                    self.serial_mode_combo.setCurrentIndex(s_idx)
-            self._on_warranty_mode_changed()
+            is_plan = bool(getattr(self.product, "is_warranty_plan", False))
+            if hasattr(self, "is_warranty_plan_check"):
+                self.is_warranty_plan_check.setChecked(is_plan)
+                if self.product.plan_policy_id:
+                    pl_idx = self.plan_policy_combo.findData(self.product.plan_policy_id)
+                    if pl_idx >= 0:
+                        self.plan_policy_combo.setCurrentIndex(pl_idx)
+                self._on_warranty_plan_toggled(is_plan)
+            if not is_plan:
+                idx = self.warranty_override_combo.findData(self.product.warranty_override or "INHERIT")
+                if idx >= 0:
+                    self.warranty_override_combo.setCurrentIndex(idx)
+                if self.product.warranty_policy_id:
+                    w_idx = self.warranty_policy_combo.findData(self.product.warranty_policy_id)
+                    if w_idx >= 0:
+                        self.warranty_policy_combo.setCurrentIndex(w_idx)
+                if hasattr(self, "serial_mode_combo"):
+                    s_idx = self.serial_mode_combo.findData(self.product.serial_mode or "OFF")
+                    if s_idx >= 0:
+                        self.serial_mode_combo.setCurrentIndex(s_idx)
+                self._on_warranty_mode_changed()
 
     def _parse_decimal(self, text: str, fallback: str = "0") -> Decimal:
         """Safely parse a QLineEdit value to Decimal."""
@@ -899,45 +982,66 @@ class ProductEditor(QDialog):
                     data["warranty_policy_id"] = None
                     data["serial_mode"] = "OFF"
             else:
-                override = self.warranty_override_combo.currentData() or "INHERIT"
-                policy_id = self.warranty_policy_combo.currentData() if override == "POLICY" else None
-                if data.get("is_weighted") and override == "POLICY":
-                    QMessageBox.warning(
-                        self, _t("common.validation_error"), _t("product_editor.warranty_weighted_hint")
-                    )
-                    self.tabs.setCurrentWidget(self.tab_warranty)
-                    return
-                if override == "POLICY" and not policy_id:
-                    QMessageBox.warning(
-                        self, _t("common.validation_error"), _t("product_editor.warranty_select_policy")
-                    )
-                    self.tabs.setCurrentWidget(self.tab_warranty)
-                    return
-                serial_mode = self.serial_mode_combo.currentData() if hasattr(self, "serial_mode_combo") else "OFF"
-                if data.get("is_weighted") and serial_mode != "OFF":
-                    QMessageBox.warning(
-                        self,
-                        _t("common.validation_error"),
-                        _t(
-                            "errors.serial_weighted_disallowed", default="Weighted products cannot have serial tracking"
-                        ),
-                    )
-                    self.tabs.setCurrentWidget(self.tab_warranty)
-                    return
-                if override == "NONE" and serial_mode != "OFF":
-                    QMessageBox.warning(
-                        self,
-                        _t("common.validation_error"),
-                        _t(
-                            "errors.serial_requires_warranty_policy",
-                            default="Serial tracking requires an active warranty policy",
-                        ),
-                    )
-                    self.tabs.setCurrentWidget(self.tab_warranty)
-                    return
-                data["warranty_override"] = override
-                data["warranty_policy_id"] = policy_id
-                data["serial_mode"] = serial_mode
+                is_plan = hasattr(self, "is_warranty_plan_check") and self.is_warranty_plan_check.isChecked()
+                if is_plan:
+                    plan_pol_id = self.plan_policy_combo.currentData()
+                    if not plan_pol_id:
+                        QMessageBox.warning(
+                            self,
+                            _t("common.validation_error"),
+                            _t("product_editor.warranty_select_plan_policy", default="Select extended warranty policy"),
+                        )
+                        self.tabs.setCurrentWidget(self.tab_warranty)
+                        return
+                    data["is_warranty_plan"] = True
+                    data["is_service"] = True
+                    data["plan_policy_id"] = plan_pol_id
+                    data["warranty_override"] = "NONE"
+                    data["warranty_policy_id"] = None
+                    data["serial_mode"] = "OFF"
+                else:
+                    data["is_warranty_plan"] = False
+                    data["plan_policy_id"] = None
+                    override = self.warranty_override_combo.currentData() or "INHERIT"
+                    policy_id = self.warranty_policy_combo.currentData() if override == "POLICY" else None
+                    if data.get("is_weighted") and override == "POLICY":
+                        QMessageBox.warning(
+                            self, _t("common.validation_error"), _t("product_editor.warranty_weighted_hint")
+                        )
+                        self.tabs.setCurrentWidget(self.tab_warranty)
+                        return
+                    if override == "POLICY" and not policy_id:
+                        QMessageBox.warning(
+                            self, _t("common.validation_error"), _t("product_editor.warranty_select_policy")
+                        )
+                        self.tabs.setCurrentWidget(self.tab_warranty)
+                        return
+                    serial_mode = self.serial_mode_combo.currentData() if hasattr(self, "serial_mode_combo") else "OFF"
+                    if data.get("is_weighted") and serial_mode != "OFF":
+                        QMessageBox.warning(
+                            self,
+                            _t("common.validation_error"),
+                            _t(
+                                "errors.serial_weighted_disallowed",
+                                default="Weighted products cannot have serial tracking",
+                            ),
+                        )
+                        self.tabs.setCurrentWidget(self.tab_warranty)
+                        return
+                    if override == "NONE" and serial_mode != "OFF":
+                        QMessageBox.warning(
+                            self,
+                            _t("common.validation_error"),
+                            _t(
+                                "errors.serial_requires_warranty_policy",
+                                default="Serial tracking requires an active warranty policy",
+                            ),
+                        )
+                        self.tabs.setCurrentWidget(self.tab_warranty)
+                        return
+                    data["warranty_override"] = override
+                    data["warranty_policy_id"] = policy_id
+                    data["serial_mode"] = serial_mode
 
         curr_user = AuthService.get_current_user()
         curr_id = curr_user.id if curr_user else None

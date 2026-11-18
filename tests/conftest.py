@@ -143,6 +143,9 @@ def test_engine():
     Database._instance = None
     db = Database()
 
+    # Ensure all models are loaded before creating tables
+    import cbpos.core.models  # noqa: F401
+
     # Create tables
     Base.metadata.create_all(bind=db.engine)
 
@@ -178,13 +181,14 @@ def _autocomplete_preload_runs_inline():
     test_dashboard_periodic_date_bounds.py.
     """
     from cbpos.core.services.scheduler_service import AutoReportWorker
-    from cbpos.ui.views.dashboard_view import _PeriodicWorker, _YearlyWorker
+    from cbpos.ui.views.dashboard_view import _PeriodicWorker, _WarrantyTileWorker, _YearlyWorker
     from cbpos.ui.workers import AutocompleteLoadWorker, LabelProductLoaderWorker, SyncTestWorker
 
     inline_workers = (
         AutocompleteLoadWorker,
         _YearlyWorker,
         _PeriodicWorker,
+        _WarrantyTileWorker,
         SyncTestWorker,
         AutoReportWorker,
         LabelProductLoaderWorker,

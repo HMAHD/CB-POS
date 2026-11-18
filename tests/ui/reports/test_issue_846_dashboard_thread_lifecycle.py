@@ -12,7 +12,8 @@ import pytest
 from PyQt6.QtGui import QShowEvent
 
 from cbpos.core.services.dashboard_service import DashboardService
-from cbpos.ui.views.dashboard_view import DashboardView, _PeriodicWorker, _YearlyWorker
+from cbpos.core.services.warranty_claim_service import WarrantyClaimService
+from cbpos.ui.views.dashboard_view import DashboardView, _PeriodicWorker, _WarrantyTileWorker, _YearlyWorker
 from cbpos.ui.workers import running_background_jobs
 
 pytestmark = pytest.mark.usefixtures("qapp")
@@ -20,15 +21,18 @@ pytestmark = pytest.mark.usefixtures("qapp")
 
 @pytest.fixture
 def real_dashboard_threads():
-    """Ensure _YearlyWorker and _PeriodicWorker run on genuine QThreads,
+    """Ensure _YearlyWorker, _PeriodicWorker, and _WarrantyTileWorker run on genuine QThreads,
     opting out of conftest's inline start-to-run override.
     """
     orig_yearly_start = _YearlyWorker.__dict__.get("start")
     orig_periodic_start = _PeriodicWorker.__dict__.get("start")
+    orig_warranty_start = _WarrantyTileWorker.__dict__.get("start")
     if orig_yearly_start is not None:
         del _YearlyWorker.start
     if orig_periodic_start is not None:
         del _PeriodicWorker.start
+    if orig_warranty_start is not None:
+        del _WarrantyTileWorker.start
     try:
         yield
     finally:
@@ -41,6 +45,11 @@ def real_dashboard_threads():
             _PeriodicWorker.start = orig_periodic_start
         elif "start" in _PeriodicWorker.__dict__:
             del _PeriodicWorker.start
+
+        if orig_warranty_start is not None:
+            _WarrantyTileWorker.start = orig_warranty_start
+        elif "start" in _WarrantyTileWorker.__dict__:
+            del _WarrantyTileWorker.start
 
 
 def test_issue_846_refresh_twice_during_slow_load_no_crash(db_session, real_dashboard_threads, qtbot):
@@ -80,6 +89,11 @@ def test_issue_846_refresh_twice_during_slow_load_no_crash(db_session, real_dash
         patch.object(DashboardService, "get_top_customers", return_value=[]),
         patch.object(
             DashboardService, "get_today_tax_summary", return_value={"vat": 0, "sscl": 0, "net_revenue": 1000.0}
+        ),
+        patch.object(
+            WarrantyClaimService,
+            "get_claims_summary",
+            return_value={"open_claims": 0, "ready_for_pickup": 0, "overdue_supplier": 0},
         ),
     ):
         try:
@@ -131,6 +145,11 @@ def test_issue_846_error_path_clears_in_flight_state_and_permits_retry(db_sessio
         patch.object(DashboardService, "get_top_categories", return_value=[]),
         patch.object(DashboardService, "get_top_customers", return_value=[]),
         patch.object(DashboardService, "get_today_tax_summary", return_value={"vat": 0, "sscl": 0, "net_revenue": 0}),
+        patch.object(
+            WarrantyClaimService,
+            "get_claims_summary",
+            return_value={"open_claims": 0, "ready_for_pickup": 0, "overdue_supplier": 0},
+        ),
     ):
         view.refresh_all()
         qtbot.waitUntil(lambda: not getattr(view, "_yearly_loading", False), timeout=5000)
@@ -159,6 +178,11 @@ def test_issue_846_error_path_clears_in_flight_state_and_permits_retry(db_sessio
         patch.object(DashboardService, "get_top_customers", return_value=[]),
         patch.object(
             DashboardService, "get_today_tax_summary", return_value={"vat": 0, "sscl": 0, "net_revenue": 5000.0}
+        ),
+        patch.object(
+            WarrantyClaimService,
+            "get_claims_summary",
+            return_value={"open_claims": 0, "ready_for_pickup": 0, "overdue_supplier": 0},
         ),
     ):
         view.refresh_all()

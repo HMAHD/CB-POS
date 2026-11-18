@@ -52,3 +52,7 @@ class ReportRegistry:
     def get_report_by_id(self, report_id: str) -> BaseReport:
         """Returns a report instance by its ID."""
         return self._all_reports.get(report_id)
+
+    def get(self, report_id: str) -> BaseReport:
+        """Alias for get_report_by_id."""
+        return self.get_report_by_id(report_id)

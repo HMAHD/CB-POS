@@ -119,6 +119,27 @@ class _PeriodicWorker(QThread):
             self.error_occurred.emit(str(e))
 
 
+class _WarrantyTileWorker(QThread):
+    """Fetches warranty claims summary counts off the UI thread (#830)."""
+
+    loaded = pyqtSignal(dict)
+    error_occurred = pyqtSignal(str)
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        self.finished.connect(self.deleteLater)
+
+    def run(self) -> None:
+        from cbpos.core.services.warranty_claim_service import WarrantyClaimService
+
+        try:
+            summary = WarrantyClaimService.get_claims_summary()
+            self.loaded.emit(summary)
+        except Exception as e:
+            logger.exception("Failed to load warranty claims summary for dashboard")
+            self.error_occurred.emit(str(e))
+
+
 class DashboardView(QWidget):
     """Business insights screen: yearly and period-scoped sales charts and stats."""
 
@@ -128,10 +149,12 @@ class DashboardView(QWidget):
         self._current_year = date.today().year
         self._yearly_loading: bool = False
         self._periodic_loading: bool = False
+        self._warranty_loading: bool = False
         self._yearly_generation: int = 0
         self._periodic_generation: int = 0
         self._yearly_worker: _YearlyWorker | None = None
         self._periodic_worker: _PeriodicWorker | None = None
+        self._warranty_worker: _WarrantyTileWorker | None = None
         self.init_ui()
 
         from cbpos.ui.widgets.loading_overlay import LoadingOverlay
@@ -183,11 +206,12 @@ class DashboardView(QWidget):
         self._build_tax_today_panel(row3)
         layout.addLayout(row3, 3)
 
-        # === ROW 4: Categories Donut + Top Customers ===
+        # === ROW 4: Categories Donut + Top Customers + Warranty Claims ===
         row4 = QHBoxLayout()
         row4.setSpacing(16)
         self._build_categories_panel(row4)
         self._build_customers_panel(row4)
+        self._build_warranty_claims_panel(row4)
         layout.addLayout(row4, 3)
 
         scroll.setWidget(container)
@@ -542,6 +566,93 @@ class DashboardView(QWidget):
         panel.setMinimumWidth(220)  # keep charts legible when the row wraps (#203)
         parent_layout.addWidget(panel, 1)
 
+    # --- Row 4: Warranty Claims ---
+    def _build_warranty_claims_panel(self, parent_layout: QHBoxLayout) -> None:
+        panel = QFrame()
+        panel.setObjectName("WarrantyClaimsPanel")
+        vbox = QVBoxLayout(panel)
+        vbox.setContentsMargins(16, 12, 16, 12)
+        vbox.setSpacing(8)
+
+        header = QHBoxLayout()
+        self.lbl_warranty_claims_title = QLabel()
+        self.lbl_warranty_claims_title.setObjectName("PanelTitle")
+        header.addWidget(self.lbl_warranty_claims_title)
+        header.addStretch()
+        vbox.addLayout(header)
+
+        def _make_clickable_stat_card(title_lbl: QLabel, value_lbl: QLabel, filter_status: str) -> QFrame:
+            card = QFrame()
+            card.setObjectName("ClickableStatCard")
+            card.setCursor(Qt.CursorShape.PointingHandCursor)
+            card_layout = QVBoxLayout(card)
+            card_layout.setContentsMargins(12, 8, 12, 8)
+            card_layout.setSpacing(2)
+            card_layout.addWidget(title_lbl)
+            card_layout.addWidget(value_lbl)
+
+            card.mousePressEvent = lambda e: self._on_open_claims_board(filter_status)
+            return card
+
+        # Open Claims
+        self.lbl_open_claims_title = QLabel()
+        self.lbl_open_claims_title.setObjectName("StatLabel")
+        self.lbl_open_claims_val = QLabel("0")
+        self.lbl_open_claims_val.setObjectName("StatBigValue")
+        vbox.addWidget(_make_clickable_stat_card(self.lbl_open_claims_title, self.lbl_open_claims_val, "OPEN"))
+
+        # Ready for Pickup
+        self.lbl_ready_pickup_title = QLabel()
+        self.lbl_ready_pickup_title.setObjectName("StatLabel")
+        self.lbl_ready_pickup_val = QLabel("0")
+        self.lbl_ready_pickup_val.setObjectName("StatValue")
+        vbox.addWidget(_make_clickable_stat_card(self.lbl_ready_pickup_title, self.lbl_ready_pickup_val, "RESOLVED"))
+
+        # Overdue at Supplier (> 14 days)
+        self.lbl_overdue_supplier_title = QLabel()
+        self.lbl_overdue_supplier_title.setObjectName("StatLabel")
+        self.lbl_overdue_supplier_val = QLabel("0")
+        self.lbl_overdue_supplier_val.setObjectName("StatValue")
+        vbox.addWidget(
+            _make_clickable_stat_card(
+                self.lbl_overdue_supplier_title, self.lbl_overdue_supplier_val, "OVERDUE_SUPPLIER"
+            )
+        )
+
+        vbox.addStretch()
+        self.warranty_claims_panel = panel
+        panel.setMinimumWidth(220)
+        parent_layout.addWidget(panel, 1)
+
+    def _on_open_claims_board(self, filter_status: str) -> None:
+        """Open Warranty Claims board with specified filter (#830)."""
+        from cbpos.ui.views.warranty_claims_board_view import WarrantyClaimsBoardDialog
+
+        dlg = WarrantyClaimsBoardDialog(parent=self, initial_status=filter_status)
+        dlg.exec()
+
+    def _refresh_warranty_tile(self) -> None:
+        """Start worker to load warranty tile counts off UI thread (#830)."""
+        if self._warranty_loading:
+            return
+        self._warranty_loading = True
+        worker = _WarrantyTileWorker(self)
+        self._warranty_worker = worker
+        worker.loaded.connect(self._on_warranty_tile_ready)
+        worker.error_occurred.connect(self._on_warranty_tile_error)
+        start_background_job(worker)
+
+    def _on_warranty_tile_ready(self, summary: dict[str, int]) -> None:
+        """Update warranty tile counts safely on UI thread."""
+        self._warranty_loading = False
+        self.lbl_open_claims_val.setText(str(summary.get("open_claims", 0)))
+        self.lbl_ready_pickup_val.setText(str(summary.get("ready_for_pickup", 0)))
+        self.lbl_overdue_supplier_val.setText(str(summary.get("overdue_supplier", 0)))
+
+    def _on_warranty_tile_error(self, message: str) -> None:
+        """Handle worker failure by clearing in-flight flag."""
+        self._warranty_loading = False
+
     # ------------------------------------------------------------------
     # Translation
     # ------------------------------------------------------------------
@@ -568,6 +679,11 @@ class DashboardView(QWidget):
         self.lbl_top_groups_sub.setText(_t("dashboard.categories_in_period"))
         self.lbl_top_customers.setText(_t("dashboard.top_customers"))
         self.lbl_top_customers_sub.setText(_t("dashboard.by_spend"))
+        if hasattr(self, "lbl_warranty_claims_title"):
+            self.lbl_warranty_claims_title.setText(_t("dashboard.warranty_claims_title", default="Warranty Claims"))
+            self.lbl_open_claims_title.setText(_t("dashboard.open_claims", default="Open Claims"))
+            self.lbl_ready_pickup_title.setText(_t("dashboard.ready_for_pickup", default="Ready for Pickup"))
+            self.lbl_overdue_supplier_title.setText(_t("dashboard.overdue_supplier", default="At Supplier (> 14 days)"))
 
     # ------------------------------------------------------------------
     # Data loading
@@ -579,9 +695,10 @@ class DashboardView(QWidget):
         self.refresh_all()
 
     def refresh_all(self) -> None:
-        """Refresh both yearly and periodic data."""
+        """Refresh yearly, periodic, and warranty data."""
         self.tax_today_panel.setVisible(TaxService.is_vat_active())
         self._refresh_yearly()
+        self._refresh_warranty_tile()
         self.refresh_periodic()
 
     def _refresh_yearly(self) -> None:

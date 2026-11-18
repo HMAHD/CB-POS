@@ -426,7 +426,10 @@ class WarrantyLookupDialog(QDialog):
 
         unit_str = _t(f"warranty.unit_{dto.duration_unit.lower()}")
         remedy_str = _t(f"warranty.remedy_{dto.remedy.lower()}")
-        self.lbl_val_duration_remedy.setText(f"{dto.duration} {unit_str} ({remedy_str})")
+        type_str = _t(f"warranty.type_{dto.warranty_type.lower()}", default=dto.warranty_type.capitalize())
+        if dto.warranty_type == "EXTENDED" and dto.covers_warranty_id:
+            type_str += f" ({_t('warranty.covers_base', default='Covers')} #{dto.covers_warranty_id})"
+        self.lbl_val_duration_remedy.setText(f"[{type_str}] {dto.duration} {unit_str} ({remedy_str})")
 
         self.txt_terms.setPlainText(dto.terms_snapshot or _t("common.none"))
         self.txt_exclusions.setPlainText(dto.exclusions_snapshot or _t("common.none"))

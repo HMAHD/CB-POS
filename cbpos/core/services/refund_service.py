@@ -84,6 +84,8 @@ class RefundableLine:
     subtotal: Decimal
     is_service: bool = False
     is_weighed: bool = False
+    covered_item_id: int | None = None
+    is_warranty_plan: bool = False
 
 
 @dataclass
@@ -183,6 +185,7 @@ class RefundService:
             )
             is_service = bool(product.is_service) if product else False
             is_weighed = bool(getattr(product, "is_weighted", False)) if product else False
+            is_plan = bool(getattr(product, "is_warranty_plan", False)) if product else False
 
             line_net = item.subtotal * alloc_factor
             unit_refund = (line_net / item.qty) if item.qty > Decimal("0") else Decimal("0.00")
@@ -203,6 +206,8 @@ class RefundService:
                     subtotal=item.subtotal,
                     is_service=is_service,
                     is_weighed=is_weighed,
+                    covered_item_id=item.covered_item_id,
+                    is_warranty_plan=is_plan,
                 )
             )
         return lines

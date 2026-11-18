@@ -211,7 +211,7 @@ class WarrantyService:
         needed_category_ids = set()
 
         for p in products:
-            if p.is_weighted:
+            if p.is_weighted or (getattr(p, "is_warranty_plan", False) is True):
                 continue
             override = p.warranty_override or "INHERIT"
             if override == "NONE":
@@ -242,7 +242,7 @@ class WarrantyService:
         result: dict[int, WarrantyPolicy | None] = {}
         for pid in unique_ids:
             p = prod_map.get(pid)
-            if not p or p.is_weighted:
+            if not p or p.is_weighted or (getattr(p, "is_warranty_plan", False) is True):
                 result[pid] = None
                 continue
 
@@ -288,6 +288,7 @@ class WarrantyService:
         ],
         receipt_lang: str | None = None,
         item_serials: dict[int, list[str | None]] | None = None,
+        plan_sale_items: list[SaleItem] | None = None,
     ) -> list[Warranty]:
         """Create per-unit Warranty rows for sold lines in the current session.
 
@@ -301,7 +302,7 @@ class WarrantyService:
         - In-memory collection attachment on sale_item.warranties and sale.warranties.
         - Emits an atomic WARRANTY audit log entry.
         """
-        if not sale_items_with_policies:
+        if not sale_items_with_policies and not plan_sale_items:
             return []
 
         # Resolve receipt language
@@ -399,6 +400,107 @@ class WarrantyService:
                 if sale_item.warranties is None:
                     sale_item.warranties = []
                 sale_item.warranties.extend(line_warranties)
+
+        # Flush session so created base warranties receive their IDs
+        if created_warranties:
+            session.flush()
+
+        # Map base warranties by (sale_item_id, unit_index) for chaining
+        base_w_map = {(w.sale_item_id, w.unit_index): w for w in created_warranties if w.warranty_type != "EXTENDED"}
+
+        # Process extended warranty plans
+        if plan_sale_items:
+            for plan_item in plan_sale_items:
+                covered_item = plan_item.covered_item
+                if not covered_item and plan_item.covered_item_id:
+                    covered_item = session.get(SaleItem, plan_item.covered_item_id)
+                if not covered_item:
+                    raise ValueError(f"Plan sale item {plan_item.id} has no covered sale item")
+
+                qty = plan_item.qty
+                if qty <= Decimal("0") or qty % Decimal("1") != Decimal("0"):
+                    from cbpos.i18n import _t
+
+                    raise ValueError(
+                        _t("errors.warranty_whole_units", default="Warranty items must be sold in whole units")
+                    )
+
+                unit_count = int(qty)
+                plan_prod = plan_item.product
+                plan_policy = plan_prod.plan_policy if plan_prod else None
+                if not plan_policy and plan_prod and plan_prod.plan_policy_id:
+                    plan_policy = session.get(WarrantyPolicy, plan_prod.plan_policy_id)
+                if not plan_policy or not plan_policy.is_active:
+                    raise ValueError("Active extended warranty policy required for plan product")
+
+                terms_snapshot = plan_policy.get_terms(lang)
+                exclusions_snapshot = plan_policy.get_exclusions(lang)
+
+                cov_serials = getattr(covered_item, "_serials", None) or getattr(covered_item, "serials", None) or []
+
+                plan_line_warranties = []
+                for unit_idx in range(1, unit_count + 1):
+                    global_seq += 1
+                    code = f"{sale.document_number}-{global_seq:02d}"
+
+                    base_w = base_w_map.get((covered_item.id, unit_idx))
+                    if base_w:
+                        covers_warranty_id = base_w.id
+                        sn = base_w.serial_number
+                        if getattr(plan_policy, "extended_starts", "AFTER_BASE") == "AFTER_BASE":
+                            plan_start = base_w.end_date + timedelta(days=1)
+                        else:
+                            plan_start = start_date
+                    else:
+                        covers_warranty_id = None
+                        sn = None
+                        if cov_serials and unit_idx <= len(cov_serials):
+                            raw_sn = cov_serials[unit_idx - 1]
+                            if raw_sn and str(raw_sn).strip():
+                                sn = str(raw_sn).strip().upper()
+                        plan_start = start_date
+
+                    plan_end = cls.compute_end_date(plan_start, plan_policy.duration, plan_policy.duration_unit)
+
+                    ext_warranty = Warranty(
+                        code=code,
+                        unit_index=unit_idx,
+                        sale_id=sale.id,
+                        sale_item_id=covered_item.id,
+                        plan_sale_item_id=plan_item.id,
+                        covers_warranty_id=covers_warranty_id,
+                        product_id=covered_item.product_id,
+                        customer_id=sale.customer_id,
+                        policy_id=plan_policy.id,
+                        customer_name_snapshot=customer_name,
+                        customer_phone_snapshot=customer_phone,
+                        serial_number=sn,
+                        warranty_type="EXTENDED",
+                        duration=plan_policy.duration,
+                        duration_unit=plan_policy.duration_unit,
+                        remedy=plan_policy.remedy,
+                        provider_name=plan_policy.provider_name,
+                        terms_text=terms_snapshot,
+                        exclusions_text=exclusions_snapshot,
+                        lang=lang,
+                        start_date=plan_start,
+                        end_date=plan_end,
+                        status="ACTIVE",
+                        terminal_id=sale.terminal_id,
+                        synced=False,
+                    )
+                    session.add(ext_warranty)
+                    plan_line_warranties.append(ext_warranty)
+                    created_warranties.append(ext_warranty)
+
+                if hasattr(plan_item, "warranties"):
+                    if plan_item.warranties is None:
+                        plan_item.warranties = []
+                    plan_item.warranties.extend(plan_line_warranties)
+                if hasattr(covered_item, "warranties"):
+                    if covered_item.warranties is None:
+                        covered_item.warranties = []
+                    covered_item.warranties.extend(plan_line_warranties)
 
         # In-memory attachment on sale as well
         if hasattr(sale, "warranties"):
@@ -538,16 +640,61 @@ class WarrantyService:
         cancelled_warranties = []
         now = datetime.now()
 
+        def _check_and_cancel(target_w: Warranty) -> None:
+            active_claims = [
+                c
+                for c in (target_w.claims or [])
+                if c.claim_status not in ("COLLECTED", "REJECTED", "VOID", "CANCELLED")
+            ]
+            if active_claims:
+                matching_claim = next((c for c in active_claims if c.id == claim_id), None)
+                if matching_claim is not None and matching_claim.resolution == "REFUNDED":
+                    from_status = matching_claim.claim_status
+                    matching_claim.claim_status = "COLLECTED"
+                    matching_claim.collected_at = now
+                    matching_claim.resolution_notes = (
+                        (matching_claim.resolution_notes or "")
+                        + f" Refund issued in credit note {refund_sale.document_number}"
+                    ).strip()
+                    matching_claim.synced = False
+                    session.add(
+                        WarrantyClaimEvent(
+                            claim_id=matching_claim.id,
+                            from_status=from_status,
+                            to_status="COLLECTED",
+                            user_id=actor_id,
+                            event_time=now,
+                            notes=f"Refund issued in credit note {refund_sale.document_number}",
+                            synced=False,
+                        )
+                    )
+                else:
+                    raise ValueError("cannot_refund_unit_with_open_claim")
+
+            target_w.status = "CANCELLED"
+            target_w.cancelled_by_sale_id = refund_sale.id
+            target_w.last_modified = now
+            if target_w not in cancelled_warranties:
+                cancelled_warranties.append(target_w)
+
         for sale_item_id, qty in refund_lines:
             if qty <= Decimal("0"):
                 continue
 
-            # Check if this line item has any warranties at all
-            total_warranties = session.scalar(
-                select(func.count(Warranty.id)).where(Warranty.sale_item_id == sale_item_id)
-            )
-            if not total_warranties:
-                # Non-warranty line item, cleanly skip
+            # 1. Check if this is a plan sale item line
+            is_plan_line = (
+                session.scalar(select(func.count(Warranty.id)).where(Warranty.plan_sale_item_id == sale_item_id)) or 0
+            ) > 0
+
+            # 2. Check if this line item has base/covered warranties
+            total_warranties = 0
+            if not is_plan_line:
+                total_warranties = (
+                    session.scalar(select(func.count(Warranty.id)).where(Warranty.sale_item_id == sale_item_id)) or 0
+                )
+
+            if not is_plan_line and not total_warranties:
+                # Non-warranty line item (e.g. weighed produce), cleanly skip
                 continue
 
             if qty % Decimal("1") != Decimal("0"):
@@ -559,18 +706,57 @@ class WarrantyService:
 
             units_to_cancel = int(qty)
 
-            # Query active warranties with row locking, highest unit_index first
+            if is_plan_line:
+                already_cancelled = [w for w in cancelled_warranties if w.plan_sale_item_id == sale_item_id]
+                needed = units_to_cancel - len(already_cancelled)
+                if needed <= 0:
+                    continue
+
+                stmt = (
+                    select(Warranty)
+                    .where(
+                        Warranty.plan_sale_item_id == sale_item_id,
+                        Warranty.status == "ACTIVE",
+                    )
+                    .options(joinedload(Warranty.claims))
+                    .order_by(Warranty.unit_index.desc())
+                    .with_for_update()
+                )
+                active_units = list(session.scalars(stmt).unique().all())
+                if len(active_units) < needed:
+                    raise ValueError(
+                        f"insufficient_active_warranties: {len(active_units)} active warranties available for plan line {sale_item_id}, {needed} requested"
+                    )
+                for w in active_units[:needed]:
+                    _check_and_cancel(w)
+                continue
+
+            # Query active base warranties first
             stmt = (
                 select(Warranty)
                 .where(
                     Warranty.sale_item_id == sale_item_id,
                     Warranty.status == "ACTIVE",
+                    Warranty.plan_sale_item_id.is_(None),
                 )
                 .options(joinedload(Warranty.claims))
                 .order_by(Warranty.unit_index.desc())
                 .with_for_update()
             )
             active_units = list(session.scalars(stmt).unique().all())
+            if not active_units:
+                # Standalone extended warranties where covered item had no base policy
+                stmt_standalone = (
+                    select(Warranty)
+                    .where(
+                        Warranty.sale_item_id == sale_item_id,
+                        Warranty.status == "ACTIVE",
+                    )
+                    .options(joinedload(Warranty.claims))
+                    .order_by(Warranty.unit_index.desc())
+                    .with_for_update()
+                )
+                active_units = list(session.scalars(stmt_standalone).unique().all())
 
             if len(active_units) < units_to_cancel:
                 raise ValueError(
@@ -603,40 +789,24 @@ class WarrantyService:
                 to_cancel = active_units[:units_to_cancel]
 
             for w in to_cancel:
-                # Check for active claims on this warranty unit (#826)
-                active_claims = [
-                    c for c in (w.claims or []) if c.claim_status not in ("COLLECTED", "REJECTED", "VOID", "CANCELLED")
-                ]
+                _check_and_cancel(w)
 
-                if active_claims:
-                    matching_claim = next((c for c in active_claims if c.id == claim_id), None)
-                    if matching_claim is not None and matching_claim.resolution == "REFUNDED":
-                        from_status = matching_claim.claim_status
-                        matching_claim.claim_status = "COLLECTED"
-                        matching_claim.collected_at = now
-                        matching_claim.resolution_notes = (
-                            (matching_claim.resolution_notes or "")
-                            + f" Refund issued in credit note {refund_sale.document_number}"
-                        ).strip()
-                        matching_claim.synced = False
-                        session.add(
-                            WarrantyClaimEvent(
-                                claim_id=matching_claim.id,
-                                from_status=from_status,
-                                to_status="COLLECTED",
-                                user_id=actor_id,
-                                event_time=now,
-                                notes=f"Refund issued in credit note {refund_sale.document_number}",
-                                synced=False,
-                            )
+                # Refunding base unit also cancels any linked extended warranty
+                linked_exts = list(
+                    session.scalars(
+                        select(Warranty)
+                        .where(
+                            Warranty.covers_warranty_id == w.id,
+                            Warranty.status == "ACTIVE",
                         )
-                    else:
-                        raise ValueError("cannot_refund_unit_with_open_claim")
-
-                w.status = "CANCELLED"
-                w.cancelled_by_sale_id = refund_sale.id
-                w.last_modified = now
-                cancelled_warranties.append(w)
+                        .options(joinedload(Warranty.claims))
+                        .with_for_update()
+                    )
+                    .unique()
+                    .all()
+                )
+                for ext_w in linked_exts:
+                    _check_and_cancel(ext_w)
 
         if cancelled_warranties:
             session.add(
@@ -1229,6 +1399,8 @@ class WarrantyService:
             days_remaining=days_left,
             has_active_claim=has_claim,
             active_claim_id=claim_id,
+            covers_warranty_id=w.covers_warranty_id,
+            plan_sale_item_id=w.plan_sale_item_id,
         )
 
     @classmethod

@@ -50,7 +50,7 @@ class TestFavoriteReports:
 
         labels = _category_labels(viewer)
         assert "Favorites" not in labels
-        assert labels == ["Sales", "Inventory", "Financial", "Audit"]
+        assert labels == ["Sales", "Inventory", "Financial", "Audit", "Warranty"]
 
     def test_starring_report_adds_favorites_group_at_top(self):
         register_all_reports()
@@ -75,7 +75,7 @@ class TestFavoriteReports:
         # Favorites category is now the first category in the sidebar
         labels = _category_labels(viewer)
         assert labels[0] == "Favorites"
-        assert labels[1:] == ["Sales", "Inventory", "Financial", "Audit"]
+        assert labels[1:] == ["Sales", "Inventory", "Financial", "Audit", "Warranty"]
 
         # Favorites count badge is 1
         count_labels = viewer.findChildren(QLabel, "ReportCategoryCount")
@@ -96,7 +96,7 @@ class TestFavoriteReports:
 
         labels = _category_labels(viewer)
         assert labels[0] == "Favorites"
-        assert labels[1:] == ["Sales", "Inventory", "Financial", "Audit"]
+        assert labels[1:] == ["Sales", "Inventory", "Financial", "Audit", "Warranty"]
 
         count_labels = viewer.findChildren(QLabel, "ReportCategoryCount")
         assert count_labels[0].text() == "2"
@@ -124,7 +124,7 @@ class TestFavoriteReports:
         assert "daily_sales_summary" not in ConfigService.get("favorite_reports")
         labels = _category_labels(viewer)
         assert "Favorites" not in labels
-        assert labels == ["Sales", "Inventory", "Financial", "Audit"]
+        assert labels == ["Sales", "Inventory", "Financial", "Audit", "Warranty"]
 
     def test_clicking_favorite_button_keeps_report_open(self):
         register_all_reports()

@@ -49,6 +49,8 @@ from cbpos.core.models import (  # noqa: E402
     Unit,
     User,
     VoidReason,
+    Warranty,
+    WarrantyClaim,
     WarrantyPolicy,
 )
 from cbpos.core.services.database_setup_service import DatabaseSetupService  # noqa: E402
@@ -58,17 +60,36 @@ def hash_pin(pin: str) -> str:
     return bcrypt.hashpw(pin.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
-def seed_data():
-    db = Database()
-    # Drop all tables to ensure clean slate for new schema
-    Base.metadata.drop_all(db.engine)
-    Base.metadata.create_all(db.engine)
-    # Stamp alembic_version at head — tables above were created directly
-    # from the current models, bypassing migrations, so future
-    # `alembic upgrade head` calls must not try to re-create them.
-    DatabaseSetupService.stamp_alembic_head()
+def seed_data(engine=None):
+    if engine is not None:
+        Base.metadata.drop_all(engine)
+        Base.metadata.create_all(engine)
+        from sqlalchemy.orm import sessionmaker
 
-    with db.get_session() as session:
+        _SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False, expire_on_commit=False)
+        from contextlib import contextmanager
+
+        @contextmanager
+        def _get_session():
+            sess = _SessionLocal()
+            try:
+                yield sess
+            finally:
+                sess.close()
+
+        session_ctx = _get_session
+    else:
+        db = Database()
+        # Drop all tables to ensure clean slate for new schema
+        Base.metadata.drop_all(db.engine)
+        Base.metadata.create_all(db.engine)
+        # Stamp alembic_version at head — tables above were created directly
+        # from the current models, bypassing migrations, so future
+        # `alembic upgrade head` calls must not try to re-create them.
+        DatabaseSetupService.stamp_alembic_head()
+        session_ctx = db.get_session
+
+    with session_ctx() as session:
         # =============================================================
         # 1. PERMISSIONS
         # =============================================================
@@ -260,7 +281,27 @@ def seed_data():
             is_active=True,
             is_template=False,
         )
-        session.add_all([pol_7d, pol_6m, pol_1y_shop, pol_1y_mfg])
+        pol_ext_1y = WarrantyPolicy(
+            name="1 year extended warranty",
+            name_si="වසර 1ක දීර්ඝ කළ වගකීම",
+            name_ta="1 வருட நீட்டிக்கப்பட்ட உத்தரவாதம்",
+            warranty_type="EXTENDED",
+            duration=1,
+            duration_unit="YEARS",
+            remedy="REPAIR_OR_REPLACE",
+            extended_starts="AFTER_BASE",
+            provider_name=None,
+            terms_text="Extends warranty coverage by 1 additional year following expiration of the base warranty. Covers parts and labor for manufacturing defects.",
+            terms_text_si="මූලික වගකීම් කාලය අවසන් වූ පසු තවත් වසර 1ක් සඳහා ආවරණය දීර්ඝ කරයි. නිෂ්පාදන දෝෂ සඳහා කොටස් සහ ශ්‍රමය ආවරණය කෙරේ.",
+            terms_text_ta="அடிப்படை உத்தரவாதம் காலாவதியான பிறகு மேலும் 1 வருடத்திற்கு உத்தரவாத கவரேஜை நீட்டிக்கிறது. உற்பத்தி குறைபாடுகளுக்கான பாகங்கள் மற்றும் உழைப்பை உள்ளடக்கியது.",
+            exclusions_text="Physical damage, liquid ingress, unauthorized modification, power surges.",
+            exclusions_text_si="භෞතික හානි, දියර කාන්දු වීම, අනවසර වෙනස්කම් කිරීම්, විදුලි සැර වැඩිවීම්.",
+            exclusions_text_ta="உடல் சேதம், திரவ ஊடுருவல், அங்கீகரிக்கப்படாத மாற்றம், மின் ஏற்ற இறக்கங்கள்.",
+            supplier_cover_months=0,
+            is_active=True,
+            is_template=False,
+        )
+        session.add_all([pol_7d, pol_6m, pol_1y_shop, pol_1y_mfg, pol_ext_1y])
         session.flush()
 
         # =============================================================
@@ -404,6 +445,16 @@ def seed_data():
                 address="No. 52, Beira Lake Rd, Colombo 01",
                 tax_number="TAX-PRIMA-001",
                 current_payable=Decimal("22000.00"),
+                payment_terms=30,
+            ),
+            Supplier(
+                company_name="Softlogic Retail (Pvt) Ltd",
+                contact_person="Chathura Silva",
+                phone="0115556677",
+                email="electronics@softlogic.lk",
+                address="No. 14, De Fonseka Place, Colombo 04",
+                tax_number="TAX-SOFT-001",
+                current_payable=Decimal("120000.00"),
                 payment_terms=30,
             ),
         ]
@@ -1432,6 +1483,37 @@ def seed_data():
                 "cat": cat_electronics,
                 "unit": "Piece",
             },
+            {
+                "barcode": "8806091234567",
+                "name_en": "Samsung Galaxy A15 128GB",
+                "name_si": "සැම්සුන්ග් ගැලැක්සි A15 128GB",
+                "name_ta": "சாம்சங் கேலக்ஸி A15 128GB",
+                "price": "58000.00",
+                "cost": "48000.00",
+                "stock": 15,
+                "reorder": 3,
+                "preferred": 20,
+                "cat": cat_electronics,
+                "unit": "Piece",
+                "warranty_policy_id": pol_1y_shop.id,
+                "warranty_override": "OVERRIDE",
+                "supplier": "Softlogic Retail (Pvt) Ltd",
+            },
+            {
+                "barcode": "WPLAN-1Y",
+                "name_en": "1 Year Extended Warranty Plan",
+                "name_si": "වසර 1ක දීර්ඝ කළ වගකීම් සැලැස්ම",
+                "name_ta": "1 வருட நீட்டிக்கப்பட்ட உத்தரவாத திட்டம்",
+                "price": "4500.00",
+                "cost": "0.00",
+                "stock": 0,
+                "cat": cat_electronics,
+                "service": True,
+                "is_warranty_plan": True,
+                "plan_policy_id": pol_ext_1y.id,
+                "plan_category_id": cat_electronics.id,
+                "warranty_override": "NONE",
+            },
             # ---- Service Items ----
             {
                 "barcode": "SVC001",
@@ -1477,6 +1559,9 @@ def seed_data():
                 warranty_override=pd.get("warranty_override", "INHERIT"),
                 warranty_policy_id=pd.get("warranty_policy_id"),
                 serial_mode=pd.get("serial_mode", "OFF"),
+                is_warranty_plan=pd.get("is_warranty_plan", False),
+                plan_policy_id=pd.get("plan_policy_id"),
+                plan_category_id=pd.get("plan_category_id"),
             )
             # Link to supplier
             sup_name = pd.get("supplier")
@@ -1885,6 +1970,287 @@ def seed_data():
         session.flush()
 
         # =============================================================
+        # 15B. WARRANTY SALES & CLAIMS (#829, #830)
+        # =============================================================
+        print("Seeding Warranty Sales & Claims...")
+        phone_prod = prod_map["8806091234567"]
+        plan_prod = prod_map["WPLAN-1Y"]
+        w_cust1 = customers[0]
+        w_cust2 = customers[1]
+
+        # Sale 1: Phone + Extended Warranty Plan (Base + Extended linked)
+        sale_counter += 1
+        sale1_date = datetime.now() - timedelta(days=45, hours=10)
+        sale1_item_phone = SaleItem(
+            product_id=phone_prod.id,
+            qty=Decimal("1.000"),
+            unit_price=phone_prod.price,
+            original_price=phone_prod.price,
+            subtotal=phone_prod.price,
+        )
+        sale1_item_plan = SaleItem(
+            product_id=plan_prod.id,
+            qty=Decimal("1.000"),
+            unit_price=plan_prod.price,
+            original_price=plan_prod.price,
+            subtotal=plan_prod.price,
+        )
+        sale1_total = phone_prod.price + plan_prod.price
+        vat_base1 = sale1_total / Decimal("1.18")
+        tax_vat1 = (sale1_total - vat_base1).quantize(Decimal("0.01"))
+        tax_sscl1 = ((sale1_total * Decimal("0.5")) * Decimal("0.025")).quantize(Decimal("0.01"))
+        net_rev1 = (sale1_total - tax_vat1 - tax_sscl1).quantize(Decimal("0.01"))
+
+        sale1 = Sale(
+            document_number=f"INV-2026-{sale_counter:05d}",
+            date=sale1_date,
+            user_id=cashier.id,
+            status="COMPLETED",
+            customer_id=w_cust1.id,
+            total_amount=sale1_total,
+            tax_vat=tax_vat1,
+            tax_sscl=tax_sscl1,
+            net_revenue=net_rev1,
+            payment_method="Card",
+            items=[sale1_item_phone, sale1_item_plan],
+            payments=[SalePayment(payment_method="Card", amount=sale1_total)],
+        )
+        session.add(sale1)
+        session.flush()
+        sale1_item_plan.covered_item_id = sale1_item_phone.id
+        session.flush()
+
+        base_w1 = Warranty(
+            code="WRN-2026-00001",
+            unit_index=1,
+            sale_id=sale1.id,
+            sale_item_id=sale1_item_phone.id,
+            product_id=phone_prod.id,
+            customer_id=w_cust1.id,
+            policy_id=pol_1y_shop.id,
+            customer_name_snapshot=w_cust1.name,
+            customer_phone_snapshot=w_cust1.phone,
+            serial_number="SN-SAM-A15-001",
+            warranty_type="SHOP",
+            duration=1,
+            duration_unit="YEARS",
+            remedy="REPAIR_OR_REPLACE",
+            provider_name=None,
+            terms_text=pol_1y_shop.terms_text,
+            exclusions_text=pol_1y_shop.exclusions_text,
+            start_date=sale1_date.date(),
+            end_date=sale1_date.date() + timedelta(days=365),
+            status="ACTIVE",
+        )
+        session.add(base_w1)
+        session.flush()
+
+        ext_w1 = Warranty(
+            code="WRN-2026-00002",
+            unit_index=1,
+            sale_id=sale1.id,
+            sale_item_id=sale1_item_phone.id,
+            plan_sale_item_id=sale1_item_plan.id,
+            covers_warranty_id=base_w1.id,
+            product_id=phone_prod.id,
+            customer_id=w_cust1.id,
+            policy_id=pol_ext_1y.id,
+            customer_name_snapshot=w_cust1.name,
+            customer_phone_snapshot=w_cust1.phone,
+            serial_number="SN-SAM-A15-001",
+            warranty_type="EXTENDED",
+            duration=1,
+            duration_unit="YEARS",
+            remedy="REPAIR_OR_REPLACE",
+            provider_name=None,
+            terms_text=pol_ext_1y.terms_text,
+            exclusions_text=pol_ext_1y.exclusions_text,
+            start_date=base_w1.end_date + timedelta(days=1),
+            end_date=base_w1.end_date + timedelta(days=366),
+            status="ACTIVE",
+        )
+        session.add(ext_w1)
+
+        # Sale 2: Phone with base warranty (with an open claim)
+        sale_counter += 1
+        sale2_date = datetime.now() - timedelta(days=10, hours=14)
+        sale2_item = SaleItem(
+            product_id=phone_prod.id,
+            qty=Decimal("1.000"),
+            unit_price=phone_prod.price,
+            original_price=phone_prod.price,
+            subtotal=phone_prod.price,
+        )
+        sale2_total = phone_prod.price
+        vat_base2 = sale2_total / Decimal("1.18")
+        tax_vat2 = (sale2_total - vat_base2).quantize(Decimal("0.01"))
+        tax_sscl2 = ((sale2_total * Decimal("0.5")) * Decimal("0.025")).quantize(Decimal("0.01"))
+        net_rev2 = (sale2_total - tax_vat2 - tax_sscl2).quantize(Decimal("0.01"))
+
+        sale2 = Sale(
+            document_number=f"INV-2026-{sale_counter:05d}",
+            date=sale2_date,
+            user_id=cashier.id,
+            status="COMPLETED",
+            customer_id=w_cust1.id,
+            total_amount=sale2_total,
+            tax_vat=tax_vat2,
+            tax_sscl=tax_sscl2,
+            net_revenue=net_rev2,
+            payment_method="Cash",
+            items=[sale2_item],
+            payments=[SalePayment(payment_method="Cash", amount=sale2_total)],
+        )
+        session.add(sale2)
+        session.flush()
+
+        base_w2 = Warranty(
+            code="WRN-2026-00003",
+            unit_index=1,
+            sale_id=sale2.id,
+            sale_item_id=sale2_item.id,
+            product_id=phone_prod.id,
+            customer_id=w_cust1.id,
+            policy_id=pol_1y_shop.id,
+            customer_name_snapshot=w_cust1.name,
+            customer_phone_snapshot=w_cust1.phone,
+            serial_number="SN-SAM-A15-002",
+            warranty_type="SHOP",
+            duration=1,
+            duration_unit="YEARS",
+            remedy="REPAIR_OR_REPLACE",
+            provider_name=None,
+            terms_text=pol_1y_shop.terms_text,
+            exclusions_text=pol_1y_shop.exclusions_text,
+            start_date=sale2_date.date(),
+            end_date=sale2_date.date() + timedelta(days=365),
+            status="ACTIVE",
+        )
+        session.add(base_w2)
+
+        # Sale 3: Phone with base warranty (with a resolved claim)
+        sale_counter += 1
+        sale3_date = datetime.now() - timedelta(days=60, hours=11)
+        sale3_item = SaleItem(
+            product_id=phone_prod.id,
+            qty=Decimal("1.000"),
+            unit_price=phone_prod.price,
+            original_price=phone_prod.price,
+            subtotal=phone_prod.price,
+        )
+        sale3_total = phone_prod.price
+        vat_base3 = sale3_total / Decimal("1.18")
+        tax_vat3 = (sale3_total - vat_base3).quantize(Decimal("0.01"))
+        tax_sscl3 = ((sale3_total * Decimal("0.5")) * Decimal("0.025")).quantize(Decimal("0.01"))
+        net_rev3 = (sale3_total - tax_vat3 - tax_sscl3).quantize(Decimal("0.01"))
+
+        sale3 = Sale(
+            document_number=f"INV-2026-{sale_counter:05d}",
+            date=sale3_date,
+            user_id=manager.id,
+            status="COMPLETED",
+            customer_id=w_cust2.id,
+            total_amount=sale3_total,
+            tax_vat=tax_vat3,
+            tax_sscl=tax_sscl3,
+            net_revenue=net_rev3,
+            payment_method="Cash",
+            items=[sale3_item],
+            payments=[SalePayment(payment_method="Cash", amount=sale3_total)],
+        )
+        session.add(sale3)
+        session.flush()
+
+        base_w3 = Warranty(
+            code="WRN-2026-00004",
+            unit_index=1,
+            sale_id=sale3.id,
+            sale_item_id=sale3_item.id,
+            product_id=phone_prod.id,
+            customer_id=w_cust2.id,
+            policy_id=pol_1y_shop.id,
+            customer_name_snapshot=w_cust2.name,
+            customer_phone_snapshot=w_cust2.phone,
+            serial_number="SN-SAM-A15-003",
+            warranty_type="SHOP",
+            duration=1,
+            duration_unit="YEARS",
+            remedy="REPAIR_OR_REPLACE",
+            provider_name=None,
+            terms_text=pol_1y_shop.terms_text,
+            exclusions_text=pol_1y_shop.exclusions_text,
+            start_date=sale3_date.date(),
+            end_date=sale3_date.date() + timedelta(days=365),
+            status="REPLACED",
+        )
+        session.add(base_w3)
+        session.flush()
+
+        # Two Claims:
+        # Claim 1: Open claim in INTAKE on base_w2
+        claim1 = WarrantyClaim(
+            document_number="CLM-2026-00001",
+            date=datetime.now() - timedelta(days=3, hours=4),
+            user_id=cashier.id,
+            status="COMPLETED",
+            warranty_id=base_w2.id,
+            product_id=phone_prod.id,
+            customer_id=w_cust1.id,
+            customer_name_snapshot=w_cust1.name,
+            customer_phone_snapshot=w_cust1.phone,
+            item_serial="SN-SAM-A15-002",
+            claim_status="INTAKE",
+            intake_date=datetime.now() - timedelta(days=3, hours=4),
+            expected_ready_date=(datetime.now() + timedelta(days=4)).date(),
+            defect_description="Touchscreen unresponsive on lower third after update",
+            item_condition="Minor bezel scratches, display glass undamaged",
+            accessories_received="Original retail packaging and USB cable",
+            is_covered=True,
+        )
+        session.add(claim1)
+
+        # Claim 2: Resolved claim with replacement on base_w3
+        softlogic_sup = sup_map.get("Softlogic Retail (Pvt) Ltd")
+        claim2 = WarrantyClaim(
+            document_number="CLM-2026-00002",
+            date=datetime.now() - timedelta(days=20, hours=6),
+            user_id=manager.id,
+            status="COMPLETED",
+            warranty_id=base_w3.id,
+            product_id=phone_prod.id,
+            customer_id=w_cust2.id,
+            customer_name_snapshot=w_cust2.name,
+            customer_phone_snapshot=w_cust2.phone,
+            item_serial="SN-SAM-A15-003",
+            claim_status="RESOLVED",
+            intake_date=datetime.now() - timedelta(days=20, hours=6),
+            expected_ready_date=(datetime.now() - timedelta(days=12)).date(),
+            defect_description="Power IC failure; device does not power on or take charge",
+            item_condition="Pristine condition",
+            accessories_received="Full set with box",
+            is_covered=True,
+            resolution="REPLACED_SAME",
+            resolution_notes="Authorized replacement unit issued under shop warranty",
+            replacement_serial="SN-SAM-A15-003-REP",
+            replacement_cost_snapshot=phone_prod.cost,
+            repair_cost=Decimal("0.00"),
+            charge_customer=Decimal("0.00"),
+            resolved_by_user_id=manager.id,
+            resolved_at=datetime.now() - timedelta(days=14, hours=2),
+            collected_by_name=w_cust2.name,
+            collected_at=datetime.now() - timedelta(days=12, hours=3),
+            defective_unit_status="RETURNED_FROM_SUPPLIER",
+            supplier_id=softlogic_sup.id if softlogic_sup else None,
+            supplier_rma_ref="RMA-SL-2026-881",
+            sent_to_supplier_at=datetime.now() - timedelta(days=18, hours=2),
+            returned_from_supplier_at=datetime.now() - timedelta(days=14, hours=4),
+            supplier_outcome="CREDIT_NOTE",
+            supplier_credit_amount=phone_prod.cost,
+        )
+        session.add(claim2)
+        session.flush()
+
+        # =============================================================
         # 16. PURCHASE ORDERS (5 recent purchases)
         # =============================================================
         print("Seeding Purchase Orders...")
@@ -2167,10 +2533,12 @@ def seed_data():
     print("=" * 50)
     print("  Users:            4  (admin/1234, manager/5678, cashier/0000, nimal/1111)")
     print(f"  Categories:       {10 + 10}  (10 parent + 10 sub)")
-    print("  Suppliers:        8")
+    print("  Suppliers:        9")
     print(f"  Products:         {len(product_objs)}  (incl. weighted, composite, service)")
     print(f"  Customers:        {len(customers)}  (incl. 3 B2B companies)")
     print(f"  Sales:            ~{sale_counter}")
+    print("  Warranties:       4  (3 base + 1 extended)")
+    print("  Claims:           2  (1 intake + 1 resolved)")
     print("  Purchases:        5")
     print(f"  Shifts:           {len(shifts)}")
     print("  Promotions:       3")
@@ -2179,4 +2547,14 @@ def seed_data():
 
 
 if __name__ == "__main__":
-    seed_data()
+    if len(sys.argv) > 1 and sys.argv[1] == "--throwaway":
+        import tempfile
+
+        from sqlalchemy import create_engine
+
+        with tempfile.NamedTemporaryFile(suffix=".db") as tmp:
+            test_engine = create_engine(f"sqlite:///{tmp.name}")
+            seed_data(engine=test_engine)
+            print(f"Throwaway DB seed succeeded: {tmp.name}")
+    else:
+        seed_data()

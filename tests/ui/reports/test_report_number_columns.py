@@ -134,7 +134,7 @@ def _all_reports():
 
 def test_all_16_reports_declare_column_types_and_label_keys():
     reports = _all_reports()
-    assert len(reports) == 16
+    assert len(reports) == 21
     for report in reports:
         columns = report.get_render_hints().get("columns")
         assert columns, report.id

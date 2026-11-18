@@ -206,6 +206,38 @@ class SchedulerService:
         if config.get("auto_report_enabled", False):
             SchedulerService._process_auto_report(config)
 
+        # 2. Check Warranty Reminders (#830)
+        SchedulerService._process_warranty_reminders(config)
+
+    @classmethod
+    def _process_warranty_reminders(cls, config: dict[str, Any]) -> None:
+        """Derive overdue claims and overdue RMAs, emitting notices and deduplicating daily (#830)."""
+        now = datetime.now()
+        today_str = now.strftime("%Y-%m-%d")
+        last_run = config.get("warranty_reminders_last_run", "")
+
+        if last_run == today_str:
+            return
+
+        try:
+            from cbpos.core.services.warranty_claim_service import WarrantyClaimService
+
+            overdue_data = WarrantyClaimService.get_overdue_claims_summary()
+            overdue_claims_count = overdue_data.get("overdue_claims_count", 0)
+            overdue_rmas_count = overdue_data.get("overdue_rmas_count", 0)
+
+            if overdue_claims_count > 0 or overdue_rmas_count > 0:
+                logger.info(
+                    "Warranty reminders: %d overdue claim(s), %d overdue RMA(s)",
+                    overdue_claims_count,
+                    overdue_rmas_count,
+                )
+
+            # Mark run today to prevent repeated runs
+            ConfigService.set("warranty_reminders_last_run", today_str)
+        except Exception as e:
+            logger.error("Failed to process warranty reminders: %s", e)
+
     @classmethod
     def _process_auto_report(cls, config):
         report_time_str = config.get("auto_report_time", "22:00")

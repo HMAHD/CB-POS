@@ -100,7 +100,11 @@ assert set(APPLY_ORDER) == set(TRANSACTION_TABLES), "APPLY_ORDER must cover exac
 # are not listed and are kept as sent.
 TERMINAL_REFS: dict[str, dict[str, str]] = {
     "sales": {"refund_of_sale_id": DOCUMENT_ID_SPACE, "shift_id": "shifts"},
-    "sale_items": {"sale_id": DOCUMENT_ID_SPACE, "refund_of_item_id": "sale_items"},
+    "sale_items": {
+        "sale_id": DOCUMENT_ID_SPACE,
+        "refund_of_item_id": "sale_items",
+        "covered_item_id": "sale_items",
+    },
     "sale_payments": {"sale_id": DOCUMENT_ID_SPACE},
     "warranties": {
         "sale_id": DOCUMENT_ID_SPACE,
@@ -108,6 +112,7 @@ TERMINAL_REFS: dict[str, dict[str, str]] = {
         "cancelled_by_sale_id": DOCUMENT_ID_SPACE,
         "covers_warranty_id": "warranties",
         "replaces_warranty_id": "warranties",
+        "plan_sale_item_id": "sale_items",
     },
     "warranty_claims": {
         "warranty_id": "warranties",

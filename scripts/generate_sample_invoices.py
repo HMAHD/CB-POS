@@ -1,14 +1,14 @@
 """Generate sample trilingual invoices for visual inspection and verification (#924)."""
 
 import os
+import sys
+import tempfile
 from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
 
 # Force offscreen Qt platform
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
-
-import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -17,6 +17,11 @@ from cbpos.core.models.tax_invoice import TaxInvoice, TaxInvoiceLine
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.invoice_service import InvoiceService
 from cbpos.core.services.tax_invoice_pdf_builder import TaxInvoicePDFBuilder
+
+# Isolate ConfigService to a temporary settings file so developer settings.json is never mutated
+temp_settings_dir = tempfile.TemporaryDirectory()
+ConfigService.SETTINGS_FILE = os.path.join(temp_settings_dir.name, "settings.json")
+ConfigService.load()
 
 out_dir = Path("docs/remediation/sample_pdfs")
 out_dir.mkdir(parents=True, exist_ok=True)

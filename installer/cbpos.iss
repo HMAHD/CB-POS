@@ -38,7 +38,10 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
-DefaultDirName={autopf}\{#MyAppName}
+; 64-bit installer mode for Windows 10/11 64-bit (x64 and ARM64 with emulation)
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
+DefaultDirName={code:GetInstallDir}
 DefaultGroupName={#MyAppName}
 LicenseFile=..\LICENSE
 DisableDirPage=yes
@@ -104,6 +107,17 @@ Type: filesandordirs; Name: "{app}\__pycache__"
 // Custom Pascal Script — pre-install and post-install hooks
 // -------------------------------------------------------------------------
 
+function GetInstallDir(Param: String): String;
+var
+  PrevDir: String;
+begin
+  // If upgrading an existing 32-bit install on 64-bit Windows, honor the legacy path
+  if RegQueryStringValue(HKLM32, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{#SetupSetting("AppId")}_is1', 'Inno Setup: App Path', PrevDir) and (PrevDir <> '') then
+    Result := PrevDir
+  else
+    Result := ExpandConstant('{autopf}\{#MyAppName}');
+end;
+
 function InitializeSetup(): Boolean;
 begin
   // Check if the app is currently running and ask user to close it
@@ -120,6 +134,7 @@ end;
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   DataDir: String;
+  LegacyKey: String;
 begin
   if CurStep = ssPostInstall then
   begin
@@ -127,5 +142,10 @@ begin
     DataDir := ExpandConstant('{localappdata}\{#MyAppName}');
     if not DirExists(DataDir) then
       ForceDirectories(DataDir);
+
+    // Clean up legacy 32-bit uninstaller registry entry if migrating from 32-bit install
+    LegacyKey := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{#SetupSetting("AppId")}_is1';
+    if RegKeyExists(HKLM32, LegacyKey) then
+      RegDeleteKeyIncludingSubkeys(HKLM32, LegacyKey);
   end;
 end;

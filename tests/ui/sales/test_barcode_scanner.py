@@ -19,19 +19,25 @@ pytestmark = pytest.mark.usefixtures("qapp")
 @pytest.fixture
 def scanner_and_field():
     app = QApplication.instance()
+    if app and app.focusWidget():
+        app.focusWidget().clearFocus()
     scanner = BarcodeScanner(app)
     field = QLineEdit()
+    field.setFocus()
     scans: list[str] = []
     returns: list[str] = []
     scanner.barcode_scanned.connect(scans.append)
     field.returnPressed.connect(lambda: returns.append(field.text()))
     yield scanner, field, scans, returns
     app.removeEventFilter(scanner)
+    if app and app.focusWidget():
+        app.focusWidget().clearFocus()
 
 
 class TestBarcodeScannerEnter:
     def test_human_enter_reaches_the_field_and_is_not_a_scan(self, scanner_and_field):
         _scanner, field, scans, returns = scanner_and_field
+        field.setFocus()
         QTest.keyClick(field, Qt.Key.Key_5)
         QTest.qWait(120)  # human pause, longer than the scanner speed window
         QTest.keyClick(field, Qt.Key.Key_Return)
@@ -41,6 +47,7 @@ class TestBarcodeScannerEnter:
 
     def test_enter_on_empty_field_reaches_the_field(self, scanner_and_field):
         _scanner, field, scans, returns = scanner_and_field
+        field.setFocus()
         QTest.keyClick(field, Qt.Key.Key_Enter)
 
         assert returns == [""]
@@ -50,6 +57,7 @@ class TestBarcodeScannerEnter:
         """Scan typed into a QLineEdit submits via its own returnPressed (Sales search,
         Stock Take add, scanner test); routing it to the view too would double-handle it."""
         _scanner, field, scans, returns = scanner_and_field
+        field.setFocus()
         QTest.keyClicks(field, "4791234567890")
         QTest.keyClick(field, Qt.Key.Key_Return)
 
@@ -59,6 +67,7 @@ class TestBarcodeScannerEnter:
     def test_burst_with_no_text_field_focused_is_routed_as_a_scan(self, scanner_and_field):
         scanner, _field, scans, _returns = scanner_and_field
         button = QPushButton()
+        button.setFocus()
         QTest.keyClicks(button, "4791234567890")
         QTest.keyClick(button, Qt.Key.Key_Return)
 
@@ -68,6 +77,7 @@ class TestBarcodeScannerEnter:
     def test_readonly_field_does_not_swallow_scan(self, scanner_and_field):
         _scanner, field, scans, _returns = scanner_and_field
         field.setReadOnly(True)
+        field.setFocus()
         QTest.keyClicks(field, "4791234567890")
         QTest.keyClick(field, Qt.Key.Key_Return)
 
@@ -78,6 +88,7 @@ class TestBarcodeScannerEnter:
         scan landing there is routed to the view instead of committed as a quantity (#547)."""
         _scanner, field, scans, returns = scanner_and_field
         field.setProperty(BarcodeScanner.SCAN_PASSTHROUGH_PROPERTY, True)
+        field.setFocus()
         QTest.keyClicks(field, "4791234567890")
         QTest.keyClick(field, Qt.Key.Key_Return)
 

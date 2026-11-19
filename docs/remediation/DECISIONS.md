@@ -88,6 +88,12 @@ Format: `D<n> — <date> — #<issue> — <decision>`. New decisions go at the b
 **D30 — 2026-11-12 — #822 — Inactive Policy Resolution at Checkout (W2).**
 For checkout and per-unit warranty registration in W2 (#822), resolving a product or category assignment to an inactive policy produces no new warranty coverage (`WarrantyService.resolve_coverage_for_sale` or registration issues no `Warranty` row). The inactive assignment remains visible and preserved on the product/category; it does not fall through to any category or parent policy (fail-closed against silent substitution), and W2 adds no cashier warning or manager override prompt.
 
+## 2026-11-19
+
+**D31 — 2026-11-19 — scope — Phase 10A packaging and printing development authorized ahead of public release gate.**
+The owner explicitly authorized internal development of Phase 10A (Packaging and Printing) prior to resolving the public-release human gates (legal review #817, label hardware verification #819, receipt hardware verifications #731/#877/#878/#911, and warranty card hardware verification #824). Development and testing proceed on internal pre-release builds; the public release gate has not passed.
+
+
 
 
 

@@ -9,10 +9,8 @@ Implements CAA s.31(g) / owner snapshot truth:
 import logging
 import os
 import tempfile
-from io import BytesIO
 from pathlib import Path
 from typing import Any
-from xml.sax.saxutils import escape
 
 from reportlab.graphics.barcode import code128
 from reportlab.lib import colors
@@ -20,15 +18,15 @@ from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 from reportlab.lib.pagesizes import A5
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
-from reportlab.platypus import Flowable, Image, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import Flowable, PageBreak, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from cbpos.core.models.warranty import Warranty
 from cbpos.core.services.base_receipt_builder import BaseReceiptBuilder
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.product_service import ProductService
 from cbpos.core.utils.barcode import calculate_barcode_width, choose_barcode
-from cbpos.core.utils.text_scripts import needs_raster
 from cbpos.i18n import translate_in
+from cbpos.infrastructure.pdf_fonts import make_shaped_paragraph
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +37,8 @@ _LIGHT_BG = colors.HexColor("#F8FAFC")
 
 
 def _styles() -> dict[str, ParagraphStyle]:
-    regular = "Helvetica"
-    bold = "Helvetica-Bold"
+    regular = "NotoSans"
+    bold = "NotoSans-Bold"
     return {
         "title": ParagraphStyle("Title", fontName=bold, fontSize=16, leading=20, alignment=TA_CENTER, textColor=_NAVY),
         "subtitle": ParagraphStyle(
@@ -60,30 +58,13 @@ def _styles() -> dict[str, ParagraphStyle]:
 
 
 def _text(text: Any, style: ParagraphStyle, width: float | None = None) -> Flowable:
-    """Render paragraph of text, rasterizing Sinhala/Tamil with Qt for proper shaping."""
-    val = str(text or "")
-    if not needs_raster(val):
-        return Paragraph(escape(val), style)
-
-    from cbpos.infrastructure.hardware.text_raster import render_text_png
-
-    align = {TA_CENTER: "center", TA_RIGHT: "right"}.get(style.alignment, "left")
-    png, w, h = render_text_png(
-        val,
-        style.fontSize,
-        bold=style.fontName.endswith("Bold"),
-        color="#" + style.textColor.hexval()[2:],
-        max_width_pt=width,
-        align=align,
-    )
-    image = Image(BytesIO(png), width=w, height=h)
-    image.hAlign = align.upper()
-    return image
+    """Render paragraph of text with vector shaping for Indic scripts (#924)."""
+    return make_shaped_paragraph(text, style, width=width)
 
 
 def _draw_branding(canvas: Any, doc: Any) -> None:
     canvas.saveState()
-    canvas.setFont("Helvetica", 7)
+    canvas.setFont("NotoSans", 7)
     canvas.setFillColor(_GREY)
     canvas.drawString(15 * mm, 10 * mm, "Powered by CB POS • ceybyte.com")
     canvas.drawRightString(doc.pagesize[0] - 15 * mm, 10 * mm, "Free & Open Source POS for Sri Lankan Small Businesses")

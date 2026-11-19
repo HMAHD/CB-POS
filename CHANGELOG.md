@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file. Never delet
 
 ## [Unreleased]
 
+### Added — Packaging and Printing Improvements (Phase 10A.1)
+
+- **Slimmed bundled Noto fonts (#923)**: Removed unused italic files and subsetted Noto Sans Latin fonts to essential characters and symbols, reducing font bundle size from 6.39 MB to 1.83 MB (~71% reduction) while preserving all UI weights (400, 500, 600, 700) and typographic naming records.
+- **Vector Sinhala and Tamil A4 Invoices via HarfBuzz shaping (#924)**: Replaced 300 DPI PNG rasterization in commercial invoices, statutory VAT tax invoices, warranty certificates, and RMA waybills with native ReportLab vector text shaped by `uharfbuzz`. Sinhala and Tamil invoice text is now crisp vector glyphs and prints sharply at any resolution.
+  *Note on PDF text extraction*: Copied or searchable ligature clusters in generated PDFs may not reproduce perfectly due to ReportLab ToUnicode mapping limitations with complex Indic scripts; visual rendering and physical printing are completely sharp and unaffected.
+
 ### Added — Pre-Release Remediation & Hardening (Phase 8)
 
 - **Automatic update check and prompt (#808)**: Background check against GitHub Releases API with deferred non-blocking startup query, user-facing prompt, and skip option.

@@ -425,8 +425,6 @@ class WarrantyClaimReceiptBuilder(BaseReceiptBuilder):
 
         NOTE: Customer PII is strictly excluded.
         """
-        from html import escape
-        from io import BytesIO
 
         from reportlab.graphics.barcode import code128
         from reportlab.lib import colors
@@ -434,10 +432,10 @@ class WarrantyClaimReceiptBuilder(BaseReceiptBuilder):
         from reportlab.lib.pagesizes import A5
         from reportlab.lib.styles import ParagraphStyle
         from reportlab.lib.units import mm
-        from reportlab.platypus import Flowable, Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+        from reportlab.platypus import Flowable, SimpleDocTemplate, Spacer, Table, TableStyle
 
         from cbpos.core.services.config_service import ConfigService
-        from cbpos.core.utils.text_scripts import needs_raster
+        from cbpos.infrastructure.pdf_fonts import make_shaped_paragraph
 
         navy = colors.HexColor("#0B2545")
         border_grey = colors.HexColor("#CBD5E1")
@@ -446,35 +444,20 @@ class WarrantyClaimReceiptBuilder(BaseReceiptBuilder):
 
         styles = {
             "title": ParagraphStyle(
-                "Title", fontName="Helvetica-Bold", fontSize=15, leading=18, alignment=TA_CENTER, textColor=navy
+                "Title", fontName="NotoSans-Bold", fontSize=15, leading=18, alignment=TA_CENTER, textColor=navy
             ),
             "subtitle": ParagraphStyle(
-                "Subtitle", fontName="Helvetica", fontSize=9, leading=12, alignment=TA_CENTER, textColor=grey
+                "Subtitle", fontName="NotoSans", fontSize=9, leading=12, alignment=TA_CENTER, textColor=grey
             ),
-            "h2": ParagraphStyle("H2", fontName="Helvetica-Bold", fontSize=11, leading=14, textColor=navy),
-            "bold": ParagraphStyle("Bold", fontName="Helvetica-Bold", fontSize=9, leading=12, textColor=navy),
-            "base": ParagraphStyle("Base", fontName="Helvetica", fontSize=9, leading=12, textColor=colors.black),
-            "right": ParagraphStyle("Right", fontName="Helvetica", fontSize=9, leading=12, alignment=TA_RIGHT),
-            "muted": ParagraphStyle("Muted", fontName="Helvetica", fontSize=8, leading=10, textColor=grey),
+            "h2": ParagraphStyle("H2", fontName="NotoSans-Bold", fontSize=11, leading=14, textColor=navy),
+            "bold": ParagraphStyle("Bold", fontName="NotoSans-Bold", fontSize=9, leading=12, textColor=navy),
+            "base": ParagraphStyle("Base", fontName="NotoSans", fontSize=9, leading=12, textColor=colors.black),
+            "right": ParagraphStyle("Right", fontName="NotoSans", fontSize=9, leading=12, alignment=TA_RIGHT),
+            "muted": ParagraphStyle("Muted", fontName="NotoSans", fontSize=8, leading=10, textColor=grey),
         }
 
         def _p(text: Any, style: ParagraphStyle) -> Flowable:
-            val = str(text or "")
-            if not needs_raster(val):
-                return Paragraph(escape(val), style)
-            from cbpos.infrastructure.hardware.text_raster import render_text_png
-
-            align = {TA_CENTER: "center", TA_RIGHT: "right"}.get(style.alignment, "left")
-            png, w, h = render_text_png(
-                val,
-                style.fontSize,
-                bold=style.fontName.endswith("Bold"),
-                color="#" + style.textColor.hexval()[2:],
-                align=align,
-            )
-            img = Image(BytesIO(png), width=w, height=h)
-            img.hAlign = align.upper()
-            return img
+            return make_shaped_paragraph(text, style)
 
         doc = SimpleDocTemplate(
             output_path,

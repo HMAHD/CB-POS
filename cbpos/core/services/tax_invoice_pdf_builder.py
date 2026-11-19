@@ -8,9 +8,7 @@ Adheres to:
 
 import os
 from decimal import Decimal
-from io import BytesIO
 from typing import Any
-from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
@@ -19,8 +17,6 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import (
     Flowable,
-    Image,
-    Paragraph,
     SimpleDocTemplate,
     Spacer,
     Table,
@@ -29,7 +25,7 @@ from reportlab.platypus import (
 
 from cbpos.core.models.tax_invoice import TaxInvoice
 from cbpos.core.utils.formatters import format_currency, format_quantity
-from cbpos.core.utils.text_scripts import needs_raster
+from cbpos.infrastructure.pdf_fonts import make_shaped_paragraph
 
 _NAVY = colors.HexColor("#003366")
 _NAVY_DARK = colors.HexColor("#001F3F")
@@ -44,8 +40,8 @@ _BRANDING = "Powered by CB POS — ceybyte.com"
 
 
 def _styles() -> dict[str, ParagraphStyle]:
-    base = ParagraphStyle("TIBase", fontName="Helvetica", fontSize=8.5, leading=11)
-    bold = ParagraphStyle("TIBold", parent=base, fontName="Helvetica-Bold")
+    base = ParagraphStyle("TIBase", fontName="NotoSans", fontSize=8.5, leading=11)
+    bold = ParagraphStyle("TIBold", parent=base, fontName="NotoSans-Bold")
     return {
         "base": base,
         "bold": bold,
@@ -99,39 +95,18 @@ def _styles() -> dict[str, ParagraphStyle]:
 
 
 def _text(text: Any, style: ParagraphStyle, width: float | None = None) -> Flowable:
-    """Format text with Qt rasterization fallback for Sinhala/Tamil scripts.
-
-    Preserves numeric 0 and converts newlines to <br/>.
-    """
-    text_str = "" if text is None else str(text)
-    if not needs_raster(text_str):
-        html_escaped = escape(text_str).replace("\n", "<br/>")
-        return Paragraph(html_escaped, style)
-
-    from cbpos.infrastructure.hardware.text_raster import render_text_png
-
-    align = {TA_CENTER: "center", TA_RIGHT: "right"}.get(style.alignment, "left")
-    png, w, h = render_text_png(
-        text_str,
-        style.fontSize,
-        bold=style.fontName.endswith("Bold"),
-        color="#" + style.textColor.hexval()[2:],
-        max_width_pt=width,
-        align=align,
-    )
-    image = Image(BytesIO(png), width=w, height=h)
-    image.hAlign = align.upper()
-    return image
+    """Format text with native vector shaping for Indic scripts and fallback for missing harfbuzz (#924)."""
+    return make_shaped_paragraph(text, style, width=width)
 
 
 def _draw_branding(canvas: Any, _doc: Any) -> None:
     """Draw footer notice and CB POS branding at the foot of each page."""
     canvas.saveState()
-    canvas.setFont("Helvetica", 7.5)
+    canvas.setFont("NotoSans", 7.5)
     canvas.setFillColor(_GREY)
     notice = "Issued in terms of Section 20 of Value Added Tax Act No. 14 of 2002 · Retain for a minimum of 5 years"
     canvas.drawCentredString(A4[0] / 2, 13 * mm, notice)
-    canvas.setFont("Helvetica", 8)
+    canvas.setFont("NotoSans", 8)
     canvas.drawCentredString(A4[0] / 2, 8 * mm, _BRANDING)
     canvas.restoreState()
 

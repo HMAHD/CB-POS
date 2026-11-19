@@ -204,6 +204,14 @@ BUNDLED_ASSETS: list[dict[str, str]] = [
         "notice": "Bundled TrueType fonts in cbpos/assets/fonts/Noto_Sans_Tamil/ under SIL OFL 1.1.",
     },
     {
+        "name": "Yaldevi Font Family",
+        "version": "1.100",
+        "license": "SIL Open Font License 1.1 (OFL-1.1)",
+        "copyright": "Copyright 2021 The Yaldevi Project Authors (https://github.com/mooniak/yaldevi-font)",
+        "project_url": "https://fonts.google.com/specimen/Yaldevi",
+        "notice": "Bundled variable TrueType font in cbpos/assets/fonts/Yaldevi/ under SIL OFL 1.1.",
+    },
+    {
         "name": "Lucide / UI SVG Icons",
         "version": "0.400+",
         "license": "MIT License",

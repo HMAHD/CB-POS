@@ -15305,9 +15305,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ------------------------------------------------------------------------------
 
 Component:    Yaldevi Font Family
-Version:      1.000
+Version:      1.100
 License:      SIL Open Font License 1.1 (OFL-1.1)
-Copyright:    Copyright 2020 The Yaldevi Project Authors (https://github.com/mooniak/yaldevi)
+Copyright:    Copyright 2021 The Yaldevi Project Authors (https://github.com/mooniak/yaldevi-font)
 URL:          https://fonts.google.com/specimen/Yaldevi
 Notice:       Bundled variable TrueType font in cbpos/assets/fonts/Yaldevi/ under SIL OFL 1.1.
 ------------------------------------------------------------------------------

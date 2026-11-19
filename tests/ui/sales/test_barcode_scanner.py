@@ -23,6 +23,8 @@ def scanner_and_field():
         app.focusWidget().clearFocus()
     scanner = BarcodeScanner(app)
     field = QLineEdit()
+    field.show()
+    field.activateWindow()
     field.setFocus()
     scans: list[str] = []
     returns: list[str] = []
@@ -30,6 +32,8 @@ def scanner_and_field():
     field.returnPressed.connect(lambda: returns.append(field.text()))
     yield scanner, field, scans, returns
     app.removeEventFilter(scanner)
+    field.hide()
+    field.deleteLater()
     if app and app.focusWidget():
         app.focusWidget().clearFocus()
 
@@ -65,11 +69,18 @@ class TestBarcodeScannerEnter:
         assert scans == []
 
     def test_burst_with_no_text_field_focused_is_routed_as_a_scan(self, scanner_and_field):
-        scanner, _field, scans, _returns = scanner_and_field
+        scanner, field, scans, _returns = scanner_and_field
+        field.clearFocus()
         button = QPushButton()
+        button.show()
+        button.activateWindow()
         button.setFocus()
-        QTest.keyClicks(button, "4791234567890")
-        QTest.keyClick(button, Qt.Key.Key_Return)
+        try:
+            QTest.keyClicks(button, "4791234567890")
+            QTest.keyClick(button, Qt.Key.Key_Return)
+        finally:
+            button.hide()
+            button.deleteLater()
 
         assert scans == ["4791234567890"]
         assert scanner.buffer == ""

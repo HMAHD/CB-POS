@@ -49,7 +49,7 @@ class BarcodeScanner(QObject):
         if focus_widget is not None:
             return obj is focus_widget
         active_window = QApplication.activeWindow()
-        if active_window is not None:
+        if active_window is not None and obj.window() is active_window:
             return obj is active_window
         return obj.parentWidget() is None
 

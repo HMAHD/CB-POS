@@ -348,40 +348,40 @@ class WarrantyCardBuilder(BaseReceiptBuilder):
             remedy_key = f"warranty_remedy_{w.remedy.lower()}"
             remedy_name = _lt(remedy_key, w.remedy.replace("_", " ").title())
 
+            col_w = [26 * mm, 38 * mm, 24 * mm, 38 * mm]
             table_data = [
                 [
-                    _text(f"{_lt('warranty_card_invoice', 'Invoice')}:", st["bold"]),
-                    _text(doc_no, st["base"]),
-                    _text(f"{_lt('date', 'Date')}:", st["bold"]),
-                    _text(sale_date, st["base"]),
+                    _text(f"{_lt('warranty_card_invoice', 'Invoice')}:", st["bold"], col_w[0]),
+                    _text(doc_no, st["base"], col_w[1]),
+                    _text(f"{_lt('date', 'Date')}:", st["bold"], col_w[2]),
+                    _text(sale_date, st["base"], col_w[3]),
                 ],
                 [
-                    _text(f"{_lt('customer', 'Customer')}:", st["bold"]),
-                    _text(cust_name, st["base"]),
-                    _text(f"{_lt('phone', 'Phone')}:", st["bold"]),
-                    _text(cust_phone, st["base"]),
+                    _text(f"{_lt('customer', 'Customer')}:", st["bold"], col_w[0]),
+                    _text(cust_name, st["base"], col_w[1]),
+                    _text(f"{_lt('phone', 'Phone')}:", st["bold"], col_w[2]),
+                    _text(cust_phone, st["base"], col_w[3]),
                 ],
                 [
-                    _text(f"{_lt('item', 'Product')}:", st["bold"]),
-                    _text(prod_name, st["bold"]),
-                    _text("S/N / IMEI:", st["bold"]),
-                    _text(w.serial_number or "-", st["base"]),
+                    _text(f"{_lt('item', 'Product')}:", st["bold"], col_w[0]),
+                    _text(prod_name, st["bold"], col_w[1]),
+                    _text("S/N / IMEI:", st["bold"], col_w[2]),
+                    _text(w.serial_number or "-", st["base"], col_w[3]),
                 ],
                 [
-                    _text(f"{_lt('warranty_label', 'Warranty')}:", st["bold"]),
-                    _text(coverage_text, st["base"]),
-                    _text(f"{_lt('provider', 'Provider')}:", st["bold"]),
-                    _text(provider, st["base"]),
+                    _text(f"{_lt('warranty_label', 'Warranty')}:", st["bold"], col_w[0]),
+                    _text(coverage_text, st["base"], col_w[1]),
+                    _text(f"{_lt('provider', 'Provider')}:", st["bold"], col_w[2]),
+                    _text(provider, st["base"], col_w[3]),
                 ],
                 [
-                    _text(f"{_lt('valid_until', 'Valid Period')}:", st["bold"]),
-                    _text(valid_dates, st["base"]),
-                    _text(f"{_lt('warranty_card_remedy', 'Remedy')}:", st["bold"]),
-                    _text(remedy_name, st["base"]),
+                    _text(f"{_lt('valid_until', 'Valid Period')}:", st["bold"], col_w[0]),
+                    _text(valid_dates, st["base"], col_w[1]),
+                    _text(f"{_lt('warranty_card_remedy', 'Remedy')}:", st["bold"], col_w[2]),
+                    _text(remedy_name, st["base"], col_w[3]),
                 ],
             ]
 
-            col_w = [26 * mm, 38 * mm, 24 * mm, 38 * mm]
             t = Table(table_data, colWidths=col_w)
             t.setStyle(
                 TableStyle(

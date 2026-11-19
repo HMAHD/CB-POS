@@ -456,8 +456,8 @@ class WarrantyClaimReceiptBuilder(BaseReceiptBuilder):
             "muted": ParagraphStyle("Muted", fontName="NotoSans", fontSize=8, leading=10, textColor=grey),
         }
 
-        def _p(text: Any, style: ParagraphStyle) -> Flowable:
-            return make_shaped_paragraph(text, style)
+        def _p(text: Any, style: ParagraphStyle, width: float | None = None) -> Flowable:
+            return make_shaped_paragraph(text, style, width=width)
 
         doc = SimpleDocTemplate(
             output_path,
@@ -484,21 +484,22 @@ class WarrantyClaimReceiptBuilder(BaseReceiptBuilder):
 
         # Meta Table: Claim #, Date, Supplier, RMA Ref
         disp_time = claim.sent_to_supplier_at or datetime.now()
+        meta_col_w = [30 * mm, 35 * mm, 30 * mm, 35 * mm]
         meta_data = [
             [
-                _p("Claim Number:", styles["bold"]),
-                _p(claim.document_number, styles["base"]),
-                _p("Dispatch Date:", styles["bold"]),
-                _p(disp_time.strftime("%Y-%m-%d %H:%M"), styles["base"]),
+                _p("Claim Number:", styles["bold"], meta_col_w[0]),
+                _p(claim.document_number, styles["base"], meta_col_w[1]),
+                _p("Dispatch Date:", styles["bold"], meta_col_w[2]),
+                _p(disp_time.strftime("%Y-%m-%d %H:%M"), styles["base"], meta_col_w[3]),
             ],
             [
-                _p("Supplier:", styles["bold"]),
-                _p(claim.supplier_name or "N/A", styles["base"]),
-                _p("RMA / Waybill Ref:", styles["bold"]),
-                _p(claim.supplier_rma_ref or "N/A", styles["base"]),
+                _p("Supplier:", styles["bold"], meta_col_w[0]),
+                _p(claim.supplier_name or "N/A", styles["base"], meta_col_w[1]),
+                _p("RMA / Waybill Ref:", styles["bold"], meta_col_w[2]),
+                _p(claim.supplier_rma_ref or "N/A", styles["base"], meta_col_w[3]),
             ],
         ]
-        meta_table = Table(meta_data, colWidths=[30 * mm, 35 * mm, 30 * mm, 35 * mm])
+        meta_table = Table(meta_data, colWidths=meta_col_w)
         meta_table.setStyle(
             TableStyle(
                 [
@@ -521,14 +522,30 @@ class WarrantyClaimReceiptBuilder(BaseReceiptBuilder):
         elements.append(Spacer(1, 4 * mm))
 
         # Product & Defect Table
+        prod_col_w = [40 * mm, 90 * mm]
         prod_data = [
-            [_p("Product Model:", styles["bold"]), _p(claim.product_name, styles["base"])],
-            [_p("Serial / IMEI:", styles["bold"]), _p(claim.item_serial or "N/A", styles["base"])],
-            [_p("Physical Condition:", styles["bold"]), _p(claim.item_condition or "N/A", styles["base"])],
-            [_p("Accessories Included:", styles["bold"]), _p(claim.accessories_received or "None", styles["base"])],
-            [_p("Reported Defect:", styles["bold"]), _p(claim.defect_description, styles["base"])],
+            [
+                _p("Product Model:", styles["bold"], prod_col_w[0]),
+                _p(claim.product_name, styles["base"], prod_col_w[1]),
+            ],
+            [
+                _p("Serial / IMEI:", styles["bold"], prod_col_w[0]),
+                _p(claim.item_serial or "N/A", styles["base"], prod_col_w[1]),
+            ],
+            [
+                _p("Physical Condition:", styles["bold"], prod_col_w[0]),
+                _p(claim.item_condition or "N/A", styles["base"], prod_col_w[1]),
+            ],
+            [
+                _p("Accessories Included:", styles["bold"], prod_col_w[0]),
+                _p(claim.accessories_received or "None", styles["base"], prod_col_w[1]),
+            ],
+            [
+                _p("Reported Defect:", styles["bold"], prod_col_w[0]),
+                _p(claim.defect_description, styles["base"], prod_col_w[1]),
+            ],
         ]
-        prod_table = Table(prod_data, colWidths=[40 * mm, 90 * mm])
+        prod_table = Table(prod_data, colWidths=prod_col_w)
         prod_table.setStyle(
             TableStyle(
                 [
@@ -544,21 +561,22 @@ class WarrantyClaimReceiptBuilder(BaseReceiptBuilder):
         elements.append(Spacer(1, 8 * mm))
 
         # Signatures
+        sig_col_w = [65 * mm, 65 * mm]
         sig_data = [
             [
-                _p("Dispatched By (Shop Staff):", styles["bold"]),
-                _p("Received By (Supplier / Courier):", styles["bold"]),
+                _p("Dispatched By (Shop Staff):", styles["bold"], sig_col_w[0]),
+                _p("Received By (Supplier / Courier):", styles["bold"], sig_col_w[1]),
             ],
             [
-                _p("Signature: _______________________", styles["base"]),
-                _p("Signature: _______________________", styles["base"]),
+                _p("Signature: _______________________", styles["base"], sig_col_w[0]),
+                _p("Signature: _______________________", styles["base"], sig_col_w[1]),
             ],
             [
-                _p("Date: ____________________________", styles["base"]),
-                _p("Date: ____________________________", styles["base"]),
+                _p("Date: ____________________________", styles["base"], sig_col_w[0]),
+                _p("Date: ____________________________", styles["base"], sig_col_w[1]),
             ],
         ]
-        sig_table = Table(sig_data, colWidths=[65 * mm, 65 * mm])
+        sig_table = Table(sig_data, colWidths=sig_col_w)
         sig_table.setStyle(
             TableStyle(
                 [

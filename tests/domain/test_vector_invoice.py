@@ -133,14 +133,27 @@ def test_issue_924_make_shaped_paragraph_complex_indic():
     assert flowable_si_bold.style.fontName == "NotoSansSinhala-Bold"
     assert flowable_si_bold.style.shaping == 1
 
+    # 5. CRLF and CR normalization
+    crlf_text = "පේළිය 1\r\nපේළිය 2\rපේළිය 3\nපේළිය 4"
+    flowable_crlf = make_shaped_paragraph(crlf_text, base_style)
+    assert isinstance(flowable_crlf, Paragraph)
+    assert "\r" not in flowable_crlf.text
+    assert "\n" not in flowable_crlf.text
+    assert flowable_crlf.text.count("<br/>") == 3
+
 
 def test_issue_924_fallback_to_png_on_import_error():
     """Verify fail-closed fallback to render_text_png occurs if uharfbuzz is unavailable."""
-    base_style = ParagraphStyle("FallbackStyle", fontSize=10, leading=13)
+    base_style = ParagraphStyle("FallbackStyle", fontSize=10, leading=13, textColor="#112233")
 
     with patch("cbpos.infrastructure.pdf_fonts.is_shaping_available", return_value=False):
-        flowable = make_shaped_paragraph("සිමෙන්ති 50kg", base_style)
+        flowable = make_shaped_paragraph("සිමෙන්ති 50kg", base_style, width=200)
         assert isinstance(flowable, Image)
+
+        # Also test with HexColor
+        base_style_hex = ParagraphStyle("FallbackHex", fontSize=10, textColor=colors.HexColor("#334455"))
+        flowable_hex = make_shaped_paragraph("සිමෙන්ති 50kg", base_style_hex, width=200)
+        assert isinstance(flowable_hex, Image)
 
 
 @pytest.mark.usefixtures("mock_config")

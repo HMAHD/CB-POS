@@ -471,7 +471,7 @@ class InvoiceService:
             TableStyle(
                 [
                     ("BACKGROUND", (0, 0), (-1, 0), _NAVY),
-                    ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                    ("FONTNAME", (0, 1), (-1, -1), "NotoSans"),
                     ("FONTSIZE", (0, 1), (-1, -1), 9),
                     ("ALIGN", (0, 0), (-1, 0), "CENTER"),
                     ("ALIGN", (0, 1), (0, -1), "CENTER"),

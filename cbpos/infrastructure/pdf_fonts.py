@@ -212,7 +212,11 @@ def make_shaped_paragraph(
         is_bold = bool(style.fontName and ("Bold" in style.fontName or style.fontName.endswith("Bold")))
         color_hex = "#000000"
         if hasattr(style, "textColor") and style.textColor:
-            color_hex = "#" + style.textColor.hexval()[2:]
+            tc = style.textColor
+            if hasattr(tc, "hexval"):
+                color_hex = "#" + tc.hexval()[2:]
+            elif isinstance(tc, str):
+                color_hex = tc if tc.startswith("#") else f"#{tc}"
         png, w, h = render_text_png(
             val,
             style.fontSize,
@@ -226,7 +230,8 @@ def make_shaped_paragraph(
         return img
 
     register_pdf_fonts()
-    escaped = xml.sax.saxutils.escape(val).replace("\n", "<br/>")
+    val_clean = val.replace("\r\n", "\n").replace("\r", "\n")
+    escaped = xml.sax.saxutils.escape(val_clean).replace("\n", "<br/>")
 
     is_bold = bool(style.fontName and ("Bold" in style.fontName or style.fontName.endswith("Bold")))
     font_name = f"{font_base}-Bold" if is_bold else font_base

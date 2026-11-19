@@ -22,3 +22,4 @@ the reproducible slim subsets in `cbpos/assets/fonts/Noto_Sans/static/`.
 
 Note:
 This directory is strictly excluded from the PyInstaller application bundle.
+

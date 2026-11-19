@@ -26,6 +26,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QPalette
 from PyQt6.QtWidgets import QLabel, QTextBrowser, QVBoxLayout, QWidget
 
+from cbpos.core.utils.text_scripts import needs_raster
 from cbpos.core.utils.thermal_image import dither_for_thermal_print
 from cbpos.i18n import _t
 
@@ -58,7 +59,14 @@ class ReceiptPreviewWidget(QWidget):
         super().__init__(parent)
         self._commands: list[dict[str, Any]] = []
         self._paper_width = "80mm"
+        self._font_preset: str = "clear"
         self._init_ui()
+
+    def set_font_preset(self, preset: str) -> None:
+        """Set receipt font preset ('clear', 'compact', 'nirmala') and re-render."""
+        if preset != self._font_preset:
+            self._font_preset = preset
+            self._render()
 
     # Extra width beyond the paper's own pixel width, split evenly as a
     # visible grey margin on each side of the white paper -- without this
@@ -170,7 +178,7 @@ class ReceiptPreviewWidget(QWidget):
         ]
 
         for cmd in self._commands:
-            self._render_command(cmd, cols, parts, self._paper_width)
+            self._render_command(cmd, cols, parts, self._paper_width, self._font_preset)
 
         parts.append("</td></tr></table>")
         parts.append("<div style='height:8px;font-size:1px;'>&nbsp;</div>")
@@ -184,6 +192,7 @@ class ReceiptPreviewWidget(QWidget):
         cols: int,
         parts: list,
         paper_width: str = "80mm",
+        font_preset: str = "clear",
     ) -> None:
         """Render a single receipt command into HTML and append to *parts*."""
         ctype = cmd.get("type", "")
@@ -210,6 +219,22 @@ class ReceiptPreviewWidget(QWidget):
                     f"<tr><td style='padding:0;{_FONT}'>"
                 )
                 return
+
+            left_val = cmd.get("left_val")
+            right_val = cmd.get("right_val")
+
+            # Check if this line contains Sinhala/Tamil text requiring rasterization
+            if needs_raster(raw) or (left_val and needs_raster(left_val)) or (right_val and needs_raster(right_val)):
+                from cbpos.core.services.receipt_font_service import ReceiptFontService
+
+                families = cmd.get("font_families") or ReceiptFontService.get_font_families(font_preset)
+                data_uri = _raster_text_data_uri(cmd, paper_width, families)
+                if data_uri:
+                    parts.append(
+                        "<div align='center' style='text-align:center;margin:0;padding:0;line-height:0;'>"
+                        "<img src='%s' style='max-width:100%%;height:auto;'></div>" % data_uri
+                    )
+                    return
 
             # Two-column split row (content gets horizontal padding)
             left_val = cmd.get("left_val")
@@ -311,6 +336,25 @@ class ReceiptPreviewWidget(QWidget):
                 "font-size:8px;color:#999;padding:0;margin:0;'>"
                 "&#9986; cut</div>"
             )
+
+
+def _raster_text_data_uri(
+    cmd: dict[str, Any],
+    paper_width: str,
+    font_families: list[str] | None = None,
+) -> str:
+    """Render a text command via render_text_line and return as base64 PNG data URI (#925)."""
+    try:
+        from cbpos.infrastructure.hardware.text_raster import render_text_line
+
+        img = render_text_line(cmd, paper_width=paper_width, font_families=font_families)
+        buffer = io.BytesIO()
+        img.save(buffer, format="PNG")
+        encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
+        return f"data:image/png;base64,{encoded}"
+    except Exception as e:
+        logger.warning("Could not render raster text preview: %s", e)
+        return ""
 
 
 def _dithered_logo_data_uri(path: str, paper_width: str) -> str:

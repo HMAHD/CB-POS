@@ -31,9 +31,13 @@ _PADDING = 2
 _THRESHOLD = 160  # grey levels above this become white paper
 
 
-def _font(bold: bool, pixel_size: int) -> QFont:
+def _font(bold: bool, pixel_size: int, font_families: list[str] | None = None) -> QFont:
     font = QFont()
-    font.setFamilies(_FONT_FAMILIES)
+    if font_families is None:
+        from cbpos.core.services.receipt_font_service import ReceiptFontService
+
+        font_families = ReceiptFontService.get_font_families()
+    font.setFamilies(font_families)
     font.setPixelSize(pixel_size)
     font.setBold(bold)
     return font
@@ -76,7 +80,11 @@ def _draw_wrapped(
     return canvas
 
 
-def render_text_line(command: dict, paper_width: str = "80mm") -> Image.Image:
+def render_text_line(
+    command: dict,
+    paper_width: str = "80mm",
+    font_families: list[str] | None = None,
+) -> Image.Image:
     """Draw one builder text command as a black-on-white 1-bit image.
 
     Two-column rows (``left_val``/``right_val``) keep the label on the left
@@ -87,10 +95,14 @@ def render_text_line(command: dict, paper_width: str = "80mm") -> Image.Image:
     Args:
         command: A ``{"type": "text", ...}`` receipt command.
         paper_width: "58mm" or "80mm" -- sets the image width in dots.
+        font_families: Optional font families list overriding the active preset.
 
     Returns:
         A mode "1" PIL image exactly the paper's dot width wide.
     """
+    if font_families is None:
+        font_families = command.get("font_families")
+
     width = PAPER_DOT_WIDTH.get(paper_width, PAPER_DOT_WIDTH["80mm"])
     bold = bool(command.get("bold"))
     left, right = command.get("left_val"), command.get("right_val")
@@ -98,11 +110,11 @@ def render_text_line(command: dict, paper_width: str = "80mm") -> Image.Image:
     text = command.get("val", "") if not two_col else f"{left}  {right}"
 
     pixel_size = _PIXEL_SIZE
-    font = _font(bold, pixel_size)
+    font = _font(bold, pixel_size, font_families=font_families)
     metrics = QFontMetrics(font)
     while pixel_size > _MIN_PIXEL_SIZE and metrics.horizontalAdvance(text) > width:
         pixel_size -= 1
-        font = _font(bold, pixel_size)
+        font = _font(bold, pixel_size, font_families=font_families)
         metrics = QFontMetrics(font)
 
     align_str = str(command.get("align", "left")).lower()
@@ -179,6 +191,7 @@ def render_text_png(
     color: str = "#000000",
     max_width_pt: float | None = None,
     align: str = "left",
+    font_families: list[str] | None = None,
 ) -> tuple[bytes, float, float]:
     """Draw *text* as a transparent PNG for a PDF page, shaped by Qt (#740).
 
@@ -193,12 +206,13 @@ def render_text_png(
         color: Text colour, as "#RRGGBB".
         max_width_pt: Wrap width in points; None keeps it on one line.
         align: "left", "center" or "right" within the wrap width.
+        font_families: Optional font families list overriding the active preset.
 
     Returns:
         (PNG bytes, width in points, height in points).
     """
     scale = _PDF_DPI / 72
-    font = _font(bold, max(1, round(point_size * scale)))
+    font = _font(bold, max(1, round(point_size * scale)), font_families=font_families)
     metrics = QFontMetrics(font)
     width = metrics.horizontalAdvance(text) + 2 * _PADDING
     if max_width_pt is not None and width > max_width_pt * scale:

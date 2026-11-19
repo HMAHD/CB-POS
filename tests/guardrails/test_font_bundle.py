@@ -42,10 +42,10 @@ def test_issue_923_font_bundle_slimming_and_weights(qapp):
     for it in italic_files:
         assert not (noto_sans_dir / it).exists(), f"Italic font {it} should be deleted"
 
-    # 2. Verify exactly 12 font files total in cbpos/assets/fonts/
+    # 2. Verify exactly 13 font files total in cbpos/assets/fonts/ (12 Noto + 1 Yaldevi)
     all_fonts = list(fonts_dir.glob("**/*.ttf")) + list(fonts_dir.glob("**/*.otf"))
     font_names = {f.name for f in all_fonts}
-    assert len(all_fonts) == 12, f"Expected 12 font files, found {len(all_fonts)}: {font_names}"
+    assert len(all_fonts) == 13, f"Expected 13 font files, found {len(all_fonts)}: {font_names}"
 
     expected_noto_sans = {
         "NotoSans-Regular.ttf",
@@ -55,19 +55,21 @@ def test_issue_923_font_bundle_slimming_and_weights(qapp):
     }
     noto_sans_present = {f.name for f in (fonts_dir / "Noto_Sans" / "static").glob("*.ttf")}
     assert noto_sans_present == expected_noto_sans
+    assert (fonts_dir / "Yaldevi" / "Yaldevi[wght].ttf").exists()
 
-    # 3. Verify total raw font bundle size < 2.0 MB (target ~1.92 MB)
+    # 3. Verify total raw font bundle size < 2.5 MB (target ~2.3 MB)
     total_size = sum(f.stat().st_size for f in all_fonts)
-    assert total_size < 2.05 * 1024 * 1024, f"Font bundle size {total_size / (1024 * 1024):.2f}MB exceeds 2.0MB limit"
+    assert total_size < 2.5 * 1024 * 1024, f"Font bundle size {total_size / (1024 * 1024):.2f}MB exceeds 2.5MB limit"
 
     # 4. Verify registered font families in Qt
     ResourceLoader.load_fonts()
     loaded_families = set(ResourceLoader.get_loaded_families())
-    expected_families = {"Noto Sans", "Noto Sans Sinhala", "Noto Sans Tamil"}
+    expected_families = {"Noto Sans", "Noto Sans Sinhala", "Noto Sans Tamil", "Yaldevi"}
     assert loaded_families == expected_families, f"Expected families {expected_families}, got {loaded_families}"
 
-    # 5. Verify styles for all three families include Regular, Medium, SemiBold, Bold with exact numeric weights
-    for fam in expected_families:
+    # 5. Verify styles for Noto families include Regular, Medium, SemiBold, Bold with exact numeric weights
+    noto_families = {"Noto Sans", "Noto Sans Sinhala", "Noto Sans Tamil"}
+    for fam in noto_families:
         fam_styles = set(QFontDatabase.styles(fam))
         assert "Regular" in fam_styles, f"{fam} missing Regular style: {fam_styles}"
         assert "Bold" in fam_styles, f"{fam} missing Bold style: {fam_styles}"
@@ -82,6 +84,13 @@ def test_issue_923_font_bundle_slimming_and_weights(qapp):
         # Verify Medium and SemiBold are not registered as standalone families
         assert f"{fam} Medium" not in loaded_families, f"{fam} Medium registered as standalone family"
         assert f"{fam} SemiBold" not in loaded_families, f"{fam} SemiBold registered as standalone family"
+
+    # Verify Yaldevi styles
+    yaldevi_styles = set(QFontDatabase.styles("Yaldevi"))
+    assert "Regular" in yaldevi_styles
+    assert "Bold" in yaldevi_styles
+    assert "Medium" in yaldevi_styles
+    assert "SemiBold" in yaldevi_styles
 
     # 6. Verify critical character ranges in subset Noto Sans via fonttools
     try:
@@ -135,9 +144,9 @@ def test_issue_923_subset_idempotency():
     res1 = subprocess.run([sys.executable, str(script_path)], capture_output=True, text=True)
     assert res1.returncode == 0, f"subset_fonts.py failed: {res1.stderr}"
 
-    # Calculate sha256 of all 12 bundled TTF font files
-    all_fonts = sorted(fonts_dir.glob("**/*.ttf"))
-    assert len(all_fonts) == 12, f"Expected 12 font files, got {len(all_fonts)}"
+    # Calculate sha256 of all 12 bundled Noto TTF font files
+    all_fonts = sorted(fonts_dir.glob("Noto_*/**/*.ttf"))
+    assert len(all_fonts) == 12, f"Expected 12 Noto font files, got {len(all_fonts)}"
     hashes1 = {f.name: hashlib.sha256(f.read_bytes()).hexdigest() for f in all_fonts}
 
     # Run script second time

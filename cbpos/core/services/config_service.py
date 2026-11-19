@@ -100,6 +100,7 @@ class ConfigService:
         "receipt_qr_content": "",  # Shop WhatsApp/website URL for QR
         "show_warranty_on_receipt": True,
         "warranty_card_mode": "ASK",
+        "receipt_font_preset": "clear",
         # Network Database Configuration
         "db_mode": "standalone",  # standalone (SQLite) or network (PostgreSQL)
         "network_db_host": "localhost",

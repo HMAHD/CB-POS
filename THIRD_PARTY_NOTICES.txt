@@ -9,7 +9,7 @@ This file contains copyright notices, project URLs, and license terms for
 all runtime third-party packages, libraries, fonts, and assets incorporated
 into or distributed with CB POS.
 
-Total third-party components documented: 77
+Total third-party components documented: 78
 
 ==============================================================================
 
@@ -15302,6 +15302,14 @@ SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
 CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+------------------------------------------------------------------------------
+
+Component:    Yaldevi Font Family
+Version:      1.000
+License:      SIL Open Font License 1.1 (OFL-1.1)
+Copyright:    Copyright 2020 The Yaldevi Project Authors (https://github.com/mooniak/yaldevi)
+URL:          https://fonts.google.com/specimen/Yaldevi
+Notice:       Bundled variable TrueType font in cbpos/assets/fonts/Yaldevi/ under SIL OFL 1.1.
 ------------------------------------------------------------------------------
 
 Component:    yarl

@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 10A · Batch: 10A.2 · Branch: feat/p10a-b2-receipt-font-choice · PR: — · Last session: 2026-11-19
+- Phase: 10A · Batch: 10A.3 · Branch: feat/p10a-b3-installer-64bit · PR: — · Last session: 2026-11-19
 
 ## Issues
 
@@ -213,10 +213,10 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 | # | Title | Sev | Batch | Status | PR | Notes |
 |---|---|---|---|---|---|---|
-| #815 | Installer: 32-bit install mode (Program Files (x86)), unsigned binaries, no p… | medium | 10A.? | todo | | |
+| #815 | Installer: 32-bit install mode (Program Files (x86)), unsigned binaries, no p… | medium | 10A.3 | in-progress | | |
 | #923 | Slim the font bundle from 6.4 MB to 1.9 MB (drop italics, subset Noto Sans to… | — | 10A.1 | done | #1029 | 88f829a · slim Noto Sans Latin subsets with --name-IDs='*', delete unused italics (6.11 MB -> 1.83 MB), tests, 60 UI gate screenshots |
 | #924 | A4 invoice: real vector Sinhala/Tamil text via ReportLab shaping (uharfbuzz) … | — | 10A.1 | done | #1029 | 88f829a · vector Indic PDF generation via ReportLab shaping=1, unified make_shaped_paragraph across commercial/tax/warranty/RMA builders, sample PDFs, changelog |
-| #925 | Receipt font choice: short tested list (Clear/Noto default, Compact/Yaldevi) … | — | 10A.2 | in-progress | | |
+| #925 | Receipt font choice: short tested list (Clear/Noto default, Compact/Yaldevi) … | — | 10A.2 | done | #1030 | f6a7f2d · tested receipt font choices, Yaldevi variable font bundling, ReceiptFontService, live preview raster, test print, font benchmark |
 
 ### Phase 10B — [spec](phases/phase-10b-shop-workflows.md)
 
@@ -311,10 +311,13 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #824 | Physical print check of 58mm/80mm thermal warranty cards with cut and A4 PDF warranty certificates | pending |
 
 ## Handoff
-Phase 10A.1 merged via PR #1029 (`88f829a`), closing #923 and #924.
+Phase 10A.2 merged via PR #1030 (`f6a7f2d`), closing #925.
 - Decision D31 recorded: internal development of Phase 10A authorized ahead of public release hardware/legal gates.
 - Decision D32 recorded: #925 receipt font choices (Clear/Noto, Compact/Yaldevi; Nirmala UI on Windows only if benchmarked; never arbitrary system fonts).
 - Decision D33 recorded: #815 64-bit installer, unsigned per D7, no portable ZIP.
-Currently working on Phase 10A.2 / #925: branch `feat/p10a-b2-receipt-font-choice`. Yaldevi font and OFL downloaded and inspected.
-Next: author design note `docs/remediation/designs/925-receipt-font-choice.md`, run EGM, implement font choice, settings UI, live preview, print test receipt, benchmark script, tests, verify and PR.
+Currently working on Phase 10A.3 / #815: branch `feat/p10a-b3-installer-64bit`.
+- Inno Setup script updated with `ArchitecturesAllowed=x64compatible` and `ArchitecturesInstallIn64BitMode=x64compatible`.
+- `GetInstallDir` implemented in Pascal script to bridge 32-to-64-bit upgrades from `HKLM32` and clean up legacy uninstaller entries.
+- Guardrail test `tests/guardrails/test_installer_config.py` added and green.
+- Next: run full test suite, pre-commit, PR for #815.
 

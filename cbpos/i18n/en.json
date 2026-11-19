@@ -2094,7 +2094,18 @@
       "warranty_card_mode": "Print warranty cards:",
       "warranty_card_mode_off": "Off",
       "warranty_card_mode_ask": "Ask after checkout",
-      "warranty_card_mode_always": "Always print"
+      "warranty_card_mode_always": "Always print",
+      "section_receipt_font": "Receipt Font (Sinhala/Tamil)",
+      "font_clear": "Clear (recommended)",
+      "font_clear_desc": "Noto Sans: crisp, balanced spacing for 58mm and 80mm receipts",
+      "font_compact": "Compact",
+      "font_compact_desc": "Yaldevi: narrower Sinhala font, fits up to 26% more text per line",
+      "font_nirmala": "Windows Nirmala UI",
+      "font_nirmala_desc": "Windows built-in Indic font",
+      "btn_print_test": "Print Test Receipt",
+      "test_print_status_printing": "Printing test receipt...",
+      "test_print_status_success": "Test receipt printed successfully.",
+      "test_print_status_failed": "Failed to print test receipt."
     },
     "system": {
       "title": "System",

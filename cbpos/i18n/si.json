@@ -2057,7 +2057,18 @@
       "warranty_card_mode": "වගකීම් කාඩ්පත් මුද්‍රණය:",
       "warranty_card_mode_off": "අක්‍රියයි",
       "warranty_card_mode_ask": "ගෙවීමෙන් පසු විමසන්න",
-      "warranty_card_mode_always": "සෑමවිටම මුද්‍රණය කරන්න"
+      "warranty_card_mode_always": "සෑමවිටම මුද්‍රණය කරන්න",
+      "section_receipt_font": "රිසිට්පත් අකුරු (සිංහල/දෙමළ)",
+      "font_clear": "පැහැදිලි (නිර්දේශිත)",
+      "font_clear_desc": "Noto Sans: 58mm සහ 80mm රිසිට්පත් සඳහා පැහැදිලි, සමබර පෙනුමක්",
+      "font_compact": "සංයුක්ත (Compact)",
+      "font_compact_desc": "Yaldevi: සිහින් සිංහල අකුරු, පේළියකට 26% දක්වා වැඩි පෙළක් රැඳවිය හැක",
+      "font_nirmala": "Windows Nirmala UI",
+      "font_nirmala_desc": "Windows සමඟ එන අකුරු මෝස්තරය",
+      "btn_print_test": "පරීක්ෂණ රිසිට්පතක් මුද්‍රණය කරන්න",
+      "test_print_status_printing": "පරීක්ෂණ රිසිට්පත මුද්‍රණය වෙමින් පවතී...",
+      "test_print_status_success": "පරීක්ෂණ රිසිට්පත සාර්ථකව මුද්‍රණය විය.",
+      "test_print_status_failed": "පරීක්ෂණ රිසිට්පත මුද්‍රණය කිරීම අසාර්ථක විය."
     },
     "system": {
       "title": "සිස්ටම් එක",

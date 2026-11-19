@@ -132,6 +132,7 @@ def test_third_party_notices_generation_and_completeness(tmp_path):
     assert "Noto Sans" in text
     assert "Sinhala" in text
     assert "Tamil" in text
+    assert "Yaldevi" in text
 
     # URL prioritization and full shipped notice text
     assert "https://github.com/aio-libs/aiosignal" in text, "aiosignal must prioritize GitHub URL over chat"

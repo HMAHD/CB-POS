@@ -5,6 +5,7 @@ import logging
 
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
+    QButtonGroup,
     QCheckBox,
     QComboBox,
     QFileDialog,
@@ -15,6 +16,7 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QRadioButton,
     QScrollArea,
     QTabWidget,
     QTextEdit,
@@ -25,6 +27,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.models import Product, Sale, SaleItem, SalePayment
 from cbpos.core.services.receipt_builder import ReceiptBuilder
 from cbpos.core.services.receipt_logo_service import store_receipt_logo
+from cbpos.core.utils.destroy_hooks import call_on_destroyed
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.dialogs.guide_dialog import GuideDialog
 from cbpos.ui.views.settings_pages.base import SettingsPage
@@ -120,6 +123,30 @@ class ReceiptPage(SettingsPage):
         self._preview = ReceiptPreviewWidget()
         preview_scroll.setWidget(self._preview)
         right_layout.addWidget(preview_scroll, 1)
+
+        # Action row below preview: "Print test receipt" button + status label (#925)
+        preview_actions = QHBoxLayout()
+        preview_actions.setContentsMargins(0, 4, 0, 0)
+        preview_actions.setSpacing(8)
+
+        self.btn_print_test = QPushButton()
+        self.btn_print_test.setProperty("class", "secondary")
+        self.btn_print_test.setFixedHeight(34)
+        self.btn_print_test.clicked.connect(self._on_print_test_clicked)
+        preview_actions.addWidget(self.btn_print_test)
+
+        self.lbl_print_test_status = QLabel()
+        self.lbl_print_test_status.setProperty("class", "muted")
+        preview_actions.addWidget(self.lbl_print_test_status, 1)
+
+        right_layout.addLayout(preview_actions)
+
+        # PrintWorker test print tracking
+        self._test_print_job_id: str | None = None
+        from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+
+        PrintWorker.instance().job_result.connect(self._on_test_print_job_result)
+        call_on_destroyed(self, _disconnect_worker_job_result, self._on_test_print_job_result)
 
         split.addWidget(right_panel, 45)
 
@@ -227,6 +254,52 @@ class ReceiptPage(SettingsPage):
         self._lbl_receipt_lang = QLabel()
         lang_form.addRow(self._lbl_receipt_lang, lang_row)
         vbox_content.addLayout(lang_form)
+
+        # Section: Receipt Font (Sinhala/Tamil) (#925)
+        self._header_receipt_font = self._make_section_header("settings.receipt.section_receipt_font")
+        vbox_content.addWidget(self._header_receipt_font)
+
+        font_vbox = QVBoxLayout()
+        font_vbox.setContentsMargins(0, 0, 0, 0)
+        font_vbox.setSpacing(4)
+
+        self.font_button_group = QButtonGroup(self)
+
+        self.rb_font_clear = QRadioButton()
+        self.rb_font_clear.setChecked(True)
+        self.font_button_group.addButton(self.rb_font_clear, 0)
+        font_vbox.addWidget(self.rb_font_clear)
+
+        self._lbl_font_clear_desc = QLabel()
+        self._lbl_font_clear_desc.setProperty("class", "muted")
+        self._lbl_font_clear_desc.setWordWrap(True)
+        self._lbl_font_clear_desc.setContentsMargins(24, 0, 0, 4)
+        font_vbox.addWidget(self._lbl_font_clear_desc)
+
+        self.rb_font_compact = QRadioButton()
+        self.font_button_group.addButton(self.rb_font_compact, 1)
+        font_vbox.addWidget(self.rb_font_compact)
+
+        self._lbl_font_compact_desc = QLabel()
+        self._lbl_font_compact_desc.setProperty("class", "muted")
+        self._lbl_font_compact_desc.setWordWrap(True)
+        self._lbl_font_compact_desc.setContentsMargins(24, 0, 0, 4)
+        font_vbox.addWidget(self._lbl_font_compact_desc)
+
+        from cbpos.core.services.receipt_font_service import ReceiptFontService
+
+        if ReceiptFontService.is_nirmala_available():
+            self.rb_font_nirmala = QRadioButton()
+            self.font_button_group.addButton(self.rb_font_nirmala, 2)
+            font_vbox.addWidget(self.rb_font_nirmala)
+
+            self._lbl_font_nirmala_desc = QLabel()
+            self._lbl_font_nirmala_desc.setProperty("class", "muted")
+            self._lbl_font_nirmala_desc.setWordWrap(True)
+            self._lbl_font_nirmala_desc.setContentsMargins(24, 0, 0, 4)
+            font_vbox.addWidget(self._lbl_font_nirmala_desc)
+
+        vbox_content.addLayout(font_vbox)
 
         # Without this, the scroll area's inner widget stretches to fill
         # the tab's full height (QScrollArea.setWidgetResizable), and with
@@ -393,6 +466,18 @@ class ReceiptPage(SettingsPage):
         self.btn_receipt_lang_help.setToolTip(_t("settings.receipt.receipt_language_hint"))
         self.combo_receipt_lang.setItemText(0, _t("settings.receipt.lang_same_as_ui"))
 
+        # Receipt font (#925)
+        if hasattr(self, "rb_font_clear"):
+            self.rb_font_clear.setText(_t("settings.receipt.font_clear"))
+            self._lbl_font_clear_desc.setText(_t("settings.receipt.font_clear_desc"))
+            self.rb_font_compact.setText(_t("settings.receipt.font_compact"))
+            self._lbl_font_compact_desc.setText(_t("settings.receipt.font_compact_desc"))
+            if hasattr(self, "rb_font_nirmala"):
+                self.rb_font_nirmala.setText(_t("settings.receipt.font_nirmala"))
+                self._lbl_font_nirmala_desc.setText(_t("settings.receipt.font_nirmala_desc"))
+        if hasattr(self, "btn_print_test"):
+            self.btn_print_test.setText(_t("settings.receipt.btn_print_test"))
+
         # Display tab
         self.chk_show_barcode.setText(_t("settings.receipt.chk_show_barcode"))
         self.chk_show_barcode.setToolTip(_t("settings.receipt.tooltip_show_barcode"))
@@ -439,6 +524,12 @@ class ReceiptPage(SettingsPage):
         self.txt_header.textChanged.connect(trigger)
         self.txt_footer.textChanged.connect(trigger)
         self.combo_receipt_lang.currentIndexChanged.connect(trigger)
+        # Font radios (#925)
+        if hasattr(self, "rb_font_clear"):
+            self.rb_font_clear.toggled.connect(trigger)
+            self.rb_font_compact.toggled.connect(trigger)
+            if hasattr(self, "rb_font_nirmala"):
+                self.rb_font_nirmala.toggled.connect(trigger)
         # Checkboxes
         self.chk_show_barcode.stateChanged.connect(trigger)
         self.chk_merge_items.stateChanged.connect(trigger)
@@ -455,6 +546,14 @@ class ReceiptPage(SettingsPage):
         """Restart the debounce timer -- preview refreshes after 300 ms of inactivity."""
         self._refresh_timer.start()
 
+    def _current_selected_preset(self) -> str:
+        """Return the on-screen selected font preset ID."""
+        if hasattr(self, "rb_font_compact") and self.rb_font_compact.isChecked():
+            return "compact"
+        if hasattr(self, "rb_font_nirmala") and self.rb_font_nirmala.isChecked():
+            return "nirmala"
+        return "clear"
+
     def _refresh_preview(self) -> None:
         """Build receipt commands from current settings and update the preview."""
         # The preview width selector is independent of the real Hardware-tab
@@ -464,17 +563,63 @@ class ReceiptPage(SettingsPage):
         # so injecting the previewed width into a copy of it here only
         # affects this dummy preview build, never anything persisted (#325).
         preview_width = self.combo_preview_width.currentData() or "80mm"
+        selected_preset = self._current_selected_preset()
         self._preview.set_paper_width(preview_width)
+        self._preview.set_font_preset(selected_preset)
 
         config = self.save()
         config["paper_width"] = preview_width
+        config["receipt_font_preset"] = selected_preset
         commands = ReceiptBuilder.build_receipt(
             self._make_dummy_sale(),
             config_override=config,
         )
+        from cbpos.core.services.receipt_font_service import ReceiptFontService
+
+        fams = ReceiptFontService.get_font_families(selected_preset)
+        for cmd in commands:
+            cmd["font_families"] = fams
+
         self._preview.set_commands(commands)
         self._update_header_char_count()
         self._update_footer_char_count()
+
+    def _on_print_test_clicked(self) -> None:
+        """Queue a test receipt print job on PrintWorker and track its job_id (#925)."""
+        self.btn_print_test.setEnabled(False)
+        self.lbl_print_test_status.setText(_t("settings.receipt.test_print_status_printing"))
+
+        preview_width = self.combo_preview_width.currentData() or "80mm"
+        selected_preset = self._current_selected_preset()
+
+        config = self.save()
+        config["paper_width"] = preview_width
+        config["receipt_font_preset"] = selected_preset
+        commands = ReceiptBuilder.build_receipt(
+            self._make_dummy_sale(),
+            config_override=config,
+        )
+        from cbpos.core.services.receipt_font_service import ReceiptFontService
+
+        fams = ReceiptFontService.get_font_families(selected_preset)
+        for cmd in commands:
+            cmd["font_families"] = fams
+
+        from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+
+        self._test_print_job_id = PrintWorker.instance().add_job("print_receipt", commands)
+
+    def _on_test_print_job_result(self, job_id: str, ok: bool, message: str) -> None:
+        """Update test print button and status when the matching print job finishes."""
+        if self._test_print_job_id is None or job_id != self._test_print_job_id:
+            return
+        self._test_print_job_id = None
+        self.btn_print_test.setEnabled(True)
+        if ok:
+            self.lbl_print_test_status.setText(_t("settings.receipt.test_print_status_success"))
+        else:
+            self.lbl_print_test_status.setText(_t("settings.receipt.test_print_status_failed"))
+            QMessageBox.warning(self, _t("common.error"), message or _t("settings.receipt.test_print_status_failed"))
 
     def _current_line_chars(self) -> int:
         """Characters-per-line budget for the currently *previewed* paper width.
@@ -556,7 +701,10 @@ class ReceiptPage(SettingsPage):
         if hasattr(self, "warranty_container"):
             from cbpos.core.services.warranty_service import WarrantyService
 
-            w_enabled = WarrantyService.is_enabled()
+            try:
+                w_enabled = WarrantyService.is_enabled()
+            except Exception:
+                w_enabled = False
             self.warranty_container.setVisible(w_enabled)
             self.chk_show_warranty.setChecked(
                 settings.get("show_warranty_on_receipt", _d.get("show_warranty_on_receipt", True))
@@ -571,6 +719,15 @@ class ReceiptPage(SettingsPage):
         idx = self.combo_receipt_lang.findData(receipt_lang)
         if idx >= 0:
             self.combo_receipt_lang.setCurrentIndex(idx)
+
+        # Receipt font (#925)
+        font_preset = settings.get("receipt_font_preset", "clear")
+        if font_preset == "compact" and hasattr(self, "rb_font_compact"):
+            self.rb_font_compact.setChecked(True)
+        elif font_preset == "nirmala" and hasattr(self, "rb_font_nirmala"):
+            self.rb_font_nirmala.setChecked(True)
+        elif hasattr(self, "rb_font_clear"):
+            self.rb_font_clear.setChecked(True)
 
         # Preview width defaults to whatever's really configured on the
         # Hardware tab -- from there the shop can switch it to check the
@@ -603,6 +760,7 @@ class ReceiptPage(SettingsPage):
             if hasattr(self, "combo_warranty_card_mode")
             else "ASK",
             "receipt_language": self.combo_receipt_lang.currentData() or "",
+            "receipt_font_preset": self._current_selected_preset(),
         }
 
     def _toggle_qr_content(self) -> None:
@@ -631,9 +789,9 @@ class ReceiptPage(SettingsPage):
             tax_sscl=decimal.Decimal("36.25"),
             net_revenue=decimal.Decimal("1192.56"),
         )
-        p1 = Product(name_en="Product A")
-        p2 = Product(name_en="Product B")
-        p3 = Product(name_en="Product C")
+        p1 = Product(name_en="Milk Powder 400g", name_si="කිරි පිටි 400g", name_ta="பால் மா 400g")
+        p2 = Product(name_en="White Sugar 1kg", name_si="සුදු සීනි 1kg", name_ta="வெள்ளை சீனி 1kg")
+        p3 = Product(name_en="Samba Rice 5kg", name_si="සම්බා සහල් 5kg", name_ta="சம்பா அரிசி 5kg")
         sale.items = [
             SaleItem(
                 product=p1,
@@ -661,6 +819,16 @@ class ReceiptPage(SettingsPage):
             SalePayment(payment_method="Cash", amount=decimal.Decimal("1500.00")),
         ]
         return sale
+
+
+def _disconnect_worker_job_result(slot) -> None:
+    """Safely disconnect PrintWorker job_result slot without holding a strong owner reference."""
+    try:
+        from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+
+        PrintWorker.instance().job_result.disconnect(slot)
+    except Exception:
+        pass
 
 
 __all__ = ["ReceiptPage"]

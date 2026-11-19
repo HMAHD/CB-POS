@@ -65,6 +65,8 @@ def register_pdf_fonts() -> None:
         ("NotoSansSinhala-Bold", "Noto_Sans_Sinhala/static/NotoSansSinhala-Bold.ttf"),
         ("NotoSansTamil", "Noto_Sans_Tamil/static/NotoSansTamil-Regular.ttf"),
         ("NotoSansTamil-Bold", "Noto_Sans_Tamil/static/NotoSansTamil-Bold.ttf"),
+        ("Yaldevi", "Yaldevi/Yaldevi[wght].ttf"),
+        ("Yaldevi-Bold", "Yaldevi/Yaldevi[wght].ttf"),
     ]
 
     for name, rel_path in font_defs:
@@ -84,6 +86,7 @@ def register_pdf_fonts() -> None:
         ("NotoSans", "NotoSans", "NotoSans-Bold"),
         ("NotoSansSinhala", "NotoSansSinhala", "NotoSansSinhala-Bold"),
         ("NotoSansTamil", "NotoSansTamil", "NotoSansTamil-Bold"),
+        ("Yaldevi", "Yaldevi", "Yaldevi-Bold"),
     ]
     registered_names = set(pdfmetrics.getRegisteredFontNames())
     for family, normal, bold in families:
@@ -121,6 +124,13 @@ def font_for(text: str) -> str:
             break
 
     if has_sinhala:
+        try:
+            from cbpos.core.services.receipt_font_service import ReceiptFontService
+
+            if ReceiptFontService.current() == ReceiptFontService.PRESET_COMPACT:
+                return "Yaldevi"
+        except Exception:
+            pass
         return "NotoSansSinhala"
     if has_tamil:
         return "NotoSansTamil"
@@ -202,7 +212,7 @@ def make_shaped_paragraph(
     """
     val = "" if text is None else str(text)
     font_base = font_for(val)
-    is_complex = font_base in ("NotoSansSinhala", "NotoSansTamil")
+    is_complex = font_base in ("NotoSansSinhala", "NotoSansTamil", "Yaldevi")
 
     # Fail-closed raster fallback only when uharfbuzz is unavailable for Indic scripts
     if is_complex and not is_shaping_available():

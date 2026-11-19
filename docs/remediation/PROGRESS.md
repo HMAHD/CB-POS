@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 10A · Batch: 10A.1 · Branch: feat/p10a-b1-fonts-vector-invoice · PR: (pending) · Last session: 2026-11-19
+- Phase: 10A · Batch: 10A.1 · Branch: feat/p10a-b1-fonts-vector-invoice · PR: #1029 (open) · Last session: 2026-11-19
 
 ## Issues
 
@@ -214,8 +214,8 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | # | Title | Sev | Batch | Status | PR | Notes |
 |---|---|---|---|---|---|---|
 | #815 | Installer: 32-bit install mode (Program Files (x86)), unsigned binaries, no p… | medium | 10A.? | todo | | |
-| #923 | Slim the font bundle from 6.4 MB to 1.9 MB (drop italics, subset Noto Sans to… | — | 10A.1 | in-progress | | |
-| #924 | A4 invoice: real vector Sinhala/Tamil text via ReportLab shaping (uharfbuzz) … | — | 10A.1 | in-progress | | |
+| #923 | Slim the font bundle from 6.4 MB to 1.9 MB (drop italics, subset Noto Sans to… | — | 10A.1 | pr-open | #1029 | be6bbdf · slim Noto Sans Latin subsets with --name-IDs='*', delete unused italics (6.11 MB -> 1.83 MB), tests, 60 UI gate screenshots |
+| #924 | A4 invoice: real vector Sinhala/Tamil text via ReportLab shaping (uharfbuzz) … | — | 10A.1 | pr-open | #1029 | 0b76f30, 1229e25, 5ad3cc8 · vector Indic PDF generation via ReportLab shaping=1, unified make_shaped_paragraph across commercial/tax/warranty/RMA builders, sample PDFs, changelog |
 | #925 | Receipt font choice: short tested list (Clear/Noto default, Compact/Yaldevi) … | — | 10A.? | todo | | |
 
 ### Phase 10B — [spec](phases/phase-10b-shop-workflows.md)
@@ -312,7 +312,9 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Handoff
 Phase 9.6 merged via PR #1028 (`ddecf4d3a0f6e55e68a9ae646b52b82be1ad4a86`), closing #829 and #830. Epic #820 remains open pending #824 physical-printer verification and legal statutory text verification.
-Batch 10A.1 started on branch `feat/p10a-b1-fonts-vector-invoice`:
+Batch 10A.1 completed on branch `feat/p10a-b1-fonts-vector-invoice` and submitted via PR #1029 (open for independent final review):
 - Decision D31 recorded: internal development of Phase 10A authorized ahead of public release hardware/legal gates.
-- Implementing #923 (slim bundled Noto fonts) and #924 (vector Sinhala/Tamil A4 invoices).
+- #923: Noto Sans font bundle slimmed from 16 files / 6.11 MB to 12 files / 1.83 MB (~70% reduction) preserving Qt weight resolution (400, 500, 600, 700), upstream sources archived, 60 UI gate screenshots captured across 5 busiest screens in dark/light & EN/SI/TA.
+- #924: Indic vector printing unified across A4 Commercial Invoice, A4 Statutory VAT Tax Invoice, Warranty Certificate, and RMA Waybill using ReportLab TTFonts and `shaping=1` (uharfbuzz), sample PDFs generated and verified with 0 raster text images, and release note entry added.
+- All domain/guardrail tests passing, PR #1029 left open for human review.
 

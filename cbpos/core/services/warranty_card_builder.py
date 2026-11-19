@@ -9,10 +9,8 @@ Implements CAA s.31(g) / owner snapshot truth:
 import logging
 import os
 import tempfile
-from io import BytesIO
 from pathlib import Path
 from typing import Any
-from xml.sax.saxutils import escape
 
 from reportlab.graphics.barcode import code128
 from reportlab.lib import colors
@@ -20,15 +18,15 @@ from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 from reportlab.lib.pagesizes import A5
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
-from reportlab.platypus import Flowable, Image, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import Flowable, PageBreak, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from cbpos.core.models.warranty import Warranty
 from cbpos.core.services.base_receipt_builder import BaseReceiptBuilder
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.product_service import ProductService
 from cbpos.core.utils.barcode import calculate_barcode_width, choose_barcode
-from cbpos.core.utils.text_scripts import needs_raster
 from cbpos.i18n import translate_in
+from cbpos.infrastructure.pdf_fonts import make_shaped_paragraph
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +37,8 @@ _LIGHT_BG = colors.HexColor("#F8FAFC")
 
 
 def _styles() -> dict[str, ParagraphStyle]:
-    regular = "Helvetica"
-    bold = "Helvetica-Bold"
+    regular = "NotoSans"
+    bold = "NotoSans-Bold"
     return {
         "title": ParagraphStyle("Title", fontName=bold, fontSize=16, leading=20, alignment=TA_CENTER, textColor=_NAVY),
         "subtitle": ParagraphStyle(
@@ -60,30 +58,13 @@ def _styles() -> dict[str, ParagraphStyle]:
 
 
 def _text(text: Any, style: ParagraphStyle, width: float | None = None) -> Flowable:
-    """Render paragraph of text, rasterizing Sinhala/Tamil with Qt for proper shaping."""
-    val = str(text or "")
-    if not needs_raster(val):
-        return Paragraph(escape(val), style)
-
-    from cbpos.infrastructure.hardware.text_raster import render_text_png
-
-    align = {TA_CENTER: "center", TA_RIGHT: "right"}.get(style.alignment, "left")
-    png, w, h = render_text_png(
-        val,
-        style.fontSize,
-        bold=style.fontName.endswith("Bold"),
-        color="#" + style.textColor.hexval()[2:],
-        max_width_pt=width,
-        align=align,
-    )
-    image = Image(BytesIO(png), width=w, height=h)
-    image.hAlign = align.upper()
-    return image
+    """Render paragraph of text with vector shaping for Indic scripts (#924)."""
+    return make_shaped_paragraph(text, style, width=width)
 
 
 def _draw_branding(canvas: Any, doc: Any) -> None:
     canvas.saveState()
-    canvas.setFont("Helvetica", 7)
+    canvas.setFont("NotoSans", 7)
     canvas.setFillColor(_GREY)
     canvas.drawString(15 * mm, 10 * mm, "Powered by CB POS • ceybyte.com")
     canvas.drawRightString(doc.pagesize[0] - 15 * mm, 10 * mm, "Free & Open Source POS for Sri Lankan Small Businesses")
@@ -367,40 +348,40 @@ class WarrantyCardBuilder(BaseReceiptBuilder):
             remedy_key = f"warranty_remedy_{w.remedy.lower()}"
             remedy_name = _lt(remedy_key, w.remedy.replace("_", " ").title())
 
+            col_w = [26 * mm, 38 * mm, 24 * mm, 38 * mm]
             table_data = [
                 [
-                    _text(f"{_lt('warranty_card_invoice', 'Invoice')}:", st["bold"]),
-                    _text(doc_no, st["base"]),
-                    _text(f"{_lt('date', 'Date')}:", st["bold"]),
-                    _text(sale_date, st["base"]),
+                    _text(f"{_lt('warranty_card_invoice', 'Invoice')}:", st["bold"], col_w[0]),
+                    _text(doc_no, st["base"], col_w[1]),
+                    _text(f"{_lt('date', 'Date')}:", st["bold"], col_w[2]),
+                    _text(sale_date, st["base"], col_w[3]),
                 ],
                 [
-                    _text(f"{_lt('customer', 'Customer')}:", st["bold"]),
-                    _text(cust_name, st["base"]),
-                    _text(f"{_lt('phone', 'Phone')}:", st["bold"]),
-                    _text(cust_phone, st["base"]),
+                    _text(f"{_lt('customer', 'Customer')}:", st["bold"], col_w[0]),
+                    _text(cust_name, st["base"], col_w[1]),
+                    _text(f"{_lt('phone', 'Phone')}:", st["bold"], col_w[2]),
+                    _text(cust_phone, st["base"], col_w[3]),
                 ],
                 [
-                    _text(f"{_lt('item', 'Product')}:", st["bold"]),
-                    _text(prod_name, st["bold"]),
-                    _text("S/N / IMEI:", st["bold"]),
-                    _text(w.serial_number or "-", st["base"]),
+                    _text(f"{_lt('item', 'Product')}:", st["bold"], col_w[0]),
+                    _text(prod_name, st["bold"], col_w[1]),
+                    _text("S/N / IMEI:", st["bold"], col_w[2]),
+                    _text(w.serial_number or "-", st["base"], col_w[3]),
                 ],
                 [
-                    _text(f"{_lt('warranty_label', 'Warranty')}:", st["bold"]),
-                    _text(coverage_text, st["base"]),
-                    _text(f"{_lt('provider', 'Provider')}:", st["bold"]),
-                    _text(provider, st["base"]),
+                    _text(f"{_lt('warranty_label', 'Warranty')}:", st["bold"], col_w[0]),
+                    _text(coverage_text, st["base"], col_w[1]),
+                    _text(f"{_lt('provider', 'Provider')}:", st["bold"], col_w[2]),
+                    _text(provider, st["base"], col_w[3]),
                 ],
                 [
-                    _text(f"{_lt('valid_until', 'Valid Period')}:", st["bold"]),
-                    _text(valid_dates, st["base"]),
-                    _text(f"{_lt('warranty_card_remedy', 'Remedy')}:", st["bold"]),
-                    _text(remedy_name, st["base"]),
+                    _text(f"{_lt('valid_until', 'Valid Period')}:", st["bold"], col_w[0]),
+                    _text(valid_dates, st["base"], col_w[1]),
+                    _text(f"{_lt('warranty_card_remedy', 'Remedy')}:", st["bold"], col_w[2]),
+                    _text(remedy_name, st["base"], col_w[3]),
                 ],
             ]
 
-            col_w = [26 * mm, 38 * mm, 24 * mm, 38 * mm]
             t = Table(table_data, colWidths=col_w)
             t.setStyle(
                 TableStyle(

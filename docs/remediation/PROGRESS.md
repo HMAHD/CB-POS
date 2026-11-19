@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 9 · Batch: 9.5 · Branch: feat/p9-b5-claim-resolution-rma · PR: #1027 · Last session: 2026-11-17
+- Phase: 10A · Batch: 10A.1 · Branch: feat/p10a-b1-fonts-vector-invoice · PR: #1029 (open) · Last session: 2026-11-19
 
 ## Issues
 
@@ -206,16 +206,16 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #826 | Warranty W6: Warranty claims: intake, inspection, resolution and collection | — | 9.4 | done | #1026 | e6e9e9b · WarrantyClaim & WarrantyClaimEvent models, migration, WarrantyClaimService state machine, replacement warranty creation, refund/void claim guards, WarrantyClaimReceiptBuilder thermal slips, WarrantyClaimIntakeDialog, WarrantyClaimResolveDialog, WarrantyClaimsBoardView, sync protocol 1.5 |
 | #827 | Warranty W7: Claim replacement and refund with correct stock movements | — | 9.5 | done | #1027 | 1bce4ea · MovementType.WARRANTY stock deduction, atomic replacement with fresh/remaining term, refund claim integration with stock neutralization and audit logging, SQLite/PostgreSQL migration |
 | #828 | Warranty W8: Supplier and manufacturer RMA tracking | — | 9.5 | done | #1027 | 096e049 · Supplier RMA state machine (SENT_TO_SUPPLIER, SUPPLIER_RETURNED), SupplierPayableService.record_credit_note_in_session, FIFO aging credit_types, supplier coverage estimator, privacy-compliant RMA thermal dispatch & vector PDF waybill, WarrantySupplierDispatchDialog, WarrantySupplierReceiveDialog, WarrantySupplierOutcomeDialog, claims board RMA integration & overdue supplier filter |
-| #829 | Warranty W9: Extended warranty sold as a paid add-on | — | 9.6 | in-progress (pr-open) | | 496e5a5 · Product.is_warranty_plan/plan_policy_id, stable cart line IDs, atomic base+extended creation, void/refund cascade, receipt/card builders, PlanCoveredItemChooserDialog |
-| #830 | Warranty W10: Warranty reports, dashboard alerts and expiry reminders | — | 9.6 | in-progress (pr-open) | | 7c225ef · Active/Expiring/Claims/Product-Supplier/Cost reports, dual permissions seam, clickable Management dashboard tile, SchedulerService alerts & reminders, translations, seed update |
+| #829 | Warranty W9: Extended warranty sold as a paid add-on | — | 9.6 | done | #1028 | 496e5a5 · Product.is_warranty_plan/plan_policy_id, stable cart line IDs, atomic base+extended creation, void/refund cascade, receipt/card builders, PlanCoveredItemChooserDialog |
+| #830 | Warranty W10: Warranty reports, dashboard alerts and expiry reminders | — | 9.6 | done | #1028 | 7c225ef · Active/Expiring/Claims/Product-Supplier/Cost reports, dual permissions seam, clickable Management dashboard tile, SchedulerService alerts & reminders, translations, seed update |
 
 ### Phase 10A — [spec](phases/phase-10a-packaging-printing.md)
 
 | # | Title | Sev | Batch | Status | PR | Notes |
 |---|---|---|---|---|---|---|
 | #815 | Installer: 32-bit install mode (Program Files (x86)), unsigned binaries, no p… | medium | 10A.? | todo | | |
-| #923 | Slim the font bundle from 6.4 MB to 1.9 MB (drop italics, subset Noto Sans to… | — | 10A.? | todo | | |
-| #924 | A4 invoice: real vector Sinhala/Tamil text via ReportLab shaping (uharfbuzz) … | — | 10A.? | todo | | |
+| #923 | Slim the font bundle from 6.4 MB to 1.9 MB (drop italics, subset Noto Sans to… | — | 10A.1 | pr-open | #1029 | be6bbdf · slim Noto Sans Latin subsets with --name-IDs='*', delete unused italics (6.11 MB -> 1.83 MB), tests, 60 UI gate screenshots |
+| #924 | A4 invoice: real vector Sinhala/Tamil text via ReportLab shaping (uharfbuzz) … | — | 10A.1 | pr-open | #1029 | 0b76f30, 1229e25, 5ad3cc8 · vector Indic PDF generation via ReportLab shaping=1, unified make_shaped_paragraph across commercial/tax/warranty/RMA builders, sample PDFs, changelog |
 | #925 | Receipt font choice: short tested list (Clear/Noto default, Compact/Yaldevi) … | — | 10A.? | todo | | |
 
 ### Phase 10B — [spec](phases/phase-10b-shop-workflows.md)
@@ -311,10 +311,10 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #824 | Physical print check of 58mm/80mm thermal warranty cards with cut and A4 PDF warranty certificates | pending |
 
 ## Handoff
-Batch 9.6 implemented on branch `feat/p9-b6-extended-plans-reports`:
-- #829 (`496e5a5`): Paid extended warranty plans, stable cart line IDs, atomic registration of base+extended warranties, void/refund cascade, receipt/card builders, PlanCoveredItemChooserDialog.
-- #830 (`7c225ef`): 5 warranty reports registered in `CATEGORY_WARRANTY`, dual permissions seam (`reports.view_sales`/`reports.view_profit` + `warranty.view`), clickable Management dashboard tile with shared query helper, background SchedulerService reminders/alerts for overdue claims/RMAs, trilingual translations.
-- Review fixes & UI gate: dialog footer pattern, in-flight dashboard loading coalescing, test suite fixes, dark/light EN/SI/TA screenshots captured.
-- PR opened for Batch 9.6: Fixes #829, Fixes #830. Stopped with PR open pending review.
-- Epic #820 remains open pending #824 physical-printer verification and legal statutory text verification.
+Phase 9.6 merged via PR #1028 (`ddecf4d3a0f6e55e68a9ae646b52b82be1ad4a86`), closing #829 and #830. Epic #820 remains open pending #824 physical-printer verification and legal statutory text verification.
+Batch 10A.1 completed on branch `feat/p10a-b1-fonts-vector-invoice` and submitted via PR #1029 (open for independent final review):
+- Decision D31 recorded: internal development of Phase 10A authorized ahead of public release hardware/legal gates.
+- #923: Noto Sans font bundle slimmed from 16 files / 6.11 MB to 12 files / 1.83 MB (~70% reduction) preserving Qt weight resolution (400, 500, 600, 700), upstream sources archived, 60 UI gate screenshots captured across 5 busiest screens in dark/light & EN/SI/TA.
+- #924: Indic vector printing unified across A4 Commercial Invoice, A4 Statutory VAT Tax Invoice, Warranty Certificate, and RMA Waybill using ReportLab TTFonts and `shaping=1` (uharfbuzz), sample PDFs generated and verified with 0 raster text images, and release note entry added.
+- All domain/guardrail tests passing, PR #1029 left open for human review.
 

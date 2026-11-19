@@ -8,13 +8,14 @@ for script detection, XML escaping, and shaped Paragraph generation.
 import logging
 import sys
 import xml.sax.saxutils
+from io import BytesIO
 from pathlib import Path
 from typing import Any
 
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.pdfbase import pdfmetrics, ttfonts
-from reportlab.platypus import Paragraph
+from reportlab.platypus import Flowable, Image, Paragraph
 
 logger = logging.getLogger(__name__)
 
@@ -182,3 +183,64 @@ def create_cell_paragraph(
     )
 
     return Paragraph(escaped, style)
+
+
+def make_shaped_paragraph(
+    text: Any,
+    style: ParagraphStyle,
+    width: float | None = None,
+) -> Flowable:
+    """Build a styled, shaped ReportLab Flowable (Paragraph or fail-closed raster Image fallback).
+
+    Converts newlines to '<br/>' and XML-escapes text for ReportLab Paragraph.
+    If Sinhala or Tamil script is detected:
+      - If `is_shaping_available()`: uses shapable NotoSansSinhala or NotoSansTamil
+        with ParagraphStyle(..., parent=style, shaping=1).
+      - If `not is_shaping_available()`: falls back to `render_text_png` and wraps in an Image.
+    If Latin or numeric script:
+      - Uses NotoSans (or NotoSans-Bold) with ParagraphStyle(..., parent=style, shaping=0).
+    """
+    val = "" if text is None else str(text)
+    font_base = font_for(val)
+    is_complex = font_base in ("NotoSansSinhala", "NotoSansTamil")
+
+    # Fail-closed raster fallback only when uharfbuzz is unavailable for Indic scripts
+    if is_complex and not is_shaping_available():
+        from cbpos.infrastructure.hardware.text_raster import render_text_png
+
+        align = {TA_CENTER: "center", TA_RIGHT: "right"}.get(style.alignment, "left")
+        is_bold = bool(style.fontName and ("Bold" in style.fontName or style.fontName.endswith("Bold")))
+        color_hex = "#000000"
+        if hasattr(style, "textColor") and style.textColor:
+            tc = style.textColor
+            if hasattr(tc, "hexval"):
+                color_hex = "#" + tc.hexval()[2:]
+            elif isinstance(tc, str):
+                color_hex = tc if tc.startswith("#") else f"#{tc}"
+        png, w, h = render_text_png(
+            val,
+            style.fontSize,
+            bold=is_bold,
+            color=color_hex,
+            max_width_pt=width,
+            align=align,
+        )
+        img = Image(BytesIO(png), width=w, height=h)
+        img.hAlign = align.upper()
+        return img
+
+    register_pdf_fonts()
+    val_clean = val.replace("\r\n", "\n").replace("\r", "\n")
+    escaped = xml.sax.saxutils.escape(val_clean).replace("\n", "<br/>")
+
+    is_bold = bool(style.fontName and ("Bold" in style.fontName or style.fontName.endswith("Bold")))
+    font_name = f"{font_base}-Bold" if is_bold else font_base
+    shaping_val = 1 if (is_complex and is_shaping_available()) else 0
+
+    shaped_style = ParagraphStyle(
+        f"{style.name}_{font_name}",
+        parent=style,
+        fontName=font_name,
+        shaping=shaping_val,
+    )
+    return Paragraph(escaped, shaped_style)

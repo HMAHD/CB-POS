@@ -8,17 +8,15 @@ their products (with unit), its payments and its customer (#733, #740).
 
 from dataclasses import dataclass
 from decimal import Decimal
-from io import BytesIO
 from pathlib import Path
 from typing import Any
-from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
-from reportlab.platypus import Flowable, Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import Flowable, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from cbpos.core.models import Sale
 from cbpos.core.services.config_service import ConfigService
@@ -26,8 +24,8 @@ from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.tax_service import TaxService
 from cbpos.core.utils.formatters import format_currency, format_quantity, quantity_decimals
 from cbpos.core.utils.money import round_money
-from cbpos.core.utils.text_scripts import needs_raster
 from cbpos.i18n import get_language, translate_in
+from cbpos.infrastructure.pdf_fonts import make_shaped_paragraph
 
 _NAVY = colors.HexColor("#003366")
 _GREY = colors.HexColor("#666666")
@@ -105,8 +103,8 @@ def _pct(value: Any, default: str) -> str:
 
 
 def _styles() -> dict[str, ParagraphStyle]:
-    base = ParagraphStyle("InvBase", fontName="Helvetica", fontSize=9, leading=12)
-    bold = ParagraphStyle("InvBold", parent=base, fontName="Helvetica-Bold")
+    base = ParagraphStyle("InvBase", fontName="NotoSans", fontSize=9, leading=12)
+    bold = ParagraphStyle("InvBold", parent=base, fontName="NotoSans-Bold")
     return {
         "base": base,
         "bold": bold,
@@ -123,31 +121,8 @@ def _styles() -> dict[str, ParagraphStyle]:
 
 
 def _text(text: Any, style: ParagraphStyle, width: float | None = None) -> Flowable:
-    """A paragraph of *text*; Sinhala/Tamil is drawn by Qt so it is shaped correctly.
-
-    Args:
-        text: What to show.
-        style: Font, size, colour and alignment.
-        width: Wrap width in points for Sinhala/Tamil text.
-    """
-    text = str(text or "")
-    if not needs_raster(text):
-        return Paragraph(escape(text), style)
-    # Qt only when there is Sinhala/Tamil to draw: the service itself imports no PyQt.
-    from cbpos.infrastructure.hardware.text_raster import render_text_png
-
-    align = {TA_CENTER: "center", TA_RIGHT: "right"}.get(style.alignment, "left")
-    png, w, h = render_text_png(
-        text,
-        style.fontSize,
-        bold=style.fontName.endswith("Bold"),
-        color="#" + style.textColor.hexval()[2:],
-        max_width_pt=width,
-        align=align,
-    )
-    image = Image(BytesIO(png), width=w, height=h)
-    image.hAlign = align.upper()
-    return image
+    """A paragraph of *text*; shaped natively via HarfBuzz / NotoSans (#924)."""
+    return make_shaped_paragraph(text, style, width=width)
 
 
 def _pairs(rows: list[tuple[str, str]], st: dict[str, ParagraphStyle], widths: tuple[float, float]) -> Table:
@@ -173,7 +148,7 @@ def _pairs(rows: list[tuple[str, str]], st: dict[str, ParagraphStyle], widths: t
 def _draw_branding(canvas: Any, _doc: Any) -> None:
     """CB POS branding at the foot of every page."""
     canvas.saveState()
-    canvas.setFont("Helvetica", 8)
+    canvas.setFont("NotoSans", 8)
     canvas.setFillColor(_GREY)
     canvas.drawCentredString(A4[0] / 2, 10 * mm, _BRANDING)
     canvas.restoreState()
@@ -496,7 +471,7 @@ class InvoiceService:
             TableStyle(
                 [
                     ("BACKGROUND", (0, 0), (-1, 0), _NAVY),
-                    ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                    ("FONTNAME", (0, 1), (-1, -1), "NotoSans"),
                     ("FONTSIZE", (0, 1), (-1, -1), 9),
                     ("ALIGN", (0, 0), (-1, 0), "CENTER"),
                     ("ALIGN", (0, 1), (0, -1), "CENTER"),

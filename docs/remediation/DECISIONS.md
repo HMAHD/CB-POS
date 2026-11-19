@@ -93,6 +93,18 @@ For checkout and per-unit warranty registration in W2 (#822), resolving a produc
 **D31 — 2026-11-19 — scope — Phase 10A packaging and printing development authorized ahead of public release gate.**
 The owner explicitly authorized internal development of Phase 10A (Packaging and Printing) prior to resolving the public-release human gates (legal review #817, label hardware verification #819, receipt hardware verifications #731/#877/#878/#911, and warranty card hardware verification #824). Development and testing proceed on internal pre-release builds; the public release gate has not passed.
 
+**D32 — 2026-11-19 — #925 — Receipt font choice and benchmark.**
+1. Ship Clear (Noto Sans default) and Compact (Yaldevi for Sinhala; retain Noto Sans Tamil for Tamil because Yaldevi is not a Tamil font).
+2. Offer Windows Nirmala UI only if it passes the same benchmark; otherwise keep it hidden rather than guessing.
+3. Never offer arbitrary system fonts. Persist selection safely with Clear as fallback.
+
+**D33 — 2026-11-19 — #815 — Installer 64-bit architecture and signing scope.**
+1. First public build remains unsigned, following D7.
+2. Publish clear SmartScreen instructions in user-facing installation documentation.
+3. Track paid code signing separately for later in a dedicated GitHub follow-up issue once a legal entity and signing budget exist.
+4. Do not ship a portable ZIP. The installer must install in 64-bit mode (`Program Files`), while upgrading existing 32-bit installations in place under `Program Files (x86)`.
+
+
 
 
 

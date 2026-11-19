@@ -66,16 +66,22 @@ def test_issue_923_font_bundle_slimming_and_weights(qapp):
     expected_families = {"Noto Sans", "Noto Sans Sinhala", "Noto Sans Tamil"}
     assert loaded_families == expected_families, f"Expected families {expected_families}, got {loaded_families}"
 
-    # 5. Verify styles for Noto Sans include Medium and SemiBold
-    styles = set(QFontDatabase.styles("Noto Sans"))
-    assert "Regular" in styles
-    assert "Bold" in styles
-    assert "Medium" in styles, f"Noto Sans missing Medium style: {styles}"
-    assert "SemiBold" in styles, f"Noto Sans missing SemiBold style: {styles}"
+    # 5. Verify styles for all three families include Regular, Medium, SemiBold, Bold with exact numeric weights
+    for fam in expected_families:
+        fam_styles = set(QFontDatabase.styles(fam))
+        assert "Regular" in fam_styles, f"{fam} missing Regular style: {fam_styles}"
+        assert "Bold" in fam_styles, f"{fam} missing Bold style: {fam_styles}"
+        assert "Medium" in fam_styles, f"{fam} missing Medium style: {fam_styles}"
+        assert "SemiBold" in fam_styles, f"{fam} missing SemiBold style: {fam_styles}"
 
-    # Verify Medium and SemiBold are not registered as standalone families
-    assert "Noto Sans Medium" not in loaded_families
-    assert "Noto Sans SemiBold" not in loaded_families
+        assert QFontDatabase.weight(fam, "Regular") == 400
+        assert QFontDatabase.weight(fam, "Medium") == 500
+        assert QFontDatabase.weight(fam, "SemiBold") == 600
+        assert QFontDatabase.weight(fam, "Bold") == 700
+
+        # Verify Medium and SemiBold are not registered as standalone families
+        assert f"{fam} Medium" not in loaded_families, f"{fam} Medium registered as standalone family"
+        assert f"{fam} SemiBold" not in loaded_families, f"{fam} SemiBold registered as standalone family"
 
     # 6. Verify critical character ranges in subset Noto Sans via fonttools
     try:
@@ -120,7 +126,7 @@ def test_issue_923_font_bundle_slimming_and_weights(qapp):
 
 
 def test_issue_923_subset_idempotency():
-    """Verify that running scripts/subset_fonts.py is idempotent and reproducible."""
+    """Verify that running scripts/subset_fonts.py is idempotent and reproducible across all bundled fonts."""
     script_path = project_root / "scripts" / "subset_fonts.py"
     if not script_path.exists():
         pytest.fail(f"Subset script not found at {script_path}")
@@ -129,21 +135,15 @@ def test_issue_923_subset_idempotency():
     res1 = subprocess.run([sys.executable, str(script_path)], capture_output=True, text=True)
     assert res1.returncode == 0, f"subset_fonts.py failed: {res1.stderr}"
 
-    # Calculate sha256 of generated fonts
-    noto_sans_dir = fonts_dir / "Noto_Sans" / "static"
-    weights = ["Regular", "Medium", "SemiBold", "Bold"]
-    hashes1 = {}
-    for w in weights:
-        p = noto_sans_dir / f"NotoSans-{w}.ttf"
-        hashes1[w] = hashlib.sha256(p.read_bytes()).hexdigest()
+    # Calculate sha256 of all 12 bundled TTF font files
+    all_fonts = sorted(fonts_dir.glob("**/*.ttf"))
+    assert len(all_fonts) == 12, f"Expected 12 font files, got {len(all_fonts)}"
+    hashes1 = {f.name: hashlib.sha256(f.read_bytes()).hexdigest() for f in all_fonts}
 
     # Run script second time
     res2 = subprocess.run([sys.executable, str(script_path)], capture_output=True, text=True)
     assert res2.returncode == 0, f"subset_fonts.py rerun failed: {res2.stderr}"
 
-    hashes2 = {}
-    for w in weights:
-        p = noto_sans_dir / f"NotoSans-{w}.ttf"
-        hashes2[w] = hashlib.sha256(p.read_bytes()).hexdigest()
+    hashes2 = {f.name: hashlib.sha256(f.read_bytes()).hexdigest() for f in all_fonts}
 
     assert hashes1 == hashes2, "subset_fonts.py output is not deterministic across runs"

@@ -193,13 +193,16 @@ def test_defect_3_no_deadlock_between_sale_transaction_and_autosave(monkeypatch,
     file_engine = create_engine(f"sqlite:///{db_path}")
     Base.metadata.create_all(file_engine)
 
-    ThreadSession = sessionmaker(bind=file_engine)
+    ThreadSession = sessionmaker(bind=file_engine, expire_on_commit=False)
 
     class ThreadSafeDatabase:
         def get_session(self):
             return ThreadSession()
 
+    monkeypatch.setattr("cbpos.core.database.Database", ThreadSafeDatabase)
     monkeypatch.setattr("cbpos.core.services.cart_autosave_service.Database", ThreadSafeDatabase)
+    monkeypatch.setattr("cbpos.core.services.feature_flags.Database", ThreadSafeDatabase)
+    FeatureFlags.invalidate_cache()
 
     terminal_id = "TERM-CONC-DEADLOCK"
     snap = {"json_data": '{"lines": []}', "customer_id": None}
@@ -408,3 +411,149 @@ def test_defect_4_manual_hold_and_autosave_tombstone_atomic(clean_concurrency_db
         )
         assert autosave_row is not None
         assert autosave_row.data is None, "Autosave row must be tombstoned (data=None)"
+
+
+@pytest.mark.domain
+def test_synced_disable_invalidates_all_issued_generations_and_blocks_delayed_worker(monkeypatch, tmp_path):
+    """P1: delete_all_autosaves_in_session must advance every terminal tombstone above
+    both persisted revision and process high-watermark, retaining the watermark in memory.
+    A worker released after synced disable must be rejected, and re-enabling must start with clean cart.
+    """
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from cbpos.core.models import Base, FeatureFlag, SuspendedTransaction
+
+    db_path = tmp_path / "test_sync_disable.db"
+    file_engine = create_engine(f"sqlite:///{db_path}")
+    Base.metadata.create_all(file_engine)
+
+    ThreadSession = sessionmaker(bind=file_engine, expire_on_commit=False)
+
+    class ThreadSafeDatabase:
+        def get_session(self):
+            return ThreadSession()
+
+    monkeypatch.setattr("cbpos.core.database.Database", ThreadSafeDatabase)
+    monkeypatch.setattr("cbpos.core.services.cart_autosave_service.Database", ThreadSafeDatabase)
+    monkeypatch.setattr("cbpos.core.services.feature_flags.Database", ThreadSafeDatabase)
+    FeatureFlags.invalidate_cache()
+
+    # Enable feature flag initially
+    with ThreadSession() as s:
+        flag = FeatureFlag(name=Features.POWER_CUT_AUTOSAVE, enabled=True)
+        s.add(flag)
+        s.commit()
+
+    terminal_id = "TERM-SYNC-DISABLE-RACE"
+    snap = {"json_data": '{"lines": []}', "customer_id": None}
+
+    # Persist initial cart at revision 1
+    assert CartAutosaveService.save(snap, terminal_id, 1) is True
+
+    # Issue generations 2..5 in memory (simulating rapid mutations whose worker is in-flight)
+    for _ in range(4):
+        gen = CartAutosaveService.issue_generation(terminal_id)
+    assert gen >= 5
+
+    # Concurrency control using events
+    sync_committed = threading.Event()
+    worker_finished = threading.Event()
+    worker_result = {}
+
+    def delayed_worker():
+        sync_committed.wait(timeout=5)
+        # Attempt to save in-flight generation 5 after sync disable
+        saved = CartAutosaveService.save(snap, terminal_id, gen)
+        worker_result["saved"] = saved
+        worker_finished.set()
+
+    worker_thread = threading.Thread(target=delayed_worker)
+    worker_thread.start()
+
+    # Sync client disables feature flag and tombstones all autosaves
+    with ThreadSession() as session:
+        flag_row = session.query(FeatureFlag).filter_by(name=Features.POWER_CUT_AUTOSAVE).first()
+        flag_row.enabled = False
+        CartAutosaveService.delete_all_autosaves_in_session(session)
+        session.commit()
+
+    # Release worker thread
+    sync_committed.set()
+    worker_thread.join(timeout=5)
+
+    # 1. Worker released after synced disable must be rejected
+    assert worker_result.get("saved") is False, "Stale worker released after synced disable must be rejected"
+
+    # 2. Tombstone revision in DB must exceed the in-memory watermark (5)
+    with ThreadSession() as session:
+        row = (
+            session.query(SuspendedTransaction)
+            .filter(
+                SuspendedTransaction.is_autosave.is_(True),
+                SuspendedTransaction.terminal_id == terminal_id,
+            )
+            .first()
+        )
+        assert row is not None
+        assert row.data is None, "Tombstone row must have data=None"
+        assert (row.revision or 0) > gen, f"Tombstone revision ({row.revision}) must exceed issued watermark ({gen})"
+
+    # 3. Re-enabling starts with a clean cart
+    with ThreadSession() as session:
+        flag_row = session.query(FeatureFlag).filter_by(name=Features.POWER_CUT_AUTOSAVE).first()
+        flag_row.enabled = True
+        session.commit()
+
+    assert CartAutosaveService.has_autosave(terminal_id) is False, "Re-enabling flag must start with clean cart"
+
+
+@pytest.mark.domain
+def test_first_save_after_process_restart_succeeds_above_high_tombstone(clean_concurrency_db, product_a):
+    """P1: After a process restart, in-memory registry begins at 1 while persisted tombstone
+    may have high revision (e.g. 20). The first cart mutation must issue generation without
+    any UI-thread SQL, and its first background save must succeed at revision above tombstone.
+    """
+    from cbpos.core.models import SuspendedTransaction
+
+    terminal_id = "TERM-HIGH-TOMBSTONE-RESTART"
+    cart = CartService()
+    cart.add_item(product_a, Decimal("2.000"))
+    snap = CartAutosaveService.snapshot_cart(cart)
+
+    # Setup a high tombstone in DB (revision = 20, data = None)
+    db = clean_concurrency_db
+    with db.get_session() as session:
+        row = SuspendedTransaction(
+            is_autosave=True,
+            terminal_id=terminal_id,
+            data=None,
+            revision=20,
+        )
+        session.add(row)
+        session.commit()
+
+    # Simulate process restart
+    CartAutosaveService.reset_registry()
+
+    # UI thread issues generation for the first cart mutation (zero DB queries)
+    gen = CartAutosaveService.issue_generation(terminal_id)
+    assert gen == 1
+
+    # Background worker executes save
+    saved = CartAutosaveService.save(snap, terminal_id, gen)
+    assert saved is True, "First save after restart must succeed and not stall behind high tombstone revision"
+
+    # Verify persisted row has revision > 20 and contains snapshot data
+    with db.get_session() as session:
+        saved_row = (
+            session.query(SuspendedTransaction)
+            .filter(
+                SuspendedTransaction.is_autosave.is_(True),
+                SuspendedTransaction.terminal_id == terminal_id,
+            )
+            .first()
+        )
+        assert saved_row is not None
+        assert saved_row.revision > 20, f"Expected revision > 20, got {saved_row.revision}"
+        assert saved_row.data is not None

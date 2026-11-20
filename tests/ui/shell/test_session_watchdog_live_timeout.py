@@ -141,3 +141,69 @@ class TestSavingSettingsUpdatesTheRunningSession:
 
         assert window.watchdog.timer.isActive()
         assert window.watchdog.timer.interval() == 2 * 60 * 1000
+
+
+class TestAbortedTimeoutLogoutResumesWatchdog:
+    def test_aborted_timeout_logout_resumes_watchdog_monitoring(self, qapp, db_session, monkeypatch):
+        """P1: When a timeout logout is aborted because cart preservation fails,
+        the user remains authenticated, watchdog monitoring and its timer restart,
+        another inactivity timeout can occur, and no repeated immediate timeout loop occurs.
+        """
+        from cbpos.core.constants.permissions import ADMIN_ROLE_NAME
+        from cbpos.core.models import Role, User
+        from cbpos.core.services.auth_service import AuthService
+
+        role = db_session.query(Role).filter_by(name=ADMIN_ROLE_NAME).first()
+        if not role:
+            role = Role(name=ADMIN_ROLE_NAME)
+            db_session.add(role)
+            db_session.commit()
+        user = User(username="timeout_guard_user", pin_hash="hash", role_id=role.id, is_active=True)
+        db_session.add(user)
+        db_session.commit()
+
+        store = _FakeConfigStore({**ConfigService.DEFAULTS, "session_timeout_minutes": 5})
+        for name in ("get", "get_all", "set", "update_all"):
+            monkeypatch.setattr(ConfigService, name, getattr(store, name))
+
+        w = MainWindow()
+        try:
+            # Log in
+            AuthService._current_user = user
+            w.user = user
+            w.watchdog.set_timeout(5)
+            w.watchdog.start_monitoring()
+
+            assert w.watchdog._monitoring is True
+            assert w.watchdog.timer.isActive() is True
+
+            # Patch sales_view.end_session to fail cart preservation
+            monkeypatch.setattr(w.sales_view, "end_session", lambda reason=None: False)
+
+            # Trigger timeout
+            w.watchdog.on_timeout()
+
+            # 1. User remains authenticated
+            assert AuthService.get_current_user() is not None
+            assert AuthService.get_current_user().id == user.id
+            assert w.user is not None
+
+            # 2. Watchdog monitoring and its timer restart
+            assert w.watchdog._monitoring is True, "Watchdog monitoring must resume when timeout logout is aborted"
+            assert w.watchdog.timer.isActive() is True, (
+                "Watchdog timer must be active to allow future timeout protection"
+            )
+            assert w.watchdog.timer.interval() == 5 * 60 * 1000
+
+            # 3. Prove another inactivity timeout can occur
+            # When cart preservation succeeds later, logout succeeds
+            monkeypatch.setattr(w.sales_view, "end_session", lambda reason=None: True)
+            w.watchdog.on_timeout()
+            assert AuthService.get_current_user() is None
+            assert w.user is None
+            assert w.watchdog._monitoring is False
+        finally:
+            w.watchdog.stop_monitoring()
+            w.deleteLater()
+            QApplication.processEvents()
+            AuthService._current_user = None

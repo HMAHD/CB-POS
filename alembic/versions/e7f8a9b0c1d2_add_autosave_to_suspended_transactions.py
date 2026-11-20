@@ -89,9 +89,20 @@ def downgrade() -> None:
             op.drop_index("ix_suspended_transactions_terminal_id", table_name="suspended_transactions")
 
         # Defect 8: Purge autosaves (active or tombstoned) and any row with NULL data
-        # so NOT NULL constraint succeeds and ordinary held bills are preserved
+        # so NOT NULL constraint succeeds and ordinary held bills are preserved.
+        # Use SQLAlchemy expression so boolean comparisons compile dialect-safely (SQLite & PostgreSQL).
+        suspended_tbl = sa.table(
+            "suspended_transactions",
+            sa.column("is_autosave", sa.Boolean),
+            sa.column("data", sa.String),
+        )
         conn.execute(
-            sa.text("DELETE FROM suspended_transactions WHERE is_autosave = 1 OR is_autosave IS TRUE OR data IS NULL")
+            sa.delete(suspended_tbl).where(
+                sa.or_(
+                    suspended_tbl.c.is_autosave.is_(True),
+                    suspended_tbl.c.data.is_(None),
+                )
+            )
         )
 
         with op.batch_alter_table("suspended_transactions", schema=None) as batch_op:

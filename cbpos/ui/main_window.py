@@ -258,7 +258,9 @@ class MainWindow(QMainWindow):
             result = self.sales_view.end_session(reason=reason)
             if result is False:
                 # Failed to preserve cart; abort logout to prevent loss of items
-                return
+                if hasattr(self, "watchdog") and hasattr(self.watchdog, "start_monitoring"):
+                    self.watchdog.start_monitoring()
+                return False
             held_id = result if isinstance(result, int) else None
 
         if hasattr(self, "login_view"):
@@ -282,6 +284,7 @@ class MainWindow(QMainWindow):
             self.watchdog.stop_monitoring()
         if hasattr(self, "stack") and hasattr(self.stack, "setCurrentWidget") and hasattr(self, "login_view"):
             self.stack.setCurrentWidget(self.login_view)
+        return True
 
     def on_barcode_scanned(self, barcode):
         """Route a global scanner event to whichever view is currently active."""

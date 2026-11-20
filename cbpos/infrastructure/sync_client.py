@@ -1124,6 +1124,22 @@ class SyncClient(QThread):
             self._set_state(self.STATE_ERROR)
             return -1
 
+        # Transaction committed! Invalidate feature flags and emit roles_changed
+        # regardless of errors on individual records or held-back items (P1 Defect 3).
+        if flags_modified:
+            try:
+                from cbpos.core.services.feature_flags import FeatureFlags
+
+                FeatureFlags.invalidate_cache()
+            except Exception as ex:
+                logger.debug("Failed to invalidate feature flags cache: %s", ex)
+
+        if roles_modified:
+            try:
+                self.roles_changed.emit()
+            except Exception as ex:
+                logger.debug("Failed to emit roles_changed: %s", ex)
+
         if held_back or has_errors:
             if has_errors:
                 logger.warning("One or more catalog records failed to apply; watermark not advanced")
@@ -1133,15 +1149,6 @@ class SyncClient(QThread):
                 logger.info("Held back %d pulled customer(s) until this till's new customers are pushed", held_back)
         else:
             self._last_catalog_sync = server_timestamp
-            if roles_modified:
-                self.roles_changed.emit()
-            if flags_modified:
-                try:
-                    from cbpos.core.services.feature_flags import FeatureFlags
-
-                    FeatureFlags.invalidate_cache()
-                except Exception as ex:
-                    logger.debug("Failed to invalidate feature flags cache: %s", ex)
         logger.info("Pulled %d catalog records", records_applied)
         return records_applied
 

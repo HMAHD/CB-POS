@@ -88,3 +88,71 @@ def test_two_machine_sync_feature_disable_tombstones_local_till_autosaves(tmp_pa
         assert CartAutosaveService.has_autosave(till_id) is False, (
             "Obsolete cart must NOT be resurrected on re-enabling"
         )
+
+
+@pytest.mark.integration
+def test_partial_catalog_pull_invalidates_feature_flags_cache_on_commit(tmp_path):
+    """P1: When a catalog pull succeeds in applying feature_flags but encounters an error on
+    an unrelated catalog record, the transaction commits the feature flags. The FeatureFlags
+    cache MUST be invalidated so subsequent feature_visible() calls read the committed OFF value.
+    """
+    from cbpos.core.services.feature_flags import feature_visible
+    from cbpos.core.services.sync_protocol import EP_PULL_CATALOG
+
+    shop = Shop(str(tmp_path))
+    till_id = "TERM-TILL-CACHE"
+    shop.add_till(till_id)
+
+    # 1. Main and Till initially have power_cut_autosave enabled
+    with shop.session("main") as s:
+        flag = FeatureFlag(name=Features.POWER_CUT_AUTOSAVE, enabled=True)
+        s.add(flag)
+        s.commit()
+
+    shop.pull(till_id, full=True)
+
+    # Warm up till's cache so feature_visible is True in memory
+    with shop.on(till_id):
+        assert feature_visible(Features.POWER_CUT_AUTOSAVE) is True
+
+    # 2. Main PC serves a payload with valid power_cut_autosave=False AND an invalid product record
+    client = shop.client(till_id)
+    real_request = client._request
+
+    def mock_pull_request(method, endpoint, data=None, timeout=10):
+        if EP_PULL_CATALOG in endpoint:
+            return {
+                "timestamp": "2026-11-20T12:00:00",
+                "total_records": 2,
+                "payload": {
+                    "feature_flags": [
+                        {
+                            "name": Features.POWER_CUT_AUTOSAVE,
+                            "enabled": False,
+                            "last_modified": "2026-11-20T12:00:00",
+                        }
+                    ],
+                    "products": [
+                        {
+                            "id": 9999,
+                            "name_en": "Corrupt Product",
+                            # Missing required fields like barcode/price or invalid type to trigger exception
+                            "price": "not_a_valid_decimal",
+                        }
+                    ],
+                },
+            }
+        return real_request(method, endpoint, data, timeout)
+
+    client._request = mock_pull_request
+
+    # 3. Pull catalog on till (partial apply: feature flag succeeds, product fails)
+    with shop.on(till_id):
+        applied = client._pull_catalog()
+        assert applied >= 1
+        assert client._error_code == "catalog_apply_failed", "Watermark must not advance due to product failure"
+
+        # 4. feature_visible() must immediately reflect the committed OFF value (cache must not be stale)
+        assert feature_visible(Features.POWER_CUT_AUTOSAVE) is False, (
+            "FeatureFlags cache was not invalidated after partial catalog pull committed flag update"
+        )

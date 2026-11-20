@@ -6,7 +6,6 @@ import threading
 from datetime import datetime
 from decimal import ROUND_HALF_UP, Decimal, DecimalException
 
-from sqlalchemy import func, update
 from sqlalchemy.orm import Session
 
 from cbpos.core.constants.features import Features
@@ -30,12 +29,14 @@ class CartAutosaveService:
 
     _lock = threading.RLock()
     _issued_generations: dict[str, int] = {}
+    _persisted_baselines: dict[str, int] = {}
 
     @classmethod
     def reset_registry(cls) -> None:
-        """Reset generation registry (useful for testing)."""
+        """Reset generation registry (useful for testing and process restart simulation)."""
         with cls._lock:
             cls._issued_generations.clear()
+            cls._persisted_baselines.clear()
 
     @classmethod
     def issue_generation(cls, terminal_id: str) -> int:
@@ -60,13 +61,12 @@ class CartAutosaveService:
 
     @classmethod
     def sync_baseline_generation(cls, terminal_id: str, baseline_revision: int) -> None:
-        """Ensure issued generation watermark is at least equal to persisted baseline revision."""
+        """Ensure persisted baseline revision is initialized for terminal."""
         if not terminal_id:
             return
         with cls._lock:
-            curr = cls._issued_generations.get(terminal_id, 0)
-            if baseline_revision > curr:
-                cls._issued_generations[terminal_id] = baseline_revision
+            if terminal_id not in cls._persisted_baselines:
+                cls._persisted_baselines[terminal_id] = baseline_revision
 
     @classmethod
     def get_active_generation(cls, terminal_id: str) -> int:
@@ -106,6 +106,7 @@ class CartAutosaveService:
             logger.debug("Failed to read persisted revision for %s: %s", terminal_id, e)
 
         with cls._lock:
+            cls._persisted_baselines[terminal_id] = 0
             curr = cls._issued_generations.get(terminal_id, 0)
             next_gen = max(curr, persisted_revision) + 1
             cls._issued_generations[terminal_id] = next_gen
@@ -165,13 +166,24 @@ class CartAutosaveService:
                     .first()
                 )
 
+                with cls._lock:
+                    if terminal_id not in cls._persisted_baselines:
+                        if terminal_id in cls._issued_generations:
+                            cls._persisted_baselines[terminal_id] = (row.revision or 0) if row is not None else 0
+                        else:
+                            cls._persisted_baselines[terminal_id] = 0
+                    baseline = cls._persisted_baselines[terminal_id]
+                    cls._issued_generations[terminal_id] = max(cls._issued_generations.get(terminal_id, 0), generation)
+
+                target_revision = baseline + generation
+
                 if row is not None:
                     # 2. Check monotonic revision (Defect 1)
-                    if generation <= (row.revision or 0):
+                    if target_revision <= (row.revision or 0):
                         logger.debug(
-                            "Dropping stale autosave for %s (write gen %s <= persisted revision %s)",
+                            "Dropping stale autosave for %s (target revision %s <= persisted revision %s)",
                             terminal_id,
-                            generation,
+                            target_revision,
                             row.revision,
                         )
                         return False
@@ -179,22 +191,19 @@ class CartAutosaveService:
                     row.data = snapshot["json_data"]
                     row.customer_id = snapshot.get("customer_id")
                     row.timestamp = datetime.now()
-                    row.revision = generation
+                    row.revision = target_revision
                 else:
                     row = SuspendedTransaction(
                         is_autosave=True,
                         terminal_id=terminal_id,
                         data=snapshot["json_data"],
                         customer_id=snapshot.get("customer_id"),
-                        revision=generation,
+                        revision=target_revision,
                         timestamp=datetime.now(),
                     )
                     session.add(row)
 
                 session.commit()
-
-                # Update in-memory active generation tracking
-                cls.sync_baseline_generation(terminal_id, generation)
                 return True
         except Exception as e:
             logger.error("Failed to save autosave for terminal %s: %s", terminal_id, e)
@@ -298,9 +307,16 @@ class CartAutosaveService:
             )
             .first()
         )
-        watermark = cls.get_issued_high_watermark(terminal_id)
         current_rev = (row.revision or 0) if row is not None else 0
-        new_rev = max(current_rev, watermark) + 1
+
+        with cls._lock:
+            if terminal_id not in cls._persisted_baselines:
+                cls._persisted_baselines[terminal_id] = current_rev
+            baseline = cls._persisted_baselines[terminal_id]
+            watermark = cls._issued_generations.get(terminal_id, 0)
+            max_issued_eff_rev = baseline + watermark
+            new_rev = max(current_rev, max_issued_eff_rev) + 1
+            cls._issued_generations[terminal_id] = max(watermark, new_rev - baseline)
 
         if row is not None:
             row.data = None
@@ -318,8 +334,6 @@ class CartAutosaveService:
                 timestamp=datetime.now(),
             )
             session.add(row)
-
-        cls.sync_baseline_generation(terminal_id, new_rev)
 
     @classmethod
     def discard_autosave(cls, terminal_id: str) -> bool:
@@ -523,21 +537,49 @@ class CartAutosaveService:
 
     @classmethod
     def delete_all_autosaves_in_session(cls, session: Session) -> int:
-        """Tombstone all autosaved rows across all terminals inside an active session."""
-        stmt = (
-            update(SuspendedTransaction)
-            .where(SuspendedTransaction.is_autosave.is_(True))
-            .values(
-                data=None,
-                customer_id=None,
-                revision=func.coalesce(SuspendedTransaction.revision, 0) + 1,
-                timestamp=datetime.now(),
-            )
-        )
-        res = session.execute(stmt)
+        """Tombstone all autosaved rows across all terminals inside an active session.
+
+        Advances persisted tombstone above both persisted revision and in-memory watermark,
+        retaining and updating the watermark in memory so delayed in-flight workers are rejected.
+        """
+        rows = session.query(SuspendedTransaction).filter(SuspendedTransaction.is_autosave.is_(True)).all()
         with cls._lock:
-            cls.reset_registry()
-        return res.rowcount or 0
+            handled_terminals = set()
+            for row in rows:
+                term_id = row.terminal_id
+                handled_terminals.add(term_id)
+                current_rev = row.revision or 0
+                if term_id not in cls._persisted_baselines:
+                    cls._persisted_baselines[term_id] = current_rev
+                baseline = cls._persisted_baselines[term_id]
+                watermark = cls._issued_generations.get(term_id, 0)
+                max_issued_eff_rev = baseline + watermark
+                new_rev = max(current_rev, max_issued_eff_rev) + 1
+
+                row.data = None
+                row.customer_id = None
+                row.revision = new_rev
+                row.timestamp = datetime.now()
+
+                cls._issued_generations[term_id] = max(watermark, new_rev - baseline)
+
+            # For any terminal active in memory that does not have a DB row yet, add a tombstone
+            for term_id, watermark in list(cls._issued_generations.items()):
+                if term_id not in handled_terminals:
+                    baseline = cls._persisted_baselines.get(term_id, 0)
+                    new_rev = baseline + watermark + 1
+                    tombstone = SuspendedTransaction(
+                        is_autosave=True,
+                        terminal_id=term_id,
+                        data=None,
+                        customer_id=None,
+                        revision=new_rev,
+                        timestamp=datetime.now(),
+                    )
+                    session.add(tombstone)
+                    cls._issued_generations[term_id] = max(watermark, new_rev - baseline)
+
+        return len(rows)
 
     @classmethod
     def delete_all_autosaves(cls) -> int:

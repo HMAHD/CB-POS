@@ -125,6 +125,11 @@ def test_issue_852_attached_customer_preselected_for_credit(qapp, db_session):
     """With an attached customer, Credit pre-selects them and locks the combo read-only."""
     from cbpos.core.constants.status import PaymentMethodKind
     from cbpos.core.models import Customer
+    from cbpos.core.models.feature_flag import FeatureFlag
+    from cbpos.core.services.feature_flags import FeatureFlags
+
+    FeatureFlags.invalidate_cache()
+    db_session.merge(FeatureFlag(name="credit_book", enabled=True))
 
     c1 = Customer(name="Aaron", phone="0771111111")
     c2 = Customer(name="Zack", phone="0772222222")
@@ -155,6 +160,11 @@ def test_issue_852_same_name_customers_charged_by_id(qapp, db_session):
     """Two customers with the exact same name are differentiated and selected by id."""
     from cbpos.core.constants.status import PaymentMethodKind
     from cbpos.core.models import Customer
+    from cbpos.core.models.feature_flag import FeatureFlag
+    from cbpos.core.services.feature_flags import FeatureFlags
+
+    FeatureFlags.invalidate_cache()
+    db_session.merge(FeatureFlag(name="credit_book", enabled=True))
 
     c1 = Customer(name="Nimal SameName", phone="0771111111")
     c2 = Customer(name="Nimal SameName", phone="0772222222")

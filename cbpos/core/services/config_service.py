@@ -48,6 +48,7 @@ class ConfigService:
         "receipt_header": "Welcome to Ceylon Byte",
         "receipt_footer": "Thank You! Come Again.",
         "receipt_logo_path": "",  # Path to logo image
+        "shop_type": "grocery",  # Default preset shop type (#942)
         "show_barcode": False,
         "show_tax_breakdown": False,
         "merge_items": False,  # Merge duplicate items on receipt

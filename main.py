@@ -443,6 +443,7 @@ def main():
 
     first_run = not ConfigService.get("setup_completed")
     admin_pin: str | None = None
+    shop_type: str | None = ConfigService.get("shop_type")
 
     if first_run:
         from cbpos.ui.dialogs.setup_wizard import SetupWizard
@@ -454,6 +455,7 @@ def main():
             print("[BOOTSTRAP] Setup wizard cancelled. Exiting.")
             sys.exit(0)
         admin_pin = wizard.admin_pin
+        shop_type = wizard.shop_type
 
     if needs_db_setup:
         from cbpos.ui.dialogs.database_setup_dialog import DatabaseSetupDialog
@@ -487,7 +489,7 @@ def main():
                 print("[BOOTSTRAP] Demo database ready.")
             else:
                 print("[BOOTSTRAP] Creating empty database...")
-                DatabaseSetupService.create_empty_database(admin_pin=admin_pin)
+                DatabaseSetupService.create_empty_database(admin_pin=admin_pin, shop_type=shop_type)
                 print("[BOOTSTRAP] Empty database ready.")
         except Exception as e:
             logging.getLogger("cbpos.bootstrap").error("Failed to initialize database: %s", e)

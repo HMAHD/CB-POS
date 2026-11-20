@@ -1067,6 +1067,7 @@ class ShopMeta(Base):
     value: Mapped[str] = mapped_column(String(200), nullable=False)
 
 
+from cbpos.core.models.feature_flag import FeatureFlag  # noqa: E402, F401
 from cbpos.core.models.tax_invoice import (  # noqa: E402, F401
     TaxCreditNote,
     TaxInvoice,

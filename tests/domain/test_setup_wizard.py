@@ -27,8 +27,9 @@ def test_issue_791_wizard_with_pin_page_stores_admin_pin(qapp):
 
     assert wizard.stack.indexOf(wizard.page_security) != -1
     wizard.input_shop_name.setText("My Shop")
-    wizard.go_next()  # To Step 2
-    wizard.go_next()  # To Step 3
+    wizard.go_next()  # To Step 2 (Shop Type)
+    wizard.go_next()  # To Step 3 (Hardware)
+    wizard.go_next()  # To Step 4 (Security / PIN)
 
     wizard.input_pin.setText("5432")
     wizard.input_pin_confirm.setText("5432")

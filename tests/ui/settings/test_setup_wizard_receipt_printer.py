@@ -68,12 +68,13 @@ class TestWizardWritesPrinterKeys:
         assert saved["printer_path"] == "0x04b8:0x0202"
 
     def test_network_without_ip_blocks_next(self, wizard):
-        wizard.stack.setCurrentIndex(1)
+        hw_idx = wizard.stack.indexOf(wizard.page_hardware)
+        wizard.stack.setCurrentIndex(hw_idx)
         _choose(wizard, "NETWORK")
         with patch("cbpos.ui.dialogs.setup_wizard.QMessageBox.warning") as warn:
             wizard.go_next()
         warn.assert_called_once()
-        assert wizard.stack.currentIndex() == 1
+        assert wizard.stack.currentIndex() == hw_idx
 
     def test_only_the_chosen_field_is_shown(self, wizard):
         _choose(wizard, "NETWORK")

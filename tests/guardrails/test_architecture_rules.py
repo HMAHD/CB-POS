@@ -66,3 +66,23 @@ def test_no_dynamic_getattr_for_instance_attributes():
     ]
     for module, pattern in forbidden_patterns:
         assert pattern not in inspect.getsource(module), f"{module.__name__}: {pattern}"
+
+
+def test_views_never_read_features_from_config_service():
+    """UI views must use feature_visible(name) or FeatureFlags, never ConfigService.get('features.*') (#942)."""
+    offenders = []
+    for rel, tree in _ui_modules():
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call):
+                # Match ConfigService.get(...)
+                is_config_get = False
+                if isinstance(node.func, ast.Attribute) and node.func.attr == "get":
+                    if isinstance(node.func.value, ast.Name) and node.func.value.id == "ConfigService":
+                        is_config_get = True
+                if is_config_get and node.args:
+                    first_arg = node.args[0]
+                    if isinstance(first_arg, ast.Constant) and isinstance(first_arg.value, str):
+                        val = first_arg.value.lower()
+                        if val.startswith(("features.", "feature.")) or val == "features":
+                            offenders.append(f"{rel}:{node.lineno} calls ConfigService.get('{first_arg.value}')")
+    assert offenders == [], "UI code must check feature_visible(), not ConfigService: " + ", ".join(offenders)

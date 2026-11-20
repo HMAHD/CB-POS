@@ -11,6 +11,7 @@ from cbpos.ui.dialogs.guide_dialog import GuideDialog
 from cbpos.ui.views.settings_pages import (
     base,
     document,
+    features,
     hardware,
     network,
     receipt,
@@ -20,6 +21,7 @@ from cbpos.ui.views.settings_pages import (
 )
 from cbpos.ui.views.settings_pages.base import _SECTION_TITLE_KEY, SettingsPage
 from cbpos.ui.views.settings_pages.document import DocumentPage
+from cbpos.ui.views.settings_pages.features import FeaturesPage
 from cbpos.ui.views.settings_pages.hardware import HardwarePage
 from cbpos.ui.views.settings_pages.network import NetworkPage
 from cbpos.ui.views.settings_pages.receipt import ReceiptPage
@@ -27,7 +29,7 @@ from cbpos.ui.views.settings_pages.sales_tax import SalesTaxPage
 from cbpos.ui.views.settings_pages.shop_info import ShopInfoPage
 from cbpos.ui.views.settings_pages.system import SystemPage
 
-_SUBMODULES = (base, document, hardware, network, receipt, sales_tax, shop_info, system)
+_SUBMODULES = (base, document, features, hardware, network, receipt, sales_tax, shop_info, system)
 
 
 class _SettingsPagesPackage(types.ModuleType):
@@ -45,6 +47,7 @@ sys.modules[__name__].__class__ = _SettingsPagesPackage
 __all__ = [
     "_SECTION_TITLE_KEY",
     "DocumentPage",
+    "FeaturesPage",
     "GuideDialog",
     "HardwarePage",
     "NetworkPage",

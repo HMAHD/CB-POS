@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # Sync Protocol Version — bump when envelope format changes.
 # Server and client must agree on the major version.
 # ---------------------------------------------------------------------------
-SYNC_PROTOCOL_VERSION = "1.5"
+SYNC_PROTOCOL_VERSION = "1.6"
 
 # ---------------------------------------------------------------------------
 # Default sync server port
@@ -59,6 +59,7 @@ CATALOG_TABLES = [
     "promotions",
     "payment_methods",
     "composite_items",
+    "feature_flags",
 ]
 
 # Reverse FK dependency order for catalog deletions (children deleted before parents)
@@ -74,6 +75,7 @@ CATALOG_DELETION_ORDER = [
     "warranty_policies",
     "units",
     "void_reasons",
+    "feature_flags",
     "users",
     "roles",
     "permissions",
@@ -374,6 +376,7 @@ def get_table_model_map() -> dict[str, type[Base]]:
         CustomerLedgerEntry,
         CustomerPayment,
         Document,
+        FeatureFlag,
         InventoryLog,
         LoyaltyLedgerEntry,
         PaymentMethod,
@@ -429,6 +432,7 @@ def get_table_model_map() -> dict[str, type[Base]]:
         "suppliers": Supplier,
         "composite_items": CompositeItem,
         "payment_methods": PaymentMethod,
+        "feature_flags": FeatureFlag,
         "documents": Document,
         "sales": Sale,
         "sale_items": SaleItem,

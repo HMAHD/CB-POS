@@ -104,6 +104,24 @@ The owner explicitly authorized internal development of Phase 10A (Packaging and
 3. Track paid code signing separately for later in a dedicated GitHub follow-up issue once a legal entity and signing budget exist.
 4. Do not ship a portable ZIP. The installer must install in 64-bit mode (`Program Files`), while upgrading existing 32-bit installations in place under `Program Files (x86)`.
 
+## 2026-11-20
+
+**D34 — 2026-11-20 — scope, #942 — Phase 10B shop workflows authorization and shop presets foundation.**
+1. Starting Phase 10B now authorizes internal development before unresolved public-release human gates; it does not declare the release gate passed.
+2. The documented seven-shop preset matrix in #942 is approved (Grocery, Pharmacy, Hardware, Clothing, Phone & Electronics, Bookshop, Bakery).
+3. `optional` cells in the matrix mean OFF initially but available later in Settings → Features.
+4. The wizard step "What kind of shop is this?" appears after Shop Information in the first-run Setup Wizard.
+5. "Other" enables no optional features and ensures the basic `pcs` unit exists.
+6. Before implementation, propose a minimal seeded-category matrix for owner approval via Stop & Ask.
+
+**D35 — 2026-11-20 — #942 — Seeded-category matrix and localized Category.name storage (Option A).**
+1. The proposed minimal category matrix for the 7 shop types (and empty list for Other) is approved. All seeded categories are top-level.
+2. Deduplication is normalized (case-insensitive, trimmed) and idempotent.
+3. Category.name is stored directly in the active setup-wizard language chosen by the merchant (EN/SI/TA), without adding name_si/name_ta schema columns.
+4. The 28 draft Sinhala and Tamil category names are added to the PROGRESS.md i18n review list for native review.
+
+
+
 
 
 

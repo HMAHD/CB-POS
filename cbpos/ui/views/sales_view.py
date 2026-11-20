@@ -85,16 +85,30 @@ class SalesView(QWidget):
         self._pending_proforma_id: int | None = None
 
         # Power-cut autosave debounce & generation tracking (#932)
-        self._autosave_generation: int = 0
+        from cbpos.core.services.cart_autosave_service import CartAutosaveService
+
+        self._autosave_generation: int = CartAutosaveService.get_next_generation(self._get_terminal_id())
         self._autosave_recovery_checked: bool = False
         self._autosave_worker = None
+        self._pending_autosave: bool = False
         self._had_items: bool = False
         self._autosave_timer = QTimer(self)
         self._autosave_timer.setSingleShot(True)
         self._autosave_timer.timeout.connect(self._on_autosave_timer_fired)
         from cbpos.core.utils.destroy_hooks import call_on_destroyed
 
-        call_on_destroyed(self, self._autosave_timer.stop)
+        def _cleanup_autosave():
+            self._autosave_timer.stop()
+            self._pending_autosave = False
+            if (
+                hasattr(self, "_autosave_worker")
+                and self._autosave_worker is not None
+                and self._autosave_worker.isRunning()
+            ):
+                self._autosave_worker.wait(2000)
+                self._autosave_worker = None
+
+        call_on_destroyed(self, _cleanup_autosave)
 
         # Listen for print/drawer failures for the rest of the app's
         # lifetime. Covers open_cash_drawer() below, and also the
@@ -1031,9 +1045,17 @@ class SalesView(QWidget):
     # --- Power-Cut Autosave Lifecycle (#932) ---
 
     def closeEvent(self, event) -> None:
-        """Stop pending timers when closed (#932)."""
+        """Stop pending timers and wait for in-flight workers when closed (#932)."""
         if hasattr(self, "_autosave_timer"):
             self._autosave_timer.stop()
+        self._pending_autosave = False
+        if (
+            hasattr(self, "_autosave_worker")
+            and self._autosave_worker is not None
+            and self._autosave_worker.isRunning()
+        ):
+            self._autosave_worker.wait(2000)
+            self._autosave_worker = None
         super().closeEvent(event)
 
     def _get_terminal_id(self) -> str:
@@ -1051,14 +1073,15 @@ class SalesView(QWidget):
 
         if not self.cart_service.items:
             self._autosave_timer.stop()
-            self._autosave_generation += 1
+            self._pending_autosave = False
+            self._autosave_generation = CartAutosaveService.advance_generation(self._get_terminal_id())
             if self._had_items:
                 self._had_items = False
                 CartAutosaveService.invalidate_and_delete(self._get_terminal_id())
             return
 
         self._had_items = True
-        self._autosave_generation += 1
+        self._autosave_generation = CartAutosaveService.advance_generation(self._get_terminal_id())
         self._autosave_timer.start(1000)
 
     def _on_autosave_timer_fired(self) -> None:
@@ -1077,6 +1100,11 @@ class SalesView(QWidget):
             if not feature_visible(Features.POWER_CUT_AUTOSAVE):
                 return
 
+            # Single active worker serialization (Defect 2)
+            if self._autosave_worker is not None and self._autosave_worker.isRunning():
+                self._pending_autosave = True
+                return
+
             from cbpos.core.services.cart_autosave_service import CartAutosaveService
             from cbpos.ui.workers import CartAutosaveWorker
 
@@ -1088,18 +1116,28 @@ class SalesView(QWidget):
 
             worker = CartAutosaveWorker(snapshot, term_id, gen, parent=None)
             worker.finished_result.connect(self._on_autosave_worker_finished)
-            worker.start()
             self._autosave_worker = worker
+            worker.start()
         except Exception as e:
             logger.debug("Autosave timer snapshot failed: %s", e)
 
     def _on_autosave_worker_finished(self, ok: bool, terminal_id: str, generation: int) -> None:
-        """Handle background save completion, purging stale write if cart was cleared."""
-        if generation < self._autosave_generation:
-            if not self.cart_service.items:
+        """Handle background save completion, draining pending snapshot if coalesced (Defect 2)."""
+        self._autosave_worker = None
+        if getattr(self, "_pending_autosave", False):
+            self._pending_autosave = False
+            from cbpos.core.constants.features import Features
+            from cbpos.core.services.feature_flags import feature_visible
+
+            if (
+                hasattr(self, "cart_service")
+                and self.cart_service.items
+                and feature_visible(Features.POWER_CUT_AUTOSAVE)
+            ):
                 from cbpos.core.services.cart_autosave_service import CartAutosaveService
 
-                CartAutosaveService.discard_autosave(terminal_id)
+                self._autosave_generation = CartAutosaveService.advance_generation(self._get_terminal_id())
+                self._on_autosave_timer_fired()
 
     def check_autosave_recovery(self) -> None:
         """Check for and offer to restore any interrupted autosaved cart (#932)."""
@@ -1158,6 +1196,8 @@ class SalesView(QWidget):
         # without this, selecting a customer here never actually applied
         # their pricing to items added afterward.
         self.cart_service.set_customer(customer)
+        if hasattr(self, "cart_service") and self.cart_service.items:
+            self._schedule_autosave()
 
     def show_customer_menu(self, pos):
         """Show the customer button's context menu (quick add, view details, clear)."""
@@ -1189,6 +1229,8 @@ class SalesView(QWidget):
         self.customer = None
         self.action_panel.clear_customer_info()
         self.cart_service.set_customer(None)
+        if hasattr(self, "cart_service") and self.cart_service.items:
+            self._schedule_autosave()
         self._focus_search()
 
     def process_payment(self):
@@ -1206,12 +1248,10 @@ class SalesView(QWidget):
             self._focus_search()
             return
 
-        # Advance autosave generation and stop timer before payment flow (#932)
-        self._autosave_timer.stop()
-        self._autosave_generation += 1
-        from cbpos.core.services.cart_autosave_service import CartAutosaveService
-
-        CartAutosaveService.advance_generation(self._get_terminal_id())
+        # Flush pending autosave before payment dialog (Defect 4)
+        if hasattr(self, "_autosave_timer") and self._autosave_timer.isActive():
+            self._autosave_timer.stop()
+            self._on_autosave_timer_fired()
 
         # A payment shortcut (F5/F10/F12) firing while the side menu is open
         # would otherwise open the dialog behind/under the menu overlay (#206).
@@ -1313,14 +1353,14 @@ class SalesView(QWidget):
         if not self.cart_service.items:
             return
 
-        self._autosave_timer.stop()
-        self._autosave_generation += 1
-        from cbpos.core.services.cart_autosave_service import CartAutosaveService
-
-        CartAutosaveService.invalidate_and_delete(self._get_terminal_id())
-
         held_id = SuspendedTransactionService.hold_bill(self.cart_service)
         if held_id:
+            self._autosave_timer.stop()
+            self._pending_autosave = False
+            self._had_items = False
+            from cbpos.core.services.cart_autosave_service import CartAutosaveService
+
+            CartAutosaveService.discard_autosave(self._get_terminal_id())
             self.cart_service.clear()
             # The held bill's own customer was already saved with it
             # (restored on recall) -- clear the display here so the next
@@ -1331,11 +1371,15 @@ class SalesView(QWidget):
             self.order_bar.refresh_tabs()
             QMessageBox.information(self, _t("orders.held_title"), _t("orders.held_message", id=held_id))
         else:
+            self._schedule_autosave()
             QMessageBox.critical(self, _t("common.error"), _t("orders.held_error"))
         self._focus_search()
 
     def end_session(self, reason: str = "LOGOUT") -> int | None:
         """End the current session, auto-holding any open cart before clearing."""
+        # Reset recovery check for next authenticated session (Defect 8)
+        self._autosave_recovery_checked = False
+
         if not self.cart_service.items:
             self.clear_customer()
             self.update_cart_display()
@@ -1349,6 +1393,19 @@ class SalesView(QWidget):
             held_id = SuspendedTransactionService.hold_bill(self.cart_service, note=note)
         except Exception as e:
             logger.error("Auto-holding cart on %s failed: %s", reason, e)
+
+        if held_id:
+            self._autosave_timer.stop()
+            self._pending_autosave = False
+            self._had_items = False
+            from cbpos.core.services.cart_autosave_service import CartAutosaveService
+
+            CartAutosaveService.discard_autosave(self._get_terminal_id())
+        else:
+            # Auto-holding failed: leave autosave on disk so it remains recoverable (Defect 7)
+            self._autosave_timer.stop()
+            self._pending_autosave = False
+            self._had_items = False
 
         # Clear cart, customer and display regardless of hold success (security wins)
         self.cart_service.clear()
@@ -2289,12 +2346,10 @@ class SalesView(QWidget):
         payments = [{"method": cash_method.name, "amount": totals["final_total"]}]
         customer_id = self.customer.id if self.customer else None
 
-        # Advance autosave generation and stop timer before quick pay sale (#932)
-        self._autosave_timer.stop()
-        self._autosave_generation += 1
-        from cbpos.core.services.cart_autosave_service import CartAutosaveService
-
-        CartAutosaveService.advance_generation(self._get_terminal_id())
+        # Flush pending autosave before quick pay sale (Defect 4)
+        if hasattr(self, "_autosave_timer") and self._autosave_timer.isActive():
+            self._autosave_timer.stop()
+            self._on_autosave_timer_fired()
 
         self._processing = True
         try:

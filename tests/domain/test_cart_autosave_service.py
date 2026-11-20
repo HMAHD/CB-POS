@@ -22,7 +22,16 @@ def clean_autosave_db(db_session):
     db = Database()
     with db.get_session() as session:
         session.execute(text("DELETE FROM suspended_transactions"))
+        session.execute(
+            text(
+                "INSERT OR REPLACE INTO feature_flags (name, enabled, last_modified) "
+                "VALUES ('power_cut_autosave', 1, CURRENT_TIMESTAMP)"
+            )
+        )
         session.commit()
+    from cbpos.core.services.feature_flags import FeatureFlags
+
+    FeatureFlags.invalidate_cache()
     CartAutosaveService.reset_registry()
     yield db
     with db.get_session() as session:
@@ -85,7 +94,7 @@ def test_issue_932_autosave_upsert_at_most_one_per_terminal(clean_autosave_db, s
 
     # Mutate cart
     cart.add_item(sample_product, Decimal("2.000"))
-    gen2 = CartAutosaveService.get_active_generation(terminal_id)
+    gen2 = CartAutosaveService.advance_generation(terminal_id)
     snap2 = CartAutosaveService.snapshot_cart(cart)
     CartAutosaveService.save(snap2, terminal_id, gen2)
 
@@ -224,7 +233,8 @@ def test_issue_932_corrupt_payload_fails_closed(clean_autosave_db):
             )
             .first()
         )
-        assert row is None
+        assert row is None or row.data is None
+        assert CartAutosaveService.has_autosave(term) is False
 
 
 @pytest.mark.domain

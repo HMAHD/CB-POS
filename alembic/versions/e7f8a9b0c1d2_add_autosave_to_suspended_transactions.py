@@ -31,6 +31,9 @@ def upgrade() -> None:
                 batch_op.add_column(sa.Column("is_autosave", sa.Boolean(), server_default=sa.false(), nullable=False))
             if "terminal_id" not in existing_cols:
                 batch_op.add_column(sa.Column("terminal_id", sa.String(length=50), nullable=True))
+            if "revision" not in existing_cols:
+                batch_op.add_column(sa.Column("revision", sa.Integer(), server_default="1", nullable=False))
+            batch_op.alter_column("data", existing_type=sa.String(), nullable=True)
 
         existing_indexes = {idx["name"] for idx in insp.get_indexes("suspended_transactions")}
         if "ix_suspended_transactions_terminal_id" not in existing_indexes:
@@ -86,8 +89,10 @@ def downgrade() -> None:
             op.drop_index("ix_suspended_transactions_terminal_id", table_name="suspended_transactions")
 
         with op.batch_alter_table("suspended_transactions", schema=None) as batch_op:
+            batch_op.drop_column("revision")
             batch_op.drop_column("terminal_id")
             batch_op.drop_column("is_autosave")
+            batch_op.alter_column("data", existing_type=sa.String(), nullable=False)
 
     if "feature_flags" in existing_tables:
         conn.execute(sa.text("DELETE FROM feature_flags WHERE name = 'power_cut_autosave'"))

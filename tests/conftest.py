@@ -200,9 +200,7 @@ def _autocomplete_preload_runs_inline():
         yield
     finally:
         for worker_cls in inline_workers:
-            # Leave CartAutosaveWorker permanently inline to prevent leaked background threads (#932)
-            if worker_cls is not CartAutosaveWorker:
-                del worker_cls.start
+            del worker_cls.start
 
 
 @pytest.fixture(autouse=True)

@@ -34,6 +34,10 @@ def logged_in_cashier(db_session):
         db_session.commit()
 
     AuthService._current_user = user
+    from cbpos.core.constants.features import Features
+    from cbpos.core.services.feature_flags import FeatureFlags
+
+    FeatureFlags.set(Features.POWER_CUT_AUTOSAVE, True, acting_user_id=user.id)
     yield user
     AuthService._current_user = None
 

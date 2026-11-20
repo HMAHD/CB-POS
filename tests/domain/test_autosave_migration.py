@@ -48,6 +48,7 @@ def test_autosave_migration_upgrade_and_downgrade(alembic_cfg):
     cols = {col["name"] for col in insp.get_columns("suspended_transactions")}
     assert "is_autosave" in cols
     assert "terminal_id" in cols
+    assert "revision" in cols
 
     indexes = {idx["name"] for idx in insp.get_indexes("suspended_transactions")}
     assert "ix_suspended_transactions_terminal_id" in indexes
@@ -65,6 +66,7 @@ def test_autosave_migration_upgrade_and_downgrade(alembic_cfg):
     cols_after = {col["name"] for col in insp.get_columns("suspended_transactions")}
     assert "is_autosave" not in cols_after
     assert "terminal_id" not in cols_after
+    assert "revision" not in cols_after
 
     # Re-upgrade to head and dispose engine
     command.upgrade(cfg, "head")

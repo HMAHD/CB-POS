@@ -6,6 +6,8 @@ import threading
 from datetime import datetime
 from decimal import ROUND_HALF_UP, Decimal, DecimalException
 
+from sqlalchemy import update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from cbpos.core.constants.features import Features
@@ -30,6 +32,7 @@ class CartAutosaveService:
     _lock = threading.RLock()
     _issued_generations: dict[str, int] = {}
     _persisted_baselines: dict[str, int] = {}
+    _before_write_hook = None  # Optional Callable[[str, int], None] for deterministic concurrency testing
 
     @classmethod
     def reset_registry(cls) -> None:
@@ -37,6 +40,7 @@ class CartAutosaveService:
         with cls._lock:
             cls._issued_generations.clear()
             cls._persisted_baselines.clear()
+            cls._before_write_hook = None
 
     @classmethod
     def issue_generation(cls, terminal_id: str) -> int:
@@ -157,19 +161,26 @@ class CartAutosaveService:
                     logger.debug("Autosave save rejected: feature flag POWER_CUT_AUTOSAVE is disabled")
                     return False
 
-                row = (
-                    session.query(SuspendedTransaction)
-                    .filter(
-                        SuspendedTransaction.is_autosave.is_(True),
-                        SuspendedTransaction.terminal_id == terminal_id,
+                # 2. Synchronize in-memory generation counter without holding DB locks across Python lock
+                existing_rev = None
+                with cls._lock:
+                    needs_baseline = (terminal_id not in cls._persisted_baselines) and (
+                        terminal_id in cls._issued_generations
                     )
-                    .first()
-                )
+                if needs_baseline:
+                    existing_rev = (
+                        session.query(SuspendedTransaction.revision)
+                        .filter(
+                            SuspendedTransaction.is_autosave.is_(True),
+                            SuspendedTransaction.terminal_id == terminal_id,
+                        )
+                        .scalar()
+                    )
 
                 with cls._lock:
                     if terminal_id not in cls._persisted_baselines:
-                        if terminal_id in cls._issued_generations:
-                            cls._persisted_baselines[terminal_id] = (row.revision or 0) if row is not None else 0
+                        if existing_rev is not None:
+                            cls._persisted_baselines[terminal_id] = existing_rev
                         else:
                             cls._persisted_baselines[terminal_id] = 0
                     baseline = cls._persisted_baselines[terminal_id]
@@ -177,34 +188,74 @@ class CartAutosaveService:
 
                 target_revision = baseline + generation
 
-                if row is not None:
-                    # 2. Check monotonic revision (Defect 1)
-                    if target_revision <= (row.revision or 0):
-                        logger.debug(
-                            "Dropping stale autosave for %s (target revision %s <= persisted revision %s)",
-                            terminal_id,
-                            target_revision,
-                            row.revision,
-                        )
-                        return False
+                if cls._before_write_hook is not None:
+                    cls._before_write_hook(terminal_id, target_revision)
 
-                    row.data = snapshot["json_data"]
-                    row.customer_id = snapshot.get("customer_id")
-                    row.timestamp = datetime.now()
-                    row.revision = target_revision
-                else:
-                    row = SuspendedTransaction(
-                        is_autosave=True,
-                        terminal_id=terminal_id,
+                cas_stmt = (
+                    update(SuspendedTransaction)
+                    .where(
+                        SuspendedTransaction.terminal_id == terminal_id,
+                        SuspendedTransaction.is_autosave.is_(True),
+                        SuspendedTransaction.revision < target_revision,
+                    )
+                    .values(
                         data=snapshot["json_data"],
                         customer_id=snapshot.get("customer_id"),
-                        revision=target_revision,
                         timestamp=datetime.now(),
+                        revision=target_revision,
                     )
-                    session.add(row)
+                )
 
-                session.commit()
-                return True
+                res = session.execute(cas_stmt)
+                if res.rowcount == 1:
+                    session.commit()
+                    return True
+
+                # Rowcount == 0 means either:
+                # A) Row exists with revision >= target_revision (a newer save or tombstone won).
+                # B) Row does not exist yet for this terminal.
+                existing_count = (
+                    session.query(SuspendedTransaction.id)
+                    .filter(
+                        SuspendedTransaction.terminal_id == terminal_id,
+                        SuspendedTransaction.is_autosave.is_(True),
+                    )
+                    .count()
+                )
+                if existing_count > 0:
+                    logger.debug(
+                        "Dropping stale autosave for %s (persisted revision >= target revision %s)",
+                        terminal_id,
+                        target_revision,
+                    )
+                    return False
+
+                # Attempt insert for missing row
+                new_row = SuspendedTransaction(
+                    is_autosave=True,
+                    terminal_id=terminal_id,
+                    data=snapshot["json_data"],
+                    customer_id=snapshot.get("customer_id"),
+                    revision=target_revision,
+                    timestamp=datetime.now(),
+                )
+                session.add(new_row)
+                try:
+                    session.commit()
+                    return True
+                except IntegrityError:
+                    session.rollback()
+                    # Concurrent insert committed for this terminal. Retry through conditional CAS UPDATE.
+                    retry_res = session.execute(cas_stmt)
+                    if retry_res.rowcount == 1:
+                        session.commit()
+                        return True
+                    logger.debug(
+                        "Dropping stale autosave for %s after retry (concurrent insert had higher/equal revision than %s)",
+                        terminal_id,
+                        target_revision,
+                    )
+                    return False
         except Exception as e:
             logger.error("Failed to save autosave for terminal %s: %s", terminal_id, e)
             return False
@@ -543,6 +594,7 @@ class CartAutosaveService:
         retaining and updating the watermark in memory so delayed in-flight workers are rejected.
         """
         rows = session.query(SuspendedTransaction).filter(SuspendedTransaction.is_autosave.is_(True)).all()
+        tombstones_to_add = []
         with cls._lock:
             handled_terminals = set()
             for row in rows:
@@ -568,16 +620,19 @@ class CartAutosaveService:
                 if term_id not in handled_terminals:
                     baseline = cls._persisted_baselines.get(term_id, 0)
                     new_rev = baseline + watermark + 1
-                    tombstone = SuspendedTransaction(
-                        is_autosave=True,
-                        terminal_id=term_id,
-                        data=None,
-                        customer_id=None,
-                        revision=new_rev,
-                        timestamp=datetime.now(),
-                    )
-                    session.add(tombstone)
+                    tombstones_to_add.append((term_id, new_rev))
                     cls._issued_generations[term_id] = max(watermark, new_rev - baseline)
+
+        for term_id, new_rev in tombstones_to_add:
+            tombstone = SuspendedTransaction(
+                is_autosave=True,
+                terminal_id=term_id,
+                data=None,
+                customer_id=None,
+                revision=new_rev,
+                timestamp=datetime.now(),
+            )
+            session.add(tombstone)
 
         return len(rows)
 

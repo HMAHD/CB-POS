@@ -557,3 +557,189 @@ def test_first_save_after_process_restart_succeeds_above_high_tombstone(clean_co
         assert saved_row is not None
         assert saved_row.revision > 20, f"Expected revision > 20, got {saved_row.revision}"
         assert saved_row.data is not None
+
+
+@pytest.mark.domain
+def test_race_worker_cannot_resurrect_tombstone_committed_during_save(clean_concurrency_db, monkeypatch, tmp_path):
+    """P1: Force race interleaving:
+    1. Worker reads/calculates from active revision N and pauses before writing.
+    2. A sale, hold, discard or feature-disable transaction commits tombstone revision greater than N.
+    3. Release the worker.
+    4. Worker returns False.
+    5. Row remains tombstoned.
+    6. Tombstone revision is unchanged.
+    7. Recovery finds no cart.
+    """
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from cbpos.core.models import Base, FeatureFlag, SuspendedTransaction
+
+    db_path = tmp_path / "test_cas_race.db"
+    file_engine = create_engine(f"sqlite:///{db_path}")
+    Base.metadata.create_all(file_engine)
+
+    ThreadSession = sessionmaker(bind=file_engine, expire_on_commit=False)
+
+    class ThreadSafeDatabase:
+        def get_session(self):
+            return ThreadSession()
+
+    monkeypatch.setattr("cbpos.core.database.Database", ThreadSafeDatabase)
+    monkeypatch.setattr("cbpos.core.services.cart_autosave_service.Database", ThreadSafeDatabase)
+    monkeypatch.setattr("cbpos.core.services.feature_flags.Database", ThreadSafeDatabase)
+    FeatureFlags.invalidate_cache()
+
+    with ThreadSession() as s:
+        flag = FeatureFlag(name=Features.POWER_CUT_AUTOSAVE, enabled=True)
+        s.add(flag)
+        s.commit()
+
+    terminal_id = "TERM-CAS-RACE"
+    snap1 = {
+        "json_data": '{"lines": [{"barcode": "ITEM1", "qty": "1.000", "unit_price": "100.00"}]}',
+        "customer_id": None,
+    }
+    snap2 = {
+        "json_data": '{"lines": [{"barcode": "ITEM2", "qty": "2.000", "unit_price": "200.00"}]}',
+        "customer_id": None,
+    }
+
+    # 1. Initial save at revision 1
+    assert CartAutosaveService.save(snap1, terminal_id, 1) is True
+
+    # Issue generation 2
+    gen = CartAutosaveService.issue_generation(terminal_id)
+    assert gen == 2
+
+    worker_paused = threading.Event()
+    tombstone_committed = threading.Event()
+    worker_result = {}
+
+    def hook(term, target_rev):
+        if term == terminal_id:
+            worker_paused.set()
+            # Wait for sale/tombstone to commit
+            tombstone_committed.wait(timeout=5)
+
+    CartAutosaveService._before_write_hook = hook
+
+    def worker_thread_fn():
+        res = CartAutosaveService.save(snap2, terminal_id, gen)
+        worker_result["saved"] = res
+
+    worker = threading.Thread(target=worker_thread_fn)
+    worker.start()
+
+    # Wait until worker has calculated target_revision and paused before writing
+    assert worker_paused.wait(timeout=5), "Worker failed to reach pause point before write"
+
+    # 2. Main transaction (e.g. sale completion or hold) commits a tombstone with revision > N
+    with ThreadSession() as session:
+        CartAutosaveService.delete_autosave_in_session(session, terminal_id)
+        session.commit()
+
+    with ThreadSession() as session:
+        tombstone_row = session.query(SuspendedTransaction).filter_by(terminal_id=terminal_id, is_autosave=True).first()
+        assert tombstone_row is not None
+        assert tombstone_row.data is None
+        tombstone_rev_before_release = tombstone_row.revision
+        assert tombstone_rev_before_release > 1
+
+    # 3. Release the worker
+    tombstone_committed.set()
+    worker.join(timeout=5)
+
+    # 4. Worker returns False
+    assert worker_result.get("saved") is False, "Worker must return False when row was updated concurrently"
+
+    # 5. Row remains tombstoned
+    with ThreadSession() as session:
+        row_after = session.query(SuspendedTransaction).filter_by(terminal_id=terminal_id, is_autosave=True).first()
+        assert row_after is not None
+        assert row_after.data is None, "Row must remain tombstoned (data=None) and NOT be resurrected"
+
+        # 6. Tombstone revision is unchanged
+        assert row_after.revision == tombstone_rev_before_release, (
+            f"Tombstone revision changed from {tombstone_rev_before_release} to {row_after.revision}"
+        )
+
+    # 7. Recovery finds no cart
+    assert CartAutosaveService.has_autosave(terminal_id) is False, "Recovery must find no active cart"
+    assert CartAutosaveService.get_autosave_summary(terminal_id) is None
+
+
+@pytest.mark.domain
+def test_race_concurrent_inserts_absent_terminal_loser_cannot_overwrite_newer_revision(monkeypatch, tmp_path):
+    """P1: When two workers target the same absent terminal concurrently:
+    - One insert wins.
+    - If the other worker had an older revision, it rolls back and retries via the conditional UPDATE path.
+    - It must NOT overwrite the newer revision.
+    """
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from cbpos.core.models import Base, FeatureFlag, SuspendedTransaction
+
+    db_path = tmp_path / "test_cas_absent_race.db"
+    file_engine = create_engine(f"sqlite:///{db_path}")
+    Base.metadata.create_all(file_engine)
+
+    ThreadSession = sessionmaker(bind=file_engine, expire_on_commit=False)
+
+    class ThreadSafeDatabase:
+        def get_session(self):
+            return ThreadSession()
+
+    monkeypatch.setattr("cbpos.core.database.Database", ThreadSafeDatabase)
+    monkeypatch.setattr("cbpos.core.services.cart_autosave_service.Database", ThreadSafeDatabase)
+    monkeypatch.setattr("cbpos.core.services.feature_flags.Database", ThreadSafeDatabase)
+    FeatureFlags.invalidate_cache()
+
+    with ThreadSession() as s:
+        flag = FeatureFlag(name=Features.POWER_CUT_AUTOSAVE, enabled=True)
+        s.add(flag)
+        s.commit()
+
+    terminal_id = "TERM-ABSENT-RACE"
+    snap_older = {"json_data": '{"lines": [{"barcode": "OLD", "qty": "1.000"}]}', "customer_id": None}
+    snap_newer = {"json_data": '{"lines": [{"barcode": "NEW", "qty": "2.000"}]}', "customer_id": None}
+
+    worker1_started = threading.Event()
+    worker2_committed = threading.Event()
+    worker1_result = {}
+
+    def hook(term, target_rev):
+        if term == terminal_id and target_rev == 1:
+            worker1_started.set()
+            worker2_committed.wait(timeout=5)
+
+    CartAutosaveService._before_write_hook = hook
+
+    def worker1_fn():
+        worker1_result["saved"] = CartAutosaveService.save(snap_older, terminal_id, 1)
+
+    t1 = threading.Thread(target=worker1_fn)
+    t1.start()
+
+    assert worker1_started.wait(timeout=5)
+
+    # Worker 2 saves with gen=2 (newer) and commits insertion
+    CartAutosaveService._before_write_hook = None
+    saved2 = CartAutosaveService.save(snap_newer, terminal_id, 2)
+    assert saved2 is True
+
+    # Release worker 1
+    worker2_committed.set()
+    t1.join(timeout=5)
+
+    # Worker 1 must fail (cannot overwrite newer revision 2)
+    assert worker1_result.get("saved") is False, "Worker 1 with older generation must be rejected"
+
+    # Persisted row must retain Worker 2's data and revision 2
+    with ThreadSession() as session:
+        row = session.query(SuspendedTransaction).filter_by(terminal_id=terminal_id, is_autosave=True).first()
+        assert row is not None
+        assert row.revision == 2
+        assert "NEW" in row.data
+        assert "OLD" not in row.data

@@ -1102,6 +1102,22 @@ class SyncClient(QThread):
                     ):
                         _set_local_balance(session, balance, owner_id, main_value)
 
+                if (
+                    flags_modified
+                    and "feature_flags" in existing_tables
+                    and "suspended_transactions" in existing_tables
+                ):
+                    from cbpos.core.constants.features import Features
+                    from cbpos.core.models import FeatureFlag
+                    from cbpos.core.services.cart_autosave_service import CartAutosaveService
+
+                    flag_row = (
+                        session.query(FeatureFlag).filter(FeatureFlag.name == Features.POWER_CUT_AUTOSAVE).first()
+                    )
+                    # When power_cut_autosave is disabled centrally or deleted, tombstone all local autosaves (Defect 5)
+                    if not flag_row or not flag_row.enabled:
+                        CartAutosaveService.delete_all_autosaves_in_session(session)
+
         except Exception as e:
             logger.error("Error applying catalog update: %s", e)
             self._error_code = "catalog_apply_failed"

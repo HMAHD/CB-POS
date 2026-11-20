@@ -118,3 +118,30 @@ def test_issue_932_recovery_dialog_trilingual(qtbot, sample_summary):
         assert "3" in body
         assert "1,250.00" in body
     set_language("en")
+
+
+@pytest.mark.ui
+def test_defect_9_discard_dialog_failure_keeps_dialog_open_and_shows_error(qtbot, sample_summary):
+    """Defect 9: When discard_autosave fails (returns False), dialog must NOT accept,
+    must show an error message, and action must remain IGNORE.
+    """
+    terminal_id = sample_summary["terminal_id"]
+
+    with patch.object(CartAutosaveService, "discard_autosave", return_value=False) as mock_discard:
+        with patch.object(QMessageBox, "question", return_value=QMessageBox.StandardButton.Yes):
+            with patch.object(QMessageBox, "critical") as mock_critical:
+                dlg = AutosaveRecoveryDialog(sample_summary)
+                qtbot.addWidget(dlg)
+                dlg.show()
+
+                dlg.btn_discard.click()
+
+                # Discard was called
+                mock_discard.assert_called_once_with(terminal_id)
+
+                # Error message was shown
+                mock_critical.assert_called_once()
+
+                # Dialog must NOT have accepted; remains open with IGNORE action
+                assert dlg.action == AutosaveAction.IGNORE
+                assert dlg.isVisible() is True

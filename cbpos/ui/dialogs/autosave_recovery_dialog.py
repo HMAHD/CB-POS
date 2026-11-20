@@ -128,7 +128,14 @@ class AutosaveRecoveryDialog(QDialog):
             QMessageBox.StandardButton.No,
         )
         if ans == QMessageBox.StandardButton.Yes:
-            CartAutosaveService.discard_autosave(self.terminal_id)
+            ok = CartAutosaveService.discard_autosave(self.terminal_id)
+            if not ok:
+                QMessageBox.critical(
+                    self,
+                    _t("common.error"),
+                    _t("errors.discard_failed", default="Failed to discard autosaved bill. Please try again."),
+                )
+                return
             self.action = AutosaveAction.DISCARD
             self.accept()
 

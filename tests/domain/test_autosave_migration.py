@@ -71,3 +71,53 @@ def test_autosave_migration_upgrade_and_downgrade(alembic_cfg):
     # Re-upgrade to head and dispose engine
     command.upgrade(cfg, "head")
     engine.dispose()
+
+
+@pytest.mark.domain
+def test_migration_downgrade_preserves_held_bills_and_purges_autosaves(alembic_cfg):
+    """Defect 8: Migration downgrade must purge autosave rows and tombstone rows (data=NULL),
+    while preserving ordinary held bills with non-null data.
+    """
+    cfg, uri, _ = alembic_cfg
+    engine = create_engine(uri)
+    Base.metadata.create_all(engine)
+
+    # Stamp head and upgrade
+    command.stamp(cfg, "head")
+
+    with engine.connect() as conn:
+        # 1. Ordinary held bill (is_autosave = False, data NOT NULL)
+        conn.execute(
+            text(
+                "INSERT INTO suspended_transactions (is_autosave, terminal_id, revision, data, timestamp) "
+                'VALUES (0, \'TERM-01\', 1, \'{"v": 2, "lines": ["item1"]}\', CURRENT_TIMESTAMP)'
+            )
+        )
+        # 2. Active autosave (is_autosave = True, data NOT NULL)
+        conn.execute(
+            text(
+                "INSERT INTO suspended_transactions (is_autosave, terminal_id, revision, data, timestamp) "
+                'VALUES (1, \'TERM-01\', 5, \'{"v": 2, "lines": ["active_autosave"]}\', CURRENT_TIMESTAMP)'
+            )
+        )
+        # 3. Tombstoned autosave (is_autosave = True, data IS NULL)
+        conn.execute(
+            text(
+                "INSERT INTO suspended_transactions (is_autosave, terminal_id, revision, data, timestamp) "
+                "VALUES (1, 'TERM-02', 10, NULL, CURRENT_TIMESTAMP)"
+            )
+        )
+        conn.commit()
+
+    # Downgrade to d6e7f8a9b0c1
+    command.downgrade(cfg, "d6e7f8a9b0c1")
+
+    with engine.connect() as conn:
+        rows = conn.execute(text("SELECT id, data FROM suspended_transactions")).fetchall()
+        # Ordinary held bill MUST be preserved
+        assert len(rows) == 1, f"Expected exactly 1 ordinary held bill after downgrade, got {len(rows)}"
+        assert "item1" in rows[0][1]
+
+    # Re-upgrade to head and dispose engine
+    command.upgrade(cfg, "head")
+    engine.dispose()

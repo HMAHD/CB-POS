@@ -277,3 +277,49 @@ def test_issue_932_restore_autosave_full_fidelity(clean_autosave_db, sample_prod
 
     # The autosave record must be deleted upon restoration
     assert CartAutosaveService.get_autosave_summary(term) is None
+
+
+@pytest.mark.domain
+def test_defect_10_structurally_invalid_json_payloads_purged(clean_autosave_db):
+    """Defect 10: Structurally invalid JSON (missing/null lines, invalid Decimal strings,
+    non-dict root/totals) must be purged/tombstoned and return None from get_autosave_summary.
+    """
+    db = clean_autosave_db
+
+    invalid_payloads = [
+        '{"lines": null}',
+        '{"lines": [{"qty": "invalid_number", "unit_price": "100.00"}]}',
+        '{"lines": "not_a_list"}',
+        '{"totals": "not_a_dict", "lines": []}',
+        '["not_a_dict_root"]',
+    ]
+
+    for i, payload in enumerate(invalid_payloads):
+        term = f"TERM-CORRUPT-{i}"
+        with db.get_session() as session:
+            row = SuspendedTransaction(
+                is_autosave=True,
+                terminal_id=term,
+                data=payload,
+                revision=1,
+            )
+            session.add(row)
+            session.commit()
+
+        # get_autosave_summary must classify as corrupt, tombstone/purge row, and return None
+        summary = CartAutosaveService.get_autosave_summary(term)
+        assert summary is None, f"Expected None for corrupt payload {payload}"
+
+        # Row in DB must be tombstoned (data is None) so future queries don't keep failing on it
+        with db.get_session() as session:
+            row_after = (
+                session.query(SuspendedTransaction)
+                .filter(
+                    SuspendedTransaction.is_autosave.is_(True),
+                    SuspendedTransaction.terminal_id == term,
+                )
+                .first()
+            )
+            assert row_after is None or row_after.data is None, (
+                f"Corrupt row for payload {payload} was not purged/tombstoned!"
+            )

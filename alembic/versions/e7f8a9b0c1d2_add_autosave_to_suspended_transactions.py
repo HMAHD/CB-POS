@@ -88,6 +88,12 @@ def downgrade() -> None:
         if "ix_suspended_transactions_terminal_id" in existing_indexes:
             op.drop_index("ix_suspended_transactions_terminal_id", table_name="suspended_transactions")
 
+        # Defect 8: Purge autosaves (active or tombstoned) and any row with NULL data
+        # so NOT NULL constraint succeeds and ordinary held bills are preserved
+        conn.execute(
+            sa.text("DELETE FROM suspended_transactions WHERE is_autosave = 1 OR is_autosave IS TRUE OR data IS NULL")
+        )
+
         with op.batch_alter_table("suspended_transactions", schema=None) as batch_op:
             batch_op.drop_column("revision")
             batch_op.drop_column("terminal_id")

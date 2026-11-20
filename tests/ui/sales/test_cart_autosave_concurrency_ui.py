@@ -209,6 +209,7 @@ def test_defect_7_failed_hold_preserves_autosave(qtbot, db_session, cashier_user
 
     with (
         patch.object(SuspendedTransactionService, "hold_bill", return_value=None),
+        patch.object(SuspendedTransactionService, "hold_bill_and_consume_autosave", return_value=None),
         patch.object(QMessageBox, "critical"),
     ):
         view.hold_bill()
@@ -257,3 +258,142 @@ def test_defect_8_recovery_prompted_across_logins_after_esc(qtbot, db_session, c
         view.showEvent(None)
 
     assert prompt_count == 2, "New session after logout must re-check autosave recovery"
+
+
+@pytest.mark.ui
+def test_defect_3_failed_logout_hold_and_autosave_aborts_logout_and_preserves_cart(
+    qtbot, db_session, cashier_user, sample_product
+):
+    """Defect 3: If both auto-hold and autosave fail on logout, end_session must return False,
+    show an actionable error dialog in _t(), and NOT clear the cart items or customer.
+    MainWindow.logout must abort logout and keep user on POS with cart intact.
+    """
+    from PyQt6.QtWidgets import QMessageBox
+
+    view = SalesView()
+    qtbot.addWidget(view)
+    view.cart_service.add_item(sample_product, Decimal("2.000"))
+    assert len(view.cart_service.items) == 1
+
+    # Simulate database failure for both hold and autosave
+    with (
+        patch.object(SuspendedTransactionService, "hold_bill", return_value=None),
+        patch.object(SuspendedTransactionService, "hold_bill_and_consume_autosave", return_value=None, create=True),
+        patch.object(CartAutosaveService, "save", return_value=False),
+        patch.object(QMessageBox, "critical") as mock_critical,
+    ):
+        res = view.end_session(reason="MANUAL")
+
+        # Actionable error message displayed
+        mock_critical.assert_called_once()
+
+        # end_session must return False to signal failure
+        assert res is False
+
+        # Cart items and customer NOT lost!
+        assert len(view.cart_service.items) == 1
+
+
+@pytest.mark.ui
+def test_defect_6_failed_background_save_retries_with_backoff_and_shows_warning(
+    qtbot, db_session, cashier_user, sample_product
+):
+    """Defect 6: Failed background save retries up to 3 times with backoff, surfaces a warning
+    notice on exhaustion, and keeps the cart dirty.
+    """
+    terminal_id = "TERM-UI-RETRY"
+    ConfigService.set("terminal_id", terminal_id)
+
+    view = SalesView()
+    qtbot.addWidget(view)
+    view.cart_service.add_item(sample_product, Decimal("1.000"))
+
+    with patch.object(view, "_show_status_message") as mock_status:
+        # 1st failure: retry scheduled
+        view._on_autosave_worker_finished(False, terminal_id, 1)
+        assert getattr(view, "_autosave_retry_count", 0) == 1
+        assert hasattr(view, "_autosave_retry_timer")
+        assert view._autosave_retry_timer.isActive() is True
+
+        # 2nd failure
+        view._on_autosave_worker_finished(False, terminal_id, 1)
+        assert getattr(view, "_autosave_retry_count", 0) == 2
+
+        # 3rd failure: retries exhausted -> show warning notice
+        view._on_autosave_worker_finished(False, terminal_id, 1)
+        assert getattr(view, "_autosave_retry_count", 0) == 0  # reset for future
+        assert view._pending_autosave is True  # cart remains dirty for next attempt
+        mock_status.assert_called_once()
+
+
+@pytest.mark.ui
+def test_defect_7_timed_wait_transfers_running_worker_to_background_registry(
+    qtbot, db_session, cashier_user, sample_product
+):
+    """Defect 7: When closeEvent waits on a worker that doesn't finish within timeout,
+    the worker must NOT be dropped or set to None; it must be retained in the application-level
+    background job registry until it finishes so Qt/Python does not abort.
+    """
+    import threading
+
+    from PyQt6.QtCore import QThread
+    from PyQt6.QtGui import QCloseEvent
+
+    from cbpos.ui.workers import running_background_jobs
+
+    terminal_id = "TERM-UI-CLOSE-WORKER"
+    ConfigService.set("terminal_id", terminal_id)
+
+    view = SalesView()
+    qtbot.addWidget(view)
+
+    stopped = threading.Event()
+
+    class SlowWorker(QThread):
+        def run(self):
+            stopped.wait(timeout=2.0)
+
+    slow_worker = SlowWorker()
+    slow_worker.start()
+
+    view._autosave_worker = slow_worker
+
+    orig_wait = slow_worker.wait
+    slow_worker.wait = lambda timeout=None: False
+
+    close_event = QCloseEvent()
+    view.closeEvent(close_event)
+
+    try:
+        assert slow_worker in running_background_jobs()
+    finally:
+        stopped.set()
+        slow_worker.wait = orig_wait
+        slow_worker.wait(2000)
+
+
+@pytest.mark.ui
+def test_defect_11_sales_view_collectible_via_weakref_no_closure_leak(qtbot, db_session, cashier_user):
+    """Defect 11: SalesView must not leak via strong closure captures in call_on_destroyed.
+    Weak reference to destroyed SalesView must clear after garbage collection.
+    """
+    import gc
+    import weakref
+
+    from PyQt6.QtCore import QEvent
+    from PyQt6.QtWidgets import QApplication
+
+    view = SalesView()
+    ref = weakref.ref(view)
+
+    # Close and remove Qt widget
+    view.close()
+    view.deleteLater()
+    del view
+
+    # Process events and trigger gc
+    QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+    QApplication.processEvents()
+    gc.collect()
+
+    assert ref() is None, "SalesView leaked in memory (cycle retained via destroy hooks closure)"

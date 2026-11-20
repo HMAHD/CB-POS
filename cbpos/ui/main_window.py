@@ -255,7 +255,11 @@ class MainWindow(QMainWindow):
         # 2. Protect the cart
         held_id = None
         if hasattr(self, "sales_view") and hasattr(self.sales_view, "end_session"):
-            held_id = self.sales_view.end_session(reason=reason)
+            result = self.sales_view.end_session(reason=reason)
+            if result is False:
+                # Failed to preserve cart; abort logout to prevent loss of items
+                return
+            held_id = result if isinstance(result, int) else None
 
         if hasattr(self, "login_view"):
             if held_id and hasattr(self.login_view, "show_held_bill_notice"):

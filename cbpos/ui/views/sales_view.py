@@ -63,6 +63,29 @@ from cbpos.ui.widgets.side_menu import SideMenu
 logger = logging.getLogger(__name__)
 
 
+def _cleanup_sales_view_autosave(weak_view_ref) -> None:
+    """Cleanup hook for SalesView destruction without closure cycle (Defect 11)."""
+    view = weak_view_ref()
+    if view is not None:
+        if hasattr(view, "_autosave_timer"):
+            view._autosave_timer.stop()
+        if hasattr(view, "_autosave_retry_timer"):
+            view._autosave_retry_timer.stop()
+        view._pending_autosave = False
+        worker = getattr(view, "_autosave_worker", None)
+        if worker is not None and worker.isRunning():
+            from cbpos.ui.workers import start_background_job
+
+            start_background_job(worker)
+            view._autosave_worker = None
+        try:
+            from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+
+            PrintWorker.instance().error_occurred.disconnect(view._on_print_error)
+        except Exception:
+            pass
+
+
 class SalesView(QWidget):
     """Main checkout screen: cart, barcode scanning, product search, and payment flow."""
 
@@ -85,30 +108,25 @@ class SalesView(QWidget):
         self._pending_proforma_id: int | None = None
 
         # Power-cut autosave debounce & generation tracking (#932)
-        from cbpos.core.services.cart_autosave_service import CartAutosaveService
+        import weakref
 
-        self._autosave_generation: int = CartAutosaveService.get_next_generation(self._get_terminal_id())
+        from cbpos.core.services.cart_autosave_service import CartAutosaveService
+        from cbpos.core.utils.destroy_hooks import call_on_destroyed
+
+        self._autosave_generation: int = CartAutosaveService.issue_generation(self._get_terminal_id())
         self._autosave_recovery_checked: bool = False
         self._autosave_worker = None
         self._pending_autosave: bool = False
         self._had_items: bool = False
+        self._autosave_retry_count: int = 0
         self._autosave_timer = QTimer(self)
         self._autosave_timer.setSingleShot(True)
         self._autosave_timer.timeout.connect(self._on_autosave_timer_fired)
-        from cbpos.core.utils.destroy_hooks import call_on_destroyed
+        self._autosave_retry_timer = QTimer(self)
+        self._autosave_retry_timer.setSingleShot(True)
+        self._autosave_retry_timer.timeout.connect(self._on_autosave_retry_fired)
 
-        def _cleanup_autosave():
-            self._autosave_timer.stop()
-            self._pending_autosave = False
-            if (
-                hasattr(self, "_autosave_worker")
-                and self._autosave_worker is not None
-                and self._autosave_worker.isRunning()
-            ):
-                self._autosave_worker.wait(2000)
-                self._autosave_worker = None
-
-        call_on_destroyed(self, _cleanup_autosave)
+        call_on_destroyed(self, _cleanup_sales_view_autosave, weakref.ref(self))
 
         # Listen for print/drawer failures for the rest of the app's
         # lifetime. Covers open_cash_drawer() below, and also the
@@ -1048,14 +1066,25 @@ class SalesView(QWidget):
         """Stop pending timers and wait for in-flight workers when closed (#932)."""
         if hasattr(self, "_autosave_timer"):
             self._autosave_timer.stop()
+        if hasattr(self, "_autosave_retry_timer"):
+            self._autosave_retry_timer.stop()
         self._pending_autosave = False
         if (
             hasattr(self, "_autosave_worker")
             and self._autosave_worker is not None
             and self._autosave_worker.isRunning()
         ):
+            from cbpos.ui.workers import start_background_job
+
+            start_background_job(self._autosave_worker)
             self._autosave_worker.wait(2000)
             self._autosave_worker = None
+        try:
+            from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+
+            PrintWorker.instance().error_occurred.disconnect(self._on_print_error)
+        except Exception:
+            pass
         super().closeEvent(event)
 
     def _get_terminal_id(self) -> str:
@@ -1073,15 +1102,17 @@ class SalesView(QWidget):
 
         if not self.cart_service.items:
             self._autosave_timer.stop()
+            if hasattr(self, "_autosave_retry_timer"):
+                self._autosave_retry_timer.stop()
             self._pending_autosave = False
-            self._autosave_generation = CartAutosaveService.advance_generation(self._get_terminal_id())
+            self._autosave_generation = CartAutosaveService.issue_generation(self._get_terminal_id())
             if self._had_items:
                 self._had_items = False
                 CartAutosaveService.invalidate_and_delete(self._get_terminal_id())
             return
 
         self._had_items = True
-        self._autosave_generation = CartAutosaveService.advance_generation(self._get_terminal_id())
+        self._autosave_generation = CartAutosaveService.issue_generation(self._get_terminal_id())
         self._autosave_timer.start(1000)
 
     def _on_autosave_timer_fired(self) -> None:
@@ -1106,7 +1137,7 @@ class SalesView(QWidget):
                 return
 
             from cbpos.core.services.cart_autosave_service import CartAutosaveService
-            from cbpos.ui.workers import CartAutosaveWorker
+            from cbpos.ui.workers import CartAutosaveWorker, start_background_job
 
             snapshot = CartAutosaveService.snapshot_cart(self.cart_service)
             if not snapshot:
@@ -1117,27 +1148,56 @@ class SalesView(QWidget):
             worker = CartAutosaveWorker(snapshot, term_id, gen, parent=None)
             worker.finished_result.connect(self._on_autosave_worker_finished)
             self._autosave_worker = worker
-            worker.start()
+            start_background_job(worker)
         except Exception as e:
             logger.debug("Autosave timer snapshot failed: %s", e)
 
+    def _on_autosave_retry_fired(self) -> None:
+        """Trigger a retried autosave after transient failure backoff (Defect 6)."""
+        self._on_autosave_timer_fired()
+
     def _on_autosave_worker_finished(self, ok: bool, terminal_id: str, generation: int) -> None:
-        """Handle background save completion, draining pending snapshot if coalesced (Defect 2)."""
+        """Handle background save completion, retrying on transient failure or draining pending snapshot (Defect 6)."""
         self._autosave_worker = None
-        if getattr(self, "_pending_autosave", False):
-            self._pending_autosave = False
-            from cbpos.core.constants.features import Features
-            from cbpos.core.services.feature_flags import feature_visible
+        if ok:
+            self._autosave_retry_count = 0
+            if getattr(self, "_pending_autosave", False):
+                self._pending_autosave = False
+                from cbpos.core.constants.features import Features
+                from cbpos.core.services.feature_flags import feature_visible
 
-            if (
-                hasattr(self, "cart_service")
-                and self.cart_service.items
-                and feature_visible(Features.POWER_CUT_AUTOSAVE)
-            ):
-                from cbpos.core.services.cart_autosave_service import CartAutosaveService
+                if (
+                    hasattr(self, "cart_service")
+                    and self.cart_service.items
+                    and feature_visible(Features.POWER_CUT_AUTOSAVE)
+                ):
+                    from cbpos.core.services.cart_autosave_service import CartAutosaveService
 
-                self._autosave_generation = CartAutosaveService.advance_generation(self._get_terminal_id())
-                self._on_autosave_timer_fired()
+                    self._autosave_generation = CartAutosaveService.issue_generation(self._get_terminal_id())
+                    self._on_autosave_timer_fired()
+        else:
+            if not hasattr(self, "cart_service") or not self.cart_service.items:
+                return
+            if getattr(self, "_autosave_retry_count", 0) < 2:
+                self._autosave_retry_count = getattr(self, "_autosave_retry_count", 0) + 1
+                delay = min(1000 * (2 ** (self._autosave_retry_count - 1)), 4000)
+                if hasattr(self, "_autosave_retry_timer"):
+                    self._autosave_retry_timer.start(delay)
+                logger.warning(
+                    "Autosave failed on %s (attempt %d/3); retrying in %d ms",
+                    terminal_id,
+                    self._autosave_retry_count,
+                    delay,
+                )
+            else:
+                self._autosave_retry_count = 0
+                self._pending_autosave = True
+                self._show_status_message(
+                    _t(
+                        "autosave.warning_unavailable",
+                        default="Autosave temporarily unavailable. Check database connection.",
+                    )
+                )
 
     def check_autosave_recovery(self) -> None:
         """Check for and offer to restore any interrupted autosaved cart (#932)."""
@@ -1353,19 +1413,15 @@ class SalesView(QWidget):
         if not self.cart_service.items:
             return
 
-        held_id = SuspendedTransactionService.hold_bill(self.cart_service)
+        term_id = self._get_terminal_id()
+        held_id = SuspendedTransactionService.hold_bill_and_consume_autosave(self.cart_service, term_id)
         if held_id:
             self._autosave_timer.stop()
+            if hasattr(self, "_autosave_retry_timer"):
+                self._autosave_retry_timer.stop()
             self._pending_autosave = False
             self._had_items = False
-            from cbpos.core.services.cart_autosave_service import CartAutosaveService
-
-            CartAutosaveService.discard_autosave(self._get_terminal_id())
             self.cart_service.clear()
-            # The held bill's own customer was already saved with it
-            # (restored on recall) -- clear the display here so the next
-            # cart starts on Walk-in Customer instead of visually keeping
-            # whoever was selected for the bill just put away.
             self.clear_customer()
             self.update_cart_display()
             self.order_bar.refresh_tabs()
@@ -1375,7 +1431,7 @@ class SalesView(QWidget):
             QMessageBox.critical(self, _t("common.error"), _t("orders.held_error"))
         self._focus_search()
 
-    def end_session(self, reason: str = "LOGOUT") -> int | None:
+    def end_session(self, reason: str = "LOGOUT") -> int | bool | None:
         """End the current session, auto-holding any open cart before clearing."""
         # Reset recovery check for next authenticated session (Defect 8)
         self._autosave_recovery_checked = False
@@ -1388,33 +1444,63 @@ class SalesView(QWidget):
         current_user = AuthService.get_current_user()
         username = current_user.username if current_user else "unknown"
         note = f"Auto-held at sign-out ({username})"
+        term_id = self._get_terminal_id()
         held_id = None
         try:
-            held_id = SuspendedTransactionService.hold_bill(self.cart_service, note=note)
+            held_id = SuspendedTransactionService.hold_bill_and_consume_autosave(self.cart_service, term_id, note=note)
         except Exception as e:
             logger.error("Auto-holding cart on %s failed: %s", reason, e)
 
         if held_id:
             self._autosave_timer.stop()
+            if hasattr(self, "_autosave_retry_timer"):
+                self._autosave_retry_timer.stop()
             self._pending_autosave = False
             self._had_items = False
-            from cbpos.core.services.cart_autosave_service import CartAutosaveService
+            self.cart_service.clear()
+            self.clear_customer()
+            self.update_cart_display()
+            if hasattr(self, "order_bar"):
+                self.order_bar.refresh_tabs()
+            return held_id
 
-            CartAutosaveService.discard_autosave(self._get_terminal_id())
-        else:
-            # Auto-holding failed: leave autosave on disk so it remains recoverable (Defect 7)
+        # Auto-holding failed: fall back to immediate synchronous autosave to protect cart (Defect 3)
+        logger.warning("Auto-holding cart failed on %s; attempting synchronous autosave fallback", reason)
+        from cbpos.core.services.cart_autosave_service import CartAutosaveService
+
+        snapshot = CartAutosaveService.snapshot_cart(self.cart_service)
+        gen = CartAutosaveService.issue_generation(term_id)
+        saved = False
+        if snapshot:
+            try:
+                saved = CartAutosaveService.save(snapshot, term_id, gen)
+            except Exception as e:
+                logger.error("Synchronous autosave fallback failed: %s", e)
+
+        if saved:
             self._autosave_timer.stop()
+            if hasattr(self, "_autosave_retry_timer"):
+                self._autosave_retry_timer.stop()
             self._pending_autosave = False
             self._had_items = False
+            self.cart_service.clear()
+            self.clear_customer()
+            self.update_cart_display()
+            if hasattr(self, "order_bar"):
+                self.order_bar.refresh_tabs()
+            return None
 
-        # Clear cart, customer and display regardless of hold success (security wins)
-        self.cart_service.clear()
-        self.clear_customer()
-        self.update_cart_display()
-        if hasattr(self, "order_bar"):
-            self.order_bar.refresh_tabs()
-
-        return held_id
+        # Both hold and autosave failed! DO NOT CLEAR CART! DO NOT LOG OUT!
+        logger.critical("Failed to preserve cart during %s; aborting logout", reason)
+        QMessageBox.critical(
+            self,
+            _t("common.error"),
+            _t(
+                "orders.logout_preserve_failed",
+                default="Could not save open bill to database. Sign-out aborted to prevent losing cart items.",
+            ),
+        )
+        return False
 
     def recall_bill(self):
         """Recall the most recently held bill back into the cart (F7)."""

@@ -265,3 +265,146 @@ def test_defect_6_feature_disable_race_blocks_worker_and_no_resurrect_on_reenabl
 
     # Must NOT have restored the discarded row
     assert CartAutosaveService.has_autosave(terminal_id) is False, "Re-enabling flag must NOT restore discarded cart"
+
+
+@pytest.mark.domain
+def test_defect_1_tombstone_invalidates_all_issued_generations_high_watermark(clean_concurrency_db, product_a):
+    """Defect 1: Consuming transaction (sale/hold/clear) must invalidate all generations already issued
+    in memory even if they were not yet persisted in DB. An older worker with generation <= watermark
+    must not resurrect the cart.
+    """
+    terminal_id = "TERM-HIGH-WATERMARK"
+    cart = CartService()
+    cart.add_item(product_a, Decimal("1.000"))
+    snap = CartAutosaveService.snapshot_cart(cart)
+
+    # Persist initial cart at generation 1
+    assert CartAutosaveService.save(snap, terminal_id, 1) is True
+
+    # Simulate issuing generations 2 through 10 in memory without saving yet (e.g. rapid keystrokes/mutations)
+    for _ in range(9):
+        gen_issued = (
+            CartAutosaveService.issue_generation(terminal_id)
+            if hasattr(CartAutosaveService, "issue_generation")
+            else CartAutosaveService.advance_generation(terminal_id)
+        )
+
+    assert gen_issued >= 10
+
+    # Consuming transaction occurs (sale/clear/discard)
+    db = clean_concurrency_db
+    with db.get_session() as session:
+        CartAutosaveService.delete_autosave_in_session(session, terminal_id)
+        session.commit()
+
+    # Now a delayed worker with generation 10 wakes up and attempts to save
+    saved = CartAutosaveService.save(snap, terminal_id, 10)
+    assert saved is False, "Worker with issued generation 10 must be blocked by the high-watermark tombstone"
+    assert CartAutosaveService.has_autosave(terminal_id) is False, (
+        "Cart must not be resurrected after consuming transaction"
+    )
+
+
+@pytest.mark.domain
+def test_defect_1_zero_database_queries_on_generation_issuance(clean_concurrency_db):
+    """Defect 1 / Architectural Directive: Zero database queries may run on the Qt UI thread
+    during generation issuance on cart mutations.
+    """
+    from sqlalchemy import event
+
+    terminal_id = "TERM-ZERO-QUERY"
+    db = clean_concurrency_db
+    query_count = 0
+
+    def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+        nonlocal query_count
+        query_count += 1
+
+    engine = db.engine
+    event.listen(engine, "before_cursor_execute", before_cursor_execute)
+    try:
+        # Issue 5 generations
+        for _ in range(5):
+            if hasattr(CartAutosaveService, "issue_generation"):
+                CartAutosaveService.issue_generation(terminal_id)
+            else:
+                CartAutosaveService.advance_generation(terminal_id)
+
+        assert query_count == 0, (
+            f"Expected 0 database queries on UI thread during generation issuance, got {query_count}"
+        )
+    finally:
+        event.remove(engine, "before_cursor_execute", before_cursor_execute)
+
+
+@pytest.mark.domain
+def test_defect_2_failed_recall_preserves_autosave_row_and_rolls_back_cart(clean_concurrency_db, product_a):
+    """Defect 2: Failed recall must NOT delete or tombstone the autosave row, and must preserve/revert
+    the cart state so the bill remains restorable.
+    """
+    terminal_id = "TERM-RECALL-FAIL"
+    cart = CartService()
+    cart.add_item(product_a, Decimal("3.000"))
+    snap = CartAutosaveService.snapshot_cart(cart)
+    CartAutosaveService.save(snap, terminal_id, 1)
+
+    restoring_cart = CartService()
+
+    # Simulate failure during restore by patching add_item to raise an error
+    with pytest.MonkeyPatch.context() as mp:
+
+        def failing_add_item(*args, **kwargs):
+            raise RuntimeError("Injected failure during restore replay")
+
+        mp.setattr(restoring_cart, "add_item", failing_add_item)
+
+        res = CartAutosaveService.restore_autosave(terminal_id, restoring_cart)
+        assert res.ok is False, "Restore must report failure when item restore fails"
+
+    # Cart must be clean (no partial corrupted items)
+    assert len(restoring_cart.items) == 0
+
+    # Autosave row in DB must STILL BE ACTIVE and RESTORABLE!
+    summary = CartAutosaveService.get_autosave_summary(terminal_id)
+    assert summary is not None, "Autosave row must NOT be deleted/tombstoned when recall fails!"
+    assert summary["item_count"] == 1
+    assert summary["total_qty"] == Decimal("3.000")
+
+
+@pytest.mark.domain
+def test_defect_4_manual_hold_and_autosave_tombstone_atomic(clean_concurrency_db, product_a):
+    """Defect 4: Manual hold and autosave tombstone must execute atomically in a single transaction."""
+    from cbpos.core.models import SuspendedTransaction
+    from cbpos.core.services.suspended_transaction_service import SuspendedTransactionService
+
+    terminal_id = "TERM-HOLD-ATOMIC"
+    cart = CartService()
+    cart.add_item(product_a, Decimal("2.000"))
+    snap = CartAutosaveService.snapshot_cart(cart)
+    CartAutosaveService.save(snap, terminal_id, 1)
+
+    assert CartAutosaveService.has_autosave(terminal_id) is True
+
+    # Call atomic hold_bill_and_consume_autosave
+    held_id = SuspendedTransactionService.hold_bill_and_consume_autosave(cart, terminal_id, note="Test Hold")
+    assert held_id is not None
+
+    db = clean_concurrency_db
+    with db.get_session() as session:
+        # Held bill exists
+        held_row = session.get(SuspendedTransaction, held_id)
+        assert held_row is not None
+        assert held_row.is_autosave is False
+        assert held_row.data is not None
+
+        # Autosave is tombstoned
+        autosave_row = (
+            session.query(SuspendedTransaction)
+            .filter(
+                SuspendedTransaction.is_autosave.is_(True),
+                SuspendedTransaction.terminal_id == terminal_id,
+            )
+            .first()
+        )
+        assert autosave_row is not None
+        assert autosave_row.data is None, "Autosave row must be tombstoned (data=None)"

@@ -269,6 +269,7 @@
     "recalled_title": "Recalled",
     "recalled_message": "Bill #{id} recalled.",
     "recall_error": "Failed to recall bill.",
+    "logout_preserve_failed": "Could not save open bill to database. Sign-out aborted to prevent losing cart items.",
     "switch_error": "Failed to hold current order.",
     "recall_taken_error": "Could not recall order. It may have been taken.",
     "recall_notices_title": "Bill recalled with changes",
@@ -3408,7 +3409,8 @@
     "serial_required": "Serial/IMEI number is required for '{name}'",
     "duplicate_serial_in_cart": "Duplicate serial number '{serial}' in cart",
     "serial_requires_warranty_policy": "Serial tracking requires an active warranty policy",
-    "serial_weighted_disallowed": "Weighted products cannot have serial tracking"
+    "serial_weighted_disallowed": "Weighted products cannot have serial tracking",
+    "discard_failed": "Failed to discard autosaved bill. Please try again."
   },
   "backup_password": {
     "title_set": "Set Backup Password",
@@ -3958,6 +3960,7 @@
     "btn_continue": "Continue (Enter)",
     "btn_discard": "Discard",
     "discard_confirm_title": "Discard Unfinished Bill?",
-    "discard_confirm_body": "Are you sure you want to discard this bill? The unsaved cart will be permanently deleted."
+    "discard_confirm_body": "Are you sure you want to discard this bill? The unsaved cart will be permanently deleted.",
+    "warning_unavailable": "Autosave temporarily unavailable. Check database connection."
   }
 }

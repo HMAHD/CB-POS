@@ -3938,14 +3938,26 @@
       "warranty": "Warranty & Repairs",
       "credit_book": "Customer Credit Book",
       "serial_tracking": "Serial & IMEI Tracking",
-      "cheques": "Cheque Payments"
+      "cheques": "Cheque Payments",
+      "power_cut_autosave": "Power-Cut Autosave"
     },
     "desc": {
       "warranty": "Manage warranty policies, claims, returns, and repairs",
       "credit_book": "Track customer debt, credit limits, payments, and aging",
       "serial_tracking": "Capture serial or IMEI numbers for high-value items at checkout",
-      "cheques": "Accept cheques and record cheque payments at checkout"
+      "cheques": "Accept cheques and record cheque payments at checkout",
+      "power_cut_autosave": "Automatically save the open bill and restore it if power cuts or app restarts"
     },
     "saved": "Feature '{name}' updated."
+  },
+  "autosave": {
+    "recovery_title": "Unfinished Bill Found",
+    "recovery_header": "Recover previous cart?",
+    "recovery_body": "You had an unfinished bill with {count} items ({total}). Would you like to restore it?",
+    "saved_at": "Saved at: {time}",
+    "btn_continue": "Continue (Enter)",
+    "btn_discard": "Discard",
+    "discard_confirm_title": "Discard Unfinished Bill?",
+    "discard_confirm_body": "Are you sure you want to discard this bill? The unsaved cart will be permanently deleted."
   }
 }

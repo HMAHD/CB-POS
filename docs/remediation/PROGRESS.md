@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 10B · Batch: 10B.0 (#942) · Branch: feat/p10b-b0-feature-flags-presets · PR: — · Last session: 2026-11-20
+- Phase: 10B · Batch: 10B.1 (#932) · Branch: feat/p10b-b1-power-cut-autosave · PR: open · Last session: 2026-11-20
 
 ## Issues
 
@@ -222,11 +222,11 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 | # | Title | Sev | Batch | Status | PR | Notes |
 |---|---|---|---|---|---|---|
-| #942 | Shop-type presets at first run (Grocery, Pharmacy, Hardware, Clothing, Phone,… | — | 10B.0 | in-progress | | D34 |
+| #942 | Shop-type presets at first run (Grocery, Pharmacy, Hardware, Clothing, Phone,… | — | 10B.0 | done | #1032 | 6478505 · Database-backed FeatureFlags service, 8-preset matrix (D34), setup wizard step, features settings page, idempotent category/unit seeding (D35), LAN catalog sync 1.6, UI gate screenshots |
+| #932 | Power-cut safety: autosave the in-progress bill and restore it on restart | — | 10B.1 | pr-open | | D36 · CartAutosaveService, SuspendedTransaction.is_autosave & terminal_id partial unique index, atomic sale cleanup, 1s debounce worker, AutosaveRecoveryDialog, UI gate screenshots |
 | #926 | Expiry dates and batches, with per-batch MRP (pharmacy, grocery, bakery) | — | 10B.? | todo | | |
 | #930 | Supplier returns with debit note (pairs with expiry/batch) | — | 10B.? | todo | | |
 | #931 | Price board: fast daily price editing for items flagged "price changes often" | — | 10B.? | todo | | |
-| #932 | Power-cut safety: autosave the in-progress bill and restore it on restart | — | 10B.? | todo | | |
 | #933 | Serial/IMEI capture (phone and electronics shops), linked to the warranty epic | — | 10B.? | todo | | |
 | #936 | Size/colour variants and exchange (clothing) | — | 10B.? | todo | | |
 | #937 | Unit conversion: buy by box, sell by piece; ft/m/sqft for hardware | — | 10B.? | todo | | |
@@ -301,6 +301,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | `presets.categories.*` (28 seeded category names in SI & TA per D35) | `cbpos/core/services/presets.py` | Draft Sinhala/Tamil retail category names require native merchant review |
 | `presets.shop_type.*` (8 shop types and descriptions) | `en.json`, `si.json`, `ta.json` | Draft Sinhala/Tamil preset titles and subtitles require native merchant review |
 | `features.*` (feature flag names and 1-line explanations) | `en.json`, `si.json`, `ta.json` | Draft Sinhala/Tamil feature flag descriptions require native review |
+| `autosave.*` (power-cut recovery dialog title, header, body, prompts) | `en.json`, `si.json`, `ta.json` | Draft Sinhala/Tamil power-cut recovery texts require native merchant review |
 
 
 ## ⚠️ Verify on Windows

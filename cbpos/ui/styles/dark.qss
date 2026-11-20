@@ -5256,6 +5256,14 @@ QFrame#FeatureCard {
     padding: 14px;
 }
 
+/* Autosave Recovery Dialog (#932) */
+QFrame#AutosaveRecoveryCard {
+    background-color: {{SURFACE_1}};
+    border: 1px solid {{BORDER}};
+    border-radius: 8px;
+    padding: 14px;
+}
+
 
 
 

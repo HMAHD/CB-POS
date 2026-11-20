@@ -40,6 +40,7 @@ class Features:
     UNIT_CONVERSION = "unit_conversion"
     DEPOSITS = "deposits"
     WARRANTY = "warranty"
+    POWER_CUT_AUTOSAVE = "power_cut_autosave"
 
     ALL = (
         EXPIRY_DATES,
@@ -54,6 +55,7 @@ class Features:
         UNIT_CONVERSION,
         DEPOSITS,
         WARRANTY,
+        POWER_CUT_AUTOSAVE,
     )
 
 
@@ -63,6 +65,7 @@ IMPLEMENTED_FEATURES = {
     Features.CREDIT_BOOK,
     Features.SERIAL_TRACKING,
     Features.CHEQUES,
+    Features.POWER_CUT_AUTOSAVE,
 }
 
 # Approved 7-shop preset matrix (Decision D34).
@@ -81,6 +84,7 @@ PRESET_MATRIX: dict[str, dict[str, bool]] = {
         Features.UNIT_CONVERSION: True,
         Features.DEPOSITS: False,  # optional -> False initially
         Features.WARRANTY: False,
+        Features.POWER_CUT_AUTOSAVE: True,
     },
     ShopTypes.PHARMACY: {
         Features.EXPIRY_DATES: True,
@@ -95,6 +99,7 @@ PRESET_MATRIX: dict[str, dict[str, bool]] = {
         Features.UNIT_CONVERSION: True,
         Features.DEPOSITS: False,
         Features.WARRANTY: False,
+        Features.POWER_CUT_AUTOSAVE: True,
     },
     ShopTypes.HARDWARE: {
         Features.EXPIRY_DATES: False,
@@ -109,6 +114,7 @@ PRESET_MATRIX: dict[str, dict[str, bool]] = {
         Features.UNIT_CONVERSION: True,
         Features.DEPOSITS: False,
         Features.WARRANTY: False,  # optional -> False initially
+        Features.POWER_CUT_AUTOSAVE: True,
     },
     ShopTypes.CLOTHING: {
         Features.EXPIRY_DATES: False,
@@ -123,6 +129,7 @@ PRESET_MATRIX: dict[str, dict[str, bool]] = {
         Features.UNIT_CONVERSION: False,
         Features.DEPOSITS: False,
         Features.WARRANTY: False,
+        Features.POWER_CUT_AUTOSAVE: True,
     },
     ShopTypes.PHONE_ELECTRONICS: {
         Features.EXPIRY_DATES: False,
@@ -137,6 +144,7 @@ PRESET_MATRIX: dict[str, dict[str, bool]] = {
         Features.UNIT_CONVERSION: False,
         Features.DEPOSITS: False,
         Features.WARRANTY: True,
+        Features.POWER_CUT_AUTOSAVE: True,
     },
     ShopTypes.BOOKSHOP: {
         Features.EXPIRY_DATES: False,
@@ -151,6 +159,7 @@ PRESET_MATRIX: dict[str, dict[str, bool]] = {
         Features.UNIT_CONVERSION: False,
         Features.DEPOSITS: False,
         Features.WARRANTY: False,
+        Features.POWER_CUT_AUTOSAVE: True,
     },
     ShopTypes.BAKERY: {
         Features.EXPIRY_DATES: True,
@@ -165,6 +174,7 @@ PRESET_MATRIX: dict[str, dict[str, bool]] = {
         Features.UNIT_CONVERSION: False,
         Features.DEPOSITS: False,
         Features.WARRANTY: False,
+        Features.POWER_CUT_AUTOSAVE: True,
     },
     ShopTypes.OTHER: {
         Features.EXPIRY_DATES: False,
@@ -179,6 +189,7 @@ PRESET_MATRIX: dict[str, dict[str, bool]] = {
         Features.UNIT_CONVERSION: False,
         Features.DEPOSITS: False,
         Features.WARRANTY: False,
+        Features.POWER_CUT_AUTOSAVE: True,
     },
 }
 

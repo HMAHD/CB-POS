@@ -759,6 +759,11 @@ class TransactionService:
                     user_id=cashier_id,
                 )
 
+            # 4e. Atomically purge autosaved cart for this terminal (#932)
+            from cbpos.core.services.cart_autosave_service import CartAutosaveService
+
+            CartAutosaveService.delete_autosave_in_session(session, terminal_id)
+
             # 5. Eager-load relationships before session closes (prevents DetachedInstanceError)
             TransactionService._load_receipt_relations(sale)
 

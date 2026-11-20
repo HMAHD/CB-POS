@@ -1048,6 +1048,34 @@ class WarrantyExportPdfWorker(QThread):
 
 
 # Alias PrintWorker as ReceiptWorker for backwards/audit naming compatibility
+
+
+class CartAutosaveWorker(QThread):
+    """Background worker to persist cart snapshot without blocking the Qt UI thread (#932)."""
+
+    finished_result = pyqtSignal(bool, str, int)  # success, terminal_id, generation
+
+    def __init__(
+        self,
+        snapshot: dict,
+        terminal_id: str,
+        generation: int,
+        parent: QObject | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.finished.connect(self.deleteLater)
+        self.snapshot = snapshot
+        self.terminal_id = terminal_id
+        self.generation = generation
+
+    def run(self) -> None:
+        """Persist open cart snapshot in background and emit outcome signal."""
+        from cbpos.core.services.cart_autosave_service import CartAutosaveService
+
+        ok = CartAutosaveService.save(self.snapshot, self.terminal_id, self.generation)
+        self.finished_result.emit(ok, self.terminal_id, self.generation)
+
+
 def __getattr__(name: str):
     if name == "ReceiptWorker":
         from cbpos.infrastructure.hardware.escpos_driver import PrintWorker

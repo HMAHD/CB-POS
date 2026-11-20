@@ -24,6 +24,7 @@ from sqlalchemy import (
     Time,
     UniqueConstraint,
     false,
+    text,
     true,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -775,12 +776,24 @@ class SuspendedTransaction(Base):
     """A cart set aside mid-sale (a "hold") for later resumption; the cart contents are serialized as JSON in `data`."""
 
     __tablename__ = "suspended_transactions"
+    __table_args__ = (
+        Index(
+            "uq_suspended_transactions_autosave_terminal",
+            "terminal_id",
+            unique=True,
+            sqlite_where=text("is_autosave = 1"),
+            postgresql_where=text("is_autosave IS TRUE"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
-    data: Mapped[str] = mapped_column(String, nullable=False)  # JSON string of cart items
+    data: Mapped[str | None] = mapped_column(String, nullable=True)  # JSON string of cart items; NULL for tombstone
     note: Mapped[str | None] = mapped_column(String(200), nullable=True)
     customer_id: Mapped[int | None] = mapped_column(ForeignKey("customers.id"), nullable=True, index=True)
+    is_autosave: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default=false())
+    terminal_id: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
+    revision: Mapped[int] = mapped_column(Integer, default=1, nullable=False, server_default="1")
 
     customer: Mapped[Optional["Customer"]] = relationship()
 

@@ -120,6 +120,13 @@ The owner explicitly authorized internal development of Phase 10A (Packaging and
 3. Category.name is stored directly in the active setup-wizard language chosen by the merchant (EN/SI/TA), without adding name_si/name_ta schema columns.
 4. The 28 draft Sinhala and Tamil category names are added to the PROGRESS.md i18n review list for native review.
 
+**D36 — 2026-11-20 — #932 — Phase 10B.1 Power-cut autosave scope, preset enablement, and compatibility.**
+1. Build #932 now as Phase 10B.1.
+2. `power_cut_autosave` is ON in every shop preset in `PRESET_MATRIX`, including Other.
+3. A fresh database with no applied preset remains OFF.
+4. Upgraded/existing shops: do not reapply a whole preset because that could overwrite customized flags. If a shop already has configured feature flags, the migration / compatibility path safely ensures `power_cut_autosave` is enabled without resetting any user-configured flags.
+
+
 
 
 

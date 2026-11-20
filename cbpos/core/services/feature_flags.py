@@ -102,6 +102,11 @@ class FeatureFlags:
                 flag.enabled = enabled
                 flag.updated_by = effective_user_id
 
+            if name == "power_cut_autosave" and not enabled:
+                from cbpos.core.services.cart_autosave_service import CartAutosaveService
+
+                CartAutosaveService.delete_all_autosaves_in_session(session)
+
             # Write AuditLog
             log = AuditLog(
                 user_id=effective_user_id,

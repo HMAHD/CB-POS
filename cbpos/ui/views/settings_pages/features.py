@@ -29,6 +29,7 @@ FEATURE_ORDER = [
     Features.CREDIT_BOOK,
     Features.SERIAL_TRACKING,
     Features.CHEQUES,
+    Features.POWER_CUT_AUTOSAVE,
 ]
 
 

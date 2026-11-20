@@ -182,7 +182,7 @@ def _autocomplete_preload_runs_inline():
     """
     from cbpos.core.services.scheduler_service import AutoReportWorker
     from cbpos.ui.views.dashboard_view import _PeriodicWorker, _WarrantyTileWorker, _YearlyWorker
-    from cbpos.ui.workers import AutocompleteLoadWorker, LabelProductLoaderWorker, SyncTestWorker
+    from cbpos.ui.workers import AutocompleteLoadWorker, CartAutosaveWorker, LabelProductLoaderWorker, SyncTestWorker
 
     inline_workers = (
         AutocompleteLoadWorker,
@@ -192,6 +192,7 @@ def _autocomplete_preload_runs_inline():
         SyncTestWorker,
         AutoReportWorker,
         LabelProductLoaderWorker,
+        CartAutosaveWorker,
     )
     for worker_cls in inline_workers:
         worker_cls.start = worker_cls.run
@@ -199,7 +200,9 @@ def _autocomplete_preload_runs_inline():
         yield
     finally:
         for worker_cls in inline_workers:
-            del worker_cls.start
+            # Leave CartAutosaveWorker permanently inline to prevent leaked background threads (#932)
+            if worker_cls is not CartAutosaveWorker:
+                del worker_cls.start
 
 
 @pytest.fixture(autouse=True)
@@ -323,10 +326,10 @@ def _collect_garbage_after_each_test(request):
 
 
 def _drain_qt_after_test() -> None:
-    """Break widget reference cycles, stop PrintWorker, and wait out running QThreads."""
+    """Break widget reference cycles, stop active timers, stop PrintWorker, and wait out running QThreads."""
     gc.collect()
 
-    from PyQt6.QtCore import QThread
+    from PyQt6.QtCore import QThread, QTimer
 
     from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 
@@ -334,7 +337,9 @@ def _drain_qt_after_test() -> None:
 
     for obj in gc.get_objects():
         try:
-            if isinstance(obj, QThread) and obj.isRunning():
+            if isinstance(obj, QTimer) and obj.isActive():
+                obj.stop()
+            elif isinstance(obj, QThread) and obj.isRunning():
                 obj.wait(2000)
         except RuntimeError:
             # The Python wrapper is still gc-tracked but its underlying

@@ -3,7 +3,7 @@
 import pytest
 from sqlalchemy import func
 
-from cbpos.core.constants.features import PRESET_MATRIX, ShopTypes
+from cbpos.core.constants.features import PRESET_MATRIX, Features, ShopTypes
 from cbpos.core.models import Category, FeatureFlag, Role, Unit, User
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.feature_flags import FeatureFlags
@@ -121,4 +121,4 @@ def test_apply_preset_transaction_session_propagation(db_session):
     )
 
     # Within session, flags are present
-    assert db_session.query(FeatureFlag).count() == 12
+    assert db_session.query(FeatureFlag).count() == len(Features.ALL)

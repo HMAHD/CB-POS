@@ -24,6 +24,47 @@ class RecallResult:
         return self.ok
 
 
+def serialize_cart_v2(cart_service) -> tuple[str, int | None]:
+    """Serialize cart items and discounts to v2 JSON payload and return (json_string, customer_id)."""
+    lines_data = []
+    for item in cart_service.items:
+        lines_data.append(
+            {
+                "product_id": item["product"].id,
+                "barcode": item["product"].barcode,
+                "qty": str(item["qty"]),
+                "unit_price": str(item["unit_price"]),
+                "original_price": str(item["original_price"]),
+                "is_manual_price": bool(item.get("is_manual_price", False)),
+                "override_approved_by": item.get("override_approved_by"),
+                "discount_type": item.get("discount_type", "NONE"),
+                "discount_value": str(item.get("discount_value", Decimal("0.00"))),
+                "notes": item.get("note") or item.get("notes") or "",
+                "serials": item.get("serials", []),
+                "line_id": item.get("line_id"),
+                "covered_line_id": item.get("covered_line_id"),
+            }
+        )
+
+    cart_data = {
+        "discount_type": cart_service.cart_discount_type,
+        "discount_value": str(cart_service.cart_discount_value),
+    }
+
+    totals = cart_service.get_totals()
+    payload = {
+        "v": 2,
+        "cart": cart_data,
+        "lines": lines_data,
+        "totals": {
+            "subtotal": str(totals.get("subtotal", Decimal("0.00"))),
+            "final_total": str(totals.get("final_total", Decimal("0.00"))),
+        },
+    }
+    customer = cart_service.get_customer()
+    return json.dumps(payload), (customer.id if customer else None)
+
+
 class SuspendedTransactionService:
     """
     Service for managing suspended (held) transactions.
@@ -42,41 +83,12 @@ class SuspendedTransactionService:
         db = Database()
         try:
             with db.get_session() as session:
-                lines_data = []
-                for item in cart_service.items:
-                    lines_data.append(
-                        {
-                            "product_id": item["product"].id,
-                            "barcode": item["product"].barcode,
-                            "qty": str(item["qty"]),
-                            "unit_price": str(item["unit_price"]),
-                            "original_price": str(item["original_price"]),
-                            "is_manual_price": bool(item.get("is_manual_price", False)),
-                            "override_approved_by": item.get("override_approved_by"),
-                            "discount_type": item.get("discount_type", "NONE"),
-                            "discount_value": str(item.get("discount_value", Decimal("0.00"))),
-                            "notes": item.get("note") or item.get("notes") or "",
-                            "serials": item.get("serials", []),
-                            "line_id": item.get("line_id"),
-                            "covered_line_id": item.get("covered_line_id"),
-                        }
-                    )
-
-                cart_data = {
-                    "discount_type": cart_service.cart_discount_type,
-                    "discount_value": str(cart_service.cart_discount_value),
-                }
-
-                payload = {
-                    "v": 2,
-                    "cart": cart_data,
-                    "lines": lines_data,
-                }
-                json_data = json.dumps(payload)
-
-                customer = cart_service.get_customer()
+                json_data, customer_id = serialize_cart_v2(cart_service)
                 suspended = SuspendedTransaction(
-                    data=json_data, note=note, customer_id=customer.id if customer else None
+                    data=json_data,
+                    note=note,
+                    customer_id=customer_id,
+                    is_autosave=False,
                 )
                 session.add(suspended)
                 session.flush()
@@ -87,10 +99,15 @@ class SuspendedTransactionService:
 
     @staticmethod
     def get_held_bills() -> list:
-        """Return a list of all suspended transactions."""
+        """Return a list of all suspended transactions (excluding autosaves)."""
         db = Database()
         with db.get_session() as session:
-            suspended = session.query(SuspendedTransaction).order_by(SuspendedTransaction.timestamp.desc()).all()
+            suspended = (
+                session.query(SuspendedTransaction)
+                .filter(SuspendedTransaction.is_autosave.is_(False))
+                .order_by(SuspendedTransaction.timestamp.desc())
+                .all()
+            )
             # Detach objects
             for s in suspended:
                 session.expunge(s)
@@ -228,17 +245,22 @@ class SuspendedTransactionService:
 
     @staticmethod
     def get_held_bill_count() -> int:
-        """Return the number of currently held bills."""
+        """Return the number of currently held bills (excluding autosaves)."""
         db = Database()
         with db.get_session() as session:
-            return session.query(SuspendedTransaction).count()
+            return session.query(SuspendedTransaction).filter(SuspendedTransaction.is_autosave.is_(False)).count()
 
     @staticmethod
     def get_latest_suspended() -> SuspendedTransaction:
-        """Return the most recent suspended transaction, detached from session."""
+        """Return the most recent suspended transaction, detached from session (excluding autosaves)."""
         db = Database()
         with db.get_session() as session:
-            suspended = session.query(SuspendedTransaction).order_by(SuspendedTransaction.timestamp.desc()).first()
+            suspended = (
+                session.query(SuspendedTransaction)
+                .filter(SuspendedTransaction.is_autosave.is_(False))
+                .order_by(SuspendedTransaction.timestamp.desc())
+                .first()
+            )
             if suspended:
                 session.expunge(suspended)
             return suspended

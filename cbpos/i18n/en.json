@@ -728,11 +728,21 @@
   "setup_wizard": {
     "title": "CB POS - Setup Wizard",
     "welcome": "Welcome to Ceylon Byte POS",
+    "shop_type_title": "What kind of shop is this?",
+    "shop_type_subtitle": "You can change this anytime.",
+    "shop_type_required": "Please select a shop type to proceed.",
     "step1": "Step 1 of 3 - Shop Information",
     "step2": "Step 2 of 3 - Hardware Setup",
     "step3": "Step 3 of 3 - Security",
     "step1_of_2": "Step 1 of 2 - Shop Information",
     "step2_of_2": "Step 2 of 2 - Hardware Setup",
+    "step1_of_4": "Step 1 of 4 - Shop Information",
+    "step2_of_4": "Step 2 of 4 - Shop Type",
+    "step3_of_4": "Step 3 of 4 - Hardware Setup",
+    "step4_of_4": "Step 4 of 4 - Security",
+    "step1_of_3": "Step 1 of 3 - Shop Information",
+    "step2_of_3": "Step 2 of 3 - Shop Type",
+    "step3_of_3": "Step 3 of 3 - Hardware Setup",
     "shop_name": "Shop Name *:",
     "address": "Address:",
     "phone": "Phone:",
@@ -1814,6 +1824,7 @@
     "sidebar_system": "System",
     "sidebar_network": "Network",
     "sidebar_payments": "Payments",
+    "sidebar_features": "Features",
     "sidebar_data_safety": "Data Safety",
     "sidebar_admin_tools": "Admin Tools",
     "unsaved_message": "You have unsaved changes. Continue without saving?",
@@ -2745,6 +2756,7 @@
       "admin.manage_roles": "Manage roles and permissions",
       "admin.settings": "Change settings",
       "admin.tools": "Use admin tools",
+      "settings.features": "Configure shop presets and feature flags",
       "management.view": "Open the Management screen",
       "settings.view": "Open the Settings screen",
       "loyalty.adjust_points": "Adjust customer loyalty points",
@@ -3898,5 +3910,42 @@
     "dispatched_by": "Dispatched By",
     "acknowledged_by": "Received By Supplier/Courier",
     "status_open": "Open Claims"
+  },
+  "presets": {
+    "shop_type": {
+      "grocery": "Grocery",
+      "grocery_desc": "Food, provisions, beverages, snacks",
+      "pharmacy": "Pharmacy",
+      "pharmacy_desc": "Medicines, wellness, healthcare",
+      "hardware": "Hardware",
+      "hardware_desc": "Building materials, tools, plumbing",
+      "clothing": "Clothing",
+      "clothing_desc": "Men, women, kids wear and fashion",
+      "phone_electronics": "Phone & Electronics",
+      "phone_electronics_desc": "Phones, accessories, chargers, audio",
+      "bookshop": "Bookshop",
+      "bookshop_desc": "Books, stationery, art supplies, paper",
+      "bakery": "Bakery",
+      "bakery_desc": "Bread, buns, pastries, sweets, cakes",
+      "other": "Other",
+      "other_desc": "General retail with standard units"
+    }
+  },
+  "features": {
+    "title": "Shop Features",
+    "subtitle": "Enable or disable optional workflows and modules. Changes take effect immediately.",
+    "name": {
+      "warranty": "Warranty & Repairs",
+      "credit_book": "Customer Credit Book",
+      "serial_tracking": "Serial & IMEI Tracking",
+      "cheques": "Cheque Payments"
+    },
+    "desc": {
+      "warranty": "Manage warranty policies, claims, returns, and repairs",
+      "credit_book": "Track customer debt, credit limits, payments, and aging",
+      "serial_tracking": "Capture serial or IMEI numbers for high-value items at checkout",
+      "cheques": "Accept cheques and record cheque payments at checkout"
+    },
+    "saved": "Feature '{name}' updated."
   }
 }

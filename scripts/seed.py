@@ -156,6 +156,26 @@ def seed_data(engine=None):
         users = [admin, manager, cashier, cashier2]
 
         # =============================================================
+        # 3.1 FEATURE FLAGS (#942)
+        # =============================================================
+        print("Seeding Feature Flags...")
+        from cbpos.core.constants.features import IMPLEMENTED_FEATURES, PRESET_MATRIX, ShopTypes
+        from cbpos.core.models.feature_flag import FeatureFlag
+
+        # For the demo database, seed grocery preset flags and enable all implemented features
+        # so demo warranties, credit book entries, cheques and serial tracking are active (#942).
+        preset_flags = PRESET_MATRIX.get(ShopTypes.GROCERY, {})
+        for name, enabled in preset_flags.items():
+            session.add(FeatureFlag(name=name, enabled=enabled, updated_by=admin.id))
+        for flag_name in IMPLEMENTED_FEATURES:
+            flag = session.get(FeatureFlag, flag_name)
+            if flag:
+                flag.enabled = True
+            else:
+                session.add(FeatureFlag(name=flag_name, enabled=True, updated_by=admin.id))
+        session.flush()
+
+        # =============================================================
         # 4. VOID REASONS
         # =============================================================
         print("Seeding Void Reasons...")

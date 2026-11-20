@@ -592,6 +592,10 @@ class ProductEditor(QDialog):
         self._load_warranty_policies()
         layout.addRow(_t("warranty.policies"), self.warranty_policy_combo)
 
+        from cbpos.core.constants.features import Features
+        from cbpos.core.services.feature_flags import feature_visible
+
+        self._serial_visible = feature_visible(Features.SERIAL_TRACKING)
         self.serial_mode_combo = QComboBox()
         self.serial_mode_combo.addItem(_t("product_editor.serial_mode_off", default="Off"), "OFF")
         self.serial_mode_combo.addItem(_t("product_editor.serial_mode_optional", default="Optional"), "OPTIONAL")
@@ -600,6 +604,8 @@ class ProductEditor(QDialog):
             _t("product_editor.serial_mode", default="Ask for serial / IMEI number when selling"),
             self.serial_mode_combo,
         )
+        if not self._serial_visible:
+            layout.setRowVisible(self.serial_mode_combo, False)
 
         self.lbl_warranty_preview = QLabel()
         self.lbl_warranty_preview.setWordWrap(True)
@@ -1017,6 +1023,8 @@ class ProductEditor(QDialog):
                         self.tabs.setCurrentWidget(self.tab_warranty)
                         return
                     serial_mode = self.serial_mode_combo.currentData() if hasattr(self, "serial_mode_combo") else "OFF"
+                    if not getattr(self, "_serial_visible", True):
+                        serial_mode = getattr(self.product, "serial_mode", "OFF") if self.product is not None else "OFF"
                     if data.get("is_weighted") and serial_mode != "OFF":
                         QMessageBox.warning(
                             self,

@@ -955,6 +955,7 @@ class SyncClient(QThread):
         held_back = 0
         has_errors = False
         roles_modified = False
+        flags_modified = False
         try:
             with db.get_session() as session:
                 session.info[SKIP_CHANGE_TRACKING] = True
@@ -981,6 +982,8 @@ class SyncClient(QThread):
                                     with session.begin_nested():
                                         session.delete(row)
                                         session.flush()
+                                        if table_name == "feature_flags":
+                                            flags_modified = True
                                 except Exception as e:
                                     logger.warning(
                                         "Full replace: could not hard-delete %s[%s]: %s",
@@ -1015,6 +1018,8 @@ class SyncClient(QThread):
                             with session.begin_nested():
                                 session.delete(row)
                                 session.flush()
+                                if table_name == "feature_flags":
+                                    flags_modified = True
                         except Exception as e:
                             logger.warning(
                                 "Could not hard-delete %s[%s] (referenced by local sales): %s",
@@ -1060,6 +1065,8 @@ class SyncClient(QThread):
                         perm_codes = None
                         if table_name == "roles":
                             perm_codes = record_data.get("permission_codes")
+                        if table_name == "feature_flags":
+                            flags_modified = True
                         if version_key:
                             record_data.pop(version_key, None)
                         try:
@@ -1112,6 +1119,13 @@ class SyncClient(QThread):
             self._last_catalog_sync = server_timestamp
             if roles_modified:
                 self.roles_changed.emit()
+            if flags_modified:
+                try:
+                    from cbpos.core.services.feature_flags import FeatureFlags
+
+                    FeatureFlags.invalidate_cache()
+                except Exception as ex:
+                    logger.debug("Failed to invalidate feature flags cache: %s", ex)
         logger.info("Pulled %d catalog records", records_applied)
         return records_applied
 

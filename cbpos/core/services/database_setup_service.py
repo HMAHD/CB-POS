@@ -157,11 +157,12 @@ class DatabaseSetupService:
                         raise DatabaseUnavailableError("unreadable", str(e)) from e
 
     @classmethod
-    def create_empty_database(cls, admin_pin: str | None = None) -> None:
+    def create_empty_database(cls, admin_pin: str | None = None, shop_type: str | None = None) -> None:
         """Create tables with only the minimum data needed to log in.
 
         Creates: permissions, roles (Admin/Manager/Cashier), default admin
-        user (with admin_pin or 1234), void reasons, payment methods, and units.
+        user (with admin_pin or 1234), void reasons, payment methods, units,
+        warranty templates, and applies the selected shop-type preset (#942).
         """
         import cbpos.core.models  # noqa: F401 — ensure all models are imported
 
@@ -345,6 +346,18 @@ class DatabaseSetupService:
                 ),
             ]
             session.add_all(templates)
+            session.flush()
+
+            # 8. Shop-type preset application (#942, Decision D34/D35)
+            from cbpos.core.constants.features import ShopTypes
+            from cbpos.core.services.feature_flags import FeatureFlags
+
+            effective_shop_type = shop_type or ShopTypes.OTHER
+            FeatureFlags.apply_preset(
+                effective_shop_type,
+                acting_user_id=admin.id,
+                session=session,
+            )
 
         # Stamp the alembic version so future migrations apply correctly
         cls.stamp_alembic_head()

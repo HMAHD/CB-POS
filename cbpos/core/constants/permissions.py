@@ -86,6 +86,7 @@ class Permissions:
     ADMIN_MANAGE_ROLES = "admin.manage_roles"
     ADMIN_SETTINGS = "admin.settings"
     ADMIN_TOOLS = "admin.tools"
+    SETTINGS_FEATURES = "settings.features"
 
     @classmethod
     def get_all(cls):
@@ -167,6 +168,7 @@ class Permissions:
                 cls.ADMIN_MANAGE_ROLES,
                 cls.ADMIN_SETTINGS,
                 cls.ADMIN_TOOLS,
+                cls.SETTINGS_FEATURES,
             ],
         }
 
@@ -213,6 +215,7 @@ SETTINGS_PAGE_PERMISSIONS: dict[str, tuple[str, ...]] = {
     "system": _EVERYONE_IN_SETTINGS,
     "network": _EVERYONE_IN_SETTINGS,
     "payment_methods": _EVERYONE_IN_SETTINGS,
+    "features": (Permissions.SETTINGS_FEATURES, Permissions.ADMIN_SETTINGS),
     "data_safety": (Permissions.ADMIN_SETTINGS,),
     "admin_tools": (Permissions.ADMIN_SETTINGS, Permissions.ADMIN_TOOLS),
 }

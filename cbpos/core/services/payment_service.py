@@ -243,13 +243,24 @@ class PaymentService:
 
     @staticmethod
     def get_active_methods() -> list[PaymentMethod]:
-        """Get only active payment methods."""
+        """Get only active payment methods, filtered by enabled feature flags (#942)."""
+        from cbpos.core.constants.features import Features
+        from cbpos.core.services.feature_flags import feature_visible
+
         db = Database()
         with db.get_session() as session:
             results = session.query(PaymentMethod).filter(PaymentMethod.is_active.is_(True)).all()
+            credit_on = feature_visible(Features.CREDIT_BOOK)
+            cheques_on = feature_visible(Features.CHEQUES)
+            filtered = []
             for m in results:
+                if m.kind == PaymentMethodKind.CREDIT and not credit_on:
+                    continue
+                if m.kind == PaymentMethodKind.CHEQUE and not cheques_on:
+                    continue
                 session.expunge(m)
-            return results
+                filtered.append(m)
+            return filtered
 
     @staticmethod
     def get_kind_for(method_name: str, session: Session | None = None) -> str:

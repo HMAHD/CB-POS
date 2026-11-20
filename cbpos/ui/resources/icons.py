@@ -39,6 +39,17 @@ class Icons:
     STAR_OUTLINE = "fa5.star"
     REORDER = "fa5s.dolly"
     WARRANTY = "fa5s.shield-alt"
+    FEATURES = "fa5s.sliders-h"
+
+    # Shop Types (#942)
+    GROCERY = "fa5s.shopping-basket"
+    PHARMACY = "fa5s.pills"
+    HARDWARE = "fa5s.tools"
+    CLOTHING = "fa5s.tshirt"
+    PHONE = "fa5s.mobile-alt"
+    BOOKSHOP = "fa5s.book-open"
+    BAKERY = "fa5s.bread-slice"
+    STORE = "fa5s.store"
 
     # Actions
     ADD = "fa5s.plus"

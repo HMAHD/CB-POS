@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 10A complete · Next: Phase 10B · Branch: main · PR: — · Last session: 2026-11-19
+- Phase: 10B · Batch: 10B.0 (#942) · Branch: feat/p10b-b0-feature-flags-presets · PR: — · Last session: 2026-11-20
 
 ## Issues
 
@@ -222,7 +222,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 | # | Title | Sev | Batch | Status | PR | Notes |
 |---|---|---|---|---|---|---|
-| #942 | Shop-type presets at first run (Grocery, Pharmacy, Hardware, Clothing, Phone,… | — | 10B.0 | todo | | |
+| #942 | Shop-type presets at first run (Grocery, Pharmacy, Hardware, Clothing, Phone,… | — | 10B.0 | in-progress | | D34 |
 | #926 | Expiry dates and batches, with per-batch MRP (pharmacy, grocery, bakery) | — | 10B.? | todo | | |
 | #930 | Supplier returns with debit note (pairs with expiry/batch) | — | 10B.? | todo | | |
 | #931 | Price board: fast daily price editing for items flagged "price changes often" | — | 10B.? | todo | | |
@@ -298,6 +298,10 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 | Key | File(s) | Why unsure |
 |---|---|---|
+| `presets.categories.*` (28 seeded category names in SI & TA per D35) | `cbpos/core/services/presets.py` | Draft Sinhala/Tamil retail category names require native merchant review |
+| `presets.shop_type.*` (8 shop types and descriptions) | `en.json`, `si.json`, `ta.json` | Draft Sinhala/Tamil preset titles and subtitles require native merchant review |
+| `features.*` (feature flag names and 1-line explanations) | `en.json`, `si.json`, `ta.json` | Draft Sinhala/Tamil feature flag descriptions require native review |
+
 
 ## ⚠️ Verify on Windows
 

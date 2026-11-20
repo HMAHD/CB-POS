@@ -38,6 +38,7 @@ from cbpos.ui.resources.icons import Icons
 from cbpos.ui.utils.style_helpers import refresh_style
 from cbpos.ui.views.settings_pages import (
     DocumentPage,
+    FeaturesPage,
     HardwarePage,
     NetworkPage,
     ReceiptPage,
@@ -110,6 +111,7 @@ class SettingsView(QWidget):
         # Operational buttons
         self.btn_data_safety = self.sidebar.add_nav_button("", "fa5s.shield-alt", 8)
         self.btn_admin_tools = self.sidebar.add_nav_button("", "fa5s.toolbox", 9)
+        self.btn_features = self.sidebar.add_nav_button("", Icons.FEATURES, 10)
 
         self.sidebar.finalize()
         self.sidebar.highlight(0)
@@ -126,6 +128,7 @@ class SettingsView(QWidget):
             "payment_methods": self.btn_payment_methods,
             "data_safety": self.btn_data_safety,
             "admin_tools": self.btn_admin_tools,
+            "features": self.btn_features,
         }
         main_layout.addWidget(self.sidebar)
 
@@ -167,6 +170,9 @@ class SettingsView(QWidget):
         self.admin_tools_view = AdminToolsView()
         self.stack.addWidget(self._scrollable(self.admin_tools_view))
 
+        self.features_page = FeaturesPage()
+        self.stack.addWidget(self._scrollable(self.features_page))
+
         self._page_title_keys = {
             0: "settings.sidebar_shop_info",
             1: "settings.sidebar_sales_tax",
@@ -178,6 +184,7 @@ class SettingsView(QWidget):
             7: "settings.sidebar_payments",
             8: "settings.sidebar_data_safety",
             9: "settings.sidebar_admin_tools",
+            10: "settings.sidebar_features",
         }
 
         # --- Content column: header + pages over one Settings-wide action bar ---
@@ -303,6 +310,7 @@ class SettingsView(QWidget):
         self.btn_payment_methods.setText(_t("settings.sidebar_payments"))
         self.btn_data_safety.setText(_t("settings.sidebar_data_safety"))
         self.btn_admin_tools.setText(_t("settings.sidebar_admin_tools"))
+        self.btn_features.setText(_t("settings.sidebar_features"))
 
         # Header actions & title
         self._update_header_title()
@@ -443,6 +451,9 @@ class SettingsView(QWidget):
         visible = PermissionService.settings_pages(user)
         for page, button in self._page_buttons.items():
             button.setVisible(page in visible)
+
+        if hasattr(self, "features_page") and hasattr(self.features_page, "set_user"):
+            self.features_page.set_user(user)
 
         for i, button in enumerate(self.sidebar.nav_buttons):
             if not button.isHidden():

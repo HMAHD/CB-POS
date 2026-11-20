@@ -5224,5 +5224,37 @@ QPushButton#ModeSetPtsBtn:checked {
     font-weight: bold;
 }
 
+/* Setup Wizard Shop Type Tiles (#942) */
+QToolButton#ShopTypeTile {
+    background-color: {{SURFACE_2}};
+    color: {{TEXT}};
+    border: 1px solid {{BORDER}};
+    border-radius: 8px;
+    padding: 8px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+QToolButton#ShopTypeTile:hover {
+    border-color: {{ACCENT}};
+    background-color: {{SURFACE_3}};
+}
+
+QToolButton#ShopTypeTile:checked {
+    border: 2px solid {{ACCENT}};
+    background-color: {{ACCENT_BG}};
+    color: {{TEXT}};
+    font-weight: bold;
+}
+
+/* Settings Features Page (#942) */
+QFrame#FeatureCard {
+    background-color: {{SURFACE_1}};
+    border: 1px solid {{BORDER}};
+    border-radius: 8px;
+    padding: 14px;
+}
+
+
 
 

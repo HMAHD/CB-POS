@@ -1,24 +1,30 @@
 import logging
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtPrintSupport import QPrinterInfo
 from PyQt6.QtWidgets import (
+    QButtonGroup,
     QComboBox,
     QDialog,
     QFormLayout,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QSizePolicy,
     QStackedWidget,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
 
+from cbpos.core.constants.features import ShopTypes
 from cbpos.core.constants.hardware import PrinterType
 from cbpos.i18n import _t
 from cbpos.ui.dialogs.admin_pin_dialog import validate_pin
+from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 logger = logging.getLogger(__name__)
@@ -32,9 +38,10 @@ class SetupWizard(QDialog):
         super().__init__(parent)
         self.ask_admin_pin = ask_admin_pin
         self.admin_pin: str | None = None
+        self.selected_shop_type: str = ShopTypes.GROCERY
         self.setWindowTitle(_t("setup_wizard.title"))
-        self.setMinimumSize(600, 500)
-        self.resize(600, 500)
+        self.setMinimumSize(640, 520)
+        self.resize(640, 520)
         self.setObjectName("SetupWizard")
         self.init_ui()
         install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)
@@ -91,7 +98,71 @@ class SetupWizard(QDialog):
         shop_layout.addStretch()
         self.stack.addWidget(self.page_shop)
 
-        # Step 2: Hardware
+        # Step 2: Shop Type
+        self.page_preset = QWidget()
+        preset_layout = QVBoxLayout(self.page_preset)
+        preset_layout.setContentsMargins(10, 10, 10, 10)
+        preset_layout.setSpacing(14)
+
+        self.lbl_preset_title = QLabel(_t("setup_wizard.shop_type_title"))
+        self.lbl_preset_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        font = self.lbl_preset_title.font()
+        font.setPointSize(font.pointSize() + 2)
+        font.setBold(True)
+        self.lbl_preset_title.setFont(font)
+        preset_layout.addWidget(self.lbl_preset_title)
+
+        self.lbl_preset_subtitle = QLabel(_t("setup_wizard.shop_type_subtitle"))
+        self.lbl_preset_subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_preset_subtitle.setProperty("class", "muted")
+        self.lbl_preset_subtitle.setWordWrap(True)
+        preset_layout.addWidget(self.lbl_preset_subtitle)
+
+        grid = QGridLayout()
+        grid.setSpacing(12)
+
+        shop_types = [
+            (ShopTypes.GROCERY, Icons.GROCERY, 0, 0),
+            (ShopTypes.PHARMACY, Icons.PHARMACY, 0, 1),
+            (ShopTypes.HARDWARE, Icons.HARDWARE, 0, 2),
+            (ShopTypes.CLOTHING, Icons.CLOTHING, 0, 3),
+            (ShopTypes.PHONE_ELECTRONICS, Icons.PHONE, 1, 0),
+            (ShopTypes.BOOKSHOP, Icons.BOOKSHOP, 1, 1),
+            (ShopTypes.BAKERY, Icons.BAKERY, 1, 2),
+            (ShopTypes.OTHER, Icons.STORE, 1, 3),
+        ]
+
+        self.btn_group_shop_types = QButtonGroup(self)
+        self.btn_group_shop_types.setExclusive(True)
+        self.shop_type_buttons: dict[str, QToolButton] = {}
+
+        for st_name, icon_name, r, c in shop_types:
+            btn = QToolButton()
+            btn.setObjectName("ShopTypeTile")
+            btn.setCheckable(True)
+            btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
+            btn.setIcon(Icons.get(icon_name))
+            btn.setIconSize(QSize(36, 36))
+            btn.setText(_t(f"presets.shop_type.{st_name}"))
+            btn.setToolTip(_t(f"presets.shop_type.{st_name}_desc"))
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+            btn.setMinimumSize(120, 80)
+            btn.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+            btn.clicked.connect(lambda checked=False, s=st_name: self.select_shop_type(s))
+
+            self.btn_group_shop_types.addButton(btn)
+            self.shop_type_buttons[st_name] = btn
+            grid.addWidget(btn, r, c)
+
+        preset_layout.addLayout(grid)
+        preset_layout.addStretch()
+        self.stack.addWidget(self.page_preset)
+
+        # Select default
+        self.select_shop_type(ShopTypes.GROCERY)
+
+        # Step 3: Hardware
         self.page_hardware = QWidget()
         hw_layout = QVBoxLayout(self.page_hardware)
         self.hw_form = QFormLayout()
@@ -207,14 +278,53 @@ class SetupWizard(QDialog):
         # Apply translations
         self.retranslate_ui()
 
+    @property
+    def shop_type(self) -> str:
+        """The currently selected shop type preset."""
+        return self.selected_shop_type
+
+    def select_shop_type(self, shop_type: str) -> None:
+        """Select a shop type preset and update button check states."""
+        if shop_type in self.shop_type_buttons:
+            self.selected_shop_type = shop_type
+            btn = self.shop_type_buttons[shop_type]
+            if not btn.isChecked():
+                btn.setChecked(True)
+
     def retranslate_ui(self) -> None:
         """Set all translatable text using _t()."""
         self.setWindowTitle(_t("setup_wizard.title"))
         self.lbl_title.setText(_t("setup_wizard.welcome"))
-        self.lbl_step.setText(_t("setup_wizard.step1") if self.ask_admin_pin else _t("setup_wizard.step1_of_2"))
+        current = self.stack.currentIndex()
+        if self.ask_admin_pin:
+            steps = [
+                _t("setup_wizard.step1_of_4"),
+                _t("setup_wizard.step2_of_4"),
+                _t("setup_wizard.step3_of_4"),
+                _t("setup_wizard.step4_of_4"),
+            ]
+        else:
+            steps = [
+                _t("setup_wizard.step1_of_3"),
+                _t("setup_wizard.step2_of_3"),
+                _t("setup_wizard.step3_of_3"),
+            ]
+        if 0 <= current < len(steps):
+            self.lbl_step.setText(steps[current])
+
+        if hasattr(self, "lbl_preset_title"):
+            self.lbl_preset_title.setText(_t("setup_wizard.shop_type_title"))
+        if hasattr(self, "lbl_preset_subtitle"):
+            self.lbl_preset_subtitle.setText(_t("setup_wizard.shop_type_subtitle"))
+        if hasattr(self, "shop_type_buttons"):
+            for st_name, btn in self.shop_type_buttons.items():
+                btn.setText(_t(f"presets.shop_type.{st_name}"))
+                btn.setToolTip(_t(f"presets.shop_type.{st_name}_desc"))
+
         self.lbl_sec_info.setText(_t("setup_wizard.security_info"))
         self.btn_back.setText(_t("setup_wizard.btn_back"))
-        self.btn_next.setText(_t("setup_wizard.btn_next"))
+        is_last = current == 3 if self.ask_admin_pin else current == 2
+        self.btn_next.setText(_t("setup_wizard.btn_finish") if is_last else _t("setup_wizard.btn_next"))
         self.btn_cancel.setText(_t("setup_wizard.btn_cancel"))
 
     def go_next(self):
@@ -228,12 +338,24 @@ class SetupWizard(QDialog):
                 self.input_shop_name.setFocus()
                 return
             self.stack.setCurrentIndex(1)
-            self.lbl_step.setText(_t("setup_wizard.step2") if self.ask_admin_pin else _t("setup_wizard.step2_of_2"))
+            self.lbl_step.setText(
+                _t("setup_wizard.step2_of_4") if self.ask_admin_pin else _t("setup_wizard.step2_of_3")
+            )
+            self.btn_back.setVisible(True)
+
+        elif current == 1:
+            if not self.selected_shop_type:
+                QMessageBox.warning(self, _t("setup_wizard.required_title"), _t("setup_wizard.shop_type_required"))
+                return
+            self.stack.setCurrentIndex(2)
+            self.lbl_step.setText(
+                _t("setup_wizard.step3_of_4") if self.ask_admin_pin else _t("setup_wizard.step3_of_3")
+            )
             self.btn_back.setVisible(True)
             if not self.ask_admin_pin:
                 self.btn_next.setText(_t("setup_wizard.btn_finish"))
 
-        elif current == 1:
+        elif current == 2:
             error = self._printer_error()
             if error:
                 QMessageBox.warning(self, _t("setup_wizard.invalid_title"), error)
@@ -241,11 +363,11 @@ class SetupWizard(QDialog):
             if not self.ask_admin_pin:
                 self.finish_wizard()
                 return
-            self.stack.setCurrentIndex(2)
-            self.lbl_step.setText(_t("setup_wizard.step3"))
+            self.stack.setCurrentIndex(3)
+            self.lbl_step.setText(_t("setup_wizard.step4_of_4"))
             self.btn_next.setText(_t("setup_wizard.btn_finish"))
 
-        elif current == 2:
+        elif current == 3:
             # Validate PIN
             pin = self.input_pin.text()
             pin_confirm = self.input_pin_confirm.text()
@@ -300,17 +422,28 @@ class SetupWizard(QDialog):
         """Return to the previous step, updating the step label and button text."""
         current = self.stack.currentIndex()
         if current > 0:
-            self.stack.setCurrentIndex(current - 1)
-            if current - 1 == 0:
+            target = current - 1
+            self.stack.setCurrentIndex(target)
+            if target == 0:
                 self.btn_back.setVisible(False)
-                self.lbl_step.setText(_t("setup_wizard.step1") if self.ask_admin_pin else _t("setup_wizard.step1_of_2"))
-            elif current - 1 == 1:
-                self.lbl_step.setText(_t("setup_wizard.step2") if self.ask_admin_pin else _t("setup_wizard.step2_of_2"))
-            self.btn_next.setText(
-                _t("setup_wizard.btn_finish")
-                if (current - 1 == 1 and not self.ask_admin_pin)
-                else _t("setup_wizard.btn_next")
-            )
+                self.lbl_step.setText(
+                    _t("setup_wizard.step1_of_4") if self.ask_admin_pin else _t("setup_wizard.step1_of_3")
+                )
+                self.btn_next.setText(_t("setup_wizard.btn_next"))
+            elif target == 1:
+                self.btn_back.setVisible(True)
+                self.lbl_step.setText(
+                    _t("setup_wizard.step2_of_4") if self.ask_admin_pin else _t("setup_wizard.step2_of_3")
+                )
+                self.btn_next.setText(_t("setup_wizard.btn_next"))
+            elif target == 2:
+                self.btn_back.setVisible(True)
+                self.lbl_step.setText(
+                    _t("setup_wizard.step3_of_4") if self.ask_admin_pin else _t("setup_wizard.step3_of_3")
+                )
+                self.btn_next.setText(
+                    _t("setup_wizard.btn_finish") if not self.ask_admin_pin else _t("setup_wizard.btn_next")
+                )
 
     def finish_wizard(self):
         """Save all wizard settings."""
@@ -323,6 +456,7 @@ class SetupWizard(QDialog):
             "shop_phone": self.input_phone.text().strip(),
             "vat_number": self.input_vat.text().strip(),
             "paper_width": self.combo_paper_width.currentData(),
+            "shop_type": self.selected_shop_type,
         }
 
         # Receipt printer: the same keys Settings -> Hardware writes

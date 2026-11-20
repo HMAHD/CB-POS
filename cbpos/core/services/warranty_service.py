@@ -91,7 +91,13 @@ class WarrantyService:
 
     @classmethod
     def is_enabled(cls, session: Session | None = None) -> bool:
-        """Return True if warranty functionality is enabled via config or active/user policies."""
+        """Return True if warranty functionality is enabled via feature flags, config or active/user policies."""
+        from cbpos.core.constants.features import Features
+        from cbpos.core.services.feature_flags import FeatureFlags
+
+        if FeatureFlags.is_on(Features.WARRANTY):
+            return True
+
         cfg = ConfigService.get("warranty_enabled")
         if cfg is True or str(cfg).lower() in ("true", "1", "yes"):
             return True

@@ -397,3 +397,67 @@ def test_defect_11_sales_view_collectible_via_weakref_no_closure_leak(qtbot, db_
     gc.collect()
 
     assert ref() is None, "SalesView leaked in memory (cycle retained via destroy hooks closure)"
+
+
+@pytest.mark.ui
+def test_order_switch_and_create_new_order_atomically_consume_autosave(qtbot, db_session, cashier_user):
+    """Switching orders or creating a new order auto-holds current cart AND atomically tombstones autosave."""
+    terminal_id = "TERM-UI-SWITCH-ORDER"
+    ConfigService.set("terminal_id", terminal_id)
+    CartAutosaveService.reset_registry()
+
+    prod = db_session.query(Product).filter_by(barcode="UI-CONC-01").first()
+    if not prod:
+        prod = Product(
+            name_en="Switch Item",
+            barcode="UI-CONC-01",
+            price=Decimal("150.00"),
+            cost=Decimal("90.00"),
+            is_active=True,
+        )
+        db_session.add(prod)
+        db_session.commit()
+
+    view = SalesView()
+    qtbot.addWidget(view)
+    term_id = view._get_terminal_id()
+    assert term_id == terminal_id
+
+    # 1. Add item to cart and persist autosave
+    view.cart_service.add_item(prod, Decimal("2.000"))
+    snap = CartAutosaveService.snapshot_cart(view.cart_service)
+    CartAutosaveService.save(snap, term_id, view._autosave_generation)
+    assert CartAutosaveService.has_autosave(term_id) is True
+
+    # 2. create_new_order() must auto-hold and consume autosave
+    view.create_new_order()
+    assert CartAutosaveService.has_autosave(term_id) is False, (
+        "create_new_order must atomically consume and tombstone autosave"
+    )
+    assert len(view.cart_service.items) == 0
+
+    # Verify bill was actually held
+    held_count = SuspendedTransactionService.get_held_bill_count()
+    assert held_count >= 1
+
+    # 3. Add item again and save autosave
+    view.cart_service.add_item(prod, Decimal("3.000"))
+    snap2 = CartAutosaveService.snapshot_cart(view.cart_service)
+    CartAutosaveService.save(snap2, term_id, view._autosave_generation)
+    assert CartAutosaveService.has_autosave(term_id) is True
+
+    # 4. switch_to_order() must auto-hold current bill, consume its autosave, and recall target
+    held_tx = SuspendedTransactionService.get_latest_suspended()
+    assert held_tx is not None
+
+    view.switch_to_order(held_tx.id)
+    # The current autosave row for term_id was tombstoned during the auto-hold of the 3-item cart
+    # and not yet saved for the recalled 2-item cart (debounced timer has not fired)
+    assert CartAutosaveService.has_autosave(term_id) is False, (
+        "switch_to_order must atomically consume autosave before switching"
+    )
+    # Recalled cart has the 2 items from the first held bill
+    assert len(view.cart_service.items) == 1
+    assert view.cart_service.items[0]["qty"] == Decimal("2.000")
+
+    view.close()

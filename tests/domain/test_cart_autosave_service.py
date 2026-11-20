@@ -323,3 +323,46 @@ def test_defect_10_structurally_invalid_json_payloads_purged(clean_autosave_db):
             assert row_after is None or row_after.data is None, (
                 f"Corrupt row for payload {payload} was not purged/tombstoned!"
             )
+
+
+@pytest.mark.domain
+def test_restore_and_consume_uses_pricing_service_for_customer(clean_autosave_db, sample_product):
+    """Restore and consume must compute effective base price using PricingService for attached customer."""
+    from unittest.mock import patch
+
+    from cbpos.core.models import Customer
+    from cbpos.core.services.pricing_service import PricingService
+
+    db = clean_autosave_db
+    with db.get_session() as session:
+        cust = Customer(name="Wholesale Client", phone="0771234567")
+        session.add(cust)
+        session.commit()
+        session.refresh(cust)
+
+    terminal_id = "TERM-PRICING-TEST"
+    cart = CartService()
+    cart.set_customer(cust)
+    cart.add_item(sample_product, Decimal("1.000"))
+
+    # Snapshot and save
+    snap = CartAutosaveService.snapshot_cart(cart)
+    CartAutosaveService.save(snap, terminal_id, 1)
+
+    # Mock PricingService.calculate_price to return a special price
+    cart_to_restore = CartService()
+    with patch.object(
+        PricingService,
+        "calculate_price",
+        return_value={
+            "final_price": Decimal("200.00"),
+            "original_price": Decimal("250.00"),
+            "applied_rule": "Wholesale",
+        },
+    ) as mock_calc:
+        res = CartAutosaveService.restore_and_consume(terminal_id, cart_to_restore)
+        assert res.ok is True
+        assert mock_calc.called, "PricingService.calculate_price must be called during restore"
+        # original price was 250.00, matches sample_product price, so no price changed notice
+        price_notices = [n for n in res.notices if "Price" in n or "price" in n]
+        assert len(price_notices) == 0, f"Expected no price change notices, got {price_notices}"

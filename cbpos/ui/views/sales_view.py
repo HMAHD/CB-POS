@@ -1564,9 +1564,9 @@ class SalesView(QWidget):
 
         if reply == QMessageBox.StandardButton.Yes:
             self._autosave_timer.stop()
-            self._autosave_generation += 1
             from cbpos.core.services.cart_autosave_service import CartAutosaveService
 
+            self._autosave_generation = CartAutosaveService.issue_generation(self._get_terminal_id())
             CartAutosaveService.invalidate_and_delete(self._get_terminal_id())
 
             item_count = len(self.cart_service.items)
@@ -2173,7 +2173,9 @@ class SalesView(QWidget):
         # 1. Hold Current (Auto-Hold)
         if self.cart_service.items:
             # We don't ask for note here for speed, or maybe use "Auto-Hold" note
-            if not SuspendedTransactionService.hold_bill(self.cart_service, note="Auto-Switch"):
+            if not SuspendedTransactionService.hold_bill_and_consume_autosave(
+                self.cart_service, self._get_terminal_id(), note="Auto-Switch"
+            ):
                 QMessageBox.critical(self, _t("common.error"), _t("orders.switch_error"))
                 self._focus_search()
                 return
@@ -2211,7 +2213,9 @@ class SalesView(QWidget):
         2. Clear cart.
         """
         if self.cart_service.items:
-            if SuspendedTransactionService.hold_bill(self.cart_service, note="Auto-Switch"):
+            if SuspendedTransactionService.hold_bill_and_consume_autosave(
+                self.cart_service, self._get_terminal_id(), note="Auto-Switch"
+            ):
                 self.cart_service.clear()
                 self.update_cart_display()
                 self.order_bar.set_active_bill(None)
@@ -2348,9 +2352,9 @@ class SalesView(QWidget):
     def _finalize_sale(self, sale) -> None:
         """Common post-sale cleanup: sound, clear cart, optionally show receipt dialog."""
         self._autosave_timer.stop()
-        self._autosave_generation += 1
         from cbpos.core.services.cart_autosave_service import CartAutosaveService
 
+        self._autosave_generation = CartAutosaveService.issue_generation(self._get_terminal_id())
         CartAutosaveService.invalidate_and_delete(self._get_terminal_id())
 
         SoundService.play("payment_complete")

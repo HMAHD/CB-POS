@@ -6,7 +6,7 @@ import threading
 from datetime import datetime
 from decimal import ROUND_HALF_UP, Decimal, DecimalException
 
-from sqlalchemy import update
+from sqlalchemy import func, update
 from sqlalchemy.orm import Session
 
 from cbpos.core.constants.features import Features
@@ -356,6 +356,7 @@ class CartAutosaveService:
 
         from cbpos.core.models import Product
         from cbpos.core.services.customer_service import CustomerService
+        from cbpos.core.services.pricing_service import PricingService
         from cbpos.core.services.product_service import ProductService
         from cbpos.core.utils.formatters import format_currency
         from cbpos.i18n import _t
@@ -443,8 +444,9 @@ class CartAutosaveService:
 
                         held_unit = Decimal(str(line.get("unit_price", product.price)))
                         held_orig = Decimal(str(line.get("original_price", product.price)))
-                        current_orig = product.price
-                        if held_orig != current_orig and not line.get("is_manual_price"):
+                        current_pricing = PricingService.calculate_price(product, customer)
+                        current_orig = current_pricing["original_price"]
+                        if current_orig != held_orig and not line.get("is_manual_price"):
                             notices.append(
                                 _t(
                                     "orders.recall_price_changed",
@@ -528,7 +530,7 @@ class CartAutosaveService:
             .values(
                 data=None,
                 customer_id=None,
-                revision=SuspendedTransaction.revision + 1,
+                revision=func.coalesce(SuspendedTransaction.revision, 0) + 1,
                 timestamp=datetime.now(),
             )
         )

@@ -392,17 +392,27 @@ class LabelPrintDialog(QDialog):
     def _on_products_loaded(self, products: list[Any]) -> None:
         """Populate product completer and cache from loaded products."""
         names: list[str] = []
+        existing_ids = {
+            getattr(p, "id", None)
+            for item in self.label_items
+            if (p := item.get("product")) is not None and getattr(p, "id", None) is not None
+        }
+        added_preselected = False
+
         for p in products:
             key = f"{p.name_en} [{p.barcode}]"
             names.append(key)
             self.products_cache[key] = p
             self.products_cache[p.barcode] = p
-            if getattr(p, "id", None) in self._preselected_product_ids:
+            p_id = getattr(p, "id", None)
+            if p_id in self._preselected_product_ids and p_id not in existing_ids:
                 self.label_items.append({"product": p, "quantity": 1})
+                existing_ids.add(p_id)
+                added_preselected = True
 
         model = QStringListModel(names)
         self.product_completer.setModel(model)
-        if self._preselected_product_ids and self.label_items:
+        if added_preselected:
             self._refresh_table()
 
     def _on_completer_activated(self, text: str) -> None:

@@ -201,3 +201,117 @@ class TestLabelPrintDialogUI:
             assert dialog.btn_print.isEnabled() is False
             PrintWorker.instance().job_result.emit("job_test_1", False, "Connection error")
             assert dialog.btn_print.isEnabled() is True
+
+    def test_asynchronous_preselection_does_not_duplicate_manually_added_product(self, qapp, monkeypatch):
+        """When operator manually adds a preselected product before loader finishes,
+
+        _on_products_loaded preserves the manual entry and does not duplicate rows.
+        """
+        from cbpos.core.services.label_service import LabelService
+
+        p = _make_dummy_product(barcode="4006381333931")
+        p.id = 101
+
+        dlg = LabelPrintDialog(preselected_product_ids=[101])
+        try:
+            # 1. Loader is still running; operator manually searches and adds product 101
+            monkeypatch.setattr(dlg.product_service, "search_products", lambda q, mode="ALL": [p])
+            dlg.search_input.setText("4006381333931")
+            dlg._add_product()
+
+            # Operator changes quantity to 3
+            dlg.label_items[0]["quantity"] = 3
+            dlg._refresh_table()
+            assert len(dlg.label_items) == 1
+            assert dlg.label_items[0]["quantity"] == 3
+
+            # 2. Loader finishes now and calls _on_products_loaded
+            dlg._on_products_loaded([p])
+
+            # Must still be exactly one row, with unchanged quantity 3
+            assert len(dlg.label_items) == 1
+            assert dlg.label_items[0]["product"].id == 101
+            assert dlg.label_items[0]["quantity"] == 3
+            assert dlg.table.rowCount() == 1
+            assert dlg.table.item(0, 3).text() == "3"
+
+            # 3. Prove generated/printed label count is not duplicated
+            mock_generate = MagicMock(return_value=["CMD_PRINT_3"])
+            monkeypatch.setattr(LabelService, "generate_batch_commands", mock_generate)
+            monkeypatch.setattr(PrintWorker.instance(), "add_job", MagicMock(return_value="job_test_2"))
+
+            dlg._print_labels()
+
+            mock_generate.assert_called_once()
+            call_items = mock_generate.call_args[0][0]
+            assert len(call_items) == 1
+            assert call_items[0]["quantity"] == 3
+            assert "3" in dlg.lbl_total.text()
+        finally:
+            dlg.deleteLater()
+
+    def test_product_loaded_callback_is_idempotent(self, qapp):
+        """Repeated _on_products_loaded calls do not append duplicate preselected rows."""
+        p = _make_dummy_product(barcode="4006381333931")
+        p.id = 101
+
+        dlg = LabelPrintDialog(preselected_product_ids=[101])
+        try:
+            # First callback
+            dlg._on_products_loaded([p])
+            assert len(dlg.label_items) == 1
+            assert dlg.label_items[0]["quantity"] == 1
+
+            # Second callback with same product
+            dlg._on_products_loaded([p])
+            assert len(dlg.label_items) == 1
+            assert dlg.label_items[0]["quantity"] == 1
+
+            # Operator sets custom quantity
+            dlg.label_items[0]["quantity"] = 5
+            dlg._refresh_table()
+
+            # Third callback must preserve custom quantity
+            dlg._on_products_loaded([p])
+            assert len(dlg.label_items) == 1
+            assert dlg.label_items[0]["quantity"] == 5
+        finally:
+            dlg.deleteLater()
+
+    def test_ordinary_preselection_creates_one_quantity_one_row(self, qapp):
+        """Normal preselection without existing row adds exactly one row with quantity 1."""
+        p = _make_dummy_product(barcode="4006381333931")
+        p.id = 101
+
+        dlg = LabelPrintDialog(preselected_product_ids=[101])
+        try:
+            dlg._on_products_loaded([p])
+            assert len(dlg.label_items) == 1
+            assert dlg.label_items[0]["product"].id == 101
+            assert dlg.label_items[0]["quantity"] == 1
+            assert dlg.table.rowCount() == 1
+            assert dlg.table.item(0, 3).text() == "1"
+        finally:
+            dlg.deleteLater()
+
+    def test_manual_add_increments_quantity_when_product_already_in_queue(self, qapp):
+        """Operator deliberately adding the same product again increments its quantity."""
+        p = _make_dummy_product(barcode="4006381333931")
+        p.id = 101
+
+        dlg = LabelPrintDialog(preselected_product_ids=[101])
+        try:
+            dlg._on_products_loaded([p])
+            assert len(dlg.label_items) == 1
+            assert dlg.label_items[0]["quantity"] == 1
+
+            # Operator scans / enters the same barcode again
+            dlg.search_input.setText("4006381333931")
+            dlg._add_product()
+
+            assert len(dlg.label_items) == 1
+            assert dlg.label_items[0]["quantity"] == 2
+            assert dlg.table.rowCount() == 1
+            assert dlg.table.item(0, 3).text() == "2"
+        finally:
+            dlg.deleteLater()

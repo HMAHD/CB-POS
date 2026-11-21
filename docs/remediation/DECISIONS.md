@@ -133,5 +133,9 @@ The owner explicitly authorized internal development of Phase 10A (Packaging and
 2. F11 opens Price Board from Sales.
 3. Actions: Save and Save & Print Labels.
 
+**D40 — 2026-11-21 — #931 — Price Board language resolution.**
+Price Board is an operator-facing management dialog, so product names follow the current UI language (`get_language()`) with fallback to English, not customer-facing receipt language. An English UI displays English product names even when `receipt_language` is configured as Sinhala or Tamil.
+
+
 
 

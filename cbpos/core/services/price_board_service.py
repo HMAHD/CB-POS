@@ -44,44 +44,30 @@ class PriceBoardItem:
         self.version_id = version_id
 
     def get_display_name(self, lang: str | None = None) -> str:
-        """Return localized product name with receipt_language -> UI lang -> English fallback."""
-        candidates = []
-        if lang is not None:
-            candidates.append(lang)
-        else:
-            try:
-                receipt_lang = ConfigService.get("receipt_language")
-                if receipt_lang:
-                    candidates.append(receipt_lang)
-            except Exception:
-                pass
+        """Return localized product name following current UI language with English fallback (D40).
 
+        Price Board is an operator-facing management dialog, so product names follow
+        the UI language (not receipt_language).
+        """
+        if lang is None:
             try:
                 from cbpos.i18n import get_language
 
-                ui_lang = get_language()
-                if ui_lang:
-                    candidates.append(ui_lang)
+                lang = get_language()
             except Exception:
-                pass
+                lang = "en"
 
-        candidates.append("en")
+        target_lang = (lang or "en").strip().lower()
+        if target_lang == "si":
+            val = (self.name_si or "").strip()
+            if val:
+                return val
+        elif target_lang == "ta":
+            val = (self.name_ta or "").strip()
+            if val:
+                return val
 
-        for c in candidates:
-            c_clean = (c or "").strip().lower()
-            if c_clean == "si":
-                val = (self.name_si or "").strip()
-                if val:
-                    return val
-            elif c_clean == "ta":
-                val = (self.name_ta or "").strip()
-                if val:
-                    return val
-            elif c_clean == "en":
-                val = (self.name_en or "").strip()
-                if val:
-                    return val
-
+        # Fallback to English, then whichever name is populated
         return (self.name_en or "").strip() or (self.name_si or "").strip() or (self.name_ta or "").strip() or ""
 
     def to_dict(self) -> dict[str, Any]:

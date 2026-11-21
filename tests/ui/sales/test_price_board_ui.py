@@ -292,14 +292,14 @@ class TestPriceBoardDialogUI:
         p2 = db_session.get(Product, flagged_products[1].id)
         assert p2.price == Decimal("220.00")
 
-    def test_price_board_uses_receipt_language_product_name(
+    def test_price_board_uses_ui_language_not_receipt_language(
         self, qtbot, test_admin_user, flagged_products, monkeypatch
     ):
-        """Board resolves product names using receipt_language -> UI lang -> English fallback."""
+        """Price Board is operator-facing (D40): names follow UI language, not receipt_language."""
         from cbpos.core.services.config_service import ConfigService
         from cbpos.i18n import set_language
 
-        # 1. UI language is English, receipt language is Sinhala
+        # 1. UI language is English; receipt_language is configured as Sinhala
         set_language("en")
         monkeypatch.setattr(ConfigService, "get", lambda k: "si" if k == "receipt_language" else None)
 
@@ -312,12 +312,11 @@ class TestPriceBoardDialogUI:
             current_price=Decimal("180.00"),
             version_id=1,
         )
-        # item2 has no Sinhala name
         item2 = PriceBoardItem(
             id=flagged_products[1].id,
             barcode="VEG102",
             name_en="Leeks 1kg",
-            name_si=None,
+            name_si="ලීක්ස් 1kg",
             name_ta="லீக்ஸ் 1kg",
             current_price=Decimal("220.00"),
             version_id=1,
@@ -327,29 +326,37 @@ class TestPriceBoardDialogUI:
         qtbot.addWidget(dialog)
         dialog._on_data_loaded([item1, item2])
 
-        # Col 0 of row 0 must show Sinhala name
-        assert dialog.table.item(0, 0).text() == "ගෝවා 1kg"
-        # Col 0 of row 1 must fall back to English
+        # English UI must show English names despite receipt_language being Sinhala (D40)
+        assert dialog.table.item(0, 0).text() == "Cabbage 1kg"
         assert dialog.table.item(1, 0).text() == "Leeks 1kg"
+        assert item1.get_display_name() == "Cabbage 1kg"
 
-        # Search by Sinhala name matches row 0
-        dialog.search_input.setText("ගෝවා")
+        # Search matches English name
+        dialog.search_input.setText("Cabbage")
         assert dialog.table.isRowHidden(0) is False
         assert dialog.table.isRowHidden(1) is True
 
-        # Validation error feedback uses the resolved receipt-language name
+        # Validation error feedback uses the English name
         dialog.search_input.clear()
         dialog.table.item(0, 3).setData(Qt.ItemDataRole.UserRole, Decimal("-5.00"))
         warning_messages = []
         monkeypatch.setattr(QMessageBox, "warning", lambda p, t, msg: warning_messages.append(msg))
         dialog._collect_updates()
         assert len(warning_messages) == 1
-        assert "ගෝවා 1kg" in warning_messages[0]
+        assert "Cabbage 1kg" in warning_messages[0]
 
-        # 2. Switch receipt language to Tamil
+        # 2. Even when receipt_language is Tamil, English UI still shows English
         monkeypatch.setattr(ConfigService, "get", lambda k: "ta" if k == "receipt_language" else None)
-        assert item1.get_display_name() == "கோஸ் 1kg"
-        assert item2.get_display_name() == "லீக்ஸ் 1kg"
+        assert item1.get_display_name() == "Cabbage 1kg"
+        assert item2.get_display_name() == "Leeks 1kg"
+
+        # 3. When UI language itself is switched to Sinhala, it shows Sinhala
+        set_language("si")
+        try:
+            assert item1.get_display_name() == "ගෝවා 1kg"
+            assert item2.get_display_name() == "ලීක්ස් 1kg"
+        finally:
+            set_language("en")
 
 
 @pytest.mark.ui

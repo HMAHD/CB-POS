@@ -80,7 +80,7 @@ Recommendation: yes. Ship the flags and the wizard step now, even if features ar
 
 **Design:**
 - `Product.price_changes_often` (Boolean, migration).
-- A shortcut (propose a free key and add it to F1 help) opens `PriceBoardDialog`, a grid of only flagged products: name (receipt language), current price, new price. Tab/Enter moves down, and **Save** applies.
+- A shortcut (propose a free key and add it to F1 help) opens `PriceBoardDialog`, a grid of only flagged products: name (current UI language with English fallback; operator-facing dialog per D40), current price, new price. Tab/Enter moves down, and **Save** applies.
 - Prices change through `PricingService` / `InventoryService.update_product` with the Phase 4 #862 optimistic check, with an audit row per change: `PRICE_CHANGE` with old → new, user. Permission `inventory.edit` (or `pricing.manage` from Phase 5).
 - **Print shelf labels** for the changed items uses the Phase 8 #819 label path.
 - "Change price for this sale only" already exists as the line price override with permission, so reuse it and don't build a second path.

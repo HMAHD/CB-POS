@@ -6,6 +6,7 @@ from typing import Any
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
+from cbpos.core.constants.features import Features
 from cbpos.core.constants.permissions import Permissions
 from cbpos.core.database import Database
 from cbpos.core.models import (
@@ -15,16 +16,16 @@ from cbpos.core.models import (
     PurchaseItem,
     PurchaseOrder,
     Role,
-    StockMovement,
     Supplier,
     User,
 )
 from cbpos.core.services.document_service import DocumentService
+from cbpos.core.services.feature_flags import FeatureFlags
 from cbpos.core.services.permission_service import PermissionService
 from cbpos.core.services.stock_service import StockService
 from cbpos.core.services.supplier_payable_service import SupplierPayableService
 from cbpos.core.utils.date_ranges import range_for
-from cbpos.core.utils.money import round_money
+from cbpos.core.utils.money import round_money, round_quantity
 
 
 @dataclass
@@ -34,6 +35,8 @@ class GrnLine:
     product_id: int
     qty: Decimal
     unit_cost: Decimal
+    purchase_unit_id: int | None = None
+    purchase_factor: Decimal | None = None
 
 
 @dataclass
@@ -119,26 +122,66 @@ class PurchaseService:
             session.flush()
 
             total_purchase_cost = Decimal("0.00")
+            is_unit_conv_on = FeatureFlags.is_on(Features.UNIT_CONVERSION)
 
             for line in request.lines:
                 product = session.get(Product, line.product_id)
                 if not product:
                     raise ValueError(f"Product {line.product_id} not found")
 
+                # Unit conversion (#937)
+                has_product_conversion = bool(
+                    product.purchase_unit_id and (product.purchase_factor or Decimal("1.000")) > Decimal("0")
+                )
+                authoritative_factor = (
+                    product.purchase_factor
+                    if (product.purchase_factor and product.purchase_factor > Decimal("0"))
+                    else Decimal("1.000")
+                )
+
+                if is_unit_conv_on:
+                    if line.purchase_unit_id != product.purchase_unit_id:
+                        raise ValueError(f"stale_conversion_configuration: product {product.id} purchase unit changed")
+                    if product.purchase_unit_id is not None and line.purchase_factor != authoritative_factor:
+                        raise ValueError(f"stale_conversion_configuration: product {product.id} factor changed")
+
+                if is_unit_conv_on and has_product_conversion:
+                    purchase_qty = line.qty
+                    purchase_unit_cost = line.unit_cost
+                    purchase_factor = authoritative_factor
+                    purchase_unit_id = product.purchase_unit_id
+
+                    base_qty = round_quantity(purchase_qty * purchase_factor)
+                    base_unit_cost = round_money(purchase_unit_cost / purchase_factor)
+                    line_total = round_money(purchase_qty * purchase_unit_cost)
+                else:
+                    purchase_qty = line.qty
+                    purchase_unit_cost = line.unit_cost
+                    purchase_factor = Decimal("1.000")
+                    purchase_unit_id = None
+
+                    base_qty = round_quantity(line.qty)
+                    base_unit_cost = round_money(line.unit_cost)
+                    line_total = round_money(line.qty * line.unit_cost)
+
                 order_item = order_items_by_product.get(line.product_id)
                 if order_item:
-                    order_item.qty_received += line.qty
+                    order_item.qty_received += base_qty
 
                 purchase_item = PurchaseItem(
                     purchase_id=purchase.id,
                     product_id=line.product_id,
-                    qty_received=line.qty,
-                    unit_cost=line.unit_cost,
+                    qty_received=base_qty,
+                    unit_cost=base_unit_cost,
                     purchase_order_item_id=order_item.id if order_item else None,
+                    purchase_unit_id=purchase_unit_id,
+                    purchase_factor=purchase_factor,
+                    purchase_qty=purchase_qty,
+                    purchase_unit_cost=purchase_unit_cost,
                 )
                 session.add(purchase_item)
 
-                total_purchase_cost += line.qty * line.unit_cost
+                total_purchase_cost += line_total
 
                 # Record stock movement and compute AVCO
                 old_qty = product.stock_qty
@@ -146,18 +189,18 @@ class PurchaseService:
 
                 StockService.record_movement(
                     product_id=line.product_id,
-                    qty_change=line.qty,
+                    qty_change=base_qty,
                     movement_type="PURCHASE",
                     user_id=request.user_id,
                     document_id=purchase.id,
                     session=session,
                 )
 
-                # Invariant 2: if old_qty <= 0, new_cost = unit_cost; else weighted average
+                # Invariant 2: if old_qty <= 0, new_cost = base_unit_cost; else weighted average
                 if old_qty <= Decimal("0"):
-                    new_cost = line.unit_cost
+                    new_cost = base_unit_cost
                 else:
-                    new_cost = round_money((old_qty * old_cost + line.qty * line.unit_cost) / (old_qty + line.qty))
+                    new_cost = round_money((old_qty * old_cost + base_qty * base_unit_cost) / (old_qty + base_qty))
                 product.cost = new_cost
 
             purchase.total_cost = total_purchase_cost
@@ -272,63 +315,101 @@ class PurchaseService:
                     order_items_by_product = {item.product_id: item for item in order.items}
 
             total_purchase_cost = Decimal("0.00")
+            is_unit_conv_on = FeatureFlags.is_on(Features.UNIT_CONVERSION)
 
             for item_data in items_data:
                 product_id = item_data["product_id"]
-                qty_received = Decimal(str(item_data["qty"]))
-                unit_cost = Decimal(str(item_data["cost"]))
+                raw_qty = Decimal(str(item_data["qty"]))
+                raw_cost = Decimal(str(item_data["cost"]))
 
-                if qty_received <= Decimal("0"):
-                    raise ValueError(f"grn_invalid_qty: {qty_received}")
-                if unit_cost < Decimal("0.00"):
-                    raise ValueError(f"grn_invalid_cost: {unit_cost}")
+                if raw_qty <= Decimal("0"):
+                    raise ValueError(f"grn_invalid_qty: {raw_qty}")
+                if raw_cost < Decimal("0.00"):
+                    raise ValueError(f"grn_invalid_cost: {raw_cost}")
+
+                product = session.get(Product, product_id)
+                if not product:
+                    continue
+
+                has_product_conversion = bool(
+                    product.purchase_unit_id and (product.purchase_factor or Decimal("1.000")) > Decimal("0")
+                )
+                authoritative_factor = (
+                    product.purchase_factor
+                    if (product.purchase_factor and product.purchase_factor > Decimal("0"))
+                    else Decimal("1.000")
+                )
+
+                item_factor = (
+                    Decimal(str(item_data["purchase_factor"]))
+                    if "purchase_factor" in item_data and item_data["purchase_factor"] is not None
+                    else None
+                )
+                item_unit_id = item_data.get("purchase_unit_id")
+
+                if is_unit_conv_on:
+                    if item_unit_id != product.purchase_unit_id:
+                        raise ValueError(f"stale_conversion_configuration: product {product.id} purchase unit changed")
+                    if product.purchase_unit_id is not None and item_factor != authoritative_factor:
+                        raise ValueError(f"stale_conversion_configuration: product {product.id} factor changed")
+
+                if is_unit_conv_on and has_product_conversion:
+                    purchase_qty = raw_qty
+                    purchase_unit_cost = raw_cost
+                    purchase_factor = authoritative_factor
+                    purchase_unit_id = product.purchase_unit_id
+
+                    base_qty = round_quantity(purchase_qty * purchase_factor)
+                    base_unit_cost = round_money(purchase_unit_cost / purchase_factor)
+                    line_total = round_money(purchase_qty * purchase_unit_cost)
+                else:
+                    purchase_qty = raw_qty
+                    purchase_unit_cost = raw_cost
+                    purchase_factor = Decimal("1.000")
+                    purchase_unit_id = None
+
+                    base_qty = round_quantity(raw_qty)
+                    base_unit_cost = round_money(raw_cost)
+                    line_total = round_money(raw_qty * raw_cost)
 
                 order_item = order_items_by_product.get(product_id)
                 if order_item:
-                    order_item.qty_received += qty_received
+                    order_item.qty_received += base_qty
 
                 # Create Purchase Item
                 purchase_item = PurchaseItem(
                     purchase_id=purchase.id,
                     product_id=product_id,
-                    qty_received=qty_received,
-                    unit_cost=unit_cost,
+                    qty_received=base_qty,
+                    unit_cost=base_unit_cost,
                     purchase_order_item_id=order_item.id if order_item else None,
+                    purchase_unit_id=purchase_unit_id,
+                    purchase_factor=purchase_factor,
+                    purchase_qty=purchase_qty,
+                    purchase_unit_cost=purchase_unit_cost,
                 )
                 session.add(purchase_item)
 
-                total_purchase_cost += qty_received * unit_cost
-
-                # Update Product Stock & Cost
-                product = session.get(Product, product_id)
-                if not product:
-                    continue
+                total_purchase_cost += line_total
 
                 old_qty = product.stock_qty
-                old_cost = product.cost
+                old_cost = product.cost if product.cost is not None else Decimal("0.00")
 
-                # 1. Update Stock
-                product.stock_qty += qty_received
+                # 1. Update Stock & Log Movement via StockService
+                StockService.record_movement(
+                    product_id=product.id,
+                    qty_change=base_qty,
+                    movement_type="PURCHASE",
+                    user_id=purchase.user_id,
+                    document_id=purchase.id,
+                    session=session,
+                )
 
                 # 2. Calculate Weighted Average Cost (Invariant 2, #899)
                 if old_qty <= Decimal("0"):
-                    product.cost = unit_cost
+                    product.cost = base_unit_cost
                 else:
-                    product.cost = round_money(
-                        (old_qty * old_cost + qty_received * unit_cost) / (old_qty + qty_received)
-                    )
-
-                # 3. Log Stock Movement
-                movement = StockMovement(
-                    product_id=product.id,
-                    user_id=purchase.user_id,
-                    timestamp=datetime.now(),
-                    qty_change=qty_received,
-                    balance_after=product.stock_qty,
-                    document_id=purchase.id,
-                    type="PURCHASE",
-                )
-                session.add(movement)
+                    product.cost = round_money((old_qty * old_cost + base_qty * base_unit_cost) / (old_qty + base_qty))
 
             # Finalize Purchase
             purchase.total_cost = total_purchase_cost
@@ -430,12 +511,14 @@ class PurchaseService:
             purchase = (
                 session.query(Purchase)
                 .options(
-                    joinedload(Purchase.items).joinedload(PurchaseItem.product),
+                    joinedload(Purchase.items).joinedload(PurchaseItem.product).joinedload(Product.unit),
+                    joinedload(Purchase.items).joinedload(PurchaseItem.purchase_unit),
                     joinedload(Purchase.supplier),
                     joinedload(Purchase.user),
                 )
-                .get(purchase_id)
+                .filter(Purchase.id == purchase_id)
+                .first()
             )
             if purchase:
-                session.expunge(purchase)
+                session.expunge_all()
             return purchase

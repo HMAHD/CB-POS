@@ -593,6 +593,14 @@
     "name_required": "භාණ්ඩ නම අවශ්‍යයි",
     "no_default_supplier": "පෙරනිමි සැපයුම්කරුවෙක් නැහැ",
     "no_unit": "ඒකකයක් නැත",
+    "purchase_unit": "මිලදී ගැනීමේ ඒකකය:",
+    "no_purchase_unit": "විකුණුම් ඒකකයමයි",
+    "purchase_factor": "පරිවර්තන සාධකය:",
+    "conversion_formula": "1 {purchase_unit} = {factor} {base_unit}",
+    "base_unit": "මූලික ඒකකය",
+    "factor_must_be_positive": "සාධකය බින්දුවට වඩා වැඩි විය යුතුය.",
+    "invalid_factor": "සාධකය සඳහා වලංගු ධන සංඛ්‍යාවක් ඇතුළත් කරන්න.",
+    "invalid_purchase_factor": "මිලදී ගැනීමේ සාධකය බින්දුවට වඩා වැඩි විය යුතුය.",
     "not_found_barcode": "{barcode} බාර්කෝඩ් එකට අයිතමයක් හම්බ වුනේ නැහැ",
     "not_found_title": "හම්බ වුනේ නැහැ",
     "preferred_qty": "කැමති ප්‍රමාණය:",
@@ -1014,6 +1022,10 @@
     "grn_header_qty": "ලැබෙන ප්‍රමාණය",
     "grn_header_cost": "ඒකක මිල",
     "grn_header_total": "එකතුව",
+    "grn_header_purchase_qty": "මිලදී ගත් ප්‍රමාණය",
+    "grn_header_purchase_unit": "මිලදී ගැනීමේ ඒකකය",
+    "grn_header_base_qty": "මූලික තොග ප්‍රමාණය",
+    "grn_header_purchase_cost": "මිලදී ගත් මිල",
     "history_header_grn": "GRN #",
     "history_header_date": "දිනය",
     "history_header_supplier": "සැපයුම්කරු",
@@ -3946,7 +3958,8 @@
       "serial_tracking": "අනුක්‍රමික / IMEI අංක සටහන් කිරීම",
       "cheques": "චෙක්පත් ගෙවීම්",
       "power_cut_autosave": "විදුලි ඇනහිටීම් ස්වයං-සුරැකුම",
-      "price_board": "මිල පුවරුව (දෛනික මිල)"
+      "price_board": "මිල පුවරුව (දෛනික මිල)",
+      "unit_conversion": "මිලදී ගැනීමේ ඒකක පරිවර්තනය"
     },
     "desc": {
       "warranty": "වගකීම් ප්‍රතිපත්ති, හිමිකම් සහ අලුත්වැඩියාවන් කළමනාකරණය",
@@ -3954,7 +3967,8 @@
       "serial_tracking": "විකිණීමේදී දුරකථන සහ භාණ්ඩවල අනුක්‍රමික අංක සටහන් කිරීම",
       "cheques": "විකිණීමේදී චෙක්පත් මගින් ගෙවීම් ලබා ගැනීම",
       "power_cut_autosave": "විදුලිය ඇනහිටීමකදී හෝ නැවත ඇරඹීමේදී විවෘත බිල්පත සුරැක නැවත ලබාගන්න",
-      "price_board": "එළවළු, මාළු, ගෑස් වැනි නිතර මිල වෙනස් වන අයිතම සඳහා වේගවත් දෛනික මිල වෙනස් කිරීමේ පුවරුව"
+      "price_board": "එළවළු, මාළු, ගෑස් වැනි නිතර මිල වෙනස් වන අයිතම සඳහා වේගවත් දෛනික මිල වෙනස් කිරීමේ පුවරුව",
+      "unit_conversion": "පෙට්ටි හෝ මිටි වලින් තොග මිලදී ගෙන කෑලි හෝ කිලෝ වලින් විකිණීම"
     },
     "saved": "'{name}' විශේෂාංගය යාවත්කාලීන කරන ලදී."
   },

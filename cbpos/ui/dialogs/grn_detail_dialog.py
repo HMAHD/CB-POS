@@ -97,16 +97,27 @@ class GRNDetailDialog(QDialog):
             table.insertRow(row)
             product_name = item.product.name_en if item.product else "Unknown"
             barcode = item.product.barcode if item.product else ""
-            line_total = item.qty_received * item.unit_cost
+            line_total = (
+                item.purchase_qty * item.purchase_unit_cost
+                if item.purchase_qty is not None and item.purchase_unit_cost is not None
+                else item.qty_received * item.unit_cost
+            )
 
             table.setItem(row, 0, QTableWidgetItem(product_name))
             table.setItem(row, 1, QTableWidgetItem(barcode))
 
-            qty_item = QTableWidgetItem(f"{item.qty_received:.3f}")
+            if item.purchase_unit_id is not None and item.purchase_qty is not None:
+                p_unit_name = item.purchase_unit.name if item.purchase_unit else ""
+                b_unit_name = item.product.unit.name if (item.product and item.product.unit) else ""
+                qty_text = f"{item.purchase_qty:g} {p_unit_name} ({item.qty_received:g} {b_unit_name})".strip()
+            else:
+                qty_text = f"{item.qty_received:.3f}"
+            qty_item = QTableWidgetItem(qty_text)
             qty_item.setTextAlignment(NUMERIC_ALIGNMENT)
             table.setItem(row, 2, qty_item)
 
-            cost_item = QTableWidgetItem(format_currency(item.unit_cost))
+            effective_cost = item.purchase_unit_cost if item.purchase_unit_cost is not None else item.unit_cost
+            cost_item = QTableWidgetItem(format_currency(effective_cost))
             cost_item.setTextAlignment(NUMERIC_ALIGNMENT)
             table.setItem(row, 3, cost_item)
 

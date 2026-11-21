@@ -96,12 +96,14 @@ class TestModelConversion:
             is_weighted=False,
             is_composite=False,
             is_service=False,
+            price_changes_often=True,
             last_modified=datetime(2026, 9, 3, 10, 0, 0),
         )
 
         d = model_to_dict(product)
         assert isinstance(d["price"], str)
         assert d["price"] == "250.00"
+        assert d["price_changes_often"] is True
         assert isinstance(d["last_modified"], str)
         assert d["is_active"] is True
         assert d["barcode"] == "1234567890123"
@@ -109,6 +111,7 @@ class TestModelConversion:
         restored = dict_to_model(Product, d)
         assert isinstance(restored.price, Decimal)
         assert restored.price == Decimal("250.00")
+        assert restored.price_changes_often is True
         assert isinstance(restored.cost, Decimal)
         assert restored.cost == Decimal("150.00")
         assert isinstance(restored.last_modified, datetime)

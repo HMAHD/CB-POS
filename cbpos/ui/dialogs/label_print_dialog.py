@@ -91,8 +91,9 @@ class _QtyDelegate(QStyledItemDelegate):
 class LabelPrintDialog(QDialog):
     """Dialog to search products, configure label layout, preview live, and print barcode labels."""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, preselected_product_ids: list[int] | None = None):
         super().__init__(parent)
+        self._preselected_product_ids = set(preselected_product_ids or [])
         self.setWindowTitle(_t("label_print.title"))
         self.setObjectName("LabelPrintDialog")
         self.setMinimumSize(920, 600)
@@ -396,9 +397,13 @@ class LabelPrintDialog(QDialog):
             names.append(key)
             self.products_cache[key] = p
             self.products_cache[p.barcode] = p
+            if getattr(p, "id", None) in self._preselected_product_ids:
+                self.label_items.append({"product": p, "quantity": 1})
 
         model = QStringListModel(names)
         self.product_completer.setModel(model)
+        if self._preselected_product_ids and self.label_items:
+            self._refresh_table()
 
     def _on_completer_activated(self, text: str) -> None:
         self._completer_activated = True

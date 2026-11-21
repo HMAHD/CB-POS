@@ -602,6 +602,8 @@
     "service_hint": "Service items have no stock tracking",
     "price_change_allowed": "Allow Price Override at Checkout",
     "price_change_hint": "Turn off for fixed/regulated-price items — no cashier can override, even with permission",
+    "price_changes_often": "Price Changes Often (Daily Price Board)",
+    "price_changes_often_hint": "Include this item on the daily Price Board (F11) for fast daily price updates",
     "age_restricted": "Age-Restricted Item",
     "age_restricted_hint": "Cashier must confirm age at checkout (e.g. alcohol, tobacco)",
     "stock_qty": "Stock Qty",
@@ -2812,7 +2814,8 @@
       "promotion_update": "Promotion changed",
       "promotion_toggle": "Promotion switched on/off",
       "promotion_delete": "Promotion deleted",
-      "product_price_change": "Item price changed"
+      "product_price_change": "Item price changed",
+      "price_change": "Item price changed"
     },
     "detail": {
       "tax_vat_rate": "VAT rate changed from {old}% to {new}%",
@@ -2987,7 +2990,8 @@
     "undo_remove": "Undo remove cart item",
     "calculator": "Open calculator",
     "close_cancel": "Close dialog / Cancel",
-    "warranty_check": "Warranty check"
+    "warranty_check": "Warranty check",
+    "price_board": "Price board (daily prices)"
   },
   "stock_history": {
     "title": "Stock History",
@@ -3941,14 +3945,16 @@
       "credit_book": "Customer Credit Book",
       "serial_tracking": "Serial & IMEI Tracking",
       "cheques": "Cheque Payments",
-      "power_cut_autosave": "Power-Cut Autosave"
+      "power_cut_autosave": "Power-Cut Autosave",
+      "price_board": "Price Board (Daily Prices)"
     },
     "desc": {
       "warranty": "Manage warranty policies, claims, returns, and repairs",
       "credit_book": "Track customer debt, credit limits, payments, and aging",
       "serial_tracking": "Capture serial or IMEI numbers for high-value items at checkout",
       "cheques": "Accept cheques and record cheque payments at checkout",
-      "power_cut_autosave": "Automatically save the open bill and restore it if power cuts or app restarts"
+      "power_cut_autosave": "Automatically save the open bill and restore it if power cuts or app restarts",
+      "price_board": "Fast daily price editing table for fluctuating items like vegetables, fish, gas, and cement"
     },
     "saved": "Feature '{name}' updated."
   },
@@ -3962,5 +3968,31 @@
     "discard_confirm_title": "Discard Unfinished Bill?",
     "discard_confirm_body": "Are you sure you want to discard this bill? The unsaved cart will be permanently deleted.",
     "warning_unavailable": "Autosave temporarily unavailable. Check database connection."
+  },
+  "price_board": {
+    "title": "Daily Price Board",
+    "subtitle": "Fast daily price editing for items with fluctuating prices",
+    "col_product": "Product",
+    "col_barcode": "Barcode",
+    "col_current_price": "Current Price",
+    "col_new_price": "New Price",
+    "btn_save": "Save Prices (Enter)",
+    "btn_save_and_print": "Save & Print Labels",
+    "btn_cancel": "Cancel (Esc)",
+    "loading": "Loading price board items...",
+    "empty_title": "No Items on Price Board",
+    "empty_message": "No products are flagged with 'Price changes often'. In Product Editor, enable this flag on items whose prices change daily.",
+    "error_title": "Price Update Error",
+    "success_title": "Prices Updated",
+    "success_message": "Successfully updated prices for {count} products.",
+    "no_changes": "No price changes to save.",
+    "invalid_price": "Please enter a valid non-negative price for {product}.",
+    "stale_error": "One or more products were modified by another terminal. Please reload and try again.",
+    "permission_denied": "You do not have permission to manage prices.",
+    "saving": "Saving prices...",
+    "search_placeholder": "Filter products...",
+    "items_count": "{count} items",
+    "changed_count": "{count} changed",
+    "close": "Close"
   }
 }

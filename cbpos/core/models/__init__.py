@@ -404,6 +404,7 @@ class Product(Base):
     is_composite: Mapped[bool] = mapped_column(Boolean, default=False)
     is_service: Mapped[bool] = mapped_column(Boolean, default=False)
     price_change_allowed: Mapped[bool] = mapped_column(Boolean, default=True)
+    price_changes_often: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0", nullable=False)
     is_age_restricted: Mapped[bool] = mapped_column(Boolean, default=False)
     reorder_point: Mapped[Decimal] = mapped_column(Numeric(10, 3), default=0)
     preferred_qty: Mapped[Decimal] = mapped_column(Numeric(10, 3), default=0)

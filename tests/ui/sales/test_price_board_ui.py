@@ -1,0 +1,310 @@
+"""UI tests for Price Board dialog and SalesView F11 integration (#931)."""
+
+from decimal import Decimal
+from unittest.mock import MagicMock, patch
+
+import pytest
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QMessageBox
+
+from cbpos.core.constants.features import Features
+from cbpos.core.constants.permissions import Permissions
+from cbpos.core.models import Product, Role, User
+from cbpos.core.services.price_board_service import PriceBoardItem
+from cbpos.i18n import _t
+from cbpos.ui.dialogs.price_board_dialog import PriceBoardDialog
+from cbpos.ui.dialogs.shortcuts_help_dialog import ShortcutsHelpDialog
+from cbpos.ui.views.sales_view import SalesView
+
+
+@pytest.fixture
+def test_admin_user(db_session):
+    admin_role = db_session.query(Role).filter_by(name="Admin").first()
+    if not admin_role:
+        admin_role = Role(name="Admin")
+        db_session.add(admin_role)
+        db_session.flush()
+
+    user = db_session.query(User).filter_by(username="admin_ui_pb").first()
+    if not user:
+        user = User(username="admin_ui_pb", pin_hash="hash", role_id=admin_role.id, is_active=True)
+        db_session.add(user)
+        db_session.commit()
+    return user
+
+
+@pytest.fixture
+def flagged_products(db_session):
+    p1 = Product(
+        barcode="VEG101",
+        name_en="Cabbage 1kg",
+        name_si="ගෝවා 1kg",
+        name_ta="கோஸ் 1kg",
+        price=Decimal("180.00"),
+        is_active=True,
+        price_changes_often=True,
+        version_id=1,
+    )
+    p2 = Product(
+        barcode="VEG102",
+        name_en="Leeks 1kg",
+        name_si="ලීක්ස් 1kg",
+        name_ta="லீக்ஸ் 1kg",
+        price=Decimal("220.00"),
+        is_active=True,
+        price_changes_often=True,
+        version_id=1,
+    )
+    db_session.add_all([p1, p2])
+    db_session.commit()
+    return [p1, p2]
+
+
+@pytest.mark.ui
+class TestPriceBoardDialogUI:
+    """Test suite for PriceBoardDialog rendering and interactions."""
+
+    def test_empty_state_when_no_flagged_products(self, qtbot, test_admin_user):
+        """When no products are flagged, empty state page is shown."""
+        dialog = PriceBoardDialog(acting_user_id=test_admin_user.id)
+        qtbot.addWidget(dialog)
+
+        # Mock loader returning empty
+        dialog._on_data_loaded([])
+        assert dialog.stack.currentIndex() == 1  # Empty state page
+
+    def test_table_populated_with_flagged_items(self, qtbot, test_admin_user, flagged_products):
+        """Flagged products populate table with names, barcodes, and prices."""
+        dialog = PriceBoardDialog(acting_user_id=test_admin_user.id)
+        qtbot.addWidget(dialog)
+
+        items = [
+            PriceBoardItem(
+                id=p.id,
+                barcode=p.barcode,
+                name_en=p.name_en,
+                name_si=p.name_si,
+                name_ta=p.name_ta,
+                current_price=p.price,
+                version_id=p.version_id,
+            )
+            for p in flagged_products
+        ]
+        dialog._on_data_loaded(items)
+
+        assert dialog.stack.currentIndex() == 2  # Content page
+        assert dialog.table.rowCount() == 2
+
+        # Check Col 0 (Name), Col 1 (Barcode), Col 2 (Current), Col 3 (New)
+        assert dialog.table.item(0, 0).text() == "Cabbage 1kg"
+        assert dialog.table.item(0, 1).text() == "VEG101"
+        assert "180" in dialog.table.item(0, 2).text()
+        assert "180" in dialog.table.item(0, 3).text()
+
+    def test_filter_hides_non_matching_rows(self, qtbot, test_admin_user, flagged_products):
+        """Search query filters visible rows by product name or barcode."""
+        dialog = PriceBoardDialog(acting_user_id=test_admin_user.id)
+        qtbot.addWidget(dialog)
+
+        items = [
+            PriceBoardItem(p.id, p.barcode, p.name_en, p.name_si, p.name_ta, p.price, p.version_id)
+            for p in flagged_products
+        ]
+        dialog._on_data_loaded(items)
+
+        dialog.search_input.setText("leeks")
+        assert dialog.table.isRowHidden(0) is True  # Cabbage hidden
+        assert dialog.table.isRowHidden(1) is False  # Leeks visible
+
+        dialog.search_input.setText("VEG101")
+        assert dialog.table.isRowHidden(0) is False  # Cabbage visible
+        assert dialog.table.isRowHidden(1) is True  # Leeks hidden
+
+        dialog.search_input.clear()
+        assert dialog.table.isRowHidden(0) is False
+        assert dialog.table.isRowHidden(1) is False
+
+    def test_cell_change_updates_summary_and_styling(self, qtbot, test_admin_user, flagged_products):
+        """Changing new price updates changed count and highlight."""
+        dialog = PriceBoardDialog(acting_user_id=test_admin_user.id)
+        qtbot.addWidget(dialog)
+
+        items = [
+            PriceBoardItem(p.id, p.barcode, p.name_en, p.name_si, p.name_ta, p.price, p.version_id)
+            for p in flagged_products
+        ]
+        dialog._on_data_loaded(items)
+
+        # Initially 0 changed
+        assert "changed" not in dialog.lbl_summary.text()
+
+        # Update row 0 price to 200.00 (changed)
+        cell = dialog.table.item(0, 3)
+        cell.setData(Qt.ItemDataRole.UserRole, Decimal("200.00"))
+        dialog._on_cell_changed(0, 3)
+
+        assert "1 changed" in dialog.lbl_summary.text()
+        assert cell.font().bold() is True
+        assert cell.foreground().color().isValid() is True
+
+        # Revert back to 180.00 (unchanged)
+        cell.setData(Qt.ItemDataRole.UserRole, Decimal("180.00"))
+        dialog._on_cell_changed(0, 3)
+
+        assert "changed" not in dialog.lbl_summary.text()
+        assert cell.font().bold() is False
+        assert cell.data(Qt.ItemDataRole.ForegroundRole) is None
+
+    def test_hidden_row_unhidden_on_validation_error(self, qtbot, test_admin_user, flagged_products, monkeypatch):
+        """Hidden row is unhidden and search cleared when validation fails on it."""
+        dialog = PriceBoardDialog(acting_user_id=test_admin_user.id)
+        qtbot.addWidget(dialog)
+
+        items = [
+            PriceBoardItem(p.id, p.barcode, p.name_en, p.name_si, p.name_ta, p.price, p.version_id)
+            for p in flagged_products
+        ]
+        dialog._on_data_loaded(items)
+
+        # Set row 0 invalid
+        dialog.table.item(0, 3).setData(Qt.ItemDataRole.UserRole, Decimal("-10.00"))
+        # Filter to show only row 1 ("leeks")
+        dialog.search_input.setText("leeks")
+        assert dialog.table.isRowHidden(0) is True
+
+        monkeypatch.setattr(QMessageBox, "warning", lambda *args, **kwargs: None)
+        _updates, has_error = dialog._collect_updates()
+        assert has_error is True
+        assert dialog.table.isRowHidden(0) is False
+        assert dialog.search_input.text() == ""
+
+    def test_save_error_localizes_stale_and_permission_denied(self, qtbot, test_admin_user, monkeypatch):
+        """StaleProductError and PermissionError display localized messages."""
+        dialog = PriceBoardDialog(acting_user_id=test_admin_user.id)
+        qtbot.addWidget(dialog)
+
+        critical_messages = []
+        monkeypatch.setattr(QMessageBox, "critical", lambda parent, title, msg: critical_messages.append(msg))
+
+        # 1. Stale error
+        dialog._on_save_error("Product 'Carrot' was modified by another user.")
+        assert len(critical_messages) == 1
+        assert _t("price_board.stale_error") == critical_messages[0]
+
+        # 2. Permission error
+        dialog._on_save_error("Permission denied: pricing.manage required")
+        assert len(critical_messages) == 2
+        assert _t("price_board.permission_denied") == critical_messages[1]
+
+    def test_tab_enter_advance_moves_to_next_row(self, qtbot, test_admin_user, flagged_products):
+        """Tab/Enter key advance moves to the next row's new price editor."""
+        dialog = PriceBoardDialog(acting_user_id=test_admin_user.id)
+        qtbot.addWidget(dialog)
+        dialog.show()
+
+        items = [
+            PriceBoardItem(p.id, p.barcode, p.name_en, p.name_si, p.name_ta, p.price, p.version_id)
+            for p in flagged_products
+        ]
+        dialog._on_data_loaded(items)
+
+        dialog.table.setCurrentCell(0, 3)
+        # Advance from row 0
+        dialog._advance_to_next_row(0)
+        assert dialog.table.currentRow() == 1
+
+        # Advance from last row focuses Save button
+        dialog._advance_to_next_row(1)
+        assert dialog.btn_save.hasFocus() or dialog.focusWidget() == dialog.btn_save
+
+    def test_save_and_print_labels_action(self, qtbot, test_admin_user, flagged_products, monkeypatch):
+        """Save & Print Labels invokes batch update and opens LabelPrintDialog."""
+        dialog = PriceBoardDialog(acting_user_id=test_admin_user.id)
+        qtbot.addWidget(dialog)
+
+        items = [
+            PriceBoardItem(p.id, p.barcode, p.name_en, p.name_si, p.name_ta, p.price, p.version_id)
+            for p in flagged_products
+        ]
+        dialog._on_data_loaded(items)
+
+        # Set new price for row 0
+        dialog.table.item(0, 3).setData(Qt.ItemDataRole.UserRole, Decimal("210.00"))
+
+        mock_label_dlg = MagicMock()
+        monkeypatch.setattr("cbpos.ui.dialogs.label_print_dialog.LabelPrintDialog", mock_label_dlg)
+
+        with patch.object(dialog.service, "batch_update_prices", return_value=[flagged_products[0].id]):
+            dialog._print_labels_after_save = True
+            dialog._on_save_success([flagged_products[0].id])
+
+            # LabelPrintDialog was called with preselected IDs
+            mock_label_dlg.assert_called_once_with(
+                parent=dialog.parent(), preselected_product_ids=[flagged_products[0].id]
+            )
+
+
+@pytest.mark.ui
+class TestSalesViewPriceBoardShortcut:
+    """Test suite for SalesView F11 shortcut and F1 help gating."""
+
+    def test_f1_help_includes_f11_only_when_feature_enabled(self, monkeypatch):
+        """ShortcutsHelpDialog includes F11 if and only if Features.PRICE_BOARD is enabled."""
+        from cbpos.core.services import feature_flags
+
+        # 1. Feature disabled
+        monkeypatch.setattr(feature_flags, "feature_visible", lambda f: False)
+        shortcuts_off = ShortcutsHelpDialog._get_shortcuts()
+        keys_off = [k for k, _ in shortcuts_off]
+        assert "F11" not in keys_off
+
+        # 2. Feature enabled
+        monkeypatch.setattr(feature_flags, "feature_visible", lambda f: f == Features.PRICE_BOARD)
+        shortcuts_on = ShortcutsHelpDialog._get_shortcuts()
+        keys_on = [k for k, _ in shortcuts_on]
+        assert "F11" in keys_on
+        # Verify F11 is placed between F10 and F12
+        f10_idx = keys_on.index("F10")
+        f11_idx = keys_on.index("F11")
+        f12_idx = keys_on.index("F12")
+        assert f10_idx < f11_idx < f12_idx
+
+    def test_sales_view_open_price_board_blocked_when_feature_disabled(self, monkeypatch):
+        """SalesView.open_price_board does nothing when feature flag is disabled."""
+        from cbpos.core.services import feature_flags
+
+        monkeypatch.setattr(feature_flags, "feature_visible", lambda f: False)
+        mock_override = MagicMock()
+        monkeypatch.setattr("cbpos.core.utils.permission_helper.check_permission_with_override", mock_override)
+
+        sales_view = MagicMock(spec=SalesView)
+        SalesView.open_price_board(sales_view)
+
+        # Did not attempt permission check or open dialog
+        mock_override.assert_not_called()
+
+    def test_sales_view_open_price_board_checks_permission_and_opens_dialog(self, monkeypatch):
+        """SalesView.open_price_board checks Permissions.PRICING_MANAGE and opens PriceBoardDialog."""
+        from cbpos.core.services import feature_flags
+
+        monkeypatch.setattr(feature_flags, "feature_visible", lambda f: True)
+
+        fake_user = MagicMock()
+        fake_user.id = 42
+        mock_override = MagicMock(return_value=fake_user)
+        monkeypatch.setattr("cbpos.core.utils.permission_helper.check_permission_with_override", mock_override)
+
+        mock_dialog_cls = MagicMock()
+        mock_dialog_inst = MagicMock()
+        mock_dialog_cls.return_value = mock_dialog_inst
+        monkeypatch.setattr("cbpos.ui.dialogs.price_board_dialog.PriceBoardDialog", mock_dialog_cls)
+
+        sales_view = MagicMock(spec=SalesView)
+        sales_view.side_menu = MagicMock()
+        sales_view.side_menu.isVisible.return_value = False
+
+        SalesView.open_price_board(sales_view)
+
+        mock_override.assert_called_once_with(Permissions.PRICING_MANAGE, sales_view)
+        mock_dialog_cls.assert_called_once_with(acting_user_id=42, parent=sales_view)
+        mock_dialog_inst.exec.assert_called_once()

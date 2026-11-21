@@ -267,10 +267,8 @@ class Purchase(Document):
     )  # VAT paid to supplier, from their invoice -- deductible against Output VAT
     purchase_order_id: Mapped[int | None] = mapped_column(ForeignKey("purchase_orders.id"), nullable=True)
 
-    supplier: Mapped["Supplier"] = relationship(back_populates="purchases", lazy="joined")
-    items: Mapped[list["PurchaseItem"]] = relationship(
-        back_populates="purchase", cascade="all, delete-orphan", lazy="joined"
-    )
+    supplier: Mapped["Supplier"] = relationship(back_populates="purchases")
+    items: Mapped[list["PurchaseItem"]] = relationship(back_populates="purchase", cascade="all, delete-orphan")
     purchase_order: Mapped["PurchaseOrder | None"] = relationship(foreign_keys=[purchase_order_id])
 
     __mapper_args__ = {
@@ -415,7 +413,9 @@ class Product(Base):
     parent_id: Mapped[int | None] = mapped_column(ForeignKey("products.id"), nullable=True)
     default_supplier_id: Mapped[int | None] = mapped_column(ForeignKey("suppliers.id"), nullable=True)
     unit_id: Mapped[int | None] = mapped_column(ForeignKey("units.id"), nullable=True)
-    purchase_unit_id: Mapped[int | None] = mapped_column(ForeignKey("units.id"), nullable=True)
+    purchase_unit_id: Mapped[int | None] = mapped_column(
+        ForeignKey("units.id", name="fk_products_purchase_unit_id"), nullable=True
+    )
     purchase_factor: Mapped[Decimal] = mapped_column(
         Numeric(10, 3), default=Decimal("1.000"), server_default="1.000", nullable=False
     )
@@ -640,7 +640,9 @@ class PurchaseItem(Base):
     qty_received: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
     unit_cost: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     purchase_order_item_id: Mapped[int | None] = mapped_column(ForeignKey("purchase_order_items.id"), nullable=True)
-    purchase_unit_id: Mapped[int | None] = mapped_column(ForeignKey("units.id"), nullable=True)
+    purchase_unit_id: Mapped[int | None] = mapped_column(
+        ForeignKey("units.id", name="fk_purchase_items_purchase_unit_id"), nullable=True
+    )
     purchase_factor: Mapped[Decimal] = mapped_column(
         Numeric(10, 3), default=Decimal("1.000"), server_default="1.000", nullable=False
     )

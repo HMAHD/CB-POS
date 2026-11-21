@@ -34,6 +34,7 @@ from cbpos.core.constants.features import Features
 from cbpos.core.constants.permissions import Permissions
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.feature_flags import feature_visible
+from cbpos.core.services.inventory_service import InventoryService
 from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.purchase_order_service import PurchaseOrderService
 from cbpos.core.services.purchase_service import GrnLine, GrnRequest, PurchaseService
@@ -891,7 +892,7 @@ class PurchaseView(QWidget, Activatable):
             return
 
         # Fetch fresh product to avoid stale cached attributes
-        fresh_product = ProductService.get_product_by_id(product.id)
+        fresh_product = InventoryService().get_product(product.id)
         if fresh_product:
             product = fresh_product
             self.products_cache[query] = product

@@ -78,7 +78,11 @@ def downgrade() -> None:
                 batch_op.drop_column("purchase_factor")
             if "purchase_unit_id" in existing_cols:
                 if conn.dialect.name != "sqlite":
-                    batch_op.drop_constraint("fk_purchase_items_purchase_unit_id", type_="foreignkey")
+                    for fk in insp.get_foreign_keys("purchase_items"):
+                        if "purchase_unit_id" in fk.get("constrained_columns", []):
+                            fk_name = fk.get("name")
+                            if fk_name:
+                                batch_op.drop_constraint(fk_name, type_="foreignkey")
                 batch_op.drop_column("purchase_unit_id")
 
     if "products" in existing_tables:
@@ -89,5 +93,9 @@ def downgrade() -> None:
                 batch_op.drop_column("purchase_factor")
             if "purchase_unit_id" in existing_cols:
                 if conn.dialect.name != "sqlite":
-                    batch_op.drop_constraint("fk_products_purchase_unit_id", type_="foreignkey")
+                    for fk in insp.get_foreign_keys("products"):
+                        if "purchase_unit_id" in fk.get("constrained_columns", []):
+                            fk_name = fk.get("name")
+                            if fk_name:
+                                batch_op.drop_constraint(fk_name, type_="foreignkey")
                 batch_op.drop_column("purchase_unit_id")

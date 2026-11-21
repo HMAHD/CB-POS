@@ -3496,6 +3496,39 @@ QTableWidget#LabelQueueTable::item:focus {
     padding-bottom: 0px;
 }
 
+/* ── Price Board Dialog (#931) ── */
+QDialog#PriceBoardDialog {
+    background-color: {{SURFACE_0}};
+}
+
+QTableWidget#PriceBoardTable {
+    font-size: 14px;
+}
+
+QTableWidget#PriceBoardTable::item {
+    padding: 8px;
+}
+
+QTableWidget#PriceBoardTable::item:focus {
+    padding-top: 0px;
+    padding-bottom: 0px;
+}
+
+QLineEdit#PriceBoardSearch {
+    min-height: 40px;
+    font-size: 14px;
+}
+
+QLineEdit#PriceBoardPriceEditor {
+    font-size: 14px;
+    font-weight: bold;
+    color: {{ACCENT}};
+    background-color: {{SURFACE_1}};
+    border: 1px solid {{ACCENT}};
+    border-radius: 4px;
+    padding: 2px 6px;
+}
+
 /* ── Label Preview Dialog ── */
 QDialog#LabelPreviewDialog {
     background-color: {{SURFACE_2}};

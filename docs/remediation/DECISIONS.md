@@ -126,14 +126,15 @@ The owner explicitly authorized internal development of Phase 10A (Packaging and
 3. A fresh database with no applied preset remains OFF.
 4. Upgraded/existing shops: do not reapply a whole preset because that could overwrite customized flags. If a shop already has configured feature flags, the migration / compatibility path safely ensures `power_cut_autosave` is enabled without resetting any user-configured flags.
 
+## 2026-11-21
 
+**D39 — 2026-11-21 — #931 — Phase 10B.2 Price Board scope, keyboard shortcut, and actions.**
+1. Internal/test-only implementation now; validation with 5–10 real shops remains mandatory before public release.
+2. F11 opens Price Board from Sales.
+3. Actions: Save and Save & Print Labels.
 
-
-
-
-
-
-
+**D40 — 2026-11-21 — #931 — Price Board language resolution.**
+Price Board is an operator-facing management dialog, so product names follow the current UI language (`get_language()`) with fallback to English, not customer-facing receipt language. An English UI displays English product names even when `receipt_language` is configured as Sinhala or Tamil.
 
 
 

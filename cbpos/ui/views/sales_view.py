@@ -640,6 +640,10 @@ class SalesView(QWidget):
         self.shortcut_f10 = QShortcut(QKeySequence("F10"), self)
         self.shortcut_f10.activated.connect(self.process_payment)
 
+        # F11 — Price Board (#931)
+        self.shortcut_f11 = QShortcut(QKeySequence("F11"), self)
+        self.shortcut_f11.activated.connect(self.open_price_board)
+
         # F12 — Quick Pay (cash)
         self.shortcut_f12 = QShortcut(QKeySequence("F12"), self)
         self.shortcut_f12.activated.connect(self.quick_pay)
@@ -2269,6 +2273,31 @@ class SalesView(QWidget):
             self.toggle_side_menu()
         initial = query if isinstance(query, str) else ""
         dialog = WarrantyLookupDialog(initial_query=initial, parent=self)
+        dialog.exec()
+        self.side_menu.clear_active()
+        self._focus_search()
+
+    def open_price_board(self) -> None:
+        """Open the Price Board dialog (F11) if the feature is enabled and catalog is writable (#931)."""
+        from cbpos.core.constants.features import Features
+        from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.services.feature_flags import feature_visible
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.core.utils.terminal_guard import catalog_is_read_only
+
+        if not feature_visible(Features.PRICE_BOARD) or catalog_is_read_only():
+            return
+
+        if self.side_menu.isVisible():
+            self.toggle_side_menu()
+
+        authorized_user = check_permission_with_override(Permissions.PRICING_MANAGE, self)
+        if not authorized_user:
+            return
+
+        from cbpos.ui.dialogs.price_board_dialog import PriceBoardDialog
+
+        dialog = PriceBoardDialog(acting_user_id=authorized_user.id, parent=self)
         dialog.exec()
         self.side_menu.clear_active()
         self._focus_search()

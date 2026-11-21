@@ -17,7 +17,11 @@ class ShortcutsHelpDialog(QDialog):
 
     @staticmethod
     def _get_shortcuts():
-        return [
+        from cbpos.core.constants.features import Features
+        from cbpos.core.services.feature_flags import feature_visible
+        from cbpos.core.utils.terminal_guard import catalog_is_read_only
+
+        shortcuts = [
             ("F1", _t("shortcuts.help_screen")),
             ("F2", _t("shortcuts.select_customer")),
             ("F3", _t("shortcuts.advanced_search")),
@@ -28,17 +32,24 @@ class ShortcutsHelpDialog(QDialog):
             ("F8", _t("shortcuts.open_drawer")),
             ("F9", _t("shortcuts.warranty_check")),
             ("F10", _t("shortcuts.process_payment")),
-            ("F12", _t("shortcuts.quick_close")),
-            ("Ctrl+B", _t("shortcuts.bill_discount")),
-            ("Ctrl+D", _t("shortcuts.open_drawer")),
-            ("Ctrl+Z", _t("shortcuts.undo_remove")),
-            ("Ctrl+Alt+C", _t("shortcuts.calculator")),
-            ("PgUp", _t("shortcuts.first_cart_item")),
-            ("PgDn", _t("shortcuts.last_cart_item")),
-            ("Enter", _t("shortcuts.add_product")),
-            ("Delete", _t("shortcuts.void_bill")),
-            ("Esc", _t("shortcuts.close_cancel")),
         ]
+        if feature_visible(Features.PRICE_BOARD) and not catalog_is_read_only():
+            shortcuts.append(("F11", _t("shortcuts.price_board")))
+        shortcuts.extend(
+            [
+                ("F12", _t("shortcuts.quick_close")),
+                ("Ctrl+B", _t("shortcuts.bill_discount")),
+                ("Ctrl+D", _t("shortcuts.open_drawer")),
+                ("Ctrl+Z", _t("shortcuts.undo_remove")),
+                ("Ctrl+Alt+C", _t("shortcuts.calculator")),
+                ("PgUp", _t("shortcuts.first_cart_item")),
+                ("PgDn", _t("shortcuts.last_cart_item")),
+                ("Enter", _t("shortcuts.add_product")),
+                ("Delete", _t("shortcuts.void_bill")),
+                ("Esc", _t("shortcuts.close_cancel")),
+            ]
+        )
+        return shortcuts
 
     def __init__(self, parent=None):
         """Build the dialog listing the Sales view's keyboard shortcuts."""

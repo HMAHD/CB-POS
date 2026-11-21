@@ -363,7 +363,22 @@ class ProductEditor(QDialog):
         row_price_change.addWidget(self.price_change_hint, 1, Qt.AlignmentFlag.AlignVCenter)
         type_layout.addLayout(row_price_change)
 
-        # 4. Age restricted
+        # 4. Price changes often (#931)
+        row_price_changes_often = QHBoxLayout()
+        row_price_changes_often.setSpacing(0)
+        self.price_changes_often_check = QCheckBox(_t("product_editor.price_changes_often"))
+        self.price_changes_often_check.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        self.price_changes_often_check.setChecked(False)
+        row_price_changes_often.addWidget(self.price_changes_often_check, 0, Qt.AlignmentFlag.AlignVCenter)
+        row_price_changes_often.addSpacing(20)
+        self.price_changes_often_hint = QLabel(_t("product_editor.price_changes_often_hint"))
+        self.price_changes_often_hint.setObjectName("ToggleHint")
+        self.price_changes_often_hint.setWordWrap(True)
+        self.price_changes_often_hint.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        row_price_changes_often.addWidget(self.price_changes_often_hint, 1, Qt.AlignmentFlag.AlignVCenter)
+        type_layout.addLayout(row_price_changes_often)
+
+        # 5. Age restricted
         row_age_restricted = QHBoxLayout()
         row_age_restricted.setSpacing(0)
         self.age_restricted_check = QCheckBox(_t("product_editor.age_restricted"))
@@ -826,6 +841,7 @@ class ProductEditor(QDialog):
         self.weighted_check.setChecked(bool(self.product.is_weighted))
         self.service_check.setChecked(bool(self.product.is_service))
         self.price_change_allowed_check.setChecked(bool(self.product.price_change_allowed))
+        self.price_changes_often_check.setChecked(bool(getattr(self.product, "price_changes_often", False)))
         self.age_restricted_check.setChecked(bool(self.product.is_age_restricted))
 
         # Load unit
@@ -929,6 +945,7 @@ class ProductEditor(QDialog):
             "is_weighted": self.weighted_check.isChecked(),
             "is_service": self.service_check.isChecked(),
             "price_change_allowed": self.price_change_allowed_check.isChecked(),
+            "price_changes_often": self.price_changes_often_check.isChecked(),
             "is_age_restricted": self.age_restricted_check.isChecked(),
             "image_path": self.current_image_path,
             "is_active": True,

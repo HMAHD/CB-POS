@@ -30,6 +30,7 @@ FEATURE_ORDER = [
     Features.SERIAL_TRACKING,
     Features.CHEQUES,
     Features.POWER_CUT_AUTOSAVE,
+    Features.PRICE_BOARD,
 ]
 
 

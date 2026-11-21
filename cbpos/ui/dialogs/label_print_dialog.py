@@ -91,8 +91,9 @@ class _QtyDelegate(QStyledItemDelegate):
 class LabelPrintDialog(QDialog):
     """Dialog to search products, configure label layout, preview live, and print barcode labels."""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, preselected_product_ids: list[int] | None = None):
         super().__init__(parent)
+        self._preselected_product_ids = set(preselected_product_ids or [])
         self.setWindowTitle(_t("label_print.title"))
         self.setObjectName("LabelPrintDialog")
         self.setMinimumSize(920, 600)
@@ -391,14 +392,28 @@ class LabelPrintDialog(QDialog):
     def _on_products_loaded(self, products: list[Any]) -> None:
         """Populate product completer and cache from loaded products."""
         names: list[str] = []
+        existing_ids = {
+            getattr(p, "id", None)
+            for item in self.label_items
+            if (p := item.get("product")) is not None and getattr(p, "id", None) is not None
+        }
+        added_preselected = False
+
         for p in products:
             key = f"{p.name_en} [{p.barcode}]"
             names.append(key)
             self.products_cache[key] = p
             self.products_cache[p.barcode] = p
+            p_id = getattr(p, "id", None)
+            if p_id in self._preselected_product_ids and p_id not in existing_ids:
+                self.label_items.append({"product": p, "quantity": 1})
+                existing_ids.add(p_id)
+                added_preselected = True
 
         model = QStringListModel(names)
         self.product_completer.setModel(model)
+        if added_preselected:
+            self._refresh_table()
 
     def _on_completer_activated(self, text: str) -> None:
         self._completer_activated = True

@@ -169,3 +169,33 @@ class TestProductEditorIssue862UI:
 
         assert len(warnings) == 1
         assert len(accepted) == 0
+
+    def test_price_changes_often_checkbox_load_and_save(self, db_session, monkeypatch):
+        """#931: ProductEditor loads and persists price_changes_often flag."""
+        product = Product(
+            barcode="PE-FLAG-1",
+            name_en="Daily Vegetable",
+            price=Decimal("120.00"),
+            cost=Decimal("90.00"),
+            price_changes_often=True,
+        )
+        db_session.add(product)
+        db_session.commit()
+
+        # 1. Loading product with flag True checks the checkbox
+        dialog = ProductEditor(product=product)
+        assert dialog.price_changes_often_check.isChecked() is True
+
+        # 2. Saving new product with flag checked persists to DB
+        new_dialog = ProductEditor()
+        monkeypatch.setattr(new_dialog, "accept", lambda: None)
+        new_dialog.name_en_input.setText("Daily Fresh Item")
+        new_dialog.barcode_input.setText("PE-FLAG-2")
+        new_dialog.price_input.setText("150.00")
+        new_dialog.cost_input.setText("100.00")
+        new_dialog.price_changes_often_check.setChecked(True)
+        new_dialog.save_product()
+
+        saved = db_session.query(Product).filter_by(barcode="PE-FLAG-2").first()
+        assert saved is not None
+        assert saved.price_changes_often is True

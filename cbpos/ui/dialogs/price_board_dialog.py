@@ -507,7 +507,7 @@ class PriceBoardDialog(QDialog):
             return
 
         self._set_saving(True)
-        worker = PriceBoardSaveWorker(updates, self.acting_user_id, self.service)
+        worker = PriceBoardSaveWorker(actual_changes, self.acting_user_id, self.service)
         worker.saved.connect(self._on_save_success)
         worker.error.connect(self._on_save_error)
         start_background_job(worker)

@@ -229,3 +229,35 @@ class TestPriceBoardService:
         assert "250" in audit.details
         assert "280" in audit.details
         assert "VEG001" in audit.details
+
+    def test_batch_update_prices_commit_time_stale_data_error_translated_and_rolled_back(
+        self, db_session, sample_products, test_users
+    ):
+        """SQLAlchemy StaleDataError during commit is translated to StaleProductError and rolled back."""
+        from sqlalchemy import event, text
+        from sqlalchemy.orm import Session
+
+        svc = PriceBoardService()
+        updates = [
+            {"product_id": sample_products["p1_id"], "expected_version_id": 1, "new_price": Decimal("290.00")},
+        ]
+        p1_id = sample_products["p1_id"]
+
+        # Simulate concurrent transaction incrementing version_id between pre-check and SQL flush
+        def bump_version_during_flush(session, flush_context, instances):
+            session.connection().execute(text(f"UPDATE products SET version_id = 99 WHERE id = {p1_id}"))
+
+        event.listen(Session, "before_flush", bump_version_during_flush, once=True)
+
+        with pytest.raises(StaleProductError) as exc_info:
+            svc.batch_update_prices(updates, acting_user_id=test_users["admin_id"])
+
+        assert "modified by another" in str(exc_info.value)
+
+        db_session.rollback()
+        p1 = db_session.get(Product, p1_id)
+        assert p1.price == Decimal("250.00")  # Price not updated
+
+        # Prove no audit logs were written
+        audits = db_session.query(AuditLog).filter(AuditLog.action == "PRICE_CHANGE").all()
+        assert len(audits) == 0

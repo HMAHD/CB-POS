@@ -243,6 +243,114 @@ class TestPriceBoardDialogUI:
                 parent=dialog.parent(), preselected_product_ids=[flagged_products[0].id]
             )
 
+    def test_unchanged_row_stale_does_not_block_changed_row_save(
+        self, qtbot, test_admin_user, flagged_products, db_session
+    ):
+        """Only actually changed rows are sent to save worker; unchanged stale rows do not reject the save."""
+        dialog = PriceBoardDialog(acting_user_id=test_admin_user.id)
+        qtbot.addWidget(dialog)
+
+        items = [
+            PriceBoardItem(
+                id=flagged_products[0].id,
+                barcode="VEG101",
+                name_en="Cabbage 1kg",
+                name_si="ගෝවා 1kg",
+                name_ta="கோஸ் 1kg",
+                current_price=Decimal("180.00"),
+                version_id=1,
+            ),
+            PriceBoardItem(
+                id=flagged_products[1].id,
+                barcode="VEG102",
+                name_en="Leeks 1kg",
+                name_si="ලීක්ස් 1kg",
+                name_ta="லீக்ஸ் 1kg",
+                current_price=Decimal("220.00"),
+                version_id=1,
+            ),
+        ]
+        dialog._on_data_loaded(items)
+
+        # 1. User updates row 0 (Cabbage) from 180.00 -> 210.00
+        dialog.table.item(0, 3).setData(Qt.ItemDataRole.UserRole, Decimal("210.00"))
+        dialog._on_cell_changed(0, 3)
+
+        # 2. Row 1 (Leeks) is left unchanged at 220.00.
+        # Meanwhile, in the DB, Leeks' version_id is bumped to 2 (e.g. stock movement or edit)
+        p2 = db_session.get(Product, flagged_products[1].id)
+        p2.version_id = 2
+        db_session.commit()
+
+        # 3. User saves. If unchanged rows are submitted, Leeks (expected version 1 != DB version 2) would fail.
+        dialog._execute_save()
+
+        # 4. Prove Cabbage was successfully updated to 210.00, and Leeks was unchanged
+        p1 = db_session.get(Product, flagged_products[0].id)
+        assert p1.price == Decimal("210.00")
+        assert p1.version_id == 2
+        p2 = db_session.get(Product, flagged_products[1].id)
+        assert p2.price == Decimal("220.00")
+
+    def test_price_board_uses_receipt_language_product_name(
+        self, qtbot, test_admin_user, flagged_products, monkeypatch
+    ):
+        """Board resolves product names using receipt_language -> UI lang -> English fallback."""
+        from cbpos.core.services.config_service import ConfigService
+        from cbpos.i18n import set_language
+
+        # 1. UI language is English, receipt language is Sinhala
+        set_language("en")
+        monkeypatch.setattr(ConfigService, "get", lambda k: "si" if k == "receipt_language" else None)
+
+        item1 = PriceBoardItem(
+            id=flagged_products[0].id,
+            barcode="VEG101",
+            name_en="Cabbage 1kg",
+            name_si="ගෝවා 1kg",
+            name_ta="கோஸ் 1kg",
+            current_price=Decimal("180.00"),
+            version_id=1,
+        )
+        # item2 has no Sinhala name
+        item2 = PriceBoardItem(
+            id=flagged_products[1].id,
+            barcode="VEG102",
+            name_en="Leeks 1kg",
+            name_si=None,
+            name_ta="லீக்ஸ் 1kg",
+            current_price=Decimal("220.00"),
+            version_id=1,
+        )
+
+        dialog = PriceBoardDialog(acting_user_id=test_admin_user.id)
+        qtbot.addWidget(dialog)
+        dialog._on_data_loaded([item1, item2])
+
+        # Col 0 of row 0 must show Sinhala name
+        assert dialog.table.item(0, 0).text() == "ගෝවා 1kg"
+        # Col 0 of row 1 must fall back to English
+        assert dialog.table.item(1, 0).text() == "Leeks 1kg"
+
+        # Search by Sinhala name matches row 0
+        dialog.search_input.setText("ගෝවා")
+        assert dialog.table.isRowHidden(0) is False
+        assert dialog.table.isRowHidden(1) is True
+
+        # Validation error feedback uses the resolved receipt-language name
+        dialog.search_input.clear()
+        dialog.table.item(0, 3).setData(Qt.ItemDataRole.UserRole, Decimal("-5.00"))
+        warning_messages = []
+        monkeypatch.setattr(QMessageBox, "warning", lambda p, t, msg: warning_messages.append(msg))
+        dialog._collect_updates()
+        assert len(warning_messages) == 1
+        assert "ගෝවා 1kg" in warning_messages[0]
+
+        # 2. Switch receipt language to Tamil
+        monkeypatch.setattr(ConfigService, "get", lambda k: "ta" if k == "receipt_language" else None)
+        assert item1.get_display_name() == "கோஸ் 1kg"
+        assert item2.get_display_name() == "லீக்ஸ் 1kg"
+
 
 @pytest.mark.ui
 class TestSalesViewPriceBoardShortcut:

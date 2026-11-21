@@ -8,6 +8,7 @@ from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm.exc import StaleDataError
 
 from cbpos.core.constants.permissions import Permissions
 from cbpos.core.database import Database
@@ -43,19 +44,45 @@ class PriceBoardItem:
         self.version_id = version_id
 
     def get_display_name(self, lang: str | None = None) -> str:
-        """Return localized product name with English fallback."""
-        if lang is None:
+        """Return localized product name with receipt_language -> UI lang -> English fallback."""
+        candidates = []
+        if lang is not None:
+            candidates.append(lang)
+        else:
+            try:
+                receipt_lang = ConfigService.get("receipt_language")
+                if receipt_lang:
+                    candidates.append(receipt_lang)
+            except Exception:
+                pass
+
             try:
                 from cbpos.i18n import get_language
 
-                lang = get_language()
+                ui_lang = get_language()
+                if ui_lang:
+                    candidates.append(ui_lang)
             except Exception:
-                lang = "en"
-        if lang == "si" and self.name_si:
-            return self.name_si
-        if lang == "ta" and self.name_ta:
-            return self.name_ta
-        return self.name_en or ""
+                pass
+
+        candidates.append("en")
+
+        for c in candidates:
+            c_clean = (c or "").strip().lower()
+            if c_clean == "si":
+                val = (self.name_si or "").strip()
+                if val:
+                    return val
+            elif c_clean == "ta":
+                val = (self.name_ta or "").strip()
+                if val:
+                    return val
+            elif c_clean == "en":
+                val = (self.name_en or "").strip()
+                if val:
+                    return val
+
+        return (self.name_en or "").strip() or (self.name_si or "").strip() or (self.name_ta or "").strip() or ""
 
     def to_dict(self) -> dict[str, Any]:
         """Convert item attributes to dictionary."""
@@ -156,65 +183,72 @@ class PriceBoardService:
         effective_terminal_id = terminal_id or ConfigService.get("terminal_id") or "TERM-01"
 
         with self.db.get_session() as session:
-            # 1. Check user permission
-            user = session.get(
-                User,
-                acting_user_id,
-                options=[joinedload(User.role).joinedload(Role.permissions)],
-            )
-            if not user or not PermissionService.user_has_permission(user, Permissions.PRICING_MANAGE):
-                raise PermissionError(f"Permission denied: {Permissions.PRICING_MANAGE} required")
-
-            # 2. Fetch all products and validate optimistic lock BEFORE applying any change
-            product_ids = [p_id for p_id, _, _ in parsed_updates]
-            stmt = select(Product).where(Product.id.in_(product_ids))
-            products_by_id = {p.id: p for p in session.scalars(stmt).all()}
-
-            for prod_id, expected_version, _ in parsed_updates:
-                product = products_by_id.get(prod_id)
-                if not product or not product.is_active:
-                    raise ValueError(f"Product {prod_id} not found or inactive")
-                if product.version_id != expected_version:
-                    raise StaleProductError(
-                        f"Product '{product.name_en}' was modified by another user. Please reload and try again."
-                    )
-
-            # 3. Apply changes and record audit logs
-            changed_product_ids: list[int] = []
-            now = datetime.now()
-
-            for prod_id, _, new_price in parsed_updates:
-                product = products_by_id[prod_id]
-                old_price = product.price
-
-                if old_price == new_price:
-                    continue  # No actual change, skip mutation & audit
-
-                product.price = new_price
-                product.last_modified = now
-
-                audit_details = {
-                    "subject": product.name_en,
-                    "product_id": product.id,
-                    "barcode": product.barcode,
-                    "changes": {
-                        "price": {
-                            "old": str(old_price),
-                            "new": str(new_price),
-                        }
-                    },
-                }
-
-                audit = AuditLog(
-                    user_id=acting_user_id,
-                    action="PRICE_CHANGE",
-                    event_type="INVENTORY",
-                    terminal_id=effective_terminal_id,
-                    details=json.dumps(audit_details, ensure_ascii=False),
+            try:
+                # 1. Check user permission
+                user = session.get(
+                    User,
+                    acting_user_id,
+                    options=[joinedload(User.role).joinedload(Role.permissions)],
                 )
-                session.add(audit)
-                changed_product_ids.append(product.id)
+                if not user or not PermissionService.user_has_permission(user, Permissions.PRICING_MANAGE):
+                    raise PermissionError(f"Permission denied: {Permissions.PRICING_MANAGE} required")
 
-            # 4. Commit transaction
-            session.commit()
-            return changed_product_ids
+                # 2. Fetch all products and validate optimistic lock BEFORE applying any change
+                product_ids = [p_id for p_id, _, _ in parsed_updates]
+                stmt = select(Product).where(Product.id.in_(product_ids))
+                products_by_id = {p.id: p for p in session.scalars(stmt).all()}
+
+                for prod_id, expected_version, _ in parsed_updates:
+                    product = products_by_id.get(prod_id)
+                    if not product or not product.is_active:
+                        raise ValueError(f"Product {prod_id} not found or inactive")
+                    if product.version_id != expected_version:
+                        raise StaleProductError(
+                            f"Product '{product.name_en}' was modified by another user. Please reload and try again."
+                        )
+
+                # 3. Apply changes and record audit logs
+                changed_product_ids: list[int] = []
+                now = datetime.now()
+
+                for prod_id, _, new_price in parsed_updates:
+                    product = products_by_id[prod_id]
+                    old_price = product.price
+
+                    if old_price == new_price:
+                        continue  # No actual change, skip mutation & audit
+
+                    product.price = new_price
+                    product.last_modified = now
+
+                    audit_details = {
+                        "subject": product.name_en,
+                        "product_id": product.id,
+                        "barcode": product.barcode,
+                        "changes": {
+                            "price": {
+                                "old": str(old_price),
+                                "new": str(new_price),
+                            }
+                        },
+                    }
+
+                    audit = AuditLog(
+                        user_id=acting_user_id,
+                        action="PRICE_CHANGE",
+                        event_type="INVENTORY",
+                        terminal_id=effective_terminal_id,
+                        details=json.dumps(audit_details, ensure_ascii=False),
+                    )
+                    session.add(audit)
+                    changed_product_ids.append(product.id)
+
+                # 4. Commit transaction
+                session.commit()
+                return changed_product_ids
+            except StaleDataError as e:
+                session.rollback()
+                logger.warning("Commit-time concurrency conflict on product update: %s", e)
+                raise StaleProductError(
+                    "One or more products were modified by another transaction. Please reload and try again."
+                ) from e

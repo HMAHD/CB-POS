@@ -101,6 +101,54 @@ def format_discrepancy_line(discrepancy: dict) -> str:
     )
 
 
+def _product_has_conversion(product) -> bool:
+    """Return True if product has a valid purchase unit ID and positive purchase factor."""
+    if not product:
+        return False
+    p_unit_id = getattr(product, "purchase_unit_id", None)
+    if not isinstance(p_unit_id, int):
+        return False
+    p_factor = getattr(product, "purchase_factor", None)
+    if not isinstance(p_factor, (Decimal, int, float)):
+        return False
+    return p_factor > 0
+
+
+def _get_product_purchase_factor(product) -> Decimal:
+    """Return the authoritative positive Decimal purchase factor, defaulting to 1.000."""
+    if not product:
+        return Decimal("1.000")
+    p_factor = getattr(product, "purchase_factor", None)
+    if isinstance(p_factor, Decimal) and p_factor > Decimal("0"):
+        return p_factor
+    if isinstance(p_factor, (int, float)) and p_factor > 0:
+        return Decimal(str(p_factor))
+    return Decimal("1.000")
+
+
+def _get_product_purchase_unit_name(product) -> str:
+    """Return the display name of product's purchase unit, or base unit, or '-'."""
+    if not product:
+        return "-"
+    p_unit = getattr(product, "purchase_unit", None)
+    if p_unit and hasattr(p_unit, "name") and isinstance(p_unit.name, str):
+        return p_unit.name
+    unit = getattr(product, "unit", None)
+    if unit and hasattr(unit, "name") and isinstance(unit.name, str):
+        return unit.name
+    return "-"
+
+
+def _get_product_base_unit_name(product) -> str:
+    """Return the display name of product's base unit, or ''."""
+    if not product:
+        return ""
+    unit = getattr(product, "unit", None)
+    if unit and hasattr(unit, "name") and isinstance(unit.name, str):
+        return unit.name
+    return ""
+
+
 class SupplierTableModel(QAbstractTableModel):
     """Table model for the supplier list table."""
 
@@ -899,14 +947,12 @@ class PurchaseView(QWidget, Activatable):
 
         # Add to grid
         qty = Decimal("1.000")
-        if (
-            getattr(self, "_is_unit_conv", False)
-            and getattr(product, "purchase_unit_id", None)
-            and (product.purchase_factor or Decimal("1.000")) > Decimal("0")
-        ):
-            cost = round_money(product.cost * product.purchase_factor)
+        base_cost = product.cost if getattr(product, "cost", None) is not None else Decimal("0.00")
+        if getattr(self, "_is_unit_conv", False) and _product_has_conversion(product):
+            factor = _get_product_purchase_factor(product)
+            cost = round_money(base_cost * factor)
         else:
-            cost = product.cost  # Default to current cost
+            cost = base_cost  # Default to current cost
 
         self._add_grn_row(product, qty, cost)
         self.product_search.clear()
@@ -915,45 +961,36 @@ class PurchaseView(QWidget, Activatable):
     def _add_grn_row(self, product, qty: Decimal, cost: Decimal, mode: str = "AUTO") -> None:
         """Append one line item to the GRN grid and the underlying grn_items list."""
         is_conv = getattr(self, "_is_unit_conv", False)
-        has_prod_conv = bool(
-            getattr(product, "purchase_unit_id", None) and (product.purchase_factor or Decimal("1.000")) > Decimal("0")
-        )
+        has_prod_conv = is_conv and _product_has_conversion(product)
 
         resolved_mode = mode
         if resolved_mode == "AUTO":
-            resolved_mode = "PURCHASE" if (is_conv and has_prod_conv) else "BASE"
+            resolved_mode = "PURCHASE" if has_prod_conv else "BASE"
 
         self.grn_items.append({"product": product, "qty": qty, "cost": cost, "mode": resolved_mode})
 
         row = self.grn_model.rowCount()
         self.grn_model.insertRow(row)
 
-        id_item = QStandardItem(str(product.id))
+        id_item = QStandardItem(str(getattr(product, "id", "")))
         id_item.setFlags(id_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
         self.grn_model.setItem(row, 0, id_item)
 
-        name_item = QStandardItem(product.name_en)
+        name_str = str(getattr(product, "name_en", "") or "")
+        name_item = QStandardItem(name_str)
         name_item.setFlags(name_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
         self.grn_model.setItem(row, 1, name_item)
 
         if is_conv:
             if resolved_mode == "PURCHASE":
-                factor = (
-                    product.purchase_factor
-                    if (getattr(product, "purchase_factor", None) and product.purchase_factor > Decimal("0"))
-                    else Decimal("1.000")
-                )
-                p_unit_name = (
-                    product.purchase_unit.name
-                    if getattr(product, "purchase_unit", None)
-                    else (product.unit.name if getattr(product, "unit", None) else "-")
-                )
-                b_unit_name = product.unit.name if getattr(product, "unit", None) else ""
+                factor = _get_product_purchase_factor(product)
+                p_unit_name = _get_product_purchase_unit_name(product)
+                b_unit_name = _get_product_base_unit_name(product)
                 base_qty = round_quantity(qty * factor)
             else:
                 factor = Decimal("1.000")
-                p_unit_name = product.unit.name if getattr(product, "unit", None) else "-"
-                b_unit_name = product.unit.name if getattr(product, "unit", None) else ""
+                p_unit_name = _get_product_base_unit_name(product) or "-"
+                b_unit_name = _get_product_base_unit_name(product)
                 base_qty = round_quantity(qty)
 
             # col 2: purchase/entered qty (editable)
@@ -1026,17 +1063,10 @@ class PurchaseView(QWidget, Activatable):
                             tot_item.setText(format(round_money(qty * cost), ".2f"))
                         if is_conv and product:
                             if item_mode == "PURCHASE":
-                                factor = (
-                                    product.purchase_factor
-                                    if (
-                                        getattr(product, "purchase_factor", None)
-                                        and product.purchase_factor > Decimal("0")
-                                    )
-                                    else Decimal("1.000")
-                                )
+                                factor = _get_product_purchase_factor(product)
                             else:
                                 factor = Decimal("1.000")
-                            b_unit_name = product.unit.name if getattr(product, "unit", None) else ""
+                            b_unit_name = _get_product_base_unit_name(product)
                             base_qty = round_quantity(qty * factor)
                             base_item = self.grn_model.item(row, 4)
                             if base_item:
@@ -1110,12 +1140,8 @@ class PurchaseView(QWidget, Activatable):
             if not product:
                 continue
             qty = item["order_qty"] if item["order_qty"] > 0 else Decimal("1.000")
-            if (
-                getattr(self, "_is_unit_conv", False)
-                and getattr(product, "purchase_unit_id", None)
-                and (product.purchase_factor or Decimal("1.000")) > Decimal("0")
-            ):
-                factor = product.purchase_factor or Decimal("1.000")
+            if getattr(self, "_is_unit_conv", False) and _product_has_conversion(product):
+                factor = _get_product_purchase_factor(product)
                 candidate_p_qty = round_quantity(qty / factor)
                 if candidate_p_qty > Decimal("0") and round_quantity(candidate_p_qty * factor) == qty:
                     p_cost = round_money((product.cost or Decimal("0.00")) * factor)
@@ -1159,12 +1185,8 @@ class PurchaseView(QWidget, Activatable):
             outstanding = item.qty_ordered - item.qty_received
             if outstanding <= 0:
                 continue
-            if (
-                getattr(self, "_is_unit_conv", False)
-                and getattr(item.product, "purchase_unit_id", None)
-                and (item.product.purchase_factor or Decimal("1.000")) > Decimal("0")
-            ):
-                factor = item.product.purchase_factor or Decimal("1.000")
+            if getattr(self, "_is_unit_conv", False) and _product_has_conversion(item.product):
+                factor = _get_product_purchase_factor(item.product)
                 candidate_p_qty = round_quantity(outstanding / factor)
                 base_cost = item.product.cost if item.product.cost is not None else Decimal("0.00")
                 if candidate_p_qty > Decimal("0") and round_quantity(candidate_p_qty * factor) == outstanding:
@@ -1244,16 +1266,10 @@ class PurchaseView(QWidget, Activatable):
                 item_mode = self.grn_items[i].get("mode", "AUTO") if i < len(self.grn_items) else "AUTO"
 
                 if is_conv and item_mode == "PURCHASE":
-                    factor = (
-                        product.purchase_factor
-                        if (
-                            product
-                            and getattr(product, "purchase_factor", None)
-                            and product.purchase_factor > Decimal("0")
-                        )
-                        else Decimal("1.000")
-                    )
+                    factor = _get_product_purchase_factor(product)
                     p_unit_id = getattr(product, "purchase_unit_id", None) if product else None
+                    if not isinstance(p_unit_id, int):
+                        p_unit_id = None
                     base_qty = round_quantity(qty * factor)
                     line_mode = "PURCHASE"
                 else:

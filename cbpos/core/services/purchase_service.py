@@ -122,13 +122,16 @@ class PurchaseService:
                     if line.expected_unit_conversion_on != is_unit_conv_on:
                         raise ValueError("stale_conversion_configuration: feature toggle changed during GRN entry")
 
-                has_product_conversion = bool(
-                    product.purchase_unit_id and (product.purchase_factor or Decimal("1.000")) > Decimal("0")
-                )
                 authoritative_factor = (
                     product.purchase_factor
-                    if (product.purchase_factor and product.purchase_factor > Decimal("0"))
+                    if (
+                        isinstance(getattr(product, "purchase_factor", None), (Decimal, int, float))
+                        and product.purchase_factor > 0
+                    )
                     else Decimal("1.000")
+                )
+                has_product_conversion = bool(
+                    isinstance(product.purchase_unit_id, int) and authoritative_factor > Decimal("0")
                 )
 
                 mode = line.mode if hasattr(line, "mode") else "AUTO"
@@ -409,13 +412,16 @@ class PurchaseService:
                 )
                 item_unit_id = item_data.get("purchase_unit_id")
 
-                has_product_conversion = bool(
-                    product.purchase_unit_id and (product.purchase_factor or Decimal("1.000")) > Decimal("0")
-                )
                 authoritative_factor = (
                     product.purchase_factor
-                    if (product.purchase_factor and product.purchase_factor > Decimal("0"))
+                    if (
+                        isinstance(getattr(product, "purchase_factor", None), (Decimal, int, float))
+                        and product.purchase_factor > 0
+                    )
                     else Decimal("1.000")
+                )
+                has_product_conversion = bool(
+                    isinstance(product.purchase_unit_id, int) and authoritative_factor > Decimal("0")
                 )
 
                 if mode == "PURCHASE":

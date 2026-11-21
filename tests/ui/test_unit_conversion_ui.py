@@ -258,3 +258,15 @@ def test_product_editor_preserves_inactive_purchase_unit(db_session, units):
         idx = editor.purchase_unit_combo.findData(units["box"].id)
         assert idx >= 0
         assert "(inactive)" in editor.purchase_unit_combo.itemText(idx).lower()
+
+
+def test_issue_937_purchase_view_handles_bare_mock_product(qtbot, db_session):
+    """PurchaseView must safely handle bare MagicMock products without raising TypeError (#937)."""
+    from unittest.mock import MagicMock
+
+    with patch.object(FeatureFlags, "is_on", return_value=True):
+        view = PurchaseView()
+        qtbot.addWidget(view)
+        mock_prod = MagicMock(id=999, name_en="Bare Mock Product", cost=Decimal("15.00"))
+        view._add_grn_row(product=mock_prod, qty=Decimal("3"), cost=Decimal("15.00"))
+        assert view.grn_model.rowCount() == 1

@@ -58,7 +58,7 @@ class AutosaveRecoveryDialog(QDialog):
 
         header_lbl = QLabel(_t("autosave.recovery_header"), card)
         header_lbl.setObjectName("AutosaveHeader")
-        header_lbl.setStyleSheet("font-size: 16px; font-weight: bold;")
+        header_lbl.setProperty("class", "dialog-title")
         card_layout.addWidget(header_lbl)
 
         count = self.summary.get("item_count", 0)
@@ -83,7 +83,7 @@ class AutosaveRecoveryDialog(QDialog):
             time_str = format_datetime(timestamp)
             time_lbl = QLabel(_t("autosave.saved_at", time=time_str, default=f"Saved at: {time_str}"), card)
             time_lbl.setObjectName("AutosaveTimestamp")
-            time_lbl.setStyleSheet("color: #888888; font-size: 12px;")
+            time_lbl.setProperty("class", "muted")
             card_layout.addWidget(time_lbl)
 
         layout.addWidget(card)
@@ -128,7 +128,14 @@ class AutosaveRecoveryDialog(QDialog):
             QMessageBox.StandardButton.No,
         )
         if ans == QMessageBox.StandardButton.Yes:
-            CartAutosaveService.discard_autosave(self.terminal_id)
+            ok = CartAutosaveService.discard_autosave(self.terminal_id)
+            if not ok:
+                QMessageBox.critical(
+                    self,
+                    _t("common.error"),
+                    _t("errors.discard_failed", default="Failed to discard autosaved bill. Please try again."),
+                )
+                return
             self.action = AutosaveAction.DISCARD
             self.accept()
 

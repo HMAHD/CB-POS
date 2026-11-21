@@ -120,6 +120,6 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
           CBPOS_TEST_PG_URL: postgresql+psycopg2://postgres:pw@localhost:5432/cbpos_test
-        run: uv run python -m pytest tests/integration/test_postgres_schema_upgrade.py -q
+        run: uv run python -m pytest tests/integration/test_postgres_schema_upgrade.py tests/domain/test_autosave_migration.py tests/domain/test_cart_autosave_concurrency.py tests/domain/test_dashboard_postgres_compat.py -m postgres -v
 
 

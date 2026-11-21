@@ -277,3 +277,92 @@ def test_issue_932_restore_autosave_full_fidelity(clean_autosave_db, sample_prod
 
     # The autosave record must be deleted upon restoration
     assert CartAutosaveService.get_autosave_summary(term) is None
+
+
+@pytest.mark.domain
+def test_defect_10_structurally_invalid_json_payloads_purged(clean_autosave_db):
+    """Defect 10: Structurally invalid JSON (missing/null lines, invalid Decimal strings,
+    non-dict root/totals) must be purged/tombstoned and return None from get_autosave_summary.
+    """
+    db = clean_autosave_db
+
+    invalid_payloads = [
+        '{"lines": null}',
+        '{"lines": [{"qty": "invalid_number", "unit_price": "100.00"}]}',
+        '{"lines": "not_a_list"}',
+        '{"totals": "not_a_dict", "lines": []}',
+        '["not_a_dict_root"]',
+    ]
+
+    for i, payload in enumerate(invalid_payloads):
+        term = f"TERM-CORRUPT-{i}"
+        with db.get_session() as session:
+            row = SuspendedTransaction(
+                is_autosave=True,
+                terminal_id=term,
+                data=payload,
+                revision=1,
+            )
+            session.add(row)
+            session.commit()
+
+        # get_autosave_summary must classify as corrupt, tombstone/purge row, and return None
+        summary = CartAutosaveService.get_autosave_summary(term)
+        assert summary is None, f"Expected None for corrupt payload {payload}"
+
+        # Row in DB must be tombstoned (data is None) so future queries don't keep failing on it
+        with db.get_session() as session:
+            row_after = (
+                session.query(SuspendedTransaction)
+                .filter(
+                    SuspendedTransaction.is_autosave.is_(True),
+                    SuspendedTransaction.terminal_id == term,
+                )
+                .first()
+            )
+            assert row_after is None or row_after.data is None, (
+                f"Corrupt row for payload {payload} was not purged/tombstoned!"
+            )
+
+
+@pytest.mark.domain
+def test_restore_and_consume_uses_pricing_service_for_customer(clean_autosave_db, sample_product):
+    """Restore and consume must compute effective base price using PricingService for attached customer."""
+    from unittest.mock import patch
+
+    from cbpos.core.models import Customer
+    from cbpos.core.services.pricing_service import PricingService
+
+    db = clean_autosave_db
+    with db.get_session() as session:
+        cust = Customer(name="Wholesale Client", phone="0771234567")
+        session.add(cust)
+        session.commit()
+        session.refresh(cust)
+
+    terminal_id = "TERM-PRICING-TEST"
+    cart = CartService()
+    cart.set_customer(cust)
+    cart.add_item(sample_product, Decimal("1.000"))
+
+    # Snapshot and save
+    snap = CartAutosaveService.snapshot_cart(cart)
+    CartAutosaveService.save(snap, terminal_id, 1)
+
+    # Mock PricingService.calculate_price to return a special price
+    cart_to_restore = CartService()
+    with patch.object(
+        PricingService,
+        "calculate_price",
+        return_value={
+            "final_price": Decimal("200.00"),
+            "original_price": Decimal("250.00"),
+            "applied_rule": "Wholesale",
+        },
+    ) as mock_calc:
+        res = CartAutosaveService.restore_and_consume(terminal_id, cart_to_restore)
+        assert res.ok is True
+        assert mock_calc.called, "PricingService.calculate_price must be called during restore"
+        # original price was 250.00, matches sample_product price, so no price changed notice
+        price_notices = [n for n in res.notices if "Price" in n or "price" in n]
+        assert len(price_notices) == 0, f"Expected no price change notices, got {price_notices}"

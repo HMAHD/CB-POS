@@ -1102,11 +1102,43 @@ class SyncClient(QThread):
                     ):
                         _set_local_balance(session, balance, owner_id, main_value)
 
+                if (
+                    flags_modified
+                    and "feature_flags" in existing_tables
+                    and "suspended_transactions" in existing_tables
+                ):
+                    from cbpos.core.constants.features import Features
+                    from cbpos.core.models import FeatureFlag
+                    from cbpos.core.services.cart_autosave_service import CartAutosaveService
+
+                    flag_row = (
+                        session.query(FeatureFlag).filter(FeatureFlag.name == Features.POWER_CUT_AUTOSAVE).first()
+                    )
+                    # When power_cut_autosave is disabled centrally or deleted, tombstone all local autosaves (Defect 5)
+                    if not flag_row or not flag_row.enabled:
+                        CartAutosaveService.delete_all_autosaves_in_session(session)
+
         except Exception as e:
             logger.error("Error applying catalog update: %s", e)
             self._error_code = "catalog_apply_failed"
             self._set_state(self.STATE_ERROR)
             return -1
+
+        # Transaction committed! Invalidate feature flags and emit roles_changed
+        # regardless of errors on individual records or held-back items (P1 Defect 3).
+        if flags_modified:
+            try:
+                from cbpos.core.services.feature_flags import FeatureFlags
+
+                FeatureFlags.invalidate_cache()
+            except Exception as ex:
+                logger.debug("Failed to invalidate feature flags cache: %s", ex)
+
+        if roles_modified:
+            try:
+                self.roles_changed.emit()
+            except Exception as ex:
+                logger.debug("Failed to emit roles_changed: %s", ex)
 
         if held_back or has_errors:
             if has_errors:
@@ -1117,15 +1149,6 @@ class SyncClient(QThread):
                 logger.info("Held back %d pulled customer(s) until this till's new customers are pushed", held_back)
         else:
             self._last_catalog_sync = server_timestamp
-            if roles_modified:
-                self.roles_changed.emit()
-            if flags_modified:
-                try:
-                    from cbpos.core.services.feature_flags import FeatureFlags
-
-                    FeatureFlags.invalidate_cache()
-                except Exception as ex:
-                    logger.debug("Failed to invalidate feature flags cache: %s", ex)
         logger.info("Pulled %d catalog records", records_applied)
         return records_applied
 

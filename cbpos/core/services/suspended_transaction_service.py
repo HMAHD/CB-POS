@@ -98,6 +98,35 @@ class SuspendedTransactionService:
             return None
 
     @staticmethod
+    def hold_bill_and_consume_autosave(cart_service, terminal_id: str, note: str | None = None) -> int | None:
+        """Suspend the current cart as an ordinary held bill and atomically tombstone
+        the terminal's power-cut autosave in the exact same transaction.
+        """
+        from cbpos.core.services.cart_autosave_service import CartAutosaveService
+
+        db = Database()
+        try:
+            with db.get_session() as session:
+                json_data, customer_id = serialize_cart_v2(cart_service)
+                suspended = SuspendedTransaction(
+                    data=json_data,
+                    note=note,
+                    customer_id=customer_id,
+                    is_autosave=False,
+                )
+                session.add(suspended)
+                session.flush()
+
+                # Atomically tombstone any active autosave on this terminal
+                CartAutosaveService.delete_autosave_in_session(session, terminal_id)
+
+                session.commit()
+                return suspended.id
+        except Exception as e:
+            logger.error("Hold bill and consume autosave failed: %s", e)
+            return None
+
+    @staticmethod
     def get_held_bills() -> list:
         """Return a list of all suspended transactions (excluding autosaves)."""
         db = Database()

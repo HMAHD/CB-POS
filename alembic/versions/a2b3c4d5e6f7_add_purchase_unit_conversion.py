@@ -60,6 +60,10 @@ def upgrade() -> None:
                 batch_op.add_column(sa.Column("purchase_qty", sa.Numeric(10, 3), nullable=True))
             if "purchase_unit_cost" not in existing_cols:
                 batch_op.add_column(sa.Column("purchase_unit_cost", sa.Numeric(12, 2), nullable=True))
+            if "purchase_unit_name" not in existing_cols:
+                batch_op.add_column(sa.Column("purchase_unit_name", sa.String(50), nullable=True))
+            if "base_unit_name" not in existing_cols:
+                batch_op.add_column(sa.Column("base_unit_name", sa.String(50), nullable=True))
 
 
 def downgrade() -> None:
@@ -70,6 +74,10 @@ def downgrade() -> None:
     if "purchase_items" in existing_tables:
         existing_cols = {col["name"] for col in insp.get_columns("purchase_items")}
         with op.batch_alter_table("purchase_items", reflect_kwargs={"resolve_fks": False}) as batch_op:
+            if "base_unit_name" in existing_cols:
+                batch_op.drop_column("base_unit_name")
+            if "purchase_unit_name" in existing_cols:
+                batch_op.drop_column("purchase_unit_name")
             if "purchase_unit_cost" in existing_cols:
                 batch_op.drop_column("purchase_unit_cost")
             if "purchase_qty" in existing_cols:

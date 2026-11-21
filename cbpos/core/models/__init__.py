@@ -648,6 +648,8 @@ class PurchaseItem(Base):
     )
     purchase_qty: Mapped[Decimal | None] = mapped_column(Numeric(10, 3), nullable=True)
     purchase_unit_cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    purchase_unit_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    base_unit_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     purchase: Mapped["Purchase"] = relationship(back_populates="items")
     product: Mapped["Product"] = relationship("Product")

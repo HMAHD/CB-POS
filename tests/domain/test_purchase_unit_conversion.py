@@ -22,6 +22,7 @@ from cbpos.core.models import (
 )
 from cbpos.core.services.feature_flags import FeatureFlags
 from cbpos.core.services.purchase_service import GrnLine, GrnRequest, PurchaseService
+from cbpos.core.utils.money import round_quantity
 
 _counter = 0
 
@@ -554,3 +555,392 @@ def test_issue_937_commit_purchase_with_none_product_cost(db_session, test_user,
     db_session.refresh(product)
     assert product.stock_qty == Decimal("10.000")
     assert product.cost == Decimal("10.00")
+
+
+def test_issue_937_feature_toggle_while_grn_in_flight_fails_closed(
+    db_session, test_user, test_supplier, conv_product, units
+):
+    """If UNIT_CONVERSION is toggled while a GRN is in-flight, commit must fail closed."""
+    db_session.commit()
+    initial_stock = conv_product.stock_qty
+
+    req = GrnRequest(
+        supplier_id=test_supplier.id,
+        date_received=datetime.now(),
+        supplier_invoice_no="INV-TOGGLE-001",
+        input_vat=Decimal("0.00"),
+        lines=[
+            GrnLine(
+                product_id=conv_product.id,
+                qty=Decimal("2.000"),
+                unit_cost=Decimal("100.00"),
+                mode="PURCHASE",
+                purchase_unit_id=units["box"].id,
+                purchase_factor=Decimal("10.000"),
+                expected_unit_conversion_on=True,
+            )
+        ],
+        user_id=test_user.id,
+        expected_unit_conversion_on=True,
+    )
+
+    # Feature is toggled OFF right before commit
+    with patch.object(FeatureFlags, "is_on", return_value=False):
+        with pytest.raises(ValueError, match=r"stale_conversion_configuration.*feature"):
+            PurchaseService.receive_goods(req)
+
+    db_session.refresh(conv_product)
+    assert conv_product.stock_qty == initial_stock
+
+    # Test same protection on commit_purchase
+    purchase = PurchaseService.create_purchase(
+        supplier_id=test_supplier.id,
+        reference_external="INV-TOGGLE-LEGACY",
+        user_id=test_user.id,
+    )
+    items_data = [
+        {
+            "product_id": conv_product.id,
+            "qty": Decimal("2.000"),
+            "cost": Decimal("100.00"),
+            "mode": "PURCHASE",
+            "purchase_unit_id": units["box"].id,
+            "purchase_factor": Decimal("10.000"),
+            "expected_unit_conversion_on": True,
+        }
+    ]
+    with patch.object(FeatureFlags, "is_on", return_value=False):
+        with pytest.raises(ValueError, match=r"stale_conversion_configuration.*feature"):
+            PurchaseService.commit_purchase(purchase.id, items_data)
+
+    db_session.refresh(conv_product)
+    assert conv_product.stock_qty == initial_stock
+    db_session.refresh(purchase)
+    assert purchase.status == "DRAFT"
+
+
+def test_issue_937_commit_purchase_fails_on_missing_product_rolls_back(
+    db_session, test_user, test_supplier, conv_product, units
+):
+    """commit_purchase must fail on missing products, rolling back without creating partial state."""
+    db_session.commit()
+    initial_stock = conv_product.stock_qty
+    initial_payable = test_supplier.current_payable
+
+    purchase = PurchaseService.create_purchase(
+        supplier_id=test_supplier.id,
+        reference_external="INV-MISSING-PROD",
+        user_id=test_user.id,
+    )
+
+    missing_pid = 999999
+    items_data = [
+        {
+            "product_id": conv_product.id,
+            "qty": Decimal("1.000"),
+            "cost": Decimal("50.00"),
+        },
+        {
+            "product_id": missing_pid,
+            "qty": Decimal("2.000"),
+            "cost": Decimal("20.00"),
+        },
+    ]
+
+    with pytest.raises(ValueError, match=rf"Product {missing_pid} not found"):
+        PurchaseService.commit_purchase(purchase.id, items_data)
+
+    # Verify atomic rollback
+    db_session.refresh(conv_product)
+    assert conv_product.stock_qty == initial_stock
+    db_session.refresh(test_supplier)
+    assert test_supplier.current_payable == initial_payable
+
+    db_session.refresh(purchase)
+    assert purchase.status == "DRAFT"
+    items_count = db_session.query(PurchaseItem).filter_by(purchase_id=purchase.id).count()
+    assert items_count == 0
+
+    # All-missing batch also rolls back
+    items_all_missing = [{"product_id": 888888, "qty": Decimal("1.000"), "cost": Decimal("10.00")}]
+    with pytest.raises(ValueError, match=r"Product 888888 not found"):
+        PurchaseService.commit_purchase(purchase.id, items_all_missing)
+    db_session.refresh(purchase)
+    assert purchase.status == "DRAFT"
+
+
+def test_issue_937_historical_unit_labels_immutable(qapp, db_session, test_user, test_supplier, conv_product, units):
+    """Historical unit labels on PurchaseItem survive Unit renaming, deactivation, and Product unit replacement."""
+    db_session.commit()
+    from cbpos.ui.dialogs.grn_detail_dialog import GRNDetailDialog
+
+    req = GrnRequest(
+        supplier_id=test_supplier.id,
+        date_received=datetime.now(),
+        supplier_invoice_no="INV-IMMUT-LABELS",
+        input_vat=Decimal("0.00"),
+        lines=[
+            GrnLine(
+                product_id=conv_product.id,
+                qty=Decimal("2.000"),
+                unit_cost=Decimal("100.00"),
+                mode="PURCHASE",
+                purchase_unit_id=units["box"].id,
+                purchase_factor=Decimal("10.000"),
+            )
+        ],
+        user_id=test_user.id,
+    )
+
+    purchase = PurchaseService.receive_goods(req)
+
+    item = db_session.query(PurchaseItem).filter_by(purchase_id=purchase.id).first()
+    assert item is not None
+    assert item.purchase_unit_name == "Box"
+    assert item.base_unit_name == "Piece"
+
+    # Now mutate the catalog:
+    # 1. Rename "Box" to "SuperBox"
+    units["box"].name = "SuperBox"
+    # 2. Deactivate "Box"
+    units["box"].is_active = False
+    # 3. Create a new unit and assign as product's base unit
+    tablet = Unit(name="Tablet", abbreviation="tab", decimal_places=0)
+    db_session.add(tablet)
+    db_session.flush()
+    conv_product.unit_id = tablet.id
+    db_session.commit()
+
+    # Verify PurchaseItem snapshots remain unchanged
+    db_session.refresh(item)
+    assert item.purchase_unit_name == "Box"
+    assert item.base_unit_name == "Piece"
+
+    # Verify dialog displays snapshot labels, not renamed/replaced units
+    dialog = GRNDetailDialog(purchase.id)
+    qty_text = dialog.table.item(0, 2).text()
+    assert "2" in qty_text
+    assert "Box" in qty_text
+    assert "SuperBox" not in qty_text
+    assert "Piece" in qty_text
+    assert "Tablet" not in qty_text
+
+
+def test_issue_937_po_partial_receipt_exact_conversion_and_base_fallback(db_session, test_user, test_supplier, units):
+    """PO partial receipts reach RECEIVED with zero remainder, falling back to BASE mode when not exact."""
+    from cbpos.core.models import PurchaseOrder, PurchaseOrderItem
+
+    # Product with purchase factor = 3 (Pack of 3)
+    pack3 = Unit(name="Pack3", abbreviation="pk3", decimal_places=0)
+    db_session.add(pack3)
+    db_session.flush()
+
+    prod = Product(
+        barcode="B_TRIPACK",
+        name_en="Tri-Pack Battery",
+        cost=Decimal("30.00"),
+        price=Decimal("45.00"),
+        stock_qty=Decimal("0.000"),
+        unit_id=units["piece"].id,
+        purchase_unit_id=pack3.id,
+        purchase_factor=Decimal("3.000"),
+        default_supplier_id=test_supplier.id,
+    )
+    db_session.add(prod)
+    db_session.commit()
+
+    # Create PO for 10 base units (pieces)
+    po = PurchaseOrder(
+        document_number="PO-PARTIAL-001",
+        supplier_id=test_supplier.id,
+        user_id=test_user.id,
+        status="ORDERED",
+        date=datetime.now(),
+    )
+    db_session.add(po)
+    db_session.flush()
+
+    po_item = PurchaseOrderItem(
+        purchase_order_id=po.id,
+        product_id=prod.id,
+        qty_ordered=Decimal("10.000"),
+        qty_received=Decimal("0.000"),
+    )
+    db_session.add(po_item)
+    db_session.commit()
+
+    # 1. First receipt: 2 packs (= 6 pieces) via PURCHASE mode
+    req1 = GrnRequest(
+        supplier_id=test_supplier.id,
+        date_received=datetime.now(),
+        supplier_invoice_no="INV-PARTIAL-1",
+        input_vat=Decimal("0.00"),
+        lines=[
+            GrnLine(
+                product_id=prod.id,
+                qty=Decimal("2.000"),
+                unit_cost=Decimal("90.00"),  # 90 per pack of 3 -> 30 per piece
+                mode="PURCHASE",
+                purchase_unit_id=pack3.id,
+                purchase_factor=Decimal("3.000"),
+                expected_unit_conversion_on=True,
+            )
+        ],
+        user_id=test_user.id,
+        purchase_order_id=po.id,
+        expected_unit_conversion_on=True,
+    )
+    PurchaseService.receive_goods(req1)
+
+    db_session.refresh(po)
+    db_session.refresh(po_item)
+    db_session.refresh(prod)
+    assert po.status == "PARTIALLY_RECEIVED"
+    assert po_item.qty_received == Decimal("6.000")
+    assert prod.stock_qty == Decimal("6.000")
+
+    # Remaining outstanding = 4 pieces
+    outstanding = po_item.qty_ordered - po_item.qty_received
+    assert outstanding == Decimal("4.000")
+
+    # Prove exactness check fails for 4 pieces / factor 3:
+    candidate_p_qty = round_quantity(outstanding / prod.purchase_factor)
+    assert round_quantity(candidate_p_qty * prod.purchase_factor) != outstanding
+
+    # 2. Second receipt: uses BASE mode fallback for the remaining 4 pieces
+    req2 = GrnRequest(
+        supplier_id=test_supplier.id,
+        date_received=datetime.now(),
+        supplier_invoice_no="INV-PARTIAL-2",
+        input_vat=Decimal("0.00"),
+        lines=[
+            GrnLine(
+                product_id=prod.id,
+                qty=outstanding,
+                unit_cost=Decimal("30.00"),
+                mode="BASE",
+                expected_unit_conversion_on=True,
+            )
+        ],
+        user_id=test_user.id,
+        purchase_order_id=po.id,
+        expected_unit_conversion_on=True,
+    )
+    PurchaseService.receive_goods(req2)
+
+    db_session.refresh(po)
+    db_session.refresh(po_item)
+    db_session.refresh(prod)
+    assert po.status == "RECEIVED"
+    assert po_item.qty_received == Decimal("10.000")
+    assert po_item.qty_ordered - po_item.qty_received == Decimal("0.000")
+    assert prod.stock_qty == Decimal("10.000")  # exactly equals ordered base quantity
+
+
+def test_issue_937_exact_reorder_and_po_prefill_in_purchase_view(
+    qapp, db_session, test_user, test_supplier, conv_product, units
+):
+    """PurchaseView prefill_grn_items and load_selected_purchase_order use exact conversion and fallback."""
+    db_session.commit()
+    from cbpos.core.models import PurchaseOrder, PurchaseOrderItem
+    from cbpos.ui.views.purchase_view import PurchaseView
+
+    # conv_product has purchase_factor = 10, Box
+    view = PurchaseView()
+    view.set_user(test_user)
+
+    # 1. Exact quantity: 20 pieces -> converts to 2 boxes (mode=PURCHASE)
+    view.prefill_grn_items([{"barcode": conv_product.barcode, "order_qty": Decimal("20.000")}])
+    assert view.grn_model.rowCount() == 1
+    assert view.grn_items[0]["mode"] == "PURCHASE"
+    assert view.grn_model.item(0, 2).text() == "2.000"
+    assert view.grn_model.item(0, 3).text() == "Box"
+    assert "20.000 Piece" in view.grn_model.item(0, 4).text()
+
+    # Product with non-exact division: factor 3 (Pack of 3)
+    pack3 = Unit(name="Pack3B", abbreviation="pk3b", decimal_places=0)
+    db_session.add(pack3)
+    db_session.flush()
+    p_third = Product(
+        barcode="B_THIRD",
+        name_en="Third Product",
+        cost=Decimal("10.00"),
+        price=Decimal("15.00"),
+        stock_qty=Decimal("0.000"),
+        unit_id=units["piece"].id,
+        purchase_unit_id=pack3.id,
+        purchase_factor=Decimal("3.000"),
+        default_supplier_id=test_supplier.id,
+    )
+    db_session.add(p_third)
+    db_session.commit()
+
+    # 2. Inexact quantity: 10 pieces with factor 3 -> cannot be represented as whole/exact boxes -> falls back to mode=BASE
+    view.prefill_grn_items([{"barcode": p_third.barcode, "order_qty": Decimal("10.000")}])
+    assert view.grn_model.rowCount() == 1
+    assert view.grn_items[0]["mode"] == "BASE"
+    assert view.grn_model.item(0, 2).text() == "10.000"
+    assert view.grn_model.item(0, 3).text() == "Piece"
+    assert "10.000 Piece" in view.grn_model.item(0, 4).text()
+
+    # 3. PO loading with exact outstanding quantity (15 pieces / 10 = 1.500 boxes)
+    po = PurchaseOrder(
+        document_number="PO-PREFILL-EXACT",
+        supplier_id=test_supplier.id,
+        user_id=test_user.id,
+        status="ORDERED",
+        date=datetime.now(),
+    )
+    db_session.add(po)
+    db_session.flush()
+
+    po_item = PurchaseOrderItem(
+        purchase_order_id=po.id,
+        product_id=conv_product.id,
+        qty_ordered=Decimal("15.000"),
+        qty_received=Decimal("0.000"),
+    )
+    db_session.add(po_item)
+    db_session.commit()
+
+    view.refresh_open_orders()
+    idx = view.open_po_combo.findData(po.id)
+    assert idx >= 0
+    view.open_po_combo.setCurrentIndex(idx)
+    view.load_selected_purchase_order()
+
+    assert view.grn_model.rowCount() == 1
+    assert view.grn_items[0]["mode"] == "PURCHASE"
+    assert view.grn_model.item(0, 2).text() == "1.500"
+
+    # 4. PO loading with non-exact outstanding quantity (10 pieces / 3)
+    po3 = PurchaseOrder(
+        document_number="PO-PREFILL-THIRD",
+        supplier_id=test_supplier.id,
+        user_id=test_user.id,
+        status="ORDERED",
+        date=datetime.now(),
+    )
+    db_session.add(po3)
+    db_session.flush()
+    po3_item = PurchaseOrderItem(
+        purchase_order_id=po3.id,
+        product_id=p_third.id,
+        qty_ordered=Decimal("10.000"),
+        qty_received=Decimal("0.000"),
+    )
+    db_session.add(po3_item)
+    db_session.commit()
+
+    view.refresh_open_orders()
+    idx3 = view.open_po_combo.findData(po3.id)
+    assert idx3 >= 0
+    view.open_po_combo.setCurrentIndex(idx3)
+    view.load_selected_purchase_order()
+
+    assert view.grn_model.rowCount() == 1
+    # 10 / 3 = 3.333 -> 3.333 * 3 = 9.999 != 10.000 -> mode must fall back to BASE!
+    assert view.grn_items[0]["mode"] == "BASE"
+    assert view.grn_model.item(0, 2).text() == "10.000"
+    assert view.grn_model.item(0, 3).text() == "Piece"
+    assert "10.000 Piece" in view.grn_model.item(0, 4).text()

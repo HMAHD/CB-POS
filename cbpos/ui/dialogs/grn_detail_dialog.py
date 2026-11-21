@@ -106,9 +106,15 @@ class GRNDetailDialog(QDialog):
             table.setItem(row, 0, QTableWidgetItem(product_name))
             table.setItem(row, 1, QTableWidgetItem(barcode))
 
-            if item.purchase_unit_id is not None and item.purchase_qty is not None:
-                p_unit_name = item.purchase_unit.name if item.purchase_unit else ""
-                b_unit_name = item.product.unit.name if (item.product and item.product.unit) else ""
+            if (
+                item.purchase_unit_id is not None or getattr(item, "purchase_unit_name", None)
+            ) and item.purchase_qty is not None:
+                p_unit_name = getattr(item, "purchase_unit_name", None) or (
+                    item.purchase_unit.name if getattr(item, "purchase_unit", None) else ""
+                )
+                b_unit_name = getattr(item, "base_unit_name", None) or (
+                    item.product.unit.name if (item.product and getattr(item.product, "unit", None)) else ""
+                )
                 qty_text = f"{item.purchase_qty:g} {p_unit_name} ({item.qty_received:g} {b_unit_name})".strip()
             else:
                 qty_text = f"{item.qty_received:.3f}"

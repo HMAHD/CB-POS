@@ -10,14 +10,14 @@ def test_issue_937_migration_adds_and_drops_columns(tmp_path):
     db_file = tmp_path / "test_migration.db"
     db_url = f"sqlite:///{db_file}"
 
-    # 1. Create base schema at head revision
+    # 1. Create base schema at target revision
     alembic_cfg = SchemaMigrationService._get_alembic_config(db_url)
     engine = create_engine(db_url)
     Base.metadata.create_all(engine)
     engine.dispose()
 
-    # Stamp at head
-    command.stamp(alembic_cfg, "head")
+    # Stamp explicitly at a2b3c4d5e6f7 (never head)
+    command.stamp(alembic_cfg, "a2b3c4d5e6f7")
     assert SchemaMigrationService.current_revision(db_url) == "a2b3c4d5e6f7"
 
     # 2. Downgrade to previous revision (f1a2b3c4d5e6)
@@ -36,11 +36,13 @@ def test_issue_937_migration_adds_and_drops_columns(tmp_path):
         assert "purchase_factor" not in item_cols
         assert "purchase_qty" not in item_cols
         assert "purchase_unit_cost" not in item_cols
+        assert "purchase_unit_name" not in item_cols
+        assert "base_unit_name" not in item_cols
     finally:
         engine.dispose()
 
-    # 3. Upgrade back to head (a2b3c4d5e6f7)
-    command.upgrade(alembic_cfg, "head")
+    # 3. Upgrade back to explicit revision (a2b3c4d5e6f7, never head)
+    command.upgrade(alembic_cfg, "a2b3c4d5e6f7")
     assert SchemaMigrationService.current_revision(db_url) == "a2b3c4d5e6f7"
 
     engine = create_engine(db_url)
@@ -55,6 +57,8 @@ def test_issue_937_migration_adds_and_drops_columns(tmp_path):
         assert "purchase_factor" in item_cols_up
         assert "purchase_qty" in item_cols_up
         assert "purchase_unit_cost" in item_cols_up
+        assert "purchase_unit_name" in item_cols_up
+        assert "base_unit_name" in item_cols_up
     finally:
         engine.dispose()
 

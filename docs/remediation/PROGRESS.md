@@ -303,7 +303,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | `features.*` (feature flag names and 1-line explanations) | `en.json`, `si.json`, `ta.json` | Draft Sinhala/Tamil feature flag descriptions require native review |
 | `autosave.*` (power-cut recovery dialog title, header, body, prompts) | `en.json`, `si.json`, `ta.json` | Draft Sinhala/Tamil power-cut recovery texts require native merchant review |
 | `price_board.*` (daily price board dialog titles, column headers, actions, empty states) | `en.json`, `si.json`, `ta.json` | Draft Sinhala/Tamil daily price board texts require native merchant review |
-| `product_editor.purchase_*`, `purchase.grn_header_*` (unit conversion fields & column headers) | `en.json`, `si.json`, `ta.json` | Draft Sinhala/Tamil purchase-unit conversion strings require native review |
+| `product_editor.purchase_*`, `purchase.grn_header_*`, `purchase.conversion_mode_changed_*` (unit conversion fields, table headers, reload prompts) | `en.json`, `si.json`, `ta.json` | Draft Sinhala/Tamil purchase-unit conversion strings require native review |
 
 
 ## ⚠️ Verify on Windows

@@ -1045,6 +1045,8 @@
     "btn_load_po": "லோட் செய்",
     "discrepancy_title": "ஆர்டருடன் பொருந்தவில்லை",
     "discrepancy_confirm": "இந்த GRN ஆர்டரோட பொருந்தல:\n\n{details}\n\nஇருந்தும் GRN-ஐ கமிட் பண்ணவா?",
+    "conversion_mode_changed_title": "அலகு மாற்ற அமைப்பு மாற்றப்பட்டது",
+    "conversion_mode_changed_prompt": "அலகு மாற்ற அமைப்பு மாற்றப்பட்டுள்ளது. உள்ளிட்ட உருப்படிகளை நிராகரித்து GRN அட்டவணையை மீண்டும் ஏற்றவா?",
     "discrepancy_line": "{product}: இன்னும் {outstanding} வர வேண்டும், இப்போ பெறுவது {received}",
     "discrepancy_line_not_on_order": "{product}: இந்த ஆர்டரில் இல்லை, பெறுவது {received}",
     "discrepancy_line_not_received": "{product}: வரவில்லை (இன்னும் {outstanding} வர வேண்டும்)",

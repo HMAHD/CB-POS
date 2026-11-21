@@ -944,3 +944,343 @@ def test_issue_937_exact_reorder_and_po_prefill_in_purchase_view(
     assert view.grn_model.item(0, 2).text() == "10.000"
     assert view.grn_model.item(0, 3).text() == "Piece"
     assert "10.000 Piece" in view.grn_model.item(0, 4).text()
+
+
+def test_issue_937_configuration_snapshot_validation_base_and_purchase_modes(
+    db_session, test_user, test_supplier, conv_product, units
+):
+    """Configuration snapshots must be validated for both BASE and PURCHASE modes in receive_goods and commit_purchase (#937)."""
+    db_session.commit()
+
+    other_piece = Unit(name="Gram", abbreviation="g", decimal_places=3)
+    carton = Unit(name="Carton", abbreviation="ctn", decimal_places=0)
+    db_session.add_all([other_piece, carton])
+    db_session.commit()
+
+    # 1. Base unit replacement in BASE mode
+    conv_product.unit_id = other_piece.id
+    db_session.commit()
+
+    req_base_unit_changed = GrnRequest(
+        supplier_id=test_supplier.id,
+        date_received=datetime.now(),
+        supplier_invoice_no="INV-BASE-UNIT-STALE",
+        input_vat=Decimal("0.00"),
+        lines=[
+            GrnLine(
+                product_id=conv_product.id,
+                qty=Decimal("5.000"),
+                unit_cost=Decimal("10.00"),
+                mode="BASE",
+                expected_base_unit_id=units["piece"].id,  # Stale: was piece, now gram
+                purchase_unit_id=units["box"].id,
+                purchase_factor=Decimal("10.000"),
+                expected_unit_conversion_on=True,
+            )
+        ],
+        user_id=test_user.id,
+    )
+    with pytest.raises(ValueError, match=r"stale_conversion_configuration.*base unit changed"):
+        PurchaseService.receive_goods(req_base_unit_changed)
+
+    # 2. Base unit replacement in PURCHASE mode
+    req_purchase_unit_changed = GrnRequest(
+        supplier_id=test_supplier.id,
+        date_received=datetime.now(),
+        supplier_invoice_no="INV-PURCH-UNIT-STALE",
+        input_vat=Decimal("0.00"),
+        lines=[
+            GrnLine(
+                product_id=conv_product.id,
+                qty=Decimal("2.000"),
+                unit_cost=Decimal("100.00"),
+                mode="PURCHASE",
+                expected_base_unit_id=units["piece"].id,  # Stale
+                purchase_unit_id=units["box"].id,
+                purchase_factor=Decimal("10.000"),
+                expected_unit_conversion_on=True,
+            )
+        ],
+        user_id=test_user.id,
+    )
+    with pytest.raises(ValueError, match=r"stale_conversion_configuration.*base unit changed"):
+        PurchaseService.receive_goods(req_purchase_unit_changed)
+
+    # Restore base unit
+    conv_product.unit_id = units["piece"].id
+    db_session.commit()
+
+    # 3. Conversion removal in BASE mode (expected box, DB cleared to None)
+    conv_product.purchase_unit_id = None
+    db_session.commit()
+
+    req_conv_removed_base = GrnRequest(
+        supplier_id=test_supplier.id,
+        date_received=datetime.now(),
+        supplier_invoice_no="INV-CONV-REM-BASE",
+        input_vat=Decimal("0.00"),
+        lines=[
+            GrnLine(
+                product_id=conv_product.id,
+                qty=Decimal("5.000"),
+                unit_cost=Decimal("10.00"),
+                mode="BASE",
+                expected_base_unit_id=units["piece"].id,
+                purchase_unit_id=units["box"].id,  # Stale: product now has None
+                purchase_factor=Decimal("10.000"),
+                expected_unit_conversion_on=True,
+            )
+        ],
+        user_id=test_user.id,
+    )
+    with pytest.raises(ValueError, match=r"stale_conversion_configuration.*purchase unit changed"):
+        PurchaseService.receive_goods(req_conv_removed_base)
+
+    # 4. Conversion addition in BASE mode (expected None, DB added box)
+    conv_product.purchase_unit_id = units["box"].id
+    conv_product.purchase_factor = Decimal("10.000")
+    db_session.commit()
+
+    req_conv_added_base = GrnRequest(
+        supplier_id=test_supplier.id,
+        date_received=datetime.now(),
+        supplier_invoice_no="INV-CONV-ADD-BASE",
+        input_vat=Decimal("0.00"),
+        lines=[
+            GrnLine(
+                product_id=conv_product.id,
+                qty=Decimal("5.000"),
+                unit_cost=Decimal("10.00"),
+                mode="BASE",
+                expected_base_unit_id=units["piece"].id,
+                purchase_unit_id=None,  # Stale: expected None, but product now has box
+                purchase_factor=Decimal("1.000"),
+                expected_unit_conversion_on=True,
+            )
+        ],
+        user_id=test_user.id,
+    )
+    with pytest.raises(ValueError, match=r"stale_conversion_configuration.*purchase unit changed"):
+        PurchaseService.receive_goods(req_conv_added_base)
+
+    # 5. Factor change in BASE mode (expected 10, DB changed to 12)
+    conv_product.purchase_factor = Decimal("12.000")
+    db_session.commit()
+
+    req_factor_changed_base = GrnRequest(
+        supplier_id=test_supplier.id,
+        date_received=datetime.now(),
+        supplier_invoice_no="INV-FACTOR-CHG-BASE",
+        input_vat=Decimal("0.00"),
+        lines=[
+            GrnLine(
+                product_id=conv_product.id,
+                qty=Decimal("5.000"),
+                unit_cost=Decimal("10.00"),
+                mode="BASE",
+                expected_base_unit_id=units["piece"].id,
+                purchase_unit_id=units["box"].id,
+                purchase_factor=Decimal("10.000"),  # Stale: was 10, now 12
+                expected_unit_conversion_on=True,
+            )
+        ],
+        user_id=test_user.id,
+    )
+    with pytest.raises(ValueError, match=r"stale_conversion_configuration.*factor changed"):
+        PurchaseService.receive_goods(req_factor_changed_base)
+
+    # 6. Purchase-unit change in BASE mode (expected box, DB changed to carton)
+    conv_product.purchase_unit_id = carton.id
+    conv_product.purchase_factor = Decimal("10.000")
+    db_session.commit()
+
+    req_punit_changed_base = GrnRequest(
+        supplier_id=test_supplier.id,
+        date_received=datetime.now(),
+        supplier_invoice_no="INV-PUNIT-CHG-BASE",
+        input_vat=Decimal("0.00"),
+        lines=[
+            GrnLine(
+                product_id=conv_product.id,
+                qty=Decimal("5.000"),
+                unit_cost=Decimal("10.00"),
+                mode="BASE",
+                expected_base_unit_id=units["piece"].id,
+                purchase_unit_id=units["box"].id,  # Stale: was box, now carton
+                purchase_factor=Decimal("10.000"),
+                expected_unit_conversion_on=True,
+            )
+        ],
+        user_id=test_user.id,
+    )
+    with pytest.raises(ValueError, match=r"stale_conversion_configuration.*purchase unit changed"):
+        PurchaseService.receive_goods(req_punit_changed_base)
+
+    # 7. Same contract applied to commit_purchase
+    p_commit = PurchaseService.create_purchase(test_supplier.id, "INV-COMMIT-STALE", test_user.id)
+    items_stale = [
+        {
+            "product_id": conv_product.id,
+            "qty": Decimal("5.000"),
+            "cost": Decimal("10.00"),
+            "mode": "BASE",
+            "expected_base_unit_id": units["piece"].id,
+            "purchase_unit_id": units["box"].id,  # Stale: product now has carton
+            "purchase_factor": Decimal("10.000"),
+            "expected_unit_conversion_on": True,
+        }
+    ]
+    with pytest.raises(ValueError, match=r"stale_conversion_configuration.*purchase unit changed"):
+        PurchaseService.commit_purchase(p_commit.id, items_stale)
+
+    # 8. Unrelated stock change does NOT cause false stale failure
+    conv_product.purchase_unit_id = units["box"].id
+    conv_product.purchase_factor = Decimal("10.000")
+    conv_product.stock_qty += Decimal("50.000")  # Stock moved, version updated
+    db_session.commit()
+
+    req_valid = GrnRequest(
+        supplier_id=test_supplier.id,
+        date_received=datetime.now(),
+        supplier_invoice_no="INV-VALID-AFTER-STOCK-MOVE",
+        input_vat=Decimal("0.00"),
+        lines=[
+            GrnLine(
+                product_id=conv_product.id,
+                qty=Decimal("5.000"),
+                unit_cost=Decimal("10.00"),
+                mode="BASE",
+                expected_base_unit_id=units["piece"].id,
+                purchase_unit_id=units["box"].id,
+                purchase_factor=Decimal("10.000"),
+                expected_unit_conversion_on=True,
+            )
+        ],
+        user_id=test_user.id,
+    )
+    res = PurchaseService.receive_goods(req_valid)
+    assert res.status == "COMPLETED"
+
+
+def test_issue_937_reject_quantities_that_persist_as_zero(db_session, test_user, test_supplier, conv_product, units):
+    """Any quantity that persists as zero base units must be rejected before any mutations (#937)."""
+    db_session.commit()
+
+    # 1. Tiny positive quantity in BASE mode (0.0001 -> rounds to 0.000)
+    req_tiny_base = GrnRequest(
+        supplier_id=test_supplier.id,
+        date_received=datetime.now(),
+        supplier_invoice_no="INV-TINY-BASE",
+        input_vat=Decimal("0.00"),
+        lines=[
+            GrnLine(
+                product_id=conv_product.id,
+                qty=Decimal("0.0001"),
+                unit_cost=Decimal("10.00"),
+                mode="BASE",
+            )
+        ],
+        user_id=test_user.id,
+    )
+    with pytest.raises(ValueError, match=r"grn_invalid_qty.*zero base quantity"):
+        PurchaseService.receive_goods(req_tiny_base)
+
+    assert db_session.query(Purchase).filter_by(reference_external="INV-TINY-BASE").count() == 0
+
+    # 2. In PURCHASE mode, tiny input that converts to zero base units
+    # e.g., purchase qty 0.001 with factor 0.010 = 0.00001 -> rounds to 0.000
+    conv_product.purchase_factor = Decimal("0.010")
+    db_session.commit()
+
+    req_tiny_purch = GrnRequest(
+        supplier_id=test_supplier.id,
+        date_received=datetime.now(),
+        supplier_invoice_no="INV-TINY-PURCH",
+        input_vat=Decimal("0.00"),
+        lines=[
+            GrnLine(
+                product_id=conv_product.id,
+                qty=Decimal("0.001"),
+                unit_cost=Decimal("10.00"),
+                mode="PURCHASE",
+                purchase_unit_id=units["box"].id,
+                purchase_factor=Decimal("0.010"),
+            )
+        ],
+        user_id=test_user.id,
+    )
+    with pytest.raises(ValueError, match=r"grn_invalid_qty.*zero base quantity"):
+        PurchaseService.receive_goods(req_tiny_purch)
+
+    assert db_session.query(Purchase).filter_by(reference_external="INV-TINY-PURCH").count() == 0
+
+    # 3. Same rule applied in commit_purchase
+    p = PurchaseService.create_purchase(test_supplier.id, "INV-TINY-COMMIT", test_user.id)
+    with pytest.raises(ValueError, match=r"grn_invalid_qty.*zero base quantity"):
+        PurchaseService.commit_purchase(
+            p.id,
+            [{"product_id": conv_product.id, "qty": Decimal("0.0001"), "cost": Decimal("10.00"), "mode": "BASE"}],
+        )
+
+    # Verify no partial purchase rows, no stock movement, no payable update
+    db_session.refresh(p)
+    assert p.status == "DRAFT"
+    assert len(p.items) == 0
+    assert db_session.query(StockMovement).filter_by(document_id=p.id).count() == 0
+
+
+def test_issue_937_authoritative_supplier_line_total_rounding_reconciliation(
+    db_session, test_user, test_supplier, units
+):
+    """PurchaseItem.line_total reconciles displayed lines with Purchase.total_cost exactly (#937)."""
+    db_session.commit()
+    from cbpos.core.services.document_browser_service import DocumentBrowserService
+
+    # Product A: 1 Box = 3 pieces, cost per box Rs 10.00
+    # Base unit cost = 10.00 / 3 = 3.33. Base qty = 1 * 3 = 3. 3 * 3.33 = 9.99 != 10.00!
+    p_third = Product(
+        name_en="Third Item",
+        barcode="THIRD001",
+        price=Decimal("20.00"),
+        cost=Decimal("3.33"),
+        stock_qty=Decimal("0.000"),
+        unit_id=units["piece"].id,
+        purchase_unit_id=units["box"].id,
+        purchase_factor=Decimal("3.000"),
+    )
+    db_session.add(p_third)
+    db_session.commit()
+
+    req = GrnRequest(
+        supplier_id=test_supplier.id,
+        date_received=datetime.now(),
+        supplier_invoice_no="INV-ROUNDING-RECONCILE",
+        input_vat=Decimal("0.00"),
+        lines=[
+            GrnLine(
+                product_id=p_third.id,
+                qty=Decimal("1.000"),
+                unit_cost=Decimal("10.00"),
+                mode="PURCHASE",
+                purchase_unit_id=units["box"].id,
+                purchase_factor=Decimal("3.000"),
+                expected_unit_conversion_on=True,
+            )
+        ],
+        user_id=test_user.id,
+    )
+    purchase = PurchaseService.receive_goods(req)
+
+    # Authoritative total cost on Purchase is Rs 10.00
+    assert purchase.total_cost == Decimal("10.00")
+
+    item = purchase.items[0]
+    # line_total must be Rs 10.00, NOT 3 * 3.33 = 9.99
+    assert item.line_total == Decimal("10.00")
+    assert sum(it.line_total for it in purchase.items) == purchase.total_cost
+
+    # DocumentBrowserService must also report line_total == Rs 10.00
+    doc = DocumentBrowserService.get_document_details(purchase.id, "purchase")
+    assert doc is not None
+    assert doc["items"][0]["line_total"] == Decimal("10.00")
+    assert sum(it["line_total"] for it in doc["items"]) == doc["total_amount"]

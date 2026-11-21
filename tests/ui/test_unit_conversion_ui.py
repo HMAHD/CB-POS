@@ -3,8 +3,9 @@ from unittest.mock import patch
 
 import pytest
 
+from cbpos.core.constants.features import Features
 from cbpos.core.constants.permissions import Permissions
-from cbpos.core.models import Permission, Product, Role, Supplier, Unit, User
+from cbpos.core.models import Permission, Product, Purchase, Role, Supplier, Unit, User
 from cbpos.core.services.feature_flags import FeatureFlags
 from cbpos.ui.dialogs.product_editor import ProductEditor
 from cbpos.ui.views.purchase_view import PurchaseView
@@ -270,3 +271,120 @@ def test_issue_937_purchase_view_handles_bare_mock_product(qtbot, db_session):
         mock_prod = MagicMock(id=999, name_en="Bare Mock Product", cost=Decimal("15.00"))
         view._add_grn_row(product=mock_prod, qty=Decimal("3"), cost=Decimal("15.00"))
         assert view.grn_model.rowCount() == 1
+
+
+def test_issue_937_purchase_view_refreshes_empty_grid_on_feature_toggle(qtbot, db_session):
+    """PurchaseView must immediately rebuild empty GRN grid when UNIT_CONVERSION changes (#937)."""
+    flag_state = {"enabled": False}
+
+    with patch.object(
+        FeatureFlags,
+        "is_on",
+        side_effect=lambda name: flag_state["enabled"] if name == Features.UNIT_CONVERSION else False,
+    ):
+        view = PurchaseView()
+        qtbot.addWidget(view)
+
+        # Initially 5 columns
+        assert view.grn_model.columnCount() == 5
+        assert not view._is_unit_conv
+
+        # Feature enabled
+        flag_state["enabled"] = True
+        view.on_activated()
+
+        # Rebuilt to 7 columns
+        assert view.grn_model.columnCount() == 7
+        assert view._is_unit_conv
+
+        # Feature disabled again
+        flag_state["enabled"] = False
+        view.on_activated()
+
+        # Rebuilt back to 5 columns
+        assert view.grn_model.columnCount() == 5
+        assert not view._is_unit_conv
+
+
+def test_issue_937_purchase_view_populated_grid_prompts_on_feature_toggle_cancel_and_confirm(
+    qtbot, db_session, test_user, test_supplier, units, monkeypatch
+):
+    """Populated GRN grid must prompt before rebuilding on feature toggle, with safe cancel and confirm (#937)."""
+    from PyQt6.QtWidgets import QMessageBox
+
+    flag_state = {"enabled": True}
+
+    product = Product(
+        name_en="Toggle Test Item",
+        barcode="TOGGLE001",
+        price=Decimal("25.00"),
+        cost=Decimal("10.00"),
+        stock_qty=Decimal("0.000"),
+        unit_id=units["piece"].id,
+        purchase_unit_id=units["box"].id,
+        purchase_factor=Decimal("5.000"),
+    )
+    db_session.add(product)
+    db_session.commit()
+
+    with patch.object(
+        FeatureFlags,
+        "is_on",
+        side_effect=lambda name: flag_state["enabled"] if name == Features.UNIT_CONVERSION else False,
+    ):
+        view = PurchaseView()
+        view.set_user(test_user)
+        qtbot.addWidget(view)
+
+        assert view.grn_model.columnCount() == 7
+        assert view._is_unit_conv
+
+        # Add a row
+        view._add_grn_row(product, Decimal("2.000"), Decimal("50.00"), mode="PURCHASE")
+        assert view.grn_model.rowCount() == 1
+
+        # Toggle feature OFF while row is open
+        flag_state["enabled"] = False
+
+        # 1. User cancels reload prompt: rows preserved, flag state preserved
+        prompt_called = {"count": 0}
+
+        def mock_question_no(*args, **kwargs):
+            prompt_called["count"] += 1
+            return QMessageBox.StandardButton.No
+
+        monkeypatch.setattr(QMessageBox, "question", mock_question_no)
+        view.on_activated()
+
+        assert prompt_called["count"] == 1
+        assert view.grn_model.rowCount() == 1
+        assert view.grn_model.columnCount() == 7
+        assert view._is_unit_conv is True  # preserved
+
+        # 2. User confirms reload prompt: rows cleared, grid rebuilt to 5 cols
+        def mock_question_yes(*args, **kwargs):
+            prompt_called["count"] += 1
+            return QMessageBox.StandardButton.Yes
+
+        monkeypatch.setattr(QMessageBox, "question", mock_question_yes)
+        view.on_activated()
+
+        assert prompt_called["count"] == 2
+        assert view.grn_model.rowCount() == 0
+        assert view.grn_model.columnCount() == 5
+        assert view._is_unit_conv is False
+
+        # 3. New GRN commits cleanly without restart
+        view.supplier_combo.setCurrentIndex(view.supplier_combo.findData(test_supplier.id))
+        view.invoice_input.setText("INV-AFTER-RELOAD")
+        view._add_grn_row(product, Decimal("4.000"), Decimal("10.00"), mode="BASE")
+        assert view.grn_model.rowCount() == 1
+
+        monkeypatch.setattr(QMessageBox, "information", lambda *args, **kwargs: None)
+        view.commit_grn()
+
+        # Successfully committed
+        assert view.grn_model.rowCount() == 0
+        purchase = db_session.query(Purchase).filter_by(reference_external="INV-AFTER-RELOAD").first()
+        assert purchase is not None
+        assert purchase.status == "COMPLETED"

@@ -656,6 +656,19 @@ class PurchaseItem(Base):
     purchase_order_item: Mapped["PurchaseOrderItem | None"] = relationship()
     purchase_unit: Mapped[Optional["Unit"]] = relationship("Unit", lazy="joined", foreign_keys=[purchase_unit_id])
 
+    @property
+    def line_total(self) -> Decimal:
+        """Authoritative supplier line total (#937).
+
+        Uses purchase_qty * purchase_unit_cost when conversion snapshots exist,
+        otherwise qty_received * unit_cost. Always rounded via round_money.
+        """
+        from cbpos.core.utils.money import round_money
+
+        if self.purchase_qty is not None and self.purchase_unit_cost is not None:
+            return round_money(self.purchase_qty * self.purchase_unit_cost)
+        return round_money(self.qty_received * self.unit_cost)
+
 
 class PurchaseOrderItem(Base):
     """One product line on a `PurchaseOrder`, with the running quantity received against it (#486)."""

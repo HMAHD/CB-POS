@@ -490,36 +490,7 @@ class PurchaseView(QWidget, Activatable):
 
         self.grn_table = QTableView()
         self.grn_table.setModel(self.grn_model)
-        if self._is_unit_conv:
-            configure_table_columns(
-                self.grn_table.horizontalHeader(),
-                {
-                    0: QHeaderView.ResizeMode.ResizeToContents,
-                    1: QHeaderView.ResizeMode.Stretch,
-                    2: QHeaderView.ResizeMode.ResizeToContents,
-                    3: QHeaderView.ResizeMode.ResizeToContents,
-                    4: QHeaderView.ResizeMode.ResizeToContents,
-                    5: QHeaderView.ResizeMode.ResizeToContents,
-                    6: QHeaderView.ResizeMode.ResizeToContents,
-                },
-            )
-            self.grn_numeric_delegate = GrnNumericDelegate(self.grn_table)
-            self.grn_table.setItemDelegateForColumn(2, self.grn_numeric_delegate)
-            self.grn_table.setItemDelegateForColumn(5, self.grn_numeric_delegate)
-        else:
-            configure_table_columns(
-                self.grn_table.horizontalHeader(),
-                {
-                    0: QHeaderView.ResizeMode.ResizeToContents,
-                    1: QHeaderView.ResizeMode.Stretch,
-                    2: QHeaderView.ResizeMode.ResizeToContents,
-                    3: QHeaderView.ResizeMode.ResizeToContents,
-                    4: QHeaderView.ResizeMode.ResizeToContents,
-                },
-            )
-            self.grn_numeric_delegate = GrnNumericDelegate(self.grn_table)
-            self.grn_table.setItemDelegateForColumn(2, self.grn_numeric_delegate)
-            self.grn_table.setItemDelegateForColumn(3, self.grn_numeric_delegate)
+        self._rebuild_grn_table(self._is_unit_conv)
 
         self.shortcut_delete_line = QShortcut(QKeySequence(Qt.Key.Key_Delete), self.grn_table)
         self.shortcut_delete_line.activated.connect(self.remove_selected_grn_row)
@@ -967,7 +938,18 @@ class PurchaseView(QWidget, Activatable):
         if resolved_mode == "AUTO":
             resolved_mode = "PURCHASE" if has_prod_conv else "BASE"
 
-        self.grn_items.append({"product": product, "qty": qty, "cost": cost, "mode": resolved_mode})
+        self.grn_items.append(
+            {
+                "product": product,
+                "qty": qty,
+                "cost": cost,
+                "mode": resolved_mode,
+                "expected_base_unit_id": getattr(product, "unit_id", None) if product else None,
+                "purchase_unit_id": getattr(product, "purchase_unit_id", None) if product else None,
+                "purchase_factor": _get_product_purchase_factor(product) if product else Decimal("1.000"),
+                "expected_unit_conversion_on": is_conv,
+            }
+        )
 
         row = self.grn_model.rowCount()
         self.grn_model.insertRow(row)
@@ -1262,19 +1244,25 @@ class PurchaseView(QWidget, Activatable):
                     QMessageBox.warning(self, _t("common.error"), _t("purchase.error_invalid_line"))
                     return
 
-                product = self.grn_items[i]["product"] if i < len(self.grn_items) else None
-                item_mode = self.grn_items[i].get("mode", "AUTO") if i < len(self.grn_items) else "AUTO"
+                item_entry = self.grn_items[i] if i < len(self.grn_items) else {}
+                product = item_entry.get("product")
+                item_mode = item_entry.get("mode", "AUTO")
+
+                snap_base_unit_id = item_entry.get(
+                    "expected_base_unit_id", getattr(product, "unit_id", None) if product else None
+                )
+                snap_p_unit_id = item_entry.get(
+                    "purchase_unit_id", getattr(product, "purchase_unit_id", None) if product else None
+                )
+                snap_factor = item_entry.get(
+                    "purchase_factor", _get_product_purchase_factor(product) if product else Decimal("1.000")
+                )
+                snap_conv_on = item_entry.get("expected_unit_conversion_on", is_conv)
 
                 if is_conv and item_mode == "PURCHASE":
-                    factor = _get_product_purchase_factor(product)
-                    p_unit_id = getattr(product, "purchase_unit_id", None) if product else None
-                    if not isinstance(p_unit_id, int):
-                        p_unit_id = None
-                    base_qty = round_quantity(qty * factor)
+                    base_qty = round_quantity(qty * snap_factor)
                     line_mode = "PURCHASE"
                 else:
-                    factor = Decimal("1.000")
-                    p_unit_id = None
                     base_qty = qty
                     line_mode = "BASE"
 
@@ -1284,9 +1272,10 @@ class PurchaseView(QWidget, Activatable):
                         "qty": base_qty,
                         "cost": cost,
                         "mode": line_mode,
-                        "purchase_unit_id": p_unit_id,
-                        "purchase_factor": factor,
-                        "expected_unit_conversion_on": is_conv,
+                        "expected_base_unit_id": snap_base_unit_id,
+                        "purchase_unit_id": snap_p_unit_id,
+                        "purchase_factor": snap_factor,
+                        "expected_unit_conversion_on": snap_conv_on,
                     }
                 )
                 grn_lines.append(
@@ -1295,9 +1284,10 @@ class PurchaseView(QWidget, Activatable):
                         qty=qty,
                         unit_cost=cost,
                         mode=line_mode,
-                        purchase_unit_id=p_unit_id,
-                        purchase_factor=factor if (is_conv and p_unit_id) else None,
-                        expected_unit_conversion_on=is_conv,
+                        expected_base_unit_id=snap_base_unit_id,
+                        purchase_unit_id=snap_p_unit_id,
+                        purchase_factor=snap_factor,
+                        expected_unit_conversion_on=snap_conv_on,
                     )
                 )
 
@@ -1938,12 +1928,104 @@ class PurchaseView(QWidget, Activatable):
             logger.warning("Failed to record supplier balance adjustment: %s", e)
             QMessageBox.warning(self, _t("common.error"), translate_error(str(e)))
 
+    def _rebuild_grn_table(self, is_unit_conv: bool) -> None:
+        """Rebuild GRN table structure, columns, delegates, and headers on feature toggle (#937)."""
+        self._is_unit_conv = is_unit_conv
+        cols = 7 if is_unit_conv else 5
+
+        self.grn_model.blockSignals(True)
+        try:
+            self.grn_model.clear()
+            self.grn_model.setColumnCount(cols)
+            self.grn_items = []
+        finally:
+            self.grn_model.blockSignals(False)
+
+        if is_unit_conv:
+            configure_table_columns(
+                self.grn_table.horizontalHeader(),
+                {
+                    0: QHeaderView.ResizeMode.ResizeToContents,
+                    1: QHeaderView.ResizeMode.Stretch,
+                    2: QHeaderView.ResizeMode.ResizeToContents,
+                    3: QHeaderView.ResizeMode.ResizeToContents,
+                    4: QHeaderView.ResizeMode.ResizeToContents,
+                    5: QHeaderView.ResizeMode.ResizeToContents,
+                    6: QHeaderView.ResizeMode.ResizeToContents,
+                },
+            )
+            self.grn_numeric_delegate = GrnNumericDelegate(self.grn_table)
+            self.grn_table.setItemDelegateForColumn(2, self.grn_numeric_delegate)
+            self.grn_table.setItemDelegateForColumn(3, None)
+            self.grn_table.setItemDelegateForColumn(5, self.grn_numeric_delegate)
+            self.grn_model.setHorizontalHeaderLabels(
+                [
+                    _t("purchase.grn_header_id"),
+                    _t("purchase.grn_header_product"),
+                    _t("purchase.grn_header_purchase_qty"),
+                    _t("purchase.grn_header_purchase_unit"),
+                    _t("purchase.grn_header_base_qty"),
+                    _t("purchase.grn_header_purchase_cost"),
+                    _t("purchase.grn_header_total"),
+                ]
+            )
+            align_numeric_headers(self.grn_table, [2, 4, 5, 6])
+        else:
+            configure_table_columns(
+                self.grn_table.horizontalHeader(),
+                {
+                    0: QHeaderView.ResizeMode.ResizeToContents,
+                    1: QHeaderView.ResizeMode.Stretch,
+                    2: QHeaderView.ResizeMode.ResizeToContents,
+                    3: QHeaderView.ResizeMode.ResizeToContents,
+                    4: QHeaderView.ResizeMode.ResizeToContents,
+                },
+            )
+            self.grn_numeric_delegate = GrnNumericDelegate(self.grn_table)
+            self.grn_table.setItemDelegateForColumn(2, self.grn_numeric_delegate)
+            self.grn_table.setItemDelegateForColumn(3, self.grn_numeric_delegate)
+            self.grn_table.setItemDelegateForColumn(5, None)
+            self.grn_model.setHorizontalHeaderLabels(
+                [
+                    _t("purchase.grn_header_id"),
+                    _t("purchase.grn_header_product"),
+                    _t("purchase.grn_header_qty"),
+                    _t("purchase.grn_header_cost"),
+                    _t("purchase.grn_header_total"),
+                ]
+            )
+            align_numeric_headers(self.grn_table, [2, 3, 4])
+
+        if hasattr(self, "total_label"):
+            self.total_label.setText(f"{_t('purchase.total_cost_label')}: 0.00")
+        if hasattr(self, "empty_grn_label"):
+            self.empty_grn_label.setVisible(True)
+
+    def _check_unit_conversion_mode(self) -> None:
+        """Check if UNIT_CONVERSION feature state changed and refresh GRN grid accordingly (#937)."""
+        live_flag = feature_visible(Features.UNIT_CONVERSION)
+        if live_flag == getattr(self, "_is_unit_conv", False):
+            return
+
+        if self.grn_model.rowCount() == 0:
+            self._rebuild_grn_table(live_flag)
+        else:
+            reply = QMessageBox.question(
+                self,
+                _t("purchase.conversion_mode_changed_title"),
+                _t("purchase.conversion_mode_changed_prompt"),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+            if reply == QMessageBox.StandardButton.Yes:
+                self._rebuild_grn_table(live_flag)
+
     def _on_tab_changed(self, _index: int) -> None:
         self.on_activated()
 
     def on_activated(self) -> None:
         """Reload the visible tab when Purchasing is shown or the user switches tabs."""
         self._update_supplier_read_only_state()
+        self._check_unit_conversion_mode()
         index = self.tabs.currentIndex()
         if index == 0:
             self.refresh_suppliers()

@@ -1082,6 +1082,8 @@
     "btn_load_po": "Load",
     "discrepancy_title": "Doesn't Match the Order",
     "discrepancy_confirm": "This GRN doesn't match the purchase order:\n\n{details}\n\nCommit this GRN anyway?",
+    "conversion_mode_changed_title": "Unit Conversion Setting Changed",
+    "conversion_mode_changed_prompt": "The unit conversion setting was changed. Discard entered items and reload the GRN table?",
     "discrepancy_line": "{product}: {outstanding} still to receive, receiving {received}",
     "discrepancy_line_not_on_order": "{product}: not on this order, receiving {received}",
     "discrepancy_line_not_received": "{product}: not received (still {outstanding} outstanding)",

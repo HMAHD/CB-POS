@@ -39,6 +39,26 @@ class GrnLine:
     purchase_unit_id: int | None = None
     purchase_factor: Decimal | None = None
     expected_unit_conversion_on: bool | None = None
+    expected_base_unit_id: int | None = None
+
+
+@dataclass
+class ValidatedGrnLine:
+    """Pre-validated and normalized GRN line ready for application (#937)."""
+
+    product: Product
+    product_id: int
+    base_qty: Decimal
+    base_unit_cost: Decimal
+    supplier_line_total: Decimal
+    purchase_qty: Decimal
+    purchase_unit_cost: Decimal
+    purchase_factor: Decimal
+    purchase_unit_id: int | None
+    p_unit_name: str | None
+    b_unit_name: str | None
+    raw_qty: Decimal
+    raw_cost: Decimal
 
 
 @dataclass
@@ -60,6 +80,119 @@ class PurchaseService:
     """
     Service for managing purchases and stock reception (GRN).
     """
+
+    @staticmethod
+    def _validate_and_normalize_line(
+        product: Product,
+        raw_qty: Decimal,
+        raw_cost: Decimal,
+        mode: str,
+        expected_base_unit_id: int | None,
+        purchase_unit_id: int | None,
+        purchase_factor: Decimal | None,
+        expected_unit_conversion_on: bool | None,
+        is_unit_conv_on: bool,
+    ) -> ValidatedGrnLine:
+        """Validate configuration snapshots and normalize quantities/costs (#937)."""
+        if raw_qty <= Decimal("0"):
+            raise ValueError(f"grn_invalid_qty: {raw_qty}")
+        if raw_cost < Decimal("0.00"):
+            raise ValueError(f"grn_invalid_cost: {raw_cost}")
+
+        if expected_unit_conversion_on is not None:
+            if expected_unit_conversion_on != is_unit_conv_on:
+                raise ValueError("stale_conversion_configuration: feature toggle changed during GRN entry")
+
+        authoritative_factor = (
+            product.purchase_factor
+            if (
+                isinstance(getattr(product, "purchase_factor", None), (Decimal, int, float))
+                and product.purchase_factor > 0
+            )
+            else Decimal("1.000")
+        )
+        has_product_conversion = bool(isinstance(product.purchase_unit_id, int) and authoritative_factor > Decimal("0"))
+
+        if expected_base_unit_id is not None and expected_base_unit_id != product.unit_id:
+            raise ValueError(f"stale_conversion_configuration: product {product.id} base unit changed")
+
+        if mode == "PURCHASE":
+            if not is_unit_conv_on:
+                raise ValueError("stale_conversion_configuration: purchase unit mode requested but feature is disabled")
+            if not product.purchase_unit_id:
+                raise ValueError(
+                    f"stale_conversion_configuration: product {product.id} has no purchase unit configured"
+                )
+            if purchase_unit_id is not None and purchase_unit_id != product.purchase_unit_id:
+                raise ValueError(f"stale_conversion_configuration: product {product.id} purchase unit changed")
+            if purchase_factor is not None and purchase_factor != authoritative_factor:
+                raise ValueError(f"stale_conversion_configuration: product {product.id} factor changed")
+            use_conversion = True
+        elif mode == "BASE":
+            if is_unit_conv_on:
+                if expected_base_unit_id is not None or purchase_unit_id is not None:
+                    if purchase_unit_id != product.purchase_unit_id:
+                        raise ValueError(f"stale_conversion_configuration: product {product.id} purchase unit changed")
+                    if purchase_factor is not None and purchase_factor != authoritative_factor:
+                        raise ValueError(f"stale_conversion_configuration: product {product.id} factor changed")
+            use_conversion = False
+        else:  # AUTO
+            if purchase_unit_id is not None and not is_unit_conv_on:
+                raise ValueError(
+                    "stale_conversion_configuration: line configured with purchase unit but feature is disabled"
+                )
+            if is_unit_conv_on:
+                if purchase_unit_id != product.purchase_unit_id:
+                    raise ValueError(f"stale_conversion_configuration: product {product.id} purchase unit changed")
+                if (
+                    product.purchase_unit_id is not None
+                    and purchase_factor is not None
+                    and purchase_factor != authoritative_factor
+                ):
+                    raise ValueError(f"stale_conversion_configuration: product {product.id} factor changed")
+            use_conversion = is_unit_conv_on and has_product_conversion
+
+        if use_conversion:
+            purchase_qty = raw_qty
+            purchase_unit_cost = raw_cost
+            purchase_factor_val = authoritative_factor
+            purchase_unit_id_val = product.purchase_unit_id
+
+            base_qty = round_quantity(purchase_qty * purchase_factor_val)
+            base_unit_cost = round_money(purchase_unit_cost / purchase_factor_val)
+            supplier_line_total = round_money(purchase_qty * purchase_unit_cost)
+            p_unit_name = product.purchase_unit.name if product.purchase_unit else None
+        else:
+            purchase_qty = raw_qty
+            purchase_unit_cost = raw_cost
+            purchase_factor_val = Decimal("1.000")
+            purchase_unit_id_val = None
+
+            base_qty = round_quantity(raw_qty)
+            base_unit_cost = round_money(raw_cost)
+            supplier_line_total = round_money(raw_qty * raw_cost)
+            p_unit_name = None
+
+        if base_qty <= Decimal("0"):
+            raise ValueError(f"grn_invalid_qty: {raw_qty} results in zero base quantity")
+
+        b_unit_name = product.unit.name if product.unit else None
+
+        return ValidatedGrnLine(
+            product=product,
+            product_id=product.id,
+            base_qty=base_qty,
+            base_unit_cost=base_unit_cost,
+            supplier_line_total=supplier_line_total,
+            purchase_qty=purchase_qty,
+            purchase_unit_cost=purchase_unit_cost,
+            purchase_factor=purchase_factor_val,
+            purchase_unit_id=purchase_unit_id_val,
+            p_unit_name=p_unit_name,
+            b_unit_name=b_unit_name,
+            raw_qty=raw_qty,
+            raw_cost=raw_cost,
+        )
 
     @staticmethod
     def receive_goods(request: GrnRequest) -> Purchase:
@@ -111,65 +244,28 @@ class PurchaseService:
                 if request.expected_unit_conversion_on != is_unit_conv_on:
                     raise ValueError("stale_conversion_configuration: feature toggle changed during GRN entry")
 
-            # Phase 1: Validate all lines and configuration before mutating state or generating numbers
-            validated_lines = []
+            # Phase 1: Validate all products exist before checking configuration
             for line in request.lines:
-                product = session.get(Product, line.product_id)
-                if not product:
+                if not line.product_id or not session.get(Product, line.product_id):
                     raise ValueError(f"Product {line.product_id} not found")
 
-                if line.expected_unit_conversion_on is not None:
-                    if line.expected_unit_conversion_on != is_unit_conv_on:
-                        raise ValueError("stale_conversion_configuration: feature toggle changed during GRN entry")
+            # Phase 2: Validate all lines and configuration before mutating state or generating numbers
+            validated_lines: list[ValidatedGrnLine] = []
+            for line in request.lines:
+                product = session.get(Product, line.product_id)
 
-                authoritative_factor = (
-                    product.purchase_factor
-                    if (
-                        isinstance(getattr(product, "purchase_factor", None), (Decimal, int, float))
-                        and product.purchase_factor > 0
-                    )
-                    else Decimal("1.000")
+                vline = PurchaseService._validate_and_normalize_line(
+                    product=product,
+                    raw_qty=line.qty,
+                    raw_cost=line.unit_cost,
+                    mode=getattr(line, "mode", "AUTO"),
+                    expected_base_unit_id=getattr(line, "expected_base_unit_id", None),
+                    purchase_unit_id=getattr(line, "purchase_unit_id", None),
+                    purchase_factor=getattr(line, "purchase_factor", None),
+                    expected_unit_conversion_on=getattr(line, "expected_unit_conversion_on", None),
+                    is_unit_conv_on=is_unit_conv_on,
                 )
-                has_product_conversion = bool(
-                    isinstance(product.purchase_unit_id, int) and authoritative_factor > Decimal("0")
-                )
-
-                mode = line.mode if hasattr(line, "mode") else "AUTO"
-                if mode == "PURCHASE":
-                    if not is_unit_conv_on:
-                        raise ValueError(
-                            "stale_conversion_configuration: purchase unit mode requested but feature is disabled"
-                        )
-                    if not product.purchase_unit_id:
-                        raise ValueError(
-                            f"stale_conversion_configuration: product {product.id} has no purchase unit configured"
-                        )
-                    if line.purchase_unit_id is not None and line.purchase_unit_id != product.purchase_unit_id:
-                        raise ValueError(f"stale_conversion_configuration: product {product.id} purchase unit changed")
-                    if line.purchase_factor is not None and line.purchase_factor != authoritative_factor:
-                        raise ValueError(f"stale_conversion_configuration: product {product.id} factor changed")
-                    use_conversion = True
-                elif mode == "BASE":
-                    use_conversion = False
-                else:  # AUTO
-                    if line.purchase_unit_id is not None and not is_unit_conv_on:
-                        raise ValueError(
-                            "stale_conversion_configuration: line configured with purchase unit but feature is disabled"
-                        )
-                    if is_unit_conv_on:
-                        if line.purchase_unit_id != product.purchase_unit_id:
-                            raise ValueError(
-                                f"stale_conversion_configuration: product {product.id} purchase unit changed"
-                            )
-                        if (
-                            product.purchase_unit_id is not None
-                            and line.purchase_factor is not None
-                            and line.purchase_factor != authoritative_factor
-                        ):
-                            raise ValueError(f"stale_conversion_configuration: product {product.id} factor changed")
-                    use_conversion = is_unit_conv_on and has_product_conversion
-
-                validated_lines.append((product, line, use_conversion, authoritative_factor))
+                validated_lines.append(vline)
 
             # Generate number inside caller session so rollback avoids gap in numbering
             doc_number = DocumentService.generate_number("PURCHASE", session=session)
@@ -191,58 +287,35 @@ class PurchaseService:
 
             total_purchase_cost = Decimal("0.00")
 
-            for product, line, use_conversion, authoritative_factor in validated_lines:
-                if use_conversion:
-                    purchase_qty = line.qty
-                    purchase_unit_cost = line.unit_cost
-                    purchase_factor = authoritative_factor
-                    purchase_unit_id = product.purchase_unit_id
-
-                    base_qty = round_quantity(purchase_qty * purchase_factor)
-                    base_unit_cost = round_money(purchase_unit_cost / purchase_factor)
-                    line_total = round_money(purchase_qty * purchase_unit_cost)
-                    p_unit_name = product.purchase_unit.name if product.purchase_unit else None
-                else:
-                    purchase_qty = line.qty
-                    purchase_unit_cost = line.unit_cost
-                    purchase_factor = Decimal("1.000")
-                    purchase_unit_id = None
-
-                    base_qty = round_quantity(line.qty)
-                    base_unit_cost = round_money(line.unit_cost)
-                    line_total = round_money(line.qty * line.unit_cost)
-                    p_unit_name = None
-
-                b_unit_name = product.unit.name if product.unit else None
-
-                order_item = order_items_by_product.get(line.product_id)
+            for vline in validated_lines:
+                order_item = order_items_by_product.get(vline.product_id)
                 if order_item:
-                    order_item.qty_received += base_qty
+                    order_item.qty_received += vline.base_qty
 
                 purchase_item = PurchaseItem(
                     purchase_id=purchase.id,
-                    product_id=line.product_id,
-                    qty_received=base_qty,
-                    unit_cost=base_unit_cost,
+                    product_id=vline.product_id,
+                    qty_received=vline.base_qty,
+                    unit_cost=vline.base_unit_cost,
                     purchase_order_item_id=order_item.id if order_item else None,
-                    purchase_unit_id=purchase_unit_id,
-                    purchase_factor=purchase_factor,
-                    purchase_qty=purchase_qty,
-                    purchase_unit_cost=purchase_unit_cost,
-                    purchase_unit_name=p_unit_name,
-                    base_unit_name=b_unit_name,
+                    purchase_unit_id=vline.purchase_unit_id,
+                    purchase_factor=vline.purchase_factor,
+                    purchase_qty=vline.purchase_qty,
+                    purchase_unit_cost=vline.purchase_unit_cost,
+                    purchase_unit_name=vline.p_unit_name,
+                    base_unit_name=vline.b_unit_name,
                 )
                 session.add(purchase_item)
 
-                total_purchase_cost += line_total
+                total_purchase_cost += vline.supplier_line_total
 
                 # Record stock movement and compute AVCO
-                old_qty = product.stock_qty
-                old_cost = product.cost if product.cost is not None else Decimal("0.00")
+                old_qty = vline.product.stock_qty
+                old_cost = vline.product.cost if vline.product.cost is not None else Decimal("0.00")
 
                 StockService.record_movement(
-                    product_id=line.product_id,
-                    qty_change=base_qty,
+                    product_id=vline.product_id,
+                    qty_change=vline.base_qty,
                     movement_type="PURCHASE",
                     user_id=request.user_id,
                     document_id=purchase.id,
@@ -251,10 +324,12 @@ class PurchaseService:
 
                 # Invariant 2: if old_qty <= 0, new_cost = base_unit_cost; else weighted average
                 if old_qty <= Decimal("0"):
-                    new_cost = base_unit_cost
+                    new_cost = vline.base_unit_cost
                 else:
-                    new_cost = round_money((old_qty * old_cost + base_qty * base_unit_cost) / (old_qty + base_qty))
-                product.cost = new_cost
+                    new_cost = round_money(
+                        (old_qty * old_cost + vline.base_qty * vline.base_unit_cost) / (old_qty + vline.base_qty)
+                    )
+                vline.product.cost = new_cost
 
             purchase.total_cost = total_purchase_cost
 
@@ -378,141 +453,77 @@ class PurchaseService:
                 if expected_unit_conversion_on != is_unit_conv_on:
                     raise ValueError("stale_conversion_configuration: feature toggle changed during purchase commit")
 
-            # Phase 1: Validate all products exist
+            # Phase 1: Validate all products exist before checking configuration
             for item_data in items_data:
                 product_id = item_data.get("product_id")
                 if not product_id or not session.get(Product, product_id):
                     raise ValueError(f"Product {product_id} not found")
 
             # Phase 2: Validate all items and configuration before mutating state
-            validated_items = []
+            validated_items: list[ValidatedGrnLine] = []
             for item_data in items_data:
                 product_id = item_data.get("product_id")
-                raw_qty = Decimal(str(item_data.get("qty", "0")))
-                raw_cost = Decimal(str(item_data.get("cost", "0")))
-
-                if raw_qty <= Decimal("0"):
-                    raise ValueError(f"grn_invalid_qty: {raw_qty}")
-                if raw_cost < Decimal("0.00"):
-                    raise ValueError(f"grn_invalid_cost: {raw_cost}")
-
                 product = session.get(Product, product_id)
 
-                if item_data.get("expected_unit_conversion_on") is not None:
-                    if item_data["expected_unit_conversion_on"] != is_unit_conv_on:
-                        raise ValueError(
-                            "stale_conversion_configuration: feature toggle changed during purchase commit"
-                        )
-
+                raw_qty = Decimal(str(item_data.get("qty", item_data.get("quantity", "0"))))
+                raw_cost = Decimal(str(item_data.get("cost", item_data.get("unit_cost", "0"))))
                 mode = item_data.get("mode", "AUTO")
-                item_factor = (
+                expected_base_unit_id = item_data.get("expected_base_unit_id", item_data.get("base_unit_id"))
+                purchase_unit_id = item_data.get("purchase_unit_id", item_data.get("expected_purchase_unit_id"))
+                purchase_factor = (
                     Decimal(str(item_data["purchase_factor"]))
                     if "purchase_factor" in item_data and item_data["purchase_factor"] is not None
-                    else None
-                )
-                item_unit_id = item_data.get("purchase_unit_id")
-
-                authoritative_factor = (
-                    product.purchase_factor
-                    if (
-                        isinstance(getattr(product, "purchase_factor", None), (Decimal, int, float))
-                        and product.purchase_factor > 0
+                    else (
+                        Decimal(str(item_data["expected_purchase_factor"]))
+                        if "expected_purchase_factor" in item_data and item_data["expected_purchase_factor"] is not None
+                        else None
                     )
-                    else Decimal("1.000")
                 )
-                has_product_conversion = bool(
-                    isinstance(product.purchase_unit_id, int) and authoritative_factor > Decimal("0")
+                expected_conv_on = item_data.get("expected_unit_conversion_on")
+
+                vline = PurchaseService._validate_and_normalize_line(
+                    product=product,
+                    raw_qty=raw_qty,
+                    raw_cost=raw_cost,
+                    mode=mode,
+                    expected_base_unit_id=expected_base_unit_id,
+                    purchase_unit_id=purchase_unit_id,
+                    purchase_factor=purchase_factor,
+                    expected_unit_conversion_on=expected_conv_on,
+                    is_unit_conv_on=is_unit_conv_on,
                 )
+                validated_items.append(vline)
 
-                if mode == "PURCHASE":
-                    if not is_unit_conv_on:
-                        raise ValueError(
-                            "stale_conversion_configuration: purchase unit mode requested but feature is disabled"
-                        )
-                    if not product.purchase_unit_id:
-                        raise ValueError(
-                            f"stale_conversion_configuration: product {product.id} has no purchase unit configured"
-                        )
-                    if item_unit_id is not None and item_unit_id != product.purchase_unit_id:
-                        raise ValueError(f"stale_conversion_configuration: product {product.id} purchase unit changed")
-                    if item_factor is not None and item_factor != authoritative_factor:
-                        raise ValueError(f"stale_conversion_configuration: product {product.id} factor changed")
-                    use_conversion = True
-                elif mode == "BASE":
-                    use_conversion = False
-                else:  # AUTO
-                    if item_unit_id is not None and not is_unit_conv_on:
-                        raise ValueError(
-                            "stale_conversion_configuration: line configured with purchase unit but feature is disabled"
-                        )
-                    if is_unit_conv_on:
-                        if item_unit_id != product.purchase_unit_id:
-                            raise ValueError(
-                                f"stale_conversion_configuration: product {product.id} purchase unit changed"
-                            )
-                        if (
-                            product.purchase_unit_id is not None
-                            and item_factor is not None
-                            and item_factor != authoritative_factor
-                        ):
-                            raise ValueError(f"stale_conversion_configuration: product {product.id} factor changed")
-                    use_conversion = is_unit_conv_on and has_product_conversion
-
-                validated_items.append((product, raw_qty, raw_cost, use_conversion, authoritative_factor))
-
-            for product, raw_qty, raw_cost, use_conversion, authoritative_factor in validated_items:
-                if use_conversion:
-                    purchase_qty = raw_qty
-                    purchase_unit_cost = raw_cost
-                    purchase_factor = authoritative_factor
-                    purchase_unit_id = product.purchase_unit_id
-
-                    base_qty = round_quantity(purchase_qty * purchase_factor)
-                    base_unit_cost = round_money(purchase_unit_cost / purchase_factor)
-                    line_total = round_money(purchase_qty * purchase_unit_cost)
-                    p_unit_name = product.purchase_unit.name if product.purchase_unit else None
-                else:
-                    purchase_qty = raw_qty
-                    purchase_unit_cost = raw_cost
-                    purchase_factor = Decimal("1.000")
-                    purchase_unit_id = None
-
-                    base_qty = round_quantity(raw_qty)
-                    base_unit_cost = round_money(raw_cost)
-                    line_total = round_money(raw_qty * raw_cost)
-                    p_unit_name = None
-
-                b_unit_name = product.unit.name if product.unit else None
-
-                order_item = order_items_by_product.get(product.id)
+            for vline in validated_items:
+                order_item = order_items_by_product.get(vline.product_id)
                 if order_item:
-                    order_item.qty_received += base_qty
+                    order_item.qty_received += vline.base_qty
 
                 # Create Purchase Item
                 purchase_item = PurchaseItem(
                     purchase_id=purchase.id,
-                    product_id=product.id,
-                    qty_received=base_qty,
-                    unit_cost=base_unit_cost,
+                    product_id=vline.product_id,
+                    qty_received=vline.base_qty,
+                    unit_cost=vline.base_unit_cost,
                     purchase_order_item_id=order_item.id if order_item else None,
-                    purchase_unit_id=purchase_unit_id,
-                    purchase_factor=purchase_factor,
-                    purchase_qty=purchase_qty,
-                    purchase_unit_cost=purchase_unit_cost,
-                    purchase_unit_name=p_unit_name,
-                    base_unit_name=b_unit_name,
+                    purchase_unit_id=vline.purchase_unit_id,
+                    purchase_factor=vline.purchase_factor,
+                    purchase_qty=vline.purchase_qty,
+                    purchase_unit_cost=vline.purchase_unit_cost,
+                    purchase_unit_name=vline.p_unit_name,
+                    base_unit_name=vline.b_unit_name,
                 )
                 session.add(purchase_item)
 
-                total_purchase_cost += line_total
+                total_purchase_cost += vline.supplier_line_total
 
-                old_qty = product.stock_qty
-                old_cost = product.cost if product.cost is not None else Decimal("0.00")
+                old_qty = vline.product.stock_qty
+                old_cost = vline.product.cost if vline.product.cost is not None else Decimal("0.00")
 
                 # 1. Update Stock & Log Movement via StockService
                 StockService.record_movement(
-                    product_id=product.id,
-                    qty_change=base_qty,
+                    product_id=vline.product_id,
+                    qty_change=vline.base_qty,
                     movement_type="PURCHASE",
                     user_id=purchase.user_id,
                     document_id=purchase.id,
@@ -521,9 +532,11 @@ class PurchaseService:
 
                 # 2. Calculate Weighted Average Cost (Invariant 2, #899)
                 if old_qty <= Decimal("0"):
-                    product.cost = base_unit_cost
+                    vline.product.cost = vline.base_unit_cost
                 else:
-                    product.cost = round_money((old_qty * old_cost + base_qty * base_unit_cost) / (old_qty + base_qty))
+                    vline.product.cost = round_money(
+                        (old_qty * old_cost + vline.base_qty * vline.base_unit_cost) / (old_qty + vline.base_qty)
+                    )
 
             # Finalize Purchase
             purchase.total_cost = total_purchase_cost

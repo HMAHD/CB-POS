@@ -226,10 +226,10 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #932 | Power-cut safety: autosave the in-progress bill and restore it on restart | — | 10B.1 | done | #1034 | bdc96ec · D36 · CartAutosaveService, atomic CAS update & insert retry, monotonic generation registry, clean session shutdown, PostgreSQL tests, UI gate screenshots |
 | #926 | Expiry dates and batches, with per-batch MRP (pharmacy, grocery, bakery) | — | 10B.? | todo | | |
 | #930 | Supplier returns with debit note (pairs with expiry/batch) | — | 10B.? | todo | | |
-| #931 | Price board: fast daily price editing for items flagged "price changes often" | — | 10B.2 | in-progress | | D39 · Product.price_changes_often flag, PriceBoardService batch update, F11 PriceBoardDialog, label print integration |
+| #931 | Price board: fast daily price editing for items flagged "price changes often" | — | 10B.2 | done | #1035 | 967a5b3 · D39/D40 · Product.price_changes_often flag, PriceBoardService batch update with OCC rollback, F11 PriceBoardDialog, label print integration |
 | #933 | Serial/IMEI capture (phone and electronics shops), linked to the warranty epic | — | 10B.? | todo | | |
 | #936 | Size/colour variants and exchange (clothing) | — | 10B.? | todo | | |
-| #937 | Unit conversion: buy by box, sell by piece; ft/m/sqft for hardware | — | 10B.? | todo | | |
+| #937 | Unit conversion: buy by box, sell by piece; ft/m/sqft for hardware | — | 10B.3 | in-progress | | D41 · Optional purchase_unit_id & factor, GRN purchase unit intake, base-unit StockMovement/AVCO, exact supplier payable, immutable PurchaseItem |
 | #941 | Deposits and empties (gas cylinders, bottles) | — | 10B.? | todo | | |
 
 ### Phase 10C — [spec](phases/phase-10c-comms-finance-onboarding.md)
@@ -303,6 +303,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | `features.*` (feature flag names and 1-line explanations) | `en.json`, `si.json`, `ta.json` | Draft Sinhala/Tamil feature flag descriptions require native review |
 | `autosave.*` (power-cut recovery dialog title, header, body, prompts) | `en.json`, `si.json`, `ta.json` | Draft Sinhala/Tamil power-cut recovery texts require native merchant review |
 | `price_board.*` (daily price board dialog titles, column headers, actions, empty states) | `en.json`, `si.json`, `ta.json` | Draft Sinhala/Tamil daily price board texts require native merchant review |
+| `product_editor.purchase_*`, `purchase.grn_header_*`, `purchase.conversion_mode_changed_*` (unit conversion fields, table headers, reload prompts) | `en.json`, `si.json`, `ta.json` | Draft Sinhala/Tamil purchase-unit conversion strings require native review |
 
 
 ## ⚠️ Verify on Windows
@@ -317,16 +318,16 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #824 | Physical print check of 58mm/80mm thermal warranty cards with cut and A4 PDF warranty certificates | pending |
 
 ## Handoff
-Phase 10A is complete. All 4 issues merged and verified closed on GitHub:
-- #923: Slim font bundle from 6.4 MB to 1.9 MB (PR #1029, `88f829a`)
-- #924: A4 invoice vector Sinhala/Tamil via ReportLab shaping (PR #1029, `88f829a`)
-- #925: Tested receipt font choices (Clear/Compact) with live preview and test print (PR #1030, `f6a7f2d`)
-- #815: 64-bit installer mode, HKLM32 upgrade bridge, unsigned per D7/D33, no portable ZIP (PR #1031, `710b438`)
+Phase 10B.0 (#942), 10B.1 (#932), and 10B.2 (#931) are merged and verified closed:
+- #942: Shop-type presets at first run (PR #1032, `6478505`)
+- #932: Power-cut safety autosave (PR #1034, `bdc96ec`)
+- #931: Price board daily price editing (PR #1035, `967a5b3`)
 
-Phase 10A decisions locked in DECISIONS.md:
-- D31: Internal development of Phase 10A authorized ahead of public release hardware/legal gates.
-- D32: Receipt font choices (Clear/Noto default, Compact/Yaldevi narrow Sinhala; Windows Nirmala UI only if benchmarked; never arbitrary system fonts).
-- D33: 64-bit installer mode (x64compatible), unsigned binaries with clear SmartScreen guidance per D7, no portable ZIP.
-
-Next: Phase 10B — Shop Workflows (#942, #926, #930, #931, #932, #933, #936, #937, #941). Starting with Batch 10B.0 (#942: Shop-type presets at first run).
+Phase 10B.3 (#937 — purchase-unit conversion) is implemented on branch `feat/p10b-b3-unit-conversion`:
+- Decisions D41 recorded in DECISIONS.md.
+- Reversible Alembic migration `a2b3c4d5e6f7` for `Product` and `PurchaseItem`.
+- Fail-closed re-read of authoritative conversion factor/unit.
+- Base unit inventory and AVCO accounting with exact supplier payable liability.
+- Adaptive GRN grid, PO receiving conversion, and immutable historical inspection.
+- PR opened and left unmerged for independent review. Do not start #926.
 

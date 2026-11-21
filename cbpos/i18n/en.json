@@ -593,6 +593,14 @@
     "name_required": "Product name is required.",
     "no_default_supplier": "No default supplier",
     "no_unit": "No unit",
+    "purchase_unit": "Purchase Unit:",
+    "no_purchase_unit": "Same as selling unit",
+    "purchase_factor": "Conversion Factor:",
+    "conversion_formula": "1 {purchase_unit} = {factor} {base_unit}",
+    "base_unit": "base unit",
+    "factor_must_be_positive": "Factor must be greater than zero.",
+    "invalid_factor": "Enter a valid positive number for factor.",
+    "invalid_purchase_factor": "Purchase factor must be greater than zero.",
     "not_found_barcode": "No product found with barcode: {barcode}",
     "not_found_title": "Not Found",
     "preferred_qty": "Preferred Qty",
@@ -1051,6 +1059,10 @@
     "grn_header_qty": "Receive Qty",
     "grn_header_cost": "Unit Cost",
     "grn_header_total": "Total",
+    "grn_header_purchase_qty": "Purchase Qty",
+    "grn_header_purchase_unit": "Purchase Unit",
+    "grn_header_base_qty": "Base Stock Qty",
+    "grn_header_purchase_cost": "Purchase Cost",
     "history_header_grn": "GRN #",
     "history_header_date": "Date",
     "history_header_supplier": "Supplier",
@@ -1070,6 +1082,8 @@
     "btn_load_po": "Load",
     "discrepancy_title": "Doesn't Match the Order",
     "discrepancy_confirm": "This GRN doesn't match the purchase order:\n\n{details}\n\nCommit this GRN anyway?",
+    "conversion_mode_changed_title": "Unit Conversion Setting Changed",
+    "conversion_mode_changed_prompt": "The unit conversion setting was changed. Discard entered items and reload the GRN table?",
     "discrepancy_line": "{product}: {outstanding} still to receive, receiving {received}",
     "discrepancy_line_not_on_order": "{product}: not on this order, receiving {received}",
     "discrepancy_line_not_received": "{product}: not received (still {outstanding} outstanding)",
@@ -3946,7 +3960,8 @@
       "serial_tracking": "Serial & IMEI Tracking",
       "cheques": "Cheque Payments",
       "power_cut_autosave": "Power-Cut Autosave",
-      "price_board": "Price Board (Daily Prices)"
+      "price_board": "Price Board (Daily Prices)",
+      "unit_conversion": "Purchase-Unit Conversion"
     },
     "desc": {
       "warranty": "Manage warranty policies, claims, returns, and repairs",
@@ -3954,7 +3969,8 @@
       "serial_tracking": "Capture serial or IMEI numbers for high-value items at checkout",
       "cheques": "Accept cheques and record cheque payments at checkout",
       "power_cut_autosave": "Automatically save the open bill and restore it if power cuts or app restarts",
-      "price_board": "Fast daily price editing table for fluctuating items like vegetables, fish, gas, and cement"
+      "price_board": "Fast daily price editing table for fluctuating items like vegetables, fish, gas, and cement",
+      "unit_conversion": "Buy items in bulk units (box, carton, bag) and stock/sell in base units (piece, kg, meter)"
     },
     "saved": "Feature '{name}' updated."
   },

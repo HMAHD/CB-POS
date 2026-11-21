@@ -17,3 +17,6 @@ def round_money(val: Decimal | str | float | int) -> Decimal:
 def round_qty(val: Decimal | str | float | int) -> Decimal:
     """Round a quantity value to 3 decimal places using ROUND_HALF_UP."""
     return Decimal(str(val)).quantize(Precision.QUANTITY, rounding=ROUND_HALF_UP)
+
+
+round_quantity = round_qty

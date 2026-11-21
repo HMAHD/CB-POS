@@ -136,6 +136,12 @@ The owner explicitly authorized internal development of Phase 10A (Packaging and
 **D40 — 2026-11-21 — #931 — Price Board language resolution.**
 Price Board is an operator-facing management dialog, so product names follow the current UI language (`get_language()`) with fallback to English, not customer-facing receipt language. An English UI displays English product names even when `receipt_language` is configured as Sinhala or Tamil.
 
+**D41 — 2026-11-21 — #937 — Purchase-unit conversion MVP scope.**
+1. Build and test #937 internally now; validation with 5–10 real shop owners remains mandatory before public release.
+2. MVP supports purchasing in one purchase unit and stocking/selling in the base unit only.
+3. Multi-unit selling and separate sale prices per unit are deferred.
+
+
 
 
 

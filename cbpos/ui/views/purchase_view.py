@@ -30,8 +30,11 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from cbpos.core.constants.features import Features
 from cbpos.core.constants.permissions import Permissions
 from cbpos.core.services.auth_service import AuthService
+from cbpos.core.services.feature_flags import feature_visible
+from cbpos.core.services.inventory_service import InventoryService
 from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.purchase_order_service import PurchaseOrderService
 from cbpos.core.services.purchase_service import GrnLine, GrnRequest, PurchaseService
@@ -46,6 +49,7 @@ from cbpos.core.utils.formatters import (
     format_quantity,
     format_relative_time,
 )
+from cbpos.core.utils.money import round_money, round_quantity
 from cbpos.core.utils.permission_helper import check_permission_with_override
 from cbpos.core.utils.terminal_guard import catalog_is_read_only
 from cbpos.i18n import _t, register_language_callback
@@ -95,6 +99,54 @@ def format_discrepancy_line(discrepancy: dict) -> str:
         outstanding=format_quantity(discrepancy["outstanding"], places),
         received=format_quantity(discrepancy["received"], places),
     )
+
+
+def _product_has_conversion(product) -> bool:
+    """Return True if product has a valid purchase unit ID and positive purchase factor."""
+    if not product:
+        return False
+    p_unit_id = getattr(product, "purchase_unit_id", None)
+    if not isinstance(p_unit_id, int):
+        return False
+    p_factor = getattr(product, "purchase_factor", None)
+    if not isinstance(p_factor, (Decimal, int, float)):
+        return False
+    return p_factor > 0
+
+
+def _get_product_purchase_factor(product) -> Decimal:
+    """Return the authoritative positive Decimal purchase factor, defaulting to 1.000."""
+    if not product:
+        return Decimal("1.000")
+    p_factor = getattr(product, "purchase_factor", None)
+    if isinstance(p_factor, Decimal) and p_factor > Decimal("0"):
+        return p_factor
+    if isinstance(p_factor, (int, float)) and p_factor > 0:
+        return Decimal(str(p_factor))
+    return Decimal("1.000")
+
+
+def _get_product_purchase_unit_name(product) -> str:
+    """Return the display name of product's purchase unit, or base unit, or '-'."""
+    if not product:
+        return "-"
+    p_unit = getattr(product, "purchase_unit", None)
+    if p_unit and hasattr(p_unit, "name") and isinstance(p_unit.name, str):
+        return p_unit.name
+    unit = getattr(product, "unit", None)
+    if unit and hasattr(unit, "name") and isinstance(unit.name, str):
+        return unit.name
+    return "-"
+
+
+def _get_product_base_unit_name(product) -> str:
+    """Return the display name of product's base unit, or ''."""
+    if not product:
+        return ""
+    unit = getattr(product, "unit", None)
+    if unit and hasattr(unit, "name") and isinstance(unit.name, str):
+        return unit.name
+    return ""
 
 
 class SupplierTableModel(QAbstractTableModel):
@@ -245,7 +297,7 @@ class GrnNumericDelegate(QStyledItemDelegate):
         if col == 2:
             editor.setValidator(QRegularExpressionValidator(self._qty_regex, editor))
             editor.setToolTip(_t("grn.qty_positive"))
-        elif col == 3:
+        elif col in (3, 5):
             editor.setValidator(QRegularExpressionValidator(self._cost_regex, editor))
             editor.setToolTip(_t("grn.cost_not_negative"))
         return editor
@@ -258,7 +310,7 @@ class GrnNumericDelegate(QStyledItemDelegate):
             val = Decimal(text)
             if col == 2 and val <= Decimal("0"):
                 return  # Refuse non-positive qty
-            if col == 3 and val < Decimal("0"):
+            if col in (3, 5) and val < Decimal("0"):
                 return  # Refuse negative cost
         except (InvalidOperation, ValueError):
             return
@@ -432,23 +484,13 @@ class PurchaseView(QWidget, Activatable):
         layout.addLayout(search_layout)
 
         # Items Grid
-        self.grn_model = QStandardItemModel(0, 5)
+        self._is_unit_conv = feature_visible(Features.UNIT_CONVERSION)
+        cols = 7 if self._is_unit_conv else 5
+        self.grn_model = QStandardItemModel(0, cols)
 
         self.grn_table = QTableView()
         self.grn_table.setModel(self.grn_model)
-        configure_table_columns(
-            self.grn_table.horizontalHeader(),
-            {
-                0: QHeaderView.ResizeMode.ResizeToContents,
-                1: QHeaderView.ResizeMode.Stretch,
-                2: QHeaderView.ResizeMode.ResizeToContents,
-                3: QHeaderView.ResizeMode.ResizeToContents,
-                4: QHeaderView.ResizeMode.ResizeToContents,
-            },
-        )
-        self.grn_numeric_delegate = GrnNumericDelegate(self.grn_table)
-        self.grn_table.setItemDelegateForColumn(2, self.grn_numeric_delegate)
-        self.grn_table.setItemDelegateForColumn(3, self.grn_numeric_delegate)
+        self._rebuild_grn_table(self._is_unit_conv)
 
         self.shortcut_delete_line = QShortcut(QKeySequence(Qt.Key.Key_Delete), self.grn_table)
         self.shortcut_delete_line.activated.connect(self.remove_selected_grn_row)
@@ -612,16 +654,30 @@ class PurchaseView(QWidget, Activatable):
         self.product_search.setPlaceholderText(_t("purchase.product_search_placeholder"))
         self.btn_remove_line.setText(_t("purchase.remove_line"))
         self.btn_remove_line.setToolTip(_t("purchase.remove_line"))
-        self.grn_model.setHorizontalHeaderLabels(
-            [
-                _t("purchase.grn_header_id"),
-                _t("purchase.grn_header_product"),
-                _t("purchase.grn_header_qty"),
-                _t("purchase.grn_header_cost"),
-                _t("purchase.grn_header_total"),
-            ]
-        )
-        align_numeric_headers(self.grn_table, [2, 3, 4])
+        if getattr(self, "_is_unit_conv", False):
+            self.grn_model.setHorizontalHeaderLabels(
+                [
+                    _t("purchase.grn_header_id"),
+                    _t("purchase.grn_header_product"),
+                    _t("purchase.grn_header_purchase_qty"),
+                    _t("purchase.grn_header_purchase_unit"),
+                    _t("purchase.grn_header_base_qty"),
+                    _t("purchase.grn_header_purchase_cost"),
+                    _t("purchase.grn_header_total"),
+                ]
+            )
+            align_numeric_headers(self.grn_table, [2, 4, 5, 6])
+        else:
+            self.grn_model.setHorizontalHeaderLabels(
+                [
+                    _t("purchase.grn_header_id"),
+                    _t("purchase.grn_header_product"),
+                    _t("purchase.grn_header_qty"),
+                    _t("purchase.grn_header_cost"),
+                    _t("purchase.grn_header_total"),
+                ]
+            )
+            align_numeric_headers(self.grn_table, [2, 3, 4])
         self.btn_commit.setText(_t("purchase.btn_commit_stock"))
         self.total_label.setText(f"{_t('purchase.total_cost_label')}: 0.00")
 
@@ -854,60 +910,151 @@ class PurchaseView(QWidget, Activatable):
             QMessageBox.warning(self, _t("purchase.not_found_title"), _t("purchase.product_not_found"))
             return
 
+        # Fetch fresh product to avoid stale cached attributes
+        fresh_product = InventoryService().get_product(product.id)
+        if fresh_product:
+            product = fresh_product
+            self.products_cache[query] = product
+
         # Add to grid
         qty = Decimal("1.000")
-        cost = product.cost  # Default to current cost
+        base_cost = product.cost if getattr(product, "cost", None) is not None else Decimal("0.00")
+        if getattr(self, "_is_unit_conv", False) and _product_has_conversion(product):
+            factor = _get_product_purchase_factor(product)
+            cost = round_money(base_cost * factor)
+        else:
+            cost = base_cost  # Default to current cost
 
         self._add_grn_row(product, qty, cost)
         self.product_search.clear()
         self.update_total()
 
-    def _add_grn_row(self, product, qty: Decimal, cost: Decimal) -> None:
+    def _add_grn_row(self, product, qty: Decimal, cost: Decimal, mode: str = "AUTO") -> None:
         """Append one line item to the GRN grid and the underlying grn_items list."""
-        self.grn_items.append({"product": product, "qty": qty, "cost": cost})
+        is_conv = getattr(self, "_is_unit_conv", False)
+        has_prod_conv = is_conv and _product_has_conversion(product)
+
+        resolved_mode = mode
+        if resolved_mode == "AUTO":
+            resolved_mode = "PURCHASE" if has_prod_conv else "BASE"
+
+        self.grn_items.append(
+            {
+                "product": product,
+                "qty": qty,
+                "cost": cost,
+                "mode": resolved_mode,
+                "expected_base_unit_id": getattr(product, "unit_id", None) if product else None,
+                "purchase_unit_id": getattr(product, "purchase_unit_id", None) if product else None,
+                "purchase_factor": _get_product_purchase_factor(product) if product else Decimal("1.000"),
+                "expected_unit_conversion_on": is_conv,
+            }
+        )
 
         row = self.grn_model.rowCount()
         self.grn_model.insertRow(row)
 
-        id_item = QStandardItem(str(product.id))
+        id_item = QStandardItem(str(getattr(product, "id", "")))
         id_item.setFlags(id_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
         self.grn_model.setItem(row, 0, id_item)
 
-        name_item = QStandardItem(product.name_en)
+        name_str = str(getattr(product, "name_en", "") or "")
+        name_item = QStandardItem(name_str)
         name_item.setFlags(name_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
         self.grn_model.setItem(row, 1, name_item)
 
-        qty_item = QStandardItem(str(qty))
-        qty_item.setTextAlignment(NUMERIC_ALIGNMENT)
-        self.grn_model.setItem(row, 2, qty_item)
+        if is_conv:
+            if resolved_mode == "PURCHASE":
+                factor = _get_product_purchase_factor(product)
+                p_unit_name = _get_product_purchase_unit_name(product)
+                b_unit_name = _get_product_base_unit_name(product)
+                base_qty = round_quantity(qty * factor)
+            else:
+                factor = Decimal("1.000")
+                p_unit_name = _get_product_base_unit_name(product) or "-"
+                b_unit_name = _get_product_base_unit_name(product)
+                base_qty = round_quantity(qty)
 
-        cost_item = QStandardItem(str(cost))
-        cost_item.setTextAlignment(NUMERIC_ALIGNMENT)
-        self.grn_model.setItem(row, 3, cost_item)
+            # col 2: purchase/entered qty (editable)
+            qty_item = QStandardItem(str(qty))
+            qty_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            self.grn_model.setItem(row, 2, qty_item)
 
-        tot_item = QStandardItem(format(qty * cost, ".2f"))
-        tot_item.setFlags(tot_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-        tot_item.setTextAlignment(NUMERIC_ALIGNMENT)
-        self.grn_model.setItem(row, 4, tot_item)
+            # col 3: unit name (read-only)
+            p_unit_item = QStandardItem(p_unit_name)
+            p_unit_item.setFlags(p_unit_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.grn_model.setItem(row, 3, p_unit_item)
+
+            # col 4: base qty (read-only)
+            base_str = f"{base_qty:g} {b_unit_name}".strip()
+            base_item = QStandardItem(base_str)
+            base_item.setFlags(base_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            base_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            self.grn_model.setItem(row, 4, base_item)
+
+            # col 5: unit cost (editable)
+            cost_item = QStandardItem(str(cost))
+            cost_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            self.grn_model.setItem(row, 5, cost_item)
+
+            # col 6: total (read-only)
+            tot = round_money(qty * cost)
+            tot_item = QStandardItem(format(tot, ".2f"))
+            tot_item.setFlags(tot_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            tot_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            self.grn_model.setItem(row, 6, tot_item)
+        else:
+            qty_item = QStandardItem(str(qty))
+            qty_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            self.grn_model.setItem(row, 2, qty_item)
+
+            cost_item = QStandardItem(str(cost))
+            cost_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            self.grn_model.setItem(row, 3, cost_item)
+
+            tot_item = QStandardItem(format(qty * cost, ".2f"))
+            tot_item.setFlags(tot_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            tot_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            self.grn_model.setItem(row, 4, tot_item)
 
     def _on_grn_item_changed(self, item: QStandardItem) -> None:
-        """Recalculate line total and footer total when quantity or cost is edited (#902)."""
+        """Recalculate line total and footer total when quantity or cost is edited (#902, #937)."""
         col = item.column()
-        if col in (2, 3):
+        is_conv = getattr(self, "_is_unit_conv", False)
+        target_cols = (2, 5) if is_conv else (2, 3)
+
+        if col in target_cols:
             row = item.row()
             try:
-                qty_item = self.grn_model.item(row, 2)
-                cost_item = self.grn_model.item(row, 3)
+                qty_col = 2
+                cost_col = 5 if is_conv else 3
+                tot_col = 6 if is_conv else 4
+
+                qty_item = self.grn_model.item(row, qty_col)
+                cost_item = self.grn_model.item(row, cost_col)
                 if qty_item and cost_item:
                     qty = Decimal(qty_item.text().strip() or "0")
                     cost = Decimal(cost_item.text().strip() or "0")
-                    tot_item = self.grn_model.item(row, 4)
-                    if tot_item:
-                        self.grn_model.blockSignals(True)
-                        try:
-                            tot_item.setText(format(qty * cost, ".2f"))
-                        finally:
-                            self.grn_model.blockSignals(False)
+                    tot_item = self.grn_model.item(row, tot_col)
+                    product = self.grn_items[row]["product"] if row < len(self.grn_items) else None
+                    item_mode = self.grn_items[row].get("mode", "AUTO") if row < len(self.grn_items) else "AUTO"
+
+                    self.grn_model.blockSignals(True)
+                    try:
+                        if tot_item:
+                            tot_item.setText(format(round_money(qty * cost), ".2f"))
+                        if is_conv and product:
+                            if item_mode == "PURCHASE":
+                                factor = _get_product_purchase_factor(product)
+                            else:
+                                factor = Decimal("1.000")
+                            b_unit_name = _get_product_base_unit_name(product)
+                            base_qty = round_quantity(qty * factor)
+                            base_item = self.grn_model.item(row, 4)
+                            if base_item:
+                                base_item.setText(f"{base_qty:g} {b_unit_name}".strip())
+                    finally:
+                        self.grn_model.blockSignals(False)
             except (InvalidOperation, ValueError):
                 pass
             self.update_total()
@@ -934,16 +1081,18 @@ class PurchaseView(QWidget, Activatable):
         self.update_total()
 
     def update_total(self):
-        """Recalculate and display running total cost from the model, the single source of truth (#902)."""
+        """Recalculate and display running total cost from the model, the single source of truth (#902, #937)."""
         total = Decimal("0.00")
+        is_conv = getattr(self, "_is_unit_conv", False)
+        cost_col = 5 if is_conv else 3
         for i in range(self.grn_model.rowCount()):
             try:
                 qty_item = self.grn_model.item(i, 2)
-                cost_item = self.grn_model.item(i, 3)
+                cost_item = self.grn_model.item(i, cost_col)
                 if qty_item and cost_item:
                     qty = Decimal(qty_item.text().strip() or "0")
                     cost = Decimal(cost_item.text().strip() or "0")
-                    total += qty * cost
+                    total += round_money(qty * cost)
             except (InvalidOperation, ValueError, AttributeError):
                 pass
         total_str = format(total, ".2f")
@@ -973,7 +1122,16 @@ class PurchaseView(QWidget, Activatable):
             if not product:
                 continue
             qty = item["order_qty"] if item["order_qty"] > 0 else Decimal("1.000")
-            self._add_grn_row(product, qty, product.cost)
+            if getattr(self, "_is_unit_conv", False) and _product_has_conversion(product):
+                factor = _get_product_purchase_factor(product)
+                candidate_p_qty = round_quantity(qty / factor)
+                if candidate_p_qty > Decimal("0") and round_quantity(candidate_p_qty * factor) == qty:
+                    p_cost = round_money((product.cost or Decimal("0.00")) * factor)
+                    self._add_grn_row(product, candidate_p_qty, p_cost, mode="PURCHASE")
+                else:
+                    self._add_grn_row(product, qty, product.cost, mode="BASE")
+            else:
+                self._add_grn_row(product, qty, product.cost, mode="BASE")
 
         self.update_total()
 
@@ -1009,7 +1167,18 @@ class PurchaseView(QWidget, Activatable):
             outstanding = item.qty_ordered - item.qty_received
             if outstanding <= 0:
                 continue
-            self._add_grn_row(item.product, outstanding, item.product.cost)
+            if getattr(self, "_is_unit_conv", False) and _product_has_conversion(item.product):
+                factor = _get_product_purchase_factor(item.product)
+                candidate_p_qty = round_quantity(outstanding / factor)
+                base_cost = item.product.cost if item.product.cost is not None else Decimal("0.00")
+                if candidate_p_qty > Decimal("0") and round_quantity(candidate_p_qty * factor) == outstanding:
+                    p_cost = round_money(base_cost * factor)
+                    self._add_grn_row(item.product, candidate_p_qty, p_cost, mode="PURCHASE")
+                else:
+                    self._add_grn_row(item.product, outstanding, base_cost, mode="BASE")
+            else:
+                base_cost = item.product.cost if item.product.cost is not None else Decimal("0.00")
+                self._add_grn_row(item.product, outstanding, base_cost, mode="BASE")
 
         self.update_total()
 
@@ -1058,11 +1227,14 @@ class PurchaseView(QWidget, Activatable):
             # 1. Prepare Items
             items_data = []
             grn_lines = []
+            is_conv = getattr(self, "_is_unit_conv", False)
             for i in range(self.grn_model.rowCount()):
                 # Read from table in case user edited
                 prod_id = int(self.grn_model.item(i, 0).text())
-                qty_str = self.grn_model.item(i, 2).text().strip()
-                cost_str = self.grn_model.item(i, 3).text().strip()
+                qty_col = 2
+                cost_col = 5 if is_conv else 3
+                qty_str = self.grn_model.item(i, qty_col).text().strip()
+                cost_str = self.grn_model.item(i, cost_col).text().strip()
                 try:
                     qty = Decimal(qty_str)
                     cost = Decimal(cost_str)
@@ -1072,8 +1244,52 @@ class PurchaseView(QWidget, Activatable):
                     QMessageBox.warning(self, _t("common.error"), _t("purchase.error_invalid_line"))
                     return
 
-                items_data.append({"product_id": prod_id, "qty": qty, "cost": cost})
-                grn_lines.append(GrnLine(product_id=prod_id, qty=qty, unit_cost=cost))
+                item_entry = self.grn_items[i] if i < len(self.grn_items) else {}
+                product = item_entry.get("product")
+                item_mode = item_entry.get("mode", "AUTO")
+
+                snap_base_unit_id = item_entry.get(
+                    "expected_base_unit_id", getattr(product, "unit_id", None) if product else None
+                )
+                snap_p_unit_id = item_entry.get(
+                    "purchase_unit_id", getattr(product, "purchase_unit_id", None) if product else None
+                )
+                snap_factor = item_entry.get(
+                    "purchase_factor", _get_product_purchase_factor(product) if product else Decimal("1.000")
+                )
+                snap_conv_on = item_entry.get("expected_unit_conversion_on", is_conv)
+
+                if is_conv and item_mode == "PURCHASE":
+                    base_qty = round_quantity(qty * snap_factor)
+                    line_mode = "PURCHASE"
+                else:
+                    base_qty = qty
+                    line_mode = "BASE"
+
+                items_data.append(
+                    {
+                        "product_id": prod_id,
+                        "qty": base_qty,
+                        "cost": cost,
+                        "mode": line_mode,
+                        "expected_base_unit_id": snap_base_unit_id,
+                        "purchase_unit_id": snap_p_unit_id,
+                        "purchase_factor": snap_factor,
+                        "expected_unit_conversion_on": snap_conv_on,
+                    }
+                )
+                grn_lines.append(
+                    GrnLine(
+                        product_id=prod_id,
+                        qty=qty,
+                        unit_cost=cost,
+                        mode=line_mode,
+                        expected_base_unit_id=snap_base_unit_id,
+                        purchase_unit_id=snap_p_unit_id,
+                        purchase_factor=snap_factor,
+                        expected_unit_conversion_on=snap_conv_on,
+                    )
+                )
 
             # 2. Flag PO-vs-received discrepancies before committing anything (#486, #719)
             if self.current_purchase_order_id:
@@ -1105,6 +1321,7 @@ class PurchaseView(QWidget, Activatable):
                 user_id=self.user.id,
                 purchase_order_id=self.current_purchase_order_id,
                 approved_by=approver.id,
+                expected_unit_conversion_on=is_conv,
             )
             purchase = PurchaseService.receive_goods(req)
 
@@ -1711,17 +1928,110 @@ class PurchaseView(QWidget, Activatable):
             logger.warning("Failed to record supplier balance adjustment: %s", e)
             QMessageBox.warning(self, _t("common.error"), translate_error(str(e)))
 
+    def _rebuild_grn_table(self, is_unit_conv: bool) -> None:
+        """Rebuild GRN table structure, columns, delegates, and headers on feature toggle (#937)."""
+        self._is_unit_conv = is_unit_conv
+        cols = 7 if is_unit_conv else 5
+
+        self.grn_model.blockSignals(True)
+        try:
+            self.grn_model.clear()
+            self.grn_model.setColumnCount(cols)
+            self.grn_items = []
+        finally:
+            self.grn_model.blockSignals(False)
+
+        if is_unit_conv:
+            configure_table_columns(
+                self.grn_table.horizontalHeader(),
+                {
+                    0: QHeaderView.ResizeMode.ResizeToContents,
+                    1: QHeaderView.ResizeMode.Stretch,
+                    2: QHeaderView.ResizeMode.ResizeToContents,
+                    3: QHeaderView.ResizeMode.ResizeToContents,
+                    4: QHeaderView.ResizeMode.ResizeToContents,
+                    5: QHeaderView.ResizeMode.ResizeToContents,
+                    6: QHeaderView.ResizeMode.ResizeToContents,
+                },
+            )
+            self.grn_numeric_delegate = GrnNumericDelegate(self.grn_table)
+            self.grn_table.setItemDelegateForColumn(2, self.grn_numeric_delegate)
+            self.grn_table.setItemDelegateForColumn(3, None)
+            self.grn_table.setItemDelegateForColumn(5, self.grn_numeric_delegate)
+            self.grn_model.setHorizontalHeaderLabels(
+                [
+                    _t("purchase.grn_header_id"),
+                    _t("purchase.grn_header_product"),
+                    _t("purchase.grn_header_purchase_qty"),
+                    _t("purchase.grn_header_purchase_unit"),
+                    _t("purchase.grn_header_base_qty"),
+                    _t("purchase.grn_header_purchase_cost"),
+                    _t("purchase.grn_header_total"),
+                ]
+            )
+            align_numeric_headers(self.grn_table, [2, 4, 5, 6])
+        else:
+            configure_table_columns(
+                self.grn_table.horizontalHeader(),
+                {
+                    0: QHeaderView.ResizeMode.ResizeToContents,
+                    1: QHeaderView.ResizeMode.Stretch,
+                    2: QHeaderView.ResizeMode.ResizeToContents,
+                    3: QHeaderView.ResizeMode.ResizeToContents,
+                    4: QHeaderView.ResizeMode.ResizeToContents,
+                },
+            )
+            self.grn_numeric_delegate = GrnNumericDelegate(self.grn_table)
+            self.grn_table.setItemDelegateForColumn(2, self.grn_numeric_delegate)
+            self.grn_table.setItemDelegateForColumn(3, self.grn_numeric_delegate)
+            self.grn_table.setItemDelegateForColumn(5, None)
+            self.grn_model.setHorizontalHeaderLabels(
+                [
+                    _t("purchase.grn_header_id"),
+                    _t("purchase.grn_header_product"),
+                    _t("purchase.grn_header_qty"),
+                    _t("purchase.grn_header_cost"),
+                    _t("purchase.grn_header_total"),
+                ]
+            )
+            align_numeric_headers(self.grn_table, [2, 3, 4])
+
+        if hasattr(self, "total_label"):
+            self.total_label.setText(f"{_t('purchase.total_cost_label')}: 0.00")
+        if hasattr(self, "empty_grn_label"):
+            self.empty_grn_label.setVisible(True)
+
+    def _check_unit_conversion_mode(self) -> None:
+        """Check if UNIT_CONVERSION feature state changed and refresh GRN grid accordingly (#937)."""
+        live_flag = feature_visible(Features.UNIT_CONVERSION)
+        if live_flag == getattr(self, "_is_unit_conv", False):
+            return
+
+        if self.grn_model.rowCount() == 0:
+            self._rebuild_grn_table(live_flag)
+        else:
+            reply = QMessageBox.question(
+                self,
+                _t("purchase.conversion_mode_changed_title"),
+                _t("purchase.conversion_mode_changed_prompt"),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+            if reply == QMessageBox.StandardButton.Yes:
+                self._rebuild_grn_table(live_flag)
+
     def _on_tab_changed(self, _index: int) -> None:
         self.on_activated()
 
     def on_activated(self) -> None:
         """Reload the visible tab when Purchasing is shown or the user switches tabs."""
         self._update_supplier_read_only_state()
+        self._check_unit_conversion_mode()
         index = self.tabs.currentIndex()
         if index == 0:
             self.refresh_suppliers()
         elif index == 1:
             self.refresh_open_orders()
+            self.load_products_for_completer()
         elif index == 2:
             self.refresh_history()
         elif index == 3:

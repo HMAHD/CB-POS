@@ -120,7 +120,11 @@ class UnitService:
             # Check if any products use this unit
             from cbpos.core.models import Product
 
-            product_count = session.query(Product).filter(Product.unit_id == unit_id).count()
+            product_count = (
+                session.query(Product)
+                .filter((Product.unit_id == unit_id) | (Product.purchase_unit_id == unit_id))
+                .count()
+            )
             if product_count > 0:
                 raise ValueError(f"Cannot delete: {product_count} product(s) use this unit.")
 

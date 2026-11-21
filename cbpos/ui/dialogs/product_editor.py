@@ -1,4 +1,4 @@
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QDoubleValidator, QIcon, QPixmap
@@ -33,6 +33,7 @@ from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.inventory_service import InventoryService
 from cbpos.core.services.permission_service import PermissionService
 from cbpos.core.services.supplier_service import SupplierService
+from cbpos.core.services.unit_service import UnitService
 from cbpos.core.utils.error_messages import translate_error
 from cbpos.core.utils.formatters import get_currency_symbol
 from cbpos.core.utils.validators import ProductValidator
@@ -303,7 +304,6 @@ class ProductEditor(QDialog):
         self.unit_combo = QComboBox()
         self.unit_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.unit_combo.addItem(_t("product_editor.no_unit"), None)
-        from cbpos.core.services.unit_service import UnitService
 
         for unit in UnitService.get_all():
             self.unit_combo.addItem(f"{unit.name} ({unit.abbreviation})", unit.id)
@@ -313,6 +313,59 @@ class ProductEditor(QDialog):
 
         card_supplier_unit.add_layout(sup_unit_layout)
         layout.addWidget(card_supplier_unit)
+
+        # Unit conversion (#937)
+        from cbpos.core.constants.features import Features
+        from cbpos.core.services.feature_flags import feature_visible
+
+        self._unit_conversion_visible = feature_visible(Features.UNIT_CONVERSION)
+        if self._unit_conversion_visible:
+            self.card_unit_conversion = FormCard()
+            conv_layout = QVBoxLayout()
+            conv_layout.setContentsMargins(0, 0, 0, 0)
+            conv_layout.setSpacing(8)
+
+            row_conv = QHBoxLayout()
+            row_conv.setSpacing(12)
+
+            col_p_unit = QVBoxLayout()
+            col_p_unit.setSpacing(4)
+            self.lbl_purchase_unit = QLabel(_t("product_editor.purchase_unit"))
+            self.lbl_purchase_unit.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+            self.purchase_unit_combo = QComboBox()
+            self.purchase_unit_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            self.purchase_unit_combo.addItem(_t("product_editor.no_purchase_unit"), None)
+            for unit in UnitService.get_all():
+                self.purchase_unit_combo.addItem(f"{unit.name} ({unit.abbreviation})", unit.id)
+            col_p_unit.addWidget(self.lbl_purchase_unit)
+            col_p_unit.addWidget(self.purchase_unit_combo)
+            row_conv.addLayout(col_p_unit, 1)
+
+            col_factor = QVBoxLayout()
+            col_factor.setSpacing(4)
+            self.lbl_purchase_factor = QLabel(_t("product_editor.purchase_factor"))
+            self.lbl_purchase_factor.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+            self.purchase_factor_input = QLineEdit()
+            self.purchase_factor_input.setPlaceholderText("1.000")
+            factor_val = QDoubleValidator(0.001, 1000000.0, 3, self)
+            factor_val.setNotation(QDoubleValidator.Notation.StandardNotation)
+            self.purchase_factor_input.setValidator(factor_val)
+            col_factor.addWidget(self.lbl_purchase_factor)
+            col_factor.addWidget(self.purchase_factor_input)
+            row_conv.addLayout(col_factor, 1)
+
+            conv_layout.addLayout(row_conv)
+
+            self.lbl_conv_helper = QLabel()
+            self.lbl_conv_helper.setProperty("class", "muted")
+            conv_layout.addWidget(self.lbl_conv_helper)
+
+            self.card_unit_conversion.add_layout(conv_layout)
+            layout.addWidget(self.card_unit_conversion)
+
+            self.purchase_unit_combo.currentIndexChanged.connect(self._update_conversion_helper)
+            self.purchase_factor_input.textChanged.connect(self._update_conversion_helper)
+            self.unit_combo.currentIndexChanged.connect(self._update_conversion_helper)
 
         # Item type group — checkbox + inline hint with clear separation
         grp_type = QGroupBox(_t("product_editor.group_item_type"))
@@ -805,6 +858,37 @@ class ProductEditor(QDialog):
                 )
             )
 
+    def _update_conversion_helper(self) -> None:
+        """Update the plain-language factor hint (e.g. '1 Box = 10 Piece') (#937)."""
+        if not getattr(self, "_unit_conversion_visible", False):
+            return
+        p_unit_id = self.purchase_unit_combo.currentData()
+        base_unit_id = self.unit_combo.currentData()
+        if not p_unit_id:
+            self.lbl_conv_helper.setText("")
+            return
+
+        p_unit_text = self.purchase_unit_combo.currentText().split(" (")[0]
+        base_unit_text = (
+            self.unit_combo.currentText().split(" (")[0] if base_unit_id else _t("product_editor.base_unit")
+        )
+        factor_str = self.purchase_factor_input.text().strip() or "1"
+        try:
+            factor = Decimal(factor_str)
+            if factor > Decimal("0"):
+                self.lbl_conv_helper.setText(
+                    _t(
+                        "product_editor.conversion_formula",
+                        purchase_unit=p_unit_text,
+                        factor=f"{factor:g}",
+                        base_unit=base_unit_text,
+                    )
+                )
+            else:
+                self.lbl_conv_helper.setText(_t("product_editor.factor_must_be_positive"))
+        except (InvalidOperation, ValueError):
+            self.lbl_conv_helper.setText(_t("product_editor.invalid_factor"))
+
     def load_data(self):
         """Populate all tabs' fields, including bundle components, from the product being edited."""
         self.barcode_input.setText(self.product.barcode)
@@ -849,6 +933,26 @@ class ProductEditor(QDialog):
             idx = self.unit_combo.findData(self.product.unit_id)
             if idx >= 0:
                 self.unit_combo.setCurrentIndex(idx)
+            else:
+                u = UnitService.get_by_id(self.product.unit_id)
+                if u:
+                    self.unit_combo.addItem(f"{u.name} ({u.abbreviation}) ({_t('common.inactive')})", u.id)
+                    self.unit_combo.setCurrentIndex(self.unit_combo.count() - 1)
+
+        # Load purchase unit and factor (#937)
+        if getattr(self, "_unit_conversion_visible", False):
+            if getattr(self.product, "purchase_unit_id", None):
+                idx = self.purchase_unit_combo.findData(self.product.purchase_unit_id)
+                if idx >= 0:
+                    self.purchase_unit_combo.setCurrentIndex(idx)
+                else:
+                    u = UnitService.get_by_id(self.product.purchase_unit_id)
+                    if u:
+                        self.purchase_unit_combo.addItem(f"{u.name} ({u.abbreviation}) ({_t('common.inactive')})", u.id)
+                        self.purchase_unit_combo.setCurrentIndex(self.purchase_unit_combo.count() - 1)
+            factor = getattr(self.product, "purchase_factor", Decimal("1.000"))
+            self.purchase_factor_input.setText(str(factor or Decimal("1.000")))
+            self._update_conversion_helper()
 
         # Load supplier
         if hasattr(self.product, "default_supplier_id") and self.product.default_supplier_id:
@@ -950,6 +1054,29 @@ class ProductEditor(QDialog):
             "image_path": self.current_image_path,
             "is_active": True,
         }
+
+        if getattr(self, "_unit_conversion_visible", False):
+            p_unit_id = self.purchase_unit_combo.currentData()
+            if p_unit_id is not None:
+                factor_str = self.purchase_factor_input.text().strip() or "1.000"
+                try:
+                    factor = Decimal(factor_str)
+                    if factor <= Decimal("0"):
+                        raise ValueError()
+                except (InvalidOperation, ValueError):
+                    QMessageBox.warning(
+                        self,
+                        _t("common.validation_error"),
+                        _t("product_editor.invalid_purchase_factor"),
+                    )
+                    self.tabs.setCurrentIndex(1)
+                    self.purchase_factor_input.setFocus()
+                    return
+                data["purchase_unit_id"] = p_unit_id
+                data["purchase_factor"] = factor
+            else:
+                data["purchase_unit_id"] = None
+                data["purchase_factor"] = Decimal("1.000")
 
         if not data["name_en"]:
             QMessageBox.warning(self, _t("common.validation_error"), _t("product_editor.name_required"))

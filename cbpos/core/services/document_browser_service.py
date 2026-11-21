@@ -232,7 +232,7 @@ class DocumentBrowserService:
                     "unit_price": item.unit_cost,
                     "discount_type": "NONE",
                     "discount_value": 0,
-                    "line_total": item.qty_received * item.unit_cost,
+                    "line_total": item.line_total,
                 }
             )
 

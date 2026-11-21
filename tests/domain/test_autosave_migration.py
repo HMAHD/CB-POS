@@ -168,7 +168,7 @@ def test_downgrade_sql_compiles_valid_boolean_expression_for_postgresql():
 @pytest.mark.postgres
 @pytest.mark.integration
 def test_postgres_migration_downgrade_preserves_held_bills_and_purges_autosaves(pg_engine):
-    """Verify downgrade on real PostgreSQL preserves ordinary held bills and purges autosaves."""
+    """Verify downgrade on real PostgreSQL with populated table preserves all ordinary held bills and purges autosaves."""
     from alembic.config import Config as AlembicConfig
 
     pg_url = os.environ.get("CBPOS_TEST_PG_URL")
@@ -186,32 +186,69 @@ def test_postgres_migration_downgrade_preserves_held_bills_and_purges_autosaves(
     command.stamp(cfg, "head")
 
     with pg_engine.begin() as conn:
+        # 1. Multiple ordinary held bills across multiple terminals
+        conn.execute(
+            text(
+                "INSERT INTO suspended_transactions (is_autosave, terminal_id, revision, note, data, timestamp) "
+                'VALUES (false, \'TERM-01\', 1, \'Table 1\', \'{"v": 2, "lines": [{"barcode": "P1", "qty": "1.000"}]}\', CURRENT_TIMESTAMP)'
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO suspended_transactions (is_autosave, terminal_id, revision, note, data, timestamp) "
+                'VALUES (false, \'TERM-02\', 2, \'Customer Order\', \'{"v": 2, "lines": [{"barcode": "P2", "qty": "3.500"}]}\', CURRENT_TIMESTAMP)'
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO suspended_transactions (is_autosave, terminal_id, revision, note, data, timestamp) "
+                'VALUES (false, \'TERM-03\', 3, \'VIP\', \'{"v": 2, "lines": [{"barcode": "P3", "qty": "10.000"}]}\', CURRENT_TIMESTAMP)'
+            )
+        )
+
+        # 2. Multiple active autosaves with populated json data across terminals
         conn.execute(
             text(
                 "INSERT INTO suspended_transactions (is_autosave, terminal_id, revision, data, timestamp) "
-                'VALUES (false, \'TERM-01\', 1, \'{"v": 2, "lines": ["pg_item"]}\', CURRENT_TIMESTAMP)'
+                'VALUES (true, \'TERM-01\', 5, \'{"v": 2, "lines": [{"barcode": "AUTO1", "qty": "1.000"}]}\', CURRENT_TIMESTAMP)'
             )
         )
         conn.execute(
             text(
                 "INSERT INTO suspended_transactions (is_autosave, terminal_id, revision, data, timestamp) "
-                'VALUES (true, \'TERM-01\', 5, \'{"v": 2, "lines": ["pg_autosave"]}\', CURRENT_TIMESTAMP)'
+                'VALUES (true, \'TERM-02\', 8, \'{"v": 2, "lines": [{"barcode": "AUTO2", "qty": "2.000"}]}\', CURRENT_TIMESTAMP)'
+            )
+        )
+
+        # 3. Multiple tombstone autosave rows (data IS NULL) across terminals
+        conn.execute(
+            text(
+                "INSERT INTO suspended_transactions (is_autosave, terminal_id, revision, data, timestamp) "
+                "VALUES (true, 'TERM-03', 12, NULL, CURRENT_TIMESTAMP)"
             )
         )
         conn.execute(
             text(
                 "INSERT INTO suspended_transactions (is_autosave, terminal_id, revision, data, timestamp) "
-                "VALUES (true, 'TERM-02', 10, NULL, CURRENT_TIMESTAMP)"
+                "VALUES (true, 'TERM-04', 15, NULL, CURRENT_TIMESTAMP)"
             )
         )
 
     # Downgrade to d6e7f8a9b0c1 on PostgreSQL
     command.downgrade(cfg, "d6e7f8a9b0c1")
 
+    # Verify that:
+    # 1. Exactly the 3 ordinary held bills remain.
+    # 2. All 4 autosaves/tombstones were purged.
+    # 3. None of the ordinary held bills were corrupted or dropped.
     with pg_engine.begin() as conn:
-        rows = conn.execute(text("SELECT id, data FROM suspended_transactions")).fetchall()
-        assert len(rows) == 1
-        assert "pg_item" in rows[0][1]
+        rows = conn.execute(text("SELECT id, note, data FROM suspended_transactions ORDER BY id")).fetchall()
+        assert len(rows) == 3
+        notes = [r[1] for r in rows]
+        assert notes == ["Table 1", "Customer Order", "VIP"]
+        assert "P1" in rows[0][2]
+        assert "P2" in rows[1][2]
+        assert "P3" in rows[2][2]
 
     # Re-upgrade to head
     command.upgrade(cfg, "head")

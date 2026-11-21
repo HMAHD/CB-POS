@@ -33,6 +33,7 @@ class CartAutosaveService:
     _issued_generations: dict[str, int] = {}
     _persisted_baselines: dict[str, int] = {}
     _before_write_hook = None  # Optional Callable[[str, int], None] for deterministic concurrency testing
+    _before_insert_commit_hook = None  # Optional Callable[[str, int], None] for deterministic insert collision testing
 
     @classmethod
     def reset_registry(cls) -> None:
@@ -41,6 +42,7 @@ class CartAutosaveService:
             cls._issued_generations.clear()
             cls._persisted_baselines.clear()
             cls._before_write_hook = None
+            cls._before_insert_commit_hook = None
 
     @classmethod
     def issue_generation(cls, terminal_id: str) -> int:
@@ -240,6 +242,8 @@ class CartAutosaveService:
                     timestamp=datetime.now(),
                 )
                 session.add(new_row)
+                if cls._before_insert_commit_hook is not None:
+                    cls._before_insert_commit_hook(terminal_id, target_revision)
                 try:
                     session.commit()
                     return True

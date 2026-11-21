@@ -4,7 +4,8 @@ from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import pytest
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QEvent, Qt
+from PyQt6.QtGui import QCloseEvent, QKeyEvent
 from PyQt6.QtWidgets import QMessageBox
 
 from cbpos.core.constants.features import Features
@@ -358,6 +359,185 @@ class TestPriceBoardDialogUI:
         finally:
             set_language("en")
 
+    def test_blank_input_does_not_commit_or_advance_on_enter(self, qtbot, test_admin_user, flagged_products):
+        """Blank editor input must not commit to 0.00 and must not advance on Enter."""
+        dialog = PriceBoardDialog(acting_user_id=test_admin_user.id)
+        qtbot.addWidget(dialog)
+        items = [
+            PriceBoardItem(p.id, p.barcode, p.name_en, p.name_si, p.name_ta, p.price, p.version_id)
+            for p in flagged_products
+        ]
+        dialog._on_data_loaded(items)
+
+        dialog.table.setCurrentCell(0, 3)
+        index = dialog.table.model().index(0, 3)
+        editor = dialog.delegate.createEditor(dialog.table, None, index)
+        editor.setText("")
+
+        advance_called = []
+        dialog.delegate.advance_requested.connect(lambda row: advance_called.append(row))
+
+        event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Return, Qt.KeyboardModifier.NoModifier)
+        consumed = dialog.delegate.eventFilter(editor, event)
+
+        assert consumed is True
+        assert len(advance_called) == 0
+        assert dialog.table.item(0, 3).data(Qt.ItemDataRole.UserRole) == Decimal("180.00")
+
+    def test_blank_input_does_not_commit_or_advance_on_tab(self, qtbot, test_admin_user, flagged_products):
+        """Blank editor input must not commit to 0.00 and must not advance on Tab."""
+        dialog = PriceBoardDialog(acting_user_id=test_admin_user.id)
+        qtbot.addWidget(dialog)
+        items = [
+            PriceBoardItem(p.id, p.barcode, p.name_en, p.name_si, p.name_ta, p.price, p.version_id)
+            for p in flagged_products
+        ]
+        dialog._on_data_loaded(items)
+
+        dialog.table.setCurrentCell(0, 3)
+        index = dialog.table.model().index(0, 3)
+        editor = dialog.delegate.createEditor(dialog.table, None, index)
+        editor.setText("")
+
+        advance_called = []
+        dialog.delegate.advance_requested.connect(lambda row: advance_called.append(row))
+
+        event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Tab, Qt.KeyboardModifier.NoModifier)
+        consumed = dialog.delegate.eventFilter(editor, event)
+
+        assert consumed is True
+        assert len(advance_called) == 0
+        assert dialog.table.item(0, 3).data(Qt.ItemDataRole.UserRole) == Decimal("180.00")
+
+    def test_blank_input_on_focus_loss_blocks_saving(self, qtbot, test_admin_user, flagged_products, monkeypatch):
+        """When editor loses focus with blank text, saving is blocked with invalid price warning."""
+        dialog = PriceBoardDialog(acting_user_id=test_admin_user.id)
+        qtbot.addWidget(dialog)
+        items = [
+            PriceBoardItem(p.id, p.barcode, p.name_en, p.name_si, p.name_ta, p.price, p.version_id)
+            for p in flagged_products
+        ]
+        dialog._on_data_loaded(items)
+
+        index = dialog.table.model().index(0, 3)
+        editor = dialog.delegate.createEditor(dialog.table, None, index)
+        editor.setText("")
+        # Focus loss causes setModelData to be called
+        dialog.delegate.setModelData(editor, dialog.table.model(), index)
+
+        # Blank input must not have become Decimal('0.00')
+        assert dialog.table.item(0, 3).data(Qt.ItemDataRole.UserRole) is None
+
+        # Now attempt save
+        warnings = []
+        monkeypatch.setattr(QMessageBox, "warning", lambda p, t, msg: warnings.append(msg))
+        updates, has_error = dialog._collect_updates()
+
+        assert has_error is True
+        assert updates == []
+        assert len(warnings) == 1
+        assert "Cabbage 1kg" in warnings[0]
+
+    def test_explicit_zero_price_is_valid_and_saves(self, qtbot, test_admin_user, flagged_products, monkeypatch):
+        """Explicitly typed 0 or 0.00 is valid, updates model, and saves successfully."""
+        dialog = PriceBoardDialog(acting_user_id=test_admin_user.id)
+        qtbot.addWidget(dialog)
+        items = [
+            PriceBoardItem(p.id, p.barcode, p.name_en, p.name_si, p.name_ta, p.price, p.version_id)
+            for p in flagged_products
+        ]
+        dialog._on_data_loaded(items)
+
+        index = dialog.table.model().index(0, 3)
+        editor = dialog.delegate.createEditor(dialog.table, None, index)
+        editor.setText("0.00")
+        dialog.delegate.setModelData(editor, dialog.table.model(), index)
+
+        assert dialog.table.item(0, 3).data(Qt.ItemDataRole.UserRole) == Decimal("0.00")
+
+        updates, has_error = dialog._collect_updates()
+        assert has_error is False
+        assert any(up["product_id"] == flagged_products[0].id and up["new_price"] == Decimal("0.00") for up in updates)
+
+    def test_escape_key_and_reject_ignored_while_saving(self, qtbot, test_admin_user, flagged_products):
+        """While saving is in progress, Escape and reject() are ignored; restored after saving ends."""
+        dialog = PriceBoardDialog(acting_user_id=test_admin_user.id)
+        qtbot.addWidget(dialog)
+        dialog.show()
+
+        reject_emitted = []
+        dialog.rejected.connect(lambda: reject_emitted.append(True))
+
+        # 1. While saving:
+        dialog._set_saving(True)
+        assert getattr(dialog, "_is_saving", False) is True
+
+        # Escape key press
+        esc_event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Escape, Qt.KeyboardModifier.NoModifier)
+        dialog.keyPressEvent(esc_event)
+        assert esc_event.isAccepted() is False
+        assert dialog.isVisible() is True
+        assert len(reject_emitted) == 0
+
+        # Direct reject() call
+        dialog.reject()
+        assert dialog.isVisible() is True
+        assert len(reject_emitted) == 0
+
+        # 2. When saving ends (e.g. error):
+        dialog._set_saving(False)
+        assert getattr(dialog, "_is_saving", False) is False
+
+        # Direct reject now closes and emits rejected
+        dialog.reject()
+        assert dialog.isVisible() is False
+        assert len(reject_emitted) == 1
+
+    def test_window_close_event_ignored_while_saving(self, qtbot, test_admin_user, flagged_products):
+        """While saving is in progress, window-close event is ignored."""
+        dialog = PriceBoardDialog(acting_user_id=test_admin_user.id)
+        qtbot.addWidget(dialog)
+        dialog.show()
+
+        # 1. While saving:
+        dialog._set_saving(True)
+        close_event = QCloseEvent()
+        dialog.closeEvent(close_event)
+        assert close_event.isAccepted() is False
+        assert dialog.isVisible() is True
+
+        # 2. When saving ends:
+        dialog._set_saving(False)
+        close_event2 = QCloseEvent()
+        dialog.closeEvent(close_event2)
+        assert close_event2.isAccepted() is True
+
+    def test_save_and_print_labels_still_runs_after_successful_commit(
+        self, qtbot, test_admin_user, flagged_products, monkeypatch
+    ):
+        """Save & Print Labels accepts dialog and opens LabelPrintDialog after successful commit."""
+        dialog = PriceBoardDialog(acting_user_id=test_admin_user.id)
+        qtbot.addWidget(dialog)
+        items = [
+            PriceBoardItem(p.id, p.barcode, p.name_en, p.name_si, p.name_ta, p.price, p.version_id)
+            for p in flagged_products
+        ]
+        dialog._on_data_loaded(items)
+        dialog.table.item(0, 3).setData(Qt.ItemDataRole.UserRole, Decimal("210.00"))
+
+        mock_label_dlg = MagicMock()
+        monkeypatch.setattr("cbpos.ui.dialogs.label_print_dialog.LabelPrintDialog", mock_label_dlg)
+
+        dialog._print_labels_after_save = True
+        dialog._set_saving(True)
+
+        # Simulate worker finishing successfully
+        dialog._on_save_success([flagged_products[0].id])
+
+        assert getattr(dialog, "_is_saving", False) is False
+        assert dialog.result() == int(PriceBoardDialog.DialogCode.Accepted)
+        mock_label_dlg.assert_called_once_with(parent=dialog.parent(), preselected_product_ids=[flagged_products[0].id])
+
 
 @pytest.mark.ui
 class TestSalesViewPriceBoardShortcut:
@@ -384,6 +564,18 @@ class TestSalesViewPriceBoardShortcut:
         f12_idx = keys_on.index("F12")
         assert f10_idx < f11_idx < f12_idx
 
+    def test_f1_help_omits_f11_on_read_only_till_even_when_feature_enabled(self, monkeypatch):
+        """ShortcutsHelpDialog omits F11 on tills even when Features.PRICE_BOARD is enabled."""
+        from cbpos.core.services import feature_flags
+        from cbpos.core.utils import terminal_guard
+
+        monkeypatch.setattr(feature_flags, "feature_visible", lambda f: True)
+        monkeypatch.setattr(terminal_guard, "catalog_is_read_only", lambda: True)
+
+        shortcuts = ShortcutsHelpDialog._get_shortcuts()
+        keys = [k for k, _ in shortcuts]
+        assert "F11" not in keys
+
     def test_sales_view_open_price_board_blocked_when_feature_disabled(self, monkeypatch):
         """SalesView.open_price_board does nothing when feature flag is disabled."""
         from cbpos.core.services import feature_flags
@@ -397,6 +589,42 @@ class TestSalesViewPriceBoardShortcut:
 
         # Did not attempt permission check or open dialog
         mock_override.assert_not_called()
+
+    def test_sales_view_open_price_board_blocked_on_read_only_till(self, monkeypatch):
+        """SalesView.open_price_board returns immediately without permission prompt on a till."""
+        from cbpos.core.services import feature_flags
+        from cbpos.core.utils import terminal_guard
+
+        monkeypatch.setattr(feature_flags, "feature_visible", lambda f: True)
+        monkeypatch.setattr(terminal_guard, "catalog_is_read_only", lambda: True)
+
+        mock_override = MagicMock()
+        monkeypatch.setattr("cbpos.core.utils.permission_helper.check_permission_with_override", mock_override)
+
+        mock_dialog_cls = MagicMock()
+        monkeypatch.setattr("cbpos.ui.dialogs.price_board_dialog.PriceBoardDialog", mock_dialog_cls)
+
+        sales_view = MagicMock(spec=SalesView)
+        SalesView.open_price_board(sales_view)
+
+        # Neither permission check nor dialog creation should happen
+        mock_override.assert_not_called()
+        mock_dialog_cls.assert_not_called()
+
+    def test_price_board_service_fails_closed_on_till(self, monkeypatch):
+        """PriceBoardService.batch_update_prices raises CatalogReadOnlyError on a till."""
+        from cbpos.core.services.price_board_service import PriceBoardService
+        from cbpos.core.utils import terminal_guard
+        from cbpos.core.utils.terminal_guard import CatalogReadOnlyError
+
+        monkeypatch.setattr(terminal_guard, "catalog_is_read_only", lambda: True)
+
+        service = PriceBoardService()
+        with pytest.raises(CatalogReadOnlyError):
+            service.batch_update_prices(
+                updates=[{"product_id": 1, "expected_version_id": 1, "new_price": Decimal("100.00")}],
+                acting_user_id=1,
+            )
 
     def test_sales_view_open_price_board_checks_permission_and_opens_dialog(self, monkeypatch):
         """SalesView.open_price_board checks Permissions.PRICING_MANAGE and opens PriceBoardDialog."""

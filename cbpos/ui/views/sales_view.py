@@ -2278,13 +2278,14 @@ class SalesView(QWidget):
         self._focus_search()
 
     def open_price_board(self) -> None:
-        """Open the Price Board dialog (F11) if the feature is enabled (#931)."""
+        """Open the Price Board dialog (F11) if the feature is enabled and catalog is writable (#931)."""
         from cbpos.core.constants.features import Features
         from cbpos.core.constants.permissions import Permissions
         from cbpos.core.services.feature_flags import feature_visible
         from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.core.utils.terminal_guard import catalog_is_read_only
 
-        if not feature_visible(Features.PRICE_BOARD):
+        if not feature_visible(Features.PRICE_BOARD) or catalog_is_read_only():
             return
 
         if self.side_menu.isVisible():

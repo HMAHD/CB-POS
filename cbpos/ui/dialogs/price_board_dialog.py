@@ -5,7 +5,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from PyQt6.QtCore import QEvent, QRegularExpression, Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QColor, QRegularExpressionValidator
+from PyQt6.QtGui import QCloseEvent, QColor, QKeyEvent, QRegularExpressionValidator
 from PyQt6.QtWidgets import (
     QAbstractItemDelegate,
     QDialog,
@@ -121,25 +121,34 @@ class PriceBoardItemDelegate(QStyledItemDelegate):
     def setEditorData(self, editor: QLineEdit, index) -> None:
         """Populate editor text from cell user role data."""
         raw_val = index.data(Qt.ItemDataRole.UserRole)
-        text = str(raw_val) if raw_val is not None else ""
+        text = str(raw_val) if (raw_val is not None and isinstance(raw_val, Decimal)) else ""
         editor.setText(text)
         editor.selectAll()
 
     def setModelData(self, editor: QLineEdit, model, index) -> None:
         """Parse editor text into Decimal and update model roles."""
         text = editor.text().strip()
+        if not text:
+            model.setData(index, None, Qt.ItemDataRole.UserRole)
+            model.setData(index, "", Qt.ItemDataRole.DisplayRole)
+            return
+
         try:
-            val = round_money(Decimal(text)) if text else Decimal("0.00")
+            val = round_money(Decimal(text))
+            model.setData(index, val, Qt.ItemDataRole.UserRole)
+            model.setData(index, format_currency(val), Qt.ItemDataRole.DisplayRole)
         except (InvalidOperation, ValueError):
             val = index.data(Qt.ItemDataRole.UserRole)
-        model.setData(index, val, Qt.ItemDataRole.UserRole)
-        model.setData(index, format_currency(val), Qt.ItemDataRole.DisplayRole)
+            model.setData(index, val, Qt.ItemDataRole.UserRole)
+            display_text = format_currency(val) if isinstance(val, Decimal) else ""
+            model.setData(index, display_text, Qt.ItemDataRole.DisplayRole)
 
     def eventFilter(self, editor: QLineEdit, event: QEvent) -> bool:
         """Intercept Return and Tab keys to commit and request advance."""
         if event.type() == QEvent.Type.KeyPress:
             if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_Tab):
-                if editor.text() and not editor.hasAcceptableInput():
+                text = editor.text().strip()
+                if not text or not editor.hasAcceptableInput():
                     return True
                 self.commitData.emit(editor)
                 self.closeEditor.emit(editor, QAbstractItemDelegate.EndEditHint.NoHint)
@@ -166,6 +175,7 @@ class PriceBoardDialog(QDialog):
         self.service = PriceBoardService()
         self.items: list[PriceBoardItem] = []
         self._print_labels_after_save = False
+        self._is_saving = False
 
         self.setWindowTitle(_t("price_board.title"))
         self.setObjectName("PriceBoardDialog")
@@ -178,6 +188,26 @@ class PriceBoardDialog(QDialog):
             self._on_data_loaded(initial_items)
         else:
             self._load_data()
+
+    def reject(self) -> None:
+        """Ignore reject while save is in progress."""
+        if self._is_saving:
+            return
+        super().reject()
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        """Ignore window close event while save is in progress."""
+        if self._is_saving:
+            event.ignore()
+            return
+        super().closeEvent(event)
+
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        """Ignore Escape key while save is in progress."""
+        if self._is_saving and event.key() == Qt.Key.Key_Escape:
+            event.ignore()
+            return
+        super().keyPressEvent(event)
 
     def _init_ui(self) -> None:
         main_layout = QVBoxLayout(self)
@@ -414,6 +444,11 @@ class PriceBoardDialog(QDialog):
                 f = cell.font()
                 f.setBold(False)
                 cell.setFont(f)
+        else:
+            cell.setData(Qt.ItemDataRole.ForegroundRole, None)
+            f = cell.font()
+            f.setBold(False)
+            cell.setFont(f)
 
         self._update_summary()
 
@@ -513,6 +548,7 @@ class PriceBoardDialog(QDialog):
         start_background_job(worker)
 
     def _set_saving(self, saving: bool) -> None:
+        self._is_saving = saving
         self.btn_save.setEnabled(not saving)
         self.btn_save_and_print.setEnabled(not saving)
         self.btn_cancel.setEnabled(not saving)

@@ -19,6 +19,7 @@ class ShortcutsHelpDialog(QDialog):
     def _get_shortcuts():
         from cbpos.core.constants.features import Features
         from cbpos.core.services.feature_flags import feature_visible
+        from cbpos.core.utils.terminal_guard import catalog_is_read_only
 
         shortcuts = [
             ("F1", _t("shortcuts.help_screen")),
@@ -32,7 +33,7 @@ class ShortcutsHelpDialog(QDialog):
             ("F9", _t("shortcuts.warranty_check")),
             ("F10", _t("shortcuts.process_payment")),
         ]
-        if feature_visible(Features.PRICE_BOARD):
+        if feature_visible(Features.PRICE_BOARD) and not catalog_is_read_only():
             shortcuts.append(("F11", _t("shortcuts.price_board")))
         shortcuts.extend(
             [

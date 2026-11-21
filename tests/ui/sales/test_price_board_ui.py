@@ -459,6 +459,169 @@ class TestPriceBoardDialogUI:
         assert has_error is False
         assert any(up["product_id"] == flagged_products[0].id and up["new_price"] == Decimal("0.00") for up in updates)
 
+    def test_lone_decimal_point_rejected_by_validator(self, qtbot, test_admin_user, flagged_products):
+        """Validator requires at least one digit: '.' is rejected while '1.' and '0' are accepted."""
+        dialog = PriceBoardDialog(acting_user_id=test_admin_user.id)
+        qtbot.addWidget(dialog)
+        index = dialog.table.model().index(0, 3)
+        editor = dialog.delegate.createEditor(dialog.table, None, index)
+
+        editor.setText(".")
+        assert editor.hasAcceptableInput() is False
+
+        editor.setText("1.")
+        assert editor.hasAcceptableInput() is True
+
+        editor.setText("0")
+        assert editor.hasAcceptableInput() is True
+
+        editor.setText("0.00")
+        assert editor.hasAcceptableInput() is True
+
+        editor.setText("250.75")
+        assert editor.hasAcceptableInput() is True
+
+    def test_lone_decimal_point_does_not_commit_or_advance_on_enter(self, qtbot, test_admin_user, flagged_products):
+        """Enter on '.' must keep focus on the same editor without committing or advancing."""
+        dialog = PriceBoardDialog(acting_user_id=test_admin_user.id)
+        qtbot.addWidget(dialog)
+        items = [
+            PriceBoardItem(p.id, p.barcode, p.name_en, p.name_si, p.name_ta, p.price, p.version_id)
+            for p in flagged_products
+        ]
+        dialog._on_data_loaded(items)
+
+        dialog.table.setCurrentCell(0, 3)
+        index = dialog.table.model().index(0, 3)
+        editor = dialog.delegate.createEditor(dialog.table, None, index)
+        editor.setText(".")
+
+        advance_called = []
+        dialog.delegate.advance_requested.connect(lambda row: advance_called.append(row))
+
+        event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Return, Qt.KeyboardModifier.NoModifier)
+        consumed = dialog.delegate.eventFilter(editor, event)
+
+        assert consumed is True
+        assert len(advance_called) == 0
+        assert dialog.table.item(0, 3).data(Qt.ItemDataRole.UserRole) == Decimal("180.00")
+
+    def test_lone_decimal_point_does_not_commit_or_advance_on_tab(self, qtbot, test_admin_user, flagged_products):
+        """Tab on '.' must keep focus on the same editor without committing or advancing."""
+        dialog = PriceBoardDialog(acting_user_id=test_admin_user.id)
+        qtbot.addWidget(dialog)
+        items = [
+            PriceBoardItem(p.id, p.barcode, p.name_en, p.name_si, p.name_ta, p.price, p.version_id)
+            for p in flagged_products
+        ]
+        dialog._on_data_loaded(items)
+
+        dialog.table.setCurrentCell(0, 3)
+        index = dialog.table.model().index(0, 3)
+        editor = dialog.delegate.createEditor(dialog.table, None, index)
+        editor.setText(".")
+
+        advance_called = []
+        dialog.delegate.advance_requested.connect(lambda row: advance_called.append(row))
+
+        event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Tab, Qt.KeyboardModifier.NoModifier)
+        consumed = dialog.delegate.eventFilter(editor, event)
+
+        assert consumed is True
+        assert len(advance_called) == 0
+        assert dialog.table.item(0, 3).data(Qt.ItemDataRole.UserRole) == Decimal("180.00")
+
+    def test_unparsable_value_does_not_commit_or_advance_on_enter_or_tab(
+        self, qtbot, test_admin_user, flagged_products
+    ):
+        """Any unparsable text keeps focus on the same editor on Enter or Tab."""
+        dialog = PriceBoardDialog(acting_user_id=test_admin_user.id)
+        qtbot.addWidget(dialog)
+        items = [
+            PriceBoardItem(p.id, p.barcode, p.name_en, p.name_si, p.name_ta, p.price, p.version_id)
+            for p in flagged_products
+        ]
+        dialog._on_data_loaded(items)
+
+        dialog.table.setCurrentCell(0, 3)
+        index = dialog.table.model().index(0, 3)
+        editor = dialog.delegate.createEditor(dialog.table, None, index)
+        # Manually force unparsable text
+        editor.setText("abc")
+
+        advance_called = []
+        dialog.delegate.advance_requested.connect(lambda row: advance_called.append(row))
+
+        # Enter
+        event_enter = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Return, Qt.KeyboardModifier.NoModifier)
+        assert dialog.delegate.eventFilter(editor, event_enter) is True
+        assert len(advance_called) == 0
+
+        # Tab
+        event_tab = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Tab, Qt.KeyboardModifier.NoModifier)
+        assert dialog.delegate.eventFilter(editor, event_tab) is True
+        assert len(advance_called) == 0
+
+    def test_lone_decimal_point_on_focus_loss_blocks_saving(
+        self, qtbot, test_admin_user, flagged_products, monkeypatch
+    ):
+        """Focus loss on '.' must not silently restore old price; saving must be blocked."""
+        dialog = PriceBoardDialog(acting_user_id=test_admin_user.id)
+        qtbot.addWidget(dialog)
+        items = [
+            PriceBoardItem(p.id, p.barcode, p.name_en, p.name_si, p.name_ta, p.price, p.version_id)
+            for p in flagged_products
+        ]
+        dialog._on_data_loaded(items)
+
+        index = dialog.table.model().index(0, 3)
+        editor = dialog.delegate.createEditor(dialog.table, None, index)
+        editor.setText(".")
+
+        # Focus loss invokes setModelData
+        dialog.delegate.setModelData(editor, dialog.table.model(), index)
+
+        # Must NOT have silently restored previous valid price Decimal('180.00')
+        assert dialog.table.item(0, 3).data(Qt.ItemDataRole.UserRole) is None
+
+        # Attempting save must fail with warning
+        warnings = []
+        monkeypatch.setattr(QMessageBox, "warning", lambda p, t, msg: warnings.append(msg))
+        updates, has_error = dialog._collect_updates()
+
+        assert has_error is True
+        assert updates == []
+        assert len(warnings) == 1
+        assert "Cabbage 1kg" in warnings[0]
+
+    def test_valid_inputs_accepted_and_saved(self, qtbot, test_admin_user, flagged_products, monkeypatch):
+        """Explicit 0, 0.00, normal decimals, and trailing-decimal forms (1.) commit and save."""
+        dialog = PriceBoardDialog(acting_user_id=test_admin_user.id)
+        qtbot.addWidget(dialog)
+        items = [
+            PriceBoardItem(p.id, p.barcode, p.name_en, p.name_si, p.name_ta, p.price, p.version_id)
+            for p in flagged_products
+        ]
+        dialog._on_data_loaded(items)
+
+        # 1. Trailing-decimal '1.'
+        index0 = dialog.table.model().index(0, 3)
+        editor0 = dialog.delegate.createEditor(dialog.table, None, index0)
+        editor0.setText("1.")
+        dialog.delegate.setModelData(editor0, dialog.table.model(), index0)
+        assert dialog.table.item(0, 3).data(Qt.ItemDataRole.UserRole) == Decimal("1.00")
+
+        # 2. Normal decimal '250.50'
+        index1 = dialog.table.model().index(1, 3)
+        editor1 = dialog.delegate.createEditor(dialog.table, None, index1)
+        editor1.setText("250.50")
+        dialog.delegate.setModelData(editor1, dialog.table.model(), index1)
+        assert dialog.table.item(1, 3).data(Qt.ItemDataRole.UserRole) == Decimal("250.50")
+
+        updates, has_error = dialog._collect_updates()
+        assert has_error is False
+        assert len(updates) == 2
+
     def test_escape_key_and_reject_ignored_while_saving(self, qtbot, test_admin_user, flagged_products):
         """While saving is in progress, Escape and reject() are ignored; restored after saving ends."""
         dialog = PriceBoardDialog(acting_user_id=test_admin_user.id)

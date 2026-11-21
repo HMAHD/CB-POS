@@ -109,9 +109,9 @@ class PriceBoardItemDelegate(QStyledItemDelegate):
     advance_requested = pyqtSignal(int)
 
     def createEditor(self, parent: QWidget, option, index) -> QLineEdit:
-        """Create decimal line editor with regex validation."""
+        """Create decimal line editor with regex validation requiring at least one digit."""
         editor = QLineEdit(parent)
-        regex = QRegularExpression(r"^\d{0,7}(\.\d{0,2})?$")
+        regex = QRegularExpression(r"^(?:\d{1,7}(\.\d{0,2})?|\d{0,7}\.\d{1,2})$")
         editor.setValidator(QRegularExpressionValidator(regex, editor))
         editor.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         editor.setFrame(False)
@@ -121,7 +121,11 @@ class PriceBoardItemDelegate(QStyledItemDelegate):
     def setEditorData(self, editor: QLineEdit, index) -> None:
         """Populate editor text from cell user role data."""
         raw_val = index.data(Qt.ItemDataRole.UserRole)
-        text = str(raw_val) if (raw_val is not None and isinstance(raw_val, Decimal)) else ""
+        if raw_val is not None and isinstance(raw_val, Decimal):
+            text = str(raw_val)
+        else:
+            display_text = index.data(Qt.ItemDataRole.DisplayRole)
+            text = str(display_text) if display_text is not None else ""
         editor.setText(text)
         editor.selectAll()
 
@@ -133,15 +137,18 @@ class PriceBoardItemDelegate(QStyledItemDelegate):
             model.setData(index, "", Qt.ItemDataRole.DisplayRole)
             return
 
+        if not editor.hasAcceptableInput():
+            model.setData(index, None, Qt.ItemDataRole.UserRole)
+            model.setData(index, text, Qt.ItemDataRole.DisplayRole)
+            return
+
         try:
             val = round_money(Decimal(text))
             model.setData(index, val, Qt.ItemDataRole.UserRole)
             model.setData(index, format_currency(val), Qt.ItemDataRole.DisplayRole)
         except (InvalidOperation, ValueError):
-            val = index.data(Qt.ItemDataRole.UserRole)
-            model.setData(index, val, Qt.ItemDataRole.UserRole)
-            display_text = format_currency(val) if isinstance(val, Decimal) else ""
-            model.setData(index, display_text, Qt.ItemDataRole.DisplayRole)
+            model.setData(index, None, Qt.ItemDataRole.UserRole)
+            model.setData(index, text, Qt.ItemDataRole.DisplayRole)
 
     def eventFilter(self, editor: QLineEdit, event: QEvent) -> bool:
         """Intercept Return and Tab keys to commit and request advance."""
@@ -149,6 +156,10 @@ class PriceBoardItemDelegate(QStyledItemDelegate):
             if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_Tab):
                 text = editor.text().strip()
                 if not text or not editor.hasAcceptableInput():
+                    return True
+                try:
+                    Decimal(text)
+                except (InvalidOperation, ValueError):
                     return True
                 self.commitData.emit(editor)
                 self.closeEditor.emit(editor, QAbstractItemDelegate.EndEditHint.NoHint)

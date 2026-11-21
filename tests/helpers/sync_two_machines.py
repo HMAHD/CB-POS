@@ -86,8 +86,8 @@ class _Handler:
 class Shop:
     """A Main PC and one or more tills sharing one process."""
 
-    def __init__(self, settings_dir: str):
-        self.main = make_machine_db()
+    def __init__(self, settings_dir: str, main_db: Database | None = None):
+        self.main = main_db or make_machine_db()
         self.tills: dict[str, tuple[Database, SyncClient]] = {}
         self._settings_dir = settings_dir
         self.offline = False  # True: every request fails, like a pulled cable

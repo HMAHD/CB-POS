@@ -2,7 +2,6 @@
 
 import json
 import logging
-from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -195,7 +194,6 @@ class PriceBoardService:
 
                 # 3. Apply changes and record audit logs
                 changed_product_ids: list[int] = []
-                now = datetime.now()
 
                 for prod_id, _, new_price in parsed_updates:
                     product = products_by_id[prod_id]
@@ -205,7 +203,6 @@ class PriceBoardService:
                         continue  # No actual change, skip mutation & audit
 
                     product.price = new_price
-                    product.last_modified = now
 
                     audit_details = {
                         "subject": product.name_en,

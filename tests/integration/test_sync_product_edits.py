@@ -255,3 +255,36 @@ def test_price_board_incremental_till_sync_not_skipped_postgres(tmp_path, pg_eng
         shop = Shop(str(tmp_path), main_db=pg_db)
         shop.add_till(TILL)
         _run_price_board_incremental_watermark_test(shop, barcode="PB-SYNC-PG")
+
+
+def test_issue_937_sync_unit_conversion_fields_to_till(shop):
+    """Product purchase_unit_id and purchase_factor sync cleanly to till (#937)."""
+    from cbpos.core.models import Unit
+
+    # 1. Seed units on Main PC
+    with shop.on("main"), shop.session("main") as s:
+        box_unit = Unit(name="SyncBox", abbreviation="sbx", decimal_places=0)
+        s.add(box_unit)
+        s.commit()
+        box_id = box_unit.id
+
+    cat = shop.seed_catalog()
+    product_id = cat["product"]
+
+    # 2. Configure conversion on Main PC
+    with shop.on("main"), shop.session("main") as s:
+        p = s.get(Product, product_id)
+        p.purchase_unit_id = box_id
+        p.purchase_factor = Decimal("12.000")
+        s.commit()
+
+    # 3. Till pulls catalog
+    pulled = shop.pull(TILL)
+    assert pulled > 0
+
+    # 4. Verify till received the fields
+    with shop.session(TILL) as s:
+        p_till = s.get(Product, product_id)
+        assert p_till is not None
+        assert p_till.purchase_unit_id == box_id
+        assert p_till.purchase_factor == Decimal("12.000")

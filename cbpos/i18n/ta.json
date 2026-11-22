@@ -593,6 +593,14 @@
     "name_required": "பொருள் பெயர் தேவை",
     "no_default_supplier": "இயல்பு சப்ளையர் இல்ல",
     "no_unit": "அலகு இல்லை",
+    "purchase_unit": "கொள்முதல் அலகு:",
+    "no_purchase_unit": "விற்பனை அலகே",
+    "purchase_factor": "மாற்றுக் காரணி:",
+    "conversion_formula": "1 {purchase_unit} = {factor} {base_unit}",
+    "base_unit": "அடிப்படை அலகு",
+    "factor_must_be_positive": "காரணி பூஜ்ஜியத்தை விட அதிகமாக இருக்க வேண்டும்.",
+    "invalid_factor": "காரணிக்கு சரியான நேர்மறை எண்ணை உள்ளிடவும்.",
+    "invalid_purchase_factor": "கொள்முதல் காரணி பூஜ்ஜியத்தை விட அதிகமாக இருக்க வேண்டும்.",
     "not_found_barcode": "{barcode} பார்கோடுக்கு பொருள் கிடைக்கல",
     "not_found_title": "கிடைக்கல",
     "preferred_qty": "விரும்பும் அளவு:",
@@ -1014,6 +1022,10 @@
     "grn_header_qty": "பெறும் அளவு",
     "grn_header_cost": "அலகு விலை",
     "grn_header_total": "மொத்தம்",
+    "grn_header_purchase_qty": "கொள்முதல் அளவு",
+    "grn_header_purchase_unit": "கொள்முதல் அலகு",
+    "grn_header_base_qty": "அடிப்படை இருப்பு அளவு",
+    "grn_header_purchase_cost": "கொள்முதல் விலை",
     "history_header_grn": "GRN #",
     "history_header_date": "தேதி",
     "history_header_supplier": "வழங்குநர்",
@@ -1033,6 +1045,8 @@
     "btn_load_po": "லோட் செய்",
     "discrepancy_title": "ஆர்டருடன் பொருந்தவில்லை",
     "discrepancy_confirm": "இந்த GRN ஆர்டரோட பொருந்தல:\n\n{details}\n\nஇருந்தும் GRN-ஐ கமிட் பண்ணவா?",
+    "conversion_mode_changed_title": "அலகு மாற்ற அமைப்பு மாற்றப்பட்டது",
+    "conversion_mode_changed_prompt": "அலகு மாற்ற அமைப்பு மாற்றப்பட்டுள்ளது. உள்ளிட்ட உருப்படிகளை நிராகரித்து GRN அட்டவணையை மீண்டும் ஏற்றவா?",
     "discrepancy_line": "{product}: இன்னும் {outstanding} வர வேண்டும், இப்போ பெறுவது {received}",
     "discrepancy_line_not_on_order": "{product}: இந்த ஆர்டரில் இல்லை, பெறுவது {received}",
     "discrepancy_line_not_received": "{product}: வரவில்லை (இன்னும் {outstanding} வர வேண்டும்)",
@@ -3946,7 +3960,8 @@
       "serial_tracking": "வரிசை எண் / IMEI கண்காணிப்பு",
       "cheques": "காசோலைக் கொடுப்பனவுகள்",
       "power_cut_autosave": "மின்வெட்டு தானியங்கி சேமிப்பு",
-      "price_board": "விலைப் பலகை (தினசரி விலைகள்)"
+      "price_board": "விலைப் பலகை (தினசரி விலைகள்)",
+      "unit_conversion": "கொள்முதல் அலகு மாற்றம்"
     },
     "desc": {
       "warranty": "உத்தரவாதக் கொள்கைகள், உரிமைகோரல்கள் மற்றும் பழுதுபார்ப்புகளை நிர்வகிக்கவும்",
@@ -3954,7 +3969,8 @@
       "serial_tracking": "விற்பனையின் போது வரிசை அல்லது IMEI எண்களைப் பதிவு செய்யவும்",
       "cheques": "விற்பனையின் போது காசோலை மூலம் பணம் பெறுதல்",
       "power_cut_autosave": "மின்வெட்டு அல்லது மறுதொடக்கத்தின் போது திறந்த பில்லை சேமித்து மீட்டெடுக்கவும்",
-      "price_board": "காய்கறிகள், மீன், எரிவாயு போன்ற அடிக்கடி விலை மாறும் பொருட்களுக்கான விரைவான தினசரி விலை மாற்றப் பலகை"
+      "price_board": "காய்கறிகள், மீன், எரிவாயு போன்ற அடிக்கடி விலை மாறும் பொருட்களுக்கான விரைவான தினசரி விலை மாற்றப் பலகை",
+      "unit_conversion": "பெட்டிகள் அல்லது மூட்டைகளாக வாங்கி சில்லறையாக அல்லது துண்டுகளாக விற்றல்"
     },
     "saved": "'{name}' அம்சம் புதுப்பிக்கப்பட்டது."
   },

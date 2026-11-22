@@ -355,7 +355,7 @@ class Unit(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     last_modified: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, index=True)
 
-    products: Mapped[list["Product"]] = relationship(back_populates="unit")
+    products: Mapped[list["Product"]] = relationship(back_populates="unit", foreign_keys="Product.unit_id")
 
 
 class Category(Base):
@@ -413,6 +413,12 @@ class Product(Base):
     parent_id: Mapped[int | None] = mapped_column(ForeignKey("products.id"), nullable=True)
     default_supplier_id: Mapped[int | None] = mapped_column(ForeignKey("suppliers.id"), nullable=True)
     unit_id: Mapped[int | None] = mapped_column(ForeignKey("units.id"), nullable=True)
+    purchase_unit_id: Mapped[int | None] = mapped_column(
+        ForeignKey("units.id", name="fk_products_purchase_unit_id"), nullable=True
+    )
+    purchase_factor: Mapped[Decimal] = mapped_column(
+        Numeric(10, 3), default=Decimal("1.000"), server_default="1.000", nullable=False
+    )
     warranty_policy_id: Mapped[int | None] = mapped_column(
         ForeignKey("warranty_policies.id"), nullable=True, index=True
     )
@@ -426,7 +432,8 @@ class Product(Base):
     last_modified: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, index=True)
 
     category: Mapped["Category"] = relationship(back_populates="products", lazy="joined", foreign_keys=[category_id])
-    unit: Mapped[Optional["Unit"]] = relationship(back_populates="products", lazy="joined")
+    unit: Mapped[Optional["Unit"]] = relationship(back_populates="products", lazy="joined", foreign_keys=[unit_id])
+    purchase_unit: Mapped[Optional["Unit"]] = relationship("Unit", lazy="joined", foreign_keys=[purchase_unit_id])
     warranty_policy: Mapped[Optional["WarrantyPolicy"]] = relationship(
         "WarrantyPolicy", foreign_keys=[warranty_policy_id]
     )
@@ -443,6 +450,7 @@ class Product(Base):
     default_supplier: Mapped[Optional["Supplier"]] = relationship("Supplier", foreign_keys=[default_supplier_id])
 
     __mapper_args__ = {"version_id_col": version_id}  # Enable Optimistic Locking
+    __table_args__ = (CheckConstraint("purchase_factor > 0", name="ck_products_purchase_factor_positive"),)
 
     def get_display_name(self, lang: str | None = None) -> str:
         """Return the product name in the requested or active language with fallbacks (#586)."""
@@ -632,10 +640,34 @@ class PurchaseItem(Base):
     qty_received: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
     unit_cost: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     purchase_order_item_id: Mapped[int | None] = mapped_column(ForeignKey("purchase_order_items.id"), nullable=True)
+    purchase_unit_id: Mapped[int | None] = mapped_column(
+        ForeignKey("units.id", name="fk_purchase_items_purchase_unit_id"), nullable=True
+    )
+    purchase_factor: Mapped[Decimal] = mapped_column(
+        Numeric(10, 3), default=Decimal("1.000"), server_default="1.000", nullable=False
+    )
+    purchase_qty: Mapped[Decimal | None] = mapped_column(Numeric(10, 3), nullable=True)
+    purchase_unit_cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    purchase_unit_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    base_unit_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     purchase: Mapped["Purchase"] = relationship(back_populates="items")
     product: Mapped["Product"] = relationship("Product")
     purchase_order_item: Mapped["PurchaseOrderItem | None"] = relationship()
+    purchase_unit: Mapped[Optional["Unit"]] = relationship("Unit", lazy="joined", foreign_keys=[purchase_unit_id])
+
+    @property
+    def line_total(self) -> Decimal:
+        """Authoritative supplier line total (#937).
+
+        Uses purchase_qty * purchase_unit_cost when conversion snapshots exist,
+        otherwise qty_received * unit_cost. Always rounded via round_money.
+        """
+        from cbpos.core.utils.money import round_money
+
+        if self.purchase_qty is not None and self.purchase_unit_cost is not None:
+            return round_money(self.purchase_qty * self.purchase_unit_cost)
+        return round_money(self.qty_received * self.unit_cost)
 
 
 class PurchaseOrderItem(Base):

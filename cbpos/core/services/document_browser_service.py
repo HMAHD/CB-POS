@@ -7,6 +7,7 @@ from sqlalchemy.orm import joinedload
 from cbpos.core.database import Database
 from cbpos.core.models import (
     Document,
+    Product,
     Proforma,
     ProformaItem,
     Purchase,
@@ -213,7 +214,8 @@ class DocumentBrowserService:
         purchase = (
             session.query(Purchase)
             .options(
-                joinedload(Purchase.items).joinedload(PurchaseItem.product),
+                joinedload(Purchase.items).joinedload(PurchaseItem.product).joinedload(Product.unit),
+                joinedload(Purchase.items).joinedload(PurchaseItem.purchase_unit),
                 joinedload(Purchase.supplier),
                 joinedload(Purchase.user),
             )
@@ -225,14 +227,32 @@ class DocumentBrowserService:
 
         items = []
         for item in purchase.items:
+            is_converted = item.purchase_qty is not None and item.purchase_unit_cost is not None
+            if is_converted:
+                qty = item.purchase_qty
+                unit_cost = item.purchase_unit_cost
+                unit_name = item.purchase_unit_name or (
+                    item.purchase_unit.name if getattr(item, "purchase_unit", None) else ""
+                )
+            else:
+                qty = item.qty_received
+                unit_cost = item.unit_cost
+                unit_name = item.base_unit_name or (
+                    item.product.unit.name if (item.product and getattr(item.product, "unit", None)) else ""
+                )
+
             items.append(
                 {
                     "product_name": item.product.name_en if item.product else "Unknown",
-                    "quantity": item.qty_received,
-                    "unit_price": item.unit_cost,
+                    "quantity": qty,
+                    "unit_price": unit_cost,
                     "discount_type": "NONE",
                     "discount_value": 0,
-                    "line_total": item.qty_received * item.unit_cost,
+                    "line_total": item.line_total,
+                    "purchase_qty": item.purchase_qty,
+                    "purchase_unit_cost": item.purchase_unit_cost,
+                    "purchase_unit_name": item.purchase_unit_name,
+                    "unit_name": unit_name,
                 }
             )
 

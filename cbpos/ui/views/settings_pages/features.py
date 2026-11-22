@@ -31,6 +31,7 @@ FEATURE_ORDER = [
     Features.CHEQUES,
     Features.POWER_CUT_AUTOSAVE,
     Features.PRICE_BOARD,
+    Features.UNIT_CONVERSION,
 ]
 
 

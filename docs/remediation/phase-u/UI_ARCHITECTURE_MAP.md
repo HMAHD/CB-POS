@@ -77,6 +77,12 @@ The visibility maps are centralized in `cbpos/core/constants/permissions.py:189-
 
 Settings keeps edits across page switches and saves all seven config pages together (`cbpos/ui/views/settings_view.py:338-350`, `470-574`). Leaving through the Settings header's POS or Logout actions checks for unsaved changes. A successful save emits `close_requested`, and `MainWindow` returns to the last non-Settings top-level surface.
 
+## Sales responsibility cluster
+
+The largest view is not treated as defective because it has 2,530 lines. Method/caller tracing shows that it currently coordinates ten distinct areas: screen/layout lifecycle; barcode/scale/search input; cart rendering; autosave/recovery; customer state; checkout and post-sale completion; held bills/session exit/multi-order state; cart mutations/discounts/serials; operational dialog launchers; and printer/cash-drawer feedback. The detailed line-to-seam map is in `issues/sales_issues.md`.
+
+Most business rules already sit behind core services, so arbitrary file splitting would only add shallow pass-through modules. One execution defect is confirmed: normal payment and Quick Pay call the database-writing `TransactionService.process_sale()` synchronously from Qt handlers. This is R2 `U0-SALES-001`. U.0 still needs complete Sales state/journey and measured performance evidence before proposing which orchestration clusters, if any, should be extracted.
+
 ## Help, About, and contextual guidance
 
 ### Entry points and ownership
@@ -160,6 +166,7 @@ The eventual repair should keep connection/schema/migration rules in the existin
 
 | Concern | Evidence-based status |
 |---|---|
+| Large view responsibilities | Sales clusters are mapped by job; one synchronous checkout defect is confirmed. Extraction decisions remain blocked on journey/performance/test evidence. |
 | Scattered top-level ownership | Shell ownership is explicit: `MainWindow` switches top-level surfaces; Management is lazy; Settings is eager. Feature-level tracing remains pending. |
 | Help/About placement | Confirmed navigation gap: global support is only exposed through the Sales side menu; F1 is separate Sales context help. |
 | Update duplication | Multiple entry points, one shared controller/service; no duplicate deep implementation found. |

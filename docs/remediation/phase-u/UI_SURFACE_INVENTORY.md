@@ -135,7 +135,7 @@
 | View | `cbpos/ui/views/reports/filter_widget.py` | `FilterWidget` | 275 | `—` | — |
 | View | `cbpos/ui/views/reports/pandas_model.py` | `PandasModel` | 189 | `theme_service` | — |
 | View | `cbpos/ui/views/reports/report_viewer.py` | `ReportWorker, ReportViewer` | 822 | `auth_service, config_service, export_service, report_service, tax_service` | worker lifecycle |
-| View | `cbpos/ui/views/sales_view.py` | `SalesView` | 2530 | `auth_service, cart_audit_service, cart_autosave_service, cart_service, cash_drawer_service, config_service, customer_service, feature_flags, logging_service, payment_service, printer_service, product_service, proforma_service, sales_receipt_builder, scale_service, shift_service, sound_service, suspended_transaction_service, tax_invoice_service, tax_service, theme_service, transaction_service` | responsibility review (≥1,000 lines) |
+| View | `cbpos/ui/views/sales_view.py` | `SalesView` | 2530 | `auth_service, cart_audit_service, cart_autosave_service, cart_service, cash_drawer_service, config_service, customer_service, feature_flags, logging_service, payment_service, printer_service, product_service, proforma_service, sales_receipt_builder, scale_service, shift_service, sound_service, suspended_transaction_service, tax_invoice_service, tax_service, theme_service, transaction_service` | responsibility clusters mapped; synchronous sale commit on UI thread confirmed (`U0-SALES-001`) |
 | Settings page | `cbpos/ui/views/settings_pages/__init__.py` | `_SettingsPagesPackage` | 63 | `—` | — |
 | Settings page | `cbpos/ui/views/settings_pages/base.py` | `SettingsPage` | 268 | `config_service` | — |
 | Settings page | `cbpos/ui/views/settings_pages/document.py` | `DocumentPage` | 178 | `document_service` | — |

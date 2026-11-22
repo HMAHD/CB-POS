@@ -23,21 +23,22 @@ Two evidence-backed findings are recorded. File length remains an inventory sign
 | Severity | Count |
 |---|---:|
 | R1 release/data-integrity blocker | 0 |
-| R2 important correctness/recovery | 2 |
+| R2 important correctness/recovery | 3 |
 | R3 evidence gap/maintainability | 1 |
 
 | ID | Risk | Surface | Finding | Evidence |
 |---|---|---|---|---|
 | U0-SETTINGS-001 | R2 | Admin Tools / Hardware | The 15-second timeout re-enables a hardware-test action while its worker still runs, allowing overlapping device operations | `issues/settings_issues.md` |
 | U0-SETTINGS-002 | R2 | Settings / Network | Connection, schema, migration, and PIN operations run synchronously on the Qt UI thread | `issues/settings_issues.md` |
+| U0-SALES-001 | R2 | Sales / Checkout | Normal payment and Quick Pay commit the database transaction synchronously on the Qt UI thread | `issues/sales_issues.md` |
 | U0-SHELL-001 | R3 | Shell / Support | Global About/support is exposed only through the Sales side menu; a Settings move must preserve access for roles without Settings permission and keep Sales F1 | `issues/shell_support_issues.md` |
 
 ## Owner concerns tracker
 
 | Concern | Status |
 |---|---|
-| Large view responsibilities | inventory flags recorded; responsibility tracing pending |
-| Full-product workflow and recovery UX | todo |
+| Large view responsibilities | Sales responsibility clusters mapped; extraction decision waits for journey/performance/test evidence |
+| Full-product workflow and recovery UX | Sales checkout execution path traced; remaining states and journeys pending |
 | Scattered ownership | shell ownership and lifecycle traced; feature-level map pending |
 | Opaque/mismatched text backgrounds | visual audit todo |
 | Duplicate update/hardware checks | traced: multiple entry points share existing controller/service/worker seams; one Admin Tools worker-timeout defect recorded |

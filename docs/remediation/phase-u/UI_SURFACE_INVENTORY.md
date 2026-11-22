@@ -130,7 +130,7 @@
 | View | `cbpos/ui/views/payment_methods_view.py` | `_MethodCard, PaymentMethodsView` | 393 | `payment_service` | — |
 | View | `cbpos/ui/views/pricelist_view.py` | `PriceListView` | 722 | `price_list_service, product_service` | — |
 | View | `cbpos/ui/views/promotion_view.py` | `PromotionView` | 327 | `category_service, promotion_service` | — |
-| View | `cbpos/ui/views/purchase_view.py` | `SupplierTableModel, PurchaseHistoryModel, GrnNumericDelegate, PurchaseView` | 2038 | `auth_service, feature_flags, inventory_service, product_service, purchase_order_service, purchase_service, supplier_payable_service, supplier_service` | responsibility review (≥1,000 lines) |
+| View | `cbpos/ui/views/purchase_view.py` | `SupplierTableModel, PurchaseHistoryModel, GrnNumericDelegate, PurchaseView` | 2038 | `auth_service, feature_flags, inventory_service, product_service, purchase_order_service, purchase_service, supplier_payable_service, supplier_service` | responsibility clusters mapped; synchronous loads/GRN commit on UI thread confirmed (`U0-PURCHASE-001`) |
 | View | `cbpos/ui/views/reorder_view.py` | `ReorderView` | 300 | `purchase_order_service, stock_service` | — |
 | View | `cbpos/ui/views/reports/filter_widget.py` | `FilterWidget` | 275 | `—` | — |
 | View | `cbpos/ui/views/reports/pandas_model.py` | `PandasModel` | 189 | `theme_service` | — |

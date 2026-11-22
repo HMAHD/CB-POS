@@ -83,6 +83,12 @@ The largest view is not treated as defective because it has 2,530 lines. Method/
 
 Most business rules already sit behind core services, so arbitrary file splitting would only add shallow pass-through modules. One execution defect is confirmed: normal payment and Quick Pay call the database-writing `TransactionService.process_sale()` synchronously from Qt handlers. This is R2 `U0-SALES-001`. U.0 still needs complete Sales state/journey and measured performance evidence before proposing which orchestration clusters, if any, should be extracted.
 
+## Purchasing responsibility cluster
+
+`PurchaseView` contains four independently navigable jobs: supplier management, GRN composition/receipt, GRN history, and supplier payables, plus cross-cutting feature-state and activation reload logic. The line-to-seam map is in `issues/purchasing_issues.md`; this evidence supports screen-level ownership decisions later, not an automatic four-file split.
+
+All four jobs currently call database-backed services synchronously from activation, input, or click handlers. The highest-risk mutation is `PurchaseService.receive_goods()` during GRN commit; payables search also reloads all suppliers for every filter invocation. This root cause is recorded as R2 `U0-PURCHASE-001`. `PurchaseService.receive_goods()` should remain the atomic domain seam even if UI orchestration moves to a worker/controller.
+
 ## Help, About, and contextual guidance
 
 ### Entry points and ownership
@@ -166,7 +172,7 @@ The eventual repair should keep connection/schema/migration rules in the existin
 
 | Concern | Evidence-based status |
 |---|---|
-| Large view responsibilities | Sales clusters are mapped by job; one synchronous checkout defect is confirmed. Extraction decisions remain blocked on journey/performance/test evidence. |
+| Large view responsibilities | Sales and Purchasing clusters are mapped by job; synchronous database defects are confirmed. Extraction decisions remain blocked on journey/performance/test evidence. |
 | Scattered top-level ownership | Shell ownership is explicit: `MainWindow` switches top-level surfaces; Management is lazy; Settings is eager. Feature-level tracing remains pending. |
 | Help/About placement | Confirmed navigation gap: global support is only exposed through the Sales side menu; F1 is separate Sales context help. |
 | Update duplication | Multiple entry points, one shared controller/service; no duplicate deep implementation found. |

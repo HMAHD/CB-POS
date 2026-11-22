@@ -29,6 +29,7 @@ class PricingService:
         product: Product,
         customer: Customer | None = None,
         now: datetime | None = None,
+        batch_mrp: Decimal | None = None,
     ) -> dict[str, Any]:
         """Calculate the final selling price for a product.
 
@@ -40,6 +41,7 @@ class PricingService:
             product: The product entity being purchased.
             customer: Optional customer entity with an associated price list.
             now: Point in time for evaluating date ranges and daily windows (defaults to datetime.now()).
+            batch_mrp: Optional per-batch MRP override establishing line base price (#926).
 
         Returns:
             dict[str, Any]: Dictionary containing:
@@ -51,9 +53,9 @@ class PricingService:
         if now is None:
             now = datetime.now()
 
-        original_price = product.price
+        original_price = batch_mrp if batch_mrp is not None else product.price
         final_price = original_price
-        applied_rule = "Standard Price"
+        applied_rule = "Standard Price" if batch_mrp is None else f"Batch MRP ({batch_mrp})"
 
         stack_enabled = bool(ConfigService.get("promotion_stack_with_price_lists"))
 

@@ -22,6 +22,7 @@ class ItemDisplay:
     """Helper class for merged items display."""
 
     __slots__ = (
+        "batch",
         "is_manual_price",
         "name",
         "original_price",
@@ -42,6 +43,7 @@ class ItemDisplay:
         original_price: Any = None,
         is_manual_price: bool = False,
         warranties: list[Any] | None = None,
+        batch: Any = None,
     ) -> None:
         """Store the fields needed to render one (possibly merged) receipt line."""
         self.product = product
@@ -52,6 +54,7 @@ class ItemDisplay:
         self.original_price = original_price
         self.is_manual_price = is_manual_price
         self.warranties = list(warranties or [])
+        self.batch = batch
 
 
 def _safe_warranties(obj: Any) -> list[Any]:
@@ -239,6 +242,17 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
                             )
                             commands.append({"type": "text", "val": f"   {sn_text}", "align": "left"})
 
+            # Batch and expiry sub-line (#926)
+            batch_obj = getattr(item, "batch", None)
+            if batch_obj:
+                b_parts = []
+                if getattr(batch_obj, "batch_no", None):
+                    b_parts.append(f"Batch: {batch_obj.batch_no}")
+                if getattr(batch_obj, "expiry_date", None):
+                    b_parts.append(f"Exp: {batch_obj.expiry_date.strftime('%Y-%m-%d')}")
+                if b_parts:
+                    commands.append({"type": "text", "val": f"   {'  '.join(b_parts)}", "align": "left"})
+
         # Items count + totals
         commands.append(_sep())
         item_count = len(display_items)
@@ -422,8 +436,8 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
     @staticmethod
     def _merge_items(items: list[SaleItem], lang: str | None = None) -> list[Any]:
         """
-        Merges SaleItems with the same (product_id, unit_price, original_price, is_manual_price).
-        Lines with different prices stay separate (#908).
+        Merges SaleItems with the same (product_id, unit_price, original_price, is_manual_price, batch_id).
+        Lines with different prices or batches stay separate (#908, #926).
         Returns a list of objects with product, qty, unit_price, subtotal attributes.
         """
         merged: dict[tuple[Any, ...], ItemDisplay] = {}
@@ -432,7 +446,9 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
             u_price = item.unit_price
             orig_price = getattr(item, "original_price", None)
             is_manual = bool(getattr(item, "is_manual_price", False))
-            key = (pid, u_price, orig_price, is_manual)
+            raw_b_id = getattr(item, "batch_id", None)
+            batch_id = raw_b_id if isinstance(raw_b_id, (int, str)) else None
+            key = (pid, u_price, orig_price, is_manual, batch_id)
             item_warranties = _safe_warranties(item)
             if key in merged:
                 merged[key].qty += item.qty
@@ -453,6 +469,7 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
                     original_price=orig_price,
                     is_manual_price=is_manual,
                     warranties=item_warranties,
+                    batch=getattr(item, "batch", None) if batch_id is not None else None,
                 )
         return list(merged.values())
 

@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: U · Batch: Phase U record restoration (pre-U.0) · Branch: docs/phase-u-record · PR: #1038 · Last session: 2026-11-22
+- Phase: 10B · Batch: 10B.4 · Branch: feat/p10b-b4-expiry-batches · PR: #1039 · Last session: 2026-11-22
 
 ## Issues
 
@@ -224,7 +224,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 |---|---|---|---|---|---|---|
 | #942 | Shop-type presets at first run (Grocery, Pharmacy, Hardware, Clothing, Phone,… | — | 10B.0 | done | #1032 | 6478505 · Database-backed FeatureFlags service, 8-preset matrix (D34), setup wizard step, features settings page, idempotent category/unit seeding (D35), LAN catalog sync 1.6, UI gate screenshots |
 | #932 | Power-cut safety: autosave the in-progress bill and restore it on restart | — | 10B.1 | done | #1034 | bdc96ec · D36 · CartAutosaveService, atomic CAS update & insert retry, monotonic generation registry, clean session shutdown, PostgreSQL tests, UI gate screenshots |
-| #926 | Expiry dates and batches, with per-batch MRP (pharmacy, grocery, bakery) | — | 10B.4 | todo | | owner grill and explicit MVP decision required before implementation |
+| #926 | Expiry dates and batches, with per-batch MRP (pharmacy, grocery, bakery) | — | 10B.4 | pr-open | #1039 | `c650aad` · D42–D53, ADR 0003 · ProductBatch, FEFO engine, per-batch MRP baseline, BatchPicker, Cart/Checkout integration, per-batch stock take, dashboard expiring tile, LAN sync 1.7, 32 new tests, all CI checks green |
 | #930 | Supplier returns with debit note (pairs with expiry/batch) | — | 10B.5 | todo | | owner cost-basis/design decision required before implementation |
 | #931 | Price board: fast daily price editing for items flagged "price changes often" | — | 10B.2 | done | #1035 | 967a5b3 · D39/D40 · Product.price_changes_often flag, PriceBoardService batch update with OCC rollback, F11 PriceBoardDialog, label print integration |
 | #933 | Serial/IMEI capture (phone and electronics shops), linked to the warranty epic | — | 10B decision | todo | | owner must close as delivered by #823 or authorize inbound GRN serial inventory |

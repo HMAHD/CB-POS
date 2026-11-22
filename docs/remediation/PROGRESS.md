@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 10B · Batch: 10B.2 (#931) · Branch: feat/p10b-b2-price-board · PR: — · Last session: 2026-11-21
+- Phase: U · Batch: Phase U record restoration (pre-U.0) · Branch: docs/phase-u-record · PR: #1038 · Last session: 2026-11-22
 
 ## Issues
 
@@ -224,15 +224,17 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 |---|---|---|---|---|---|---|
 | #942 | Shop-type presets at first run (Grocery, Pharmacy, Hardware, Clothing, Phone,… | — | 10B.0 | done | #1032 | 6478505 · Database-backed FeatureFlags service, 8-preset matrix (D34), setup wizard step, features settings page, idempotent category/unit seeding (D35), LAN catalog sync 1.6, UI gate screenshots |
 | #932 | Power-cut safety: autosave the in-progress bill and restore it on restart | — | 10B.1 | done | #1034 | bdc96ec · D36 · CartAutosaveService, atomic CAS update & insert retry, monotonic generation registry, clean session shutdown, PostgreSQL tests, UI gate screenshots |
-| #926 | Expiry dates and batches, with per-batch MRP (pharmacy, grocery, bakery) | — | 10B.? | todo | | |
-| #930 | Supplier returns with debit note (pairs with expiry/batch) | — | 10B.? | todo | | |
+| #926 | Expiry dates and batches, with per-batch MRP (pharmacy, grocery, bakery) | — | 10B.4 | todo | | owner grill and explicit MVP decision required before implementation |
+| #930 | Supplier returns with debit note (pairs with expiry/batch) | — | 10B.5 | todo | | owner cost-basis/design decision required before implementation |
 | #931 | Price board: fast daily price editing for items flagged "price changes often" | — | 10B.2 | done | #1035 | 967a5b3 · D39/D40 · Product.price_changes_often flag, PriceBoardService batch update with OCC rollback, F11 PriceBoardDialog, label print integration |
-| #933 | Serial/IMEI capture (phone and electronics shops), linked to the warranty epic | — | 10B.? | todo | | |
-| #936 | Size/colour variants and exchange (clothing) | — | 10B.? | todo | | |
-| #937 | Unit conversion: buy by box, sell by piece; ft/m/sqft for hardware | — | 10B.3 | in-progress | | D41 · Optional purchase_unit_id & factor, GRN purchase unit intake, base-unit StockMovement/AVCO, exact supplier payable, immutable PurchaseItem |
-| #941 | Deposits and empties (gas cylinders, bottles) | — | 10B.? | todo | | |
+| #933 | Serial/IMEI capture (phone and electronics shops), linked to the warranty epic | — | 10B decision | todo | | owner must close as delivered by #823 or authorize inbound GRN serial inventory |
+| #936 | Size/colour variants and exchange (clothing) | — | 10B.6 | todo | | owner grill and atomic MVP decision required before implementation |
+| #937 | Unit conversion: buy by box, sell by piece; ft/m/sqft for hardware | — | 10B.3 | done | #1037 | `69fd64a` · D41 · Purchase-unit GRN intake, exact base stock/AVCO and supplier totals, immutable snapshots, PostgreSQL/migration coverage; post-merge main CI `44994304427` green |
+| #941 | Deposits and empties (gas cylinders, bottles) | — | 10B.7 | todo | | owner build-or-park decision required; current recommendation is park |
 
 ### Phase 10C — [spec](phases/phase-10c-comms-finance-onboarding.md)
+
+> Deferred to a later release under D37/D42. A remaining Phase 10B issue may continue in parallel with provisional U.0 only after its own owner gate passes and the decision is recorded; D42 does not authorize feature scope. Do not start Phase 10C.
 
 | # | Title | Sev | Batch | Status | PR | Notes |
 |---|---|---|---|---|---|---|
@@ -246,23 +248,26 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #940 | Owner-only anomaly report: voids, deletions after print, no-sale drawer opens… | — | 10C.? | todo | | |
 | #943 | Parked ideas and do-not-build list (market research reference) | — | 10C.? | todo | | |
 
-### Phase U — [spec](phases/phase-U-ui-system.md)
+### Phase U — [spec](phases/phase-U-ui-system.md) · [discovery brief](PHASE_U_DISCOVERY_BRIEF.md)
+
+> D37–D42: U.0 discovery and owner approval of the deduplicated issue map are required before implementation. Claude starts Phase U; Gemini may continue from the execution playbook if Claude usage is unavailable. #963–#975 are provisional inputs, not an approved queue.
 
 | # | Title | Owner | Item | Status | PR | Notes |
 |---|---|---|---|---|---|---|
-| #963 | DataTable + ContextMenu builder | Claude | UF-1 | todo | | needs — |
-| #964 | PageHeader + DetailHeader | Claude | UF-2 | todo | | needs — |
-| #965 | FormDialog | Claude | UF-3 | todo | | needs — |
-| #966 | FilterBar + DateRangeFilter | Claude | UF-4 | todo | | needs — |
-| #967 | Purchase Orders screen + Purchasing tabs | Gemini | UM-1 | todo | | needs UF-1, UF-3 |
-| #968 | New GRN focused form | Gemini | UM-2 | todo | | needs UF-3 |
-| #969 | Supplier payment dialog | Gemini | UM-3 | todo | | needs UF-3 |
-| #970 | Payables list + ledger | Gemini | UM-4 | todo | | needs UF-1, UF-2 |
-| #971 | Stock Control section | Gemini | UM-5 | todo | | needs UF-1 |
-| #972 | Management header bar | Gemini | UM-6 | todo | | needs — |
-| #973 | Dashboard date filter | Gemini | UM-7 | todo | | needs UF-4 |
-| #974 | Colours out of Python UI code (+#956) | Gemini | UM-8 | todo | | needs — |
-| #975 | Reports rebuild (supersedes #950) | Gemini | UM-9 | todo | | needs UF-1, UF-4 |
+| — | Discovery and re-baselining | Claude | U.0 | todo | | create the Phase U parent epic and U.0 issue after this record merges; provisional baseline `69fd64a`; Phase 10B exit/final-SHA delta re-baseline and retrospective audit required |
+| #963 | DataTable + ContextMenu builder | Claude | UF-1 | todo | | provisional; needs U.0 reconciliation |
+| #964 | PageHeader + DetailHeader | Claude | UF-2 | todo | | provisional; needs U.0 reconciliation |
+| #965 | FormDialog | Claude | UF-3 | todo | | provisional; needs U.0 reconciliation |
+| #966 | FilterBar + DateRangeFilter | Claude | UF-4 | todo | | provisional; needs U.0 reconciliation |
+| #967 | Purchase Orders screen + Purchasing tabs | Claude | UM-1 | todo | | provisional; currently needs UF-1, UF-3 |
+| #968 | New GRN focused form | Claude | UM-2 | todo | | provisional; currently needs UF-3 |
+| #969 | Supplier payment dialog | Claude | UM-3 | todo | | provisional; currently needs UF-3 |
+| #970 | Payables list + ledger | Claude | UM-4 | todo | | provisional; currently needs UF-1, UF-2 |
+| #971 | Stock Control section | Claude | UM-5 | todo | | provisional; currently needs UF-1 |
+| #972 | Management header bar | Claude | UM-6 | todo | | provisional |
+| #973 | Dashboard date filter | Claude | UM-7 | todo | | provisional; currently needs UF-4 |
+| #974 | Colours out of Python UI code (+#956) | Claude | UM-8 | todo | | provisional |
+| #975 | Reports rebuild (supersedes #950) | Claude | UM-9 | todo | | provisional; currently needs UF-1, UF-4 |
 
 ### Tracking epics
 
@@ -318,16 +323,17 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #824 | Physical print check of 58mm/80mm thermal warranty cards with cut and A4 PDF warranty certificates | pending |
 
 ## Handoff
-Phase 10B.0 (#942), 10B.1 (#932), and 10B.2 (#931) are merged and verified closed:
-- #942: Shop-type presets at first run (PR #1032, `6478505`)
-- #932: Power-cut safety autosave (PR #1034, `bdc96ec`)
-- #931: Price board daily price editing (PR #1035, `967a5b3`)
 
-Phase 10B.3 (#937 — purchase-unit conversion) is implemented on branch `feat/p10b-b3-unit-conversion`:
-- Decisions D41 recorded in DECISIONS.md.
-- Reversible Alembic migration `a2b3c4d5e6f7` for `Product` and `PurchaseItem`.
-- Fail-closed re-read of authoritative conversion factor/unit.
-- Base unit inventory and AVCO accounting with exact supplier payable liability.
-- Adaptive GRN grid, PO receiving conversion, and immutable historical inspection.
-- PR opened and left unmerged for independent review. Do not start #926.
+Phase 10B.0–10B.3 are merged and verified closed:
+- #942 presets and feature flags: PR #1032 (`6478505`).
+- #932 power-cut autosave: PR #1034 (`bdc96ec`).
+- #931 Price Board: PR #1035 (`967a5b3`).
+- #937 purchase-unit conversion: PR #1037, merge `69fd64a`; post-merge main CI run `44994304427` passed all jobs.
+
+Phase U record restoration is starting under D37–D42; U.0 has not started yet:
+- Restore `PHASE_U_DISCOVERY_BRIEF.md`, the discovery-first Phase U spec, D37–D38, and the keyboard-first/mouse-friendly instruction through the docs-only branch `docs/phase-u-record`.
+- After this record merges, create one Phase U parent epic and one U.0 issue, then mark U.0 in progress.
+- U.0 is documentation/evidence work only. Do not refactor UI or expand #963–#975 before the Phase 10B exit/final-SHA delta re-baseline, retrospective integrity audit, and owner-approved evidence map are complete.
+- Baseline provisional discovery against `main` at `69fd64a`; the final implementation gate uses the exact final Phase 10B `main` SHA and green post-merge CI.
+- Gemini may continue #926, #930, #933, #936, or #941 only after that issue’s owner gate passes and its D-number is recorded. The local convenience playbook is `/Users/akash/Documents/CB-POS_PHASE_10B_PHASE_U_GEMINI_PLAYBOOK.md`; it is non-normative, and the reviewed repository documents remain the source of truth. Phase 10C remains deferred.
 

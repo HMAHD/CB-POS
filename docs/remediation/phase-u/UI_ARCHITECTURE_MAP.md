@@ -148,6 +148,14 @@ One concrete lifecycle defect was found in Admin Tools: after its 15-second pres
 
 Physical printer, drawer, scanner, and Windows behavior remain unverified in this pass.
 
+## Network setup seam
+
+The static direct-database flag in the inventory is a confirmed architecture defect, not merely an import anomaly. `NetworkPage` directly coordinates remote connection checks, schema inspection, SQLAlchemy table creation, Alembic stamping/upgrades, full SQLite→PostgreSQL migration, and PIN authentication (`cbpos/ui/views/settings_pages/network.py:893-1214`). These methods are connected directly to button clicks and run synchronously on the Qt UI thread.
+
+The page already uses `SyncTestWorker` for its sync-server check (`network.py:1363-1383`), but the heavier PostgreSQL setup operations have no worker/controller seam. `QApplication.processEvents()` before a blocking call and an indeterminate progress dialog do not keep the event loop responsive during the call. This root cause is recorded as R2 `U0-SETTINGS-002` in `issues/settings_issues.md`.
+
+The eventual repair should keep connection/schema/migration rules in the existing core services, introduce one asynchronous setup controller/worker interface, and leave `NetworkPage` responsible only for input, progress, and result presentation. No replacement database implementation is needed.
+
 ## Current seam assessment
 
 | Concern | Evidence-based status |
@@ -156,12 +164,11 @@ Physical printer, drawer, scanner, and Windows behavior remain unverified in thi
 | Help/About placement | Confirmed navigation gap: global support is only exposed through the Sales side menu; F1 is separate Sales context help. |
 | Update duplication | Multiple entry points, one shared controller/service; no duplicate deep implementation found. |
 | Hardware duplication | Two UI contexts, one service/worker/feedback stack; no duplicate device rules found. One Admin Tools timeout lifecycle defect found. |
-| UI-thread blocking | Update network/download and printer/drawer tests use QThreads in the traced paths. Other paths remain pending. |
+| UI-thread blocking | Update network/download and printer/drawer tests use QThreads. Network setup's PostgreSQL connection, schema, migration, and PIN operations run synchronously and are recorded as R2. Other paths remain pending. |
 
 ## Remaining architecture trace
 
 - Trace every dialog caller and mark unreachable/stale surfaces.
-- Trace the direct database import in `settings_pages/network.py` through its actual execution path.
 - Map service and worker ownership for the remaining oversized responsibility candidates.
 - Verify each feature journey’s service-level permission and mutation seam.
 - Measure construction, activation, query, and worker lifetime behavior; file length is not performance evidence.

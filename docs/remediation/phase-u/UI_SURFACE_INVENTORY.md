@@ -141,7 +141,7 @@
 | Settings page | `cbpos/ui/views/settings_pages/document.py` | `DocumentPage` | 178 | `document_service` | — |
 | Settings page | `cbpos/ui/views/settings_pages/features.py` | `FeaturesPage` | 171 | `auth_service, feature_flags` | — |
 | Settings page | `cbpos/ui/views/settings_pages/hardware.py` | `HardwarePage` | 481 | `hardware_test_service` | — |
-| Settings page | `cbpos/ui/views/settings_pages/network.py` | `NetworkPage` | 1579 | `auth_service, config_service, database_setup_service, migration_service, schema_migration_service, sync_terminal_service, theme_service` | responsibility review (≥1,000 lines); verify direct DB import |
+| Settings page | `cbpos/ui/views/settings_pages/network.py` | `NetworkPage` | 1579 | `auth_service, config_service, database_setup_service, migration_service, schema_migration_service, sync_terminal_service, theme_service` | responsibility review (≥1,000 lines); blocking DB/network orchestration on UI thread confirmed (`U0-SETTINGS-002`) |
 | Settings page | `cbpos/ui/views/settings_pages/receipt.py` | `ReceiptPage` | 834 | `config_service, receipt_builder, receipt_font_service, receipt_logo_service, warranty_service` | — |
 | Settings page | `cbpos/ui/views/settings_pages/sales_tax.py` | `SalesTaxPage` | 466 | `config_service, tax_service` | — |
 | Settings page | `cbpos/ui/views/settings_pages/shop_info.py` | `ShopInfoPage` | 311 | `language_service` | — |

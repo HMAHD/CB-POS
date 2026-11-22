@@ -234,3 +234,26 @@ def test_issue_926_batch_service_expiring_summary_and_filter(db_session):
     in_90 = BatchService.get_expiring_batches_by_filter("90")
     assert len(in_90) == 3
     assert {b.batch_no for b in in_90} == {"LOT-15", "LOT-45", "LOT-75"}
+
+
+def test_issue_926_stock_take_tracked_product_zero_batches_never_untracked_line(db_session, inv_user):
+    """Stock count on a batch-tracked product with zero initial batches creates an opening batch, never batch_id=None."""
+    prod = Product(
+        name_en="Zero Batch Tracked Item",
+        barcode="BAR-ZERO-001",
+        price=Decimal("100.00"),
+        cost=Decimal("70.00"),
+        stock_qty=Decimal("0.000"),
+        tracks_batches=True,
+    )
+    db_session.add(prod)
+    db_session.commit()
+
+    sc = StockCountService.create_stock_count(user_id=inv_user.id)
+    count = StockCountService.add_all_products(sc.id)
+    assert count == 1
+
+    reloaded = StockCountService.get_stock_count(sc.id)
+    assert len(reloaded.items) == 1
+    # Must never be None for a batch-tracked product
+    assert reloaded.items[0].batch_id is not None

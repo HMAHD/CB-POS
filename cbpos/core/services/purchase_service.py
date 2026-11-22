@@ -349,6 +349,8 @@ class PurchaseService:
 
                 line_batch_id = vline.batch_id
                 if vline.product.tracks_batches and line_batch_id is None:
+                    # Lock parent Product first to preserve Product -> ProductBatch hierarchy
+                    session.query(Product).filter(Product.id == vline.product_id).with_for_update().first()
                     # Match existing batch on (product_id, batch_no, expiry_date, mrp) or create new batch
                     existing_batch = (
                         session.query(ProductBatch)
@@ -608,6 +610,8 @@ class PurchaseService:
 
                 line_batch_id = vline.batch_id
                 if vline.product.tracks_batches and line_batch_id is None:
+                    # Lock parent Product first to preserve Product -> ProductBatch hierarchy
+                    session.query(Product).filter(Product.id == vline.product_id).with_for_update().first()
                     existing_batch = (
                         session.query(ProductBatch)
                         .filter(

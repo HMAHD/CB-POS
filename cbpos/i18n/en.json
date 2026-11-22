@@ -733,7 +733,9 @@
     "note_required": "Please write a note for 'Other'.",
     "negative_blocked": "This would make stock below zero, which isn't allowed in Settings.",
     "batch": "Batch / Lot",
-    "no_batch_selected": "All / Unspecified"
+    "no_batch_selected": "All / Unspecified",
+    "select_batch": "-- Select Batch --",
+    "batch_required": "Please select a batch for batch-tracked products."
   },
   "stock_adjustment": {
     "title": "Adjust Stock: {product_name}",

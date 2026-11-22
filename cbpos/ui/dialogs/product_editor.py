@@ -1092,7 +1092,11 @@ class ProductEditor(QDialog):
             "price_change_allowed": self.price_change_allowed_check.isChecked(),
             "price_changes_often": self.price_changes_often_check.isChecked(),
             "is_age_restricted": self.age_restricted_check.isChecked(),
-            "tracks_batches": self.chk_tracks_batches.isChecked() if self.chk_tracks_batches else False,
+            "tracks_batches": (
+                self.chk_tracks_batches.isChecked()
+                if self.chk_tracks_batches is not None
+                else bool(getattr(self.product, "tracks_batches", False))
+            ),
             "image_path": self.current_image_path,
             "is_active": True,
         }

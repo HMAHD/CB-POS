@@ -272,3 +272,86 @@ def test_issue_926_receive_goods_tracked_product_requires_batch_or_expiry(db_ses
 
     with pytest.raises(ValueError, match="requires a batch number or expiry date"):
         PurchaseService.receive_goods(req)
+
+
+def test_issue_926_stock_movement_without_batch_id_on_tracked_product_fails(db_session, test_user):
+    """StockService.record_movement on a batch-tracked product requires batch_id to preserve Invariant 1."""
+    prod = Product(
+        barcode="STOCK-NO-BATCH-001",
+        name_en="Tracked Paracetamol",
+        price=Decimal("100.00"),
+        cost=Decimal("70.00"),
+        stock_qty=Decimal("10.000"),
+        tracks_batches=True,
+    )
+    db_session.add(prod)
+    db_session.flush()
+
+    batch = ProductBatch(
+        product_id=prod.id,
+        batch_no="B001",
+        expiry_date=date(2027, 5, 31),
+        qty_on_hand=Decimal("10.000"),
+        cost=Decimal("70.00"),
+        mrp=Decimal("100.00"),
+    )
+    db_session.add(batch)
+    db_session.flush()
+
+    # Calling record_movement with batch_id=None on a tracked product must raise ValueError
+    with pytest.raises(ValueError, match="Batch ID required"):
+        StockService.record_movement(
+            product_id=prod.id,
+            qty_change=Decimal("-2.000"),
+            movement_type="ADJUSTMENT",
+            user_id=test_user.id,
+            session=db_session,
+            batch_id=None,
+        )
+
+    # Invariant preserved: stock_qty is still 10, batch is still 10
+    assert prod.stock_qty == Decimal("10.000")
+    assert batch.qty_on_hand == Decimal("10.000")
+
+
+def test_issue_926_adjust_stock_without_batch_id_on_tracked_product_fails(db_session, test_user):
+    """InventoryService.adjust_stock on a batch-tracked product requires batch_id."""
+    from cbpos.core.services.inventory_service import InventoryService
+
+    prod = Product(
+        barcode="ADJUST-NO-BATCH-001",
+        name_en="Tracked Syrup",
+        price=Decimal("200.00"),
+        cost=Decimal("150.00"),
+        stock_qty=Decimal("15.000"),
+        tracks_batches=True,
+    )
+    db_session.add(prod)
+    db_session.flush()
+
+    batch = ProductBatch(
+        product_id=prod.id,
+        batch_no="B002",
+        expiry_date=date(2027, 8, 31),
+        qty_on_hand=Decimal("15.000"),
+        cost=Decimal("150.00"),
+        mrp=Decimal("200.00"),
+    )
+    db_session.add(batch)
+    db_session.commit()
+
+    inv_service = InventoryService()
+    with pytest.raises(ValueError, match="Batch selection required"):
+        inv_service.adjust_stock(
+            product_id=prod.id,
+            qty_change=Decimal("-3.000"),
+            reason="DAMAGED",
+            user_id=test_user.id,
+            batch_id=None,
+        )
+
+    # Invariant preserved: stock_qty is still 15
+    reloaded_prod = db_session.get(Product, prod.id)
+    reloaded_batch = db_session.get(ProductBatch, batch.id)
+    assert reloaded_prod.stock_qty == Decimal("15.000")
+    assert reloaded_batch.qty_on_hand == Decimal("15.000")

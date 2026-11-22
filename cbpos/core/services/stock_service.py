@@ -117,6 +117,12 @@ class StockService:
         if product.is_service:
             return None
 
+        if getattr(product, "tracks_batches", False) and batch_id is None:
+            raise ValueError(f"Batch ID required for batch-tracked product '{product.name_en}' ({product.barcode})")
+
+        if getattr(product, "tracks_batches", False) and batch_id is None:
+            raise ValueError(f"Batch ID required for batch-tracked product '{product.name_en}' ({product.barcode})")
+
         batch = None
         if batch_id is not None:
             batch = session.get(ProductBatch, batch_id, with_for_update=True)

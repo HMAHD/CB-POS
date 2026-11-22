@@ -410,6 +410,9 @@ class InventoryService:
             if product.is_service:
                 raise ValueError("Cannot adjust stock for service products")
 
+            if getattr(product, "tracks_batches", False) and batch_id is None:
+                raise ValueError(f"Batch selection required for batch-tracked product '{product.name_en}'")
+
             # 3. Record movement via StockService (updates product.stock_qty, batch.qty_on_hand and enforces negative stock)
             movement = StockService.record_movement(
                 product_id=product.id,

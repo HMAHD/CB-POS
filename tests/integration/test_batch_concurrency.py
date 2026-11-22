@@ -93,6 +93,66 @@ def test_issue_926_concurrent_till_fefo_row_locking(db_session):
     assert allocations[1][1] == Decimal("2.000")
 
 
+def test_issue_926_allocate_fefo_stock_refreshes_stale_identity_map(db_session):
+    """allocate_fefo_stock refreshes batches via populate_existing() if already in session identity map."""
+    from cbpos.core.services.batch_service import InsufficientStockError
+
+    prod = Product(
+        barcode="CONC-STALE-01",
+        name_en="Concurrency Stale Item",
+        price=Decimal("100.00"),
+        cost=Decimal("70.00"),
+        stock_qty=Decimal("5.000"),
+        tracks_batches=True,
+    )
+    db_session.add(prod)
+    db_session.flush()
+
+    batch = ProductBatch(
+        product_id=prod.id,
+        batch_no="B-STALE",
+        expiry_date=date.today() + timedelta(days=30),
+        qty_on_hand=Decimal("5.000"),
+        cost=Decimal("70.00"),
+        mrp=Decimal("100.00"),
+        is_active=True,
+    )
+    db_session.add(batch)
+    db_session.commit()
+
+    # Session 2 loads the batch into its identity map when qty was 5
+    from sqlalchemy.orm import sessionmaker
+
+    SessionLocal = sessionmaker(bind=db_session.get_bind())
+    s2 = SessionLocal()
+    s1 = SessionLocal()
+    try:
+        # Step 1: Session 2 executes candidate query, loading candidate batch into identity map
+        cand_b = s2.query(ProductBatch).filter(ProductBatch.id == batch.id).all()
+        assert cand_b[0].qty_on_hand == Decimal("5.000")
+        assert cand_b[0].version_id == 1
+
+        # Step 2: Concurrently, Session 1 sells/reduces batch stock from 5 down to 1 and commits
+        b1 = s1.get(ProductBatch, batch.id)
+        b1.qty_on_hand = Decimal("1.000")
+        b1.version_id = 2
+        s1.commit()
+
+        # Step 3: Session 2 executes allocate_fefo_stock requesting 3 units.
+        # With populate_existing(), allocate_fefo_stock refreshes the batch in identity map,
+        # observes that only 1 unit is available, and raises InsufficientStockError.
+        with pytest.raises(InsufficientStockError):
+            BatchService.allocate_fefo_stock(
+                product_id=prod.id,
+                requested_qty=Decimal("3.000"),
+                allow_negative_stock=False,
+                session=s2,
+            )
+    finally:
+        s1.close()
+        s2.close()
+
+
 def test_issue_926_offline_till_overdraft_sync_resolution(db_session):
     """Main PC absorbs offline till sales that overdraft a batch, mutating the batch balance
 

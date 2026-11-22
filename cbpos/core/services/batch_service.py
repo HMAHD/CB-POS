@@ -188,18 +188,21 @@ class BatchService:
             )
 
             # Concurrency row-locking in deterministic ascending ID order
-            candidate_batches = candidate_query.all()
-            if candidate_batches:
-                candidate_ids = sorted(b.id for b in candidate_batches)
-                locked_map = {
-                    b.id: b
-                    for b in s.query(ProductBatch)
-                    .filter(ProductBatch.id.in_(candidate_ids))
+            candidate_ids = [b_id for (b_id,) in candidate_query.with_entities(ProductBatch.id).all()]
+            candidate_batches: list[ProductBatch] = []
+            locked_map: dict[int, ProductBatch] = {}
+            if candidate_ids:
+                sorted_ids = sorted(candidate_ids)
+                locked_batches = (
+                    s.query(ProductBatch)
+                    .filter(ProductBatch.id.in_(sorted_ids))
                     .order_by(ProductBatch.id.asc())
                     .with_for_update()
+                    .populate_existing()
                     .all()
-                }
-                candidate_batches = [locked_map[b.id] for b in candidate_batches]
+                )
+                locked_map = {b.id: b for b in locked_batches}
+                candidate_batches = [locked_map[b_id] for b_id in candidate_ids if b_id in locked_map]
 
             allocations: list[tuple[ProductBatch, Decimal]] = []
             remaining_qty = requested_qty
@@ -221,8 +224,8 @@ class BatchService:
                     )
 
                 # Negative stock permitted: newest active batch absorbs overdraft
-                newest_batch = (
-                    s.query(ProductBatch)
+                newest_batch_id_row = (
+                    s.query(ProductBatch.id)
                     .filter(
                         ProductBatch.product_id == product_id,
                         ProductBatch.is_active.is_(True),
@@ -233,10 +236,19 @@ class BatchService:
                     )
                     .first()
                 )
-                if newest_batch is not None and newest_batch.id not in [b.id for b in candidate_batches]:
-                    newest_batch = (
-                        s.query(ProductBatch).filter(ProductBatch.id == newest_batch.id).with_for_update().first()
-                    )
+                newest_batch = None
+                if newest_batch_id_row is not None:
+                    n_id = newest_batch_id_row[0]
+                    if n_id in locked_map:
+                        newest_batch = locked_map[n_id]
+                    else:
+                        newest_batch = (
+                            s.query(ProductBatch)
+                            .filter(ProductBatch.id == n_id)
+                            .with_for_update()
+                            .populate_existing()
+                            .first()
+                        )
 
                 if newest_batch is not None:
                     # Check if already in allocations
@@ -278,15 +290,21 @@ class BatchService:
     ) -> ProductBatch:
         """Validate and lock an explicit batch selection for a sale.
 
-        Rejects expired batches unless allow_expired=True (manager override).
+        Rejects expired batches unless allow_expired=True (manager override)
+        and rejects deactivated batches.
         """
 
         def _validate(s: Session) -> ProductBatch:
-            batch = s.query(ProductBatch).filter(ProductBatch.id == batch_id).with_for_update().first()
+            batch = (
+                s.query(ProductBatch).filter(ProductBatch.id == batch_id).with_for_update().populate_existing().first()
+            )
             if batch is None:
                 raise ValueError(f"Batch {batch_id} not found")
             if batch.product_id != product_id:
                 raise ValueError(f"Batch {batch_id} belongs to product {batch.product_id}, not {product_id}")
+
+            if not batch.is_active:
+                raise ValueError(f"Batch {batch.batch_no or batch.id} is inactive and cannot be sold.")
 
             if batch.is_expired and not allow_expired:
                 raise ExpiredBatchError(batch)
@@ -303,30 +321,55 @@ class BatchService:
         product: Product,
         session: Session,
     ) -> ProductBatch | None:
-        """Generate a synthetic opening batch when tracking is enabled for a product with non-zero stock.
+        """Generate or reconcile a synthetic opening batch when tracking is enabled.
 
         Preserves invariant: sum(batch.qty_on_hand) == product.stock_qty.
         """
         if not product.tracks_batches:
             return None
 
-        # Check if batches already exist
-        existing = session.query(ProductBatch.id).filter(ProductBatch.product_id == product.id).first()
-        if existing is not None:
-            return None
+        # Check existing batches
+        existing_batches = session.query(ProductBatch).filter(ProductBatch.product_id == product.id).all()
+        if not existing_batches:
+            opening = ProductBatch(
+                product_id=product.id,
+                batch_no="OPENING",
+                expiry_date=None,
+                qty_on_hand=Decimal(str(product.stock_qty or 0)),
+                cost=Decimal(str(product.cost or 0)),
+                mrp=Decimal(str(product.price or 0)),
+                is_active=True,
+            )
+            session.add(opening)
+            session.flush()
+            return opening
 
-        opening = ProductBatch(
-            product_id=product.id,
-            batch_no="OPENING",
-            expiry_date=None,
-            qty_on_hand=Decimal(str(product.stock_qty or 0)),
-            cost=Decimal(str(product.cost or 0)),
-            mrp=Decimal(str(product.price or 0)),
-            is_active=True,
-        )
-        session.add(opening)
-        session.flush()
-        return opening
+        total_batch_qty = sum(b.qty_on_hand for b in existing_batches)
+        target_qty = Decimal(str(product.stock_qty or 0))
+        discrepancy = target_qty - total_batch_qty
+        if discrepancy != Decimal("0.000"):
+            opening_batch = next((b for b in existing_batches if b.batch_no == "OPENING"), None)
+            if opening_batch is not None:
+                opening_batch.qty_on_hand += discrepancy
+                if opening_batch.qty_on_hand > Decimal("0.000") and not opening_batch.is_active:
+                    opening_batch.is_active = True
+                session.flush()
+                return opening_batch
+            else:
+                reconcile_batch = ProductBatch(
+                    product_id=product.id,
+                    batch_no="RECONCILE",
+                    expiry_date=None,
+                    qty_on_hand=discrepancy,
+                    cost=Decimal(str(product.cost or 0)),
+                    mrp=Decimal(str(product.price or 0)),
+                    is_active=True,
+                )
+                session.add(reconcile_batch)
+                session.flush()
+                return reconcile_batch
+
+        return existing_batches[0]
 
     @staticmethod
     def get_expiring_batches(

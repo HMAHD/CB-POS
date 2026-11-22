@@ -252,3 +252,87 @@ def test_issue_926_validate_batch_allocation_blocks_expired_without_override(db_
         prod.id, b_expired.id, Decimal("1.000"), allow_expired=True, session=db_session
     )
     assert batch.id == b_expired.id
+
+
+def test_issue_926_validate_batch_allocation_rejects_inactive_batch(db_session):
+    """Explicit batch selection rejects deactivated/recalled batches."""
+    prod = Product(
+        barcode="INACTIVE-VALIDATE",
+        name_en="Recalled Medicine",
+        price=Decimal("150.00"),
+        cost=Decimal("100.00"),
+        stock_qty=Decimal("10.000"),
+        tracks_batches=True,
+    )
+    db_session.add(prod)
+    db_session.flush()
+
+    b_inactive = ProductBatch(
+        product_id=prod.id,
+        batch_no="RECALL-01",
+        expiry_date=date.today() + timedelta(days=60),
+        qty_on_hand=Decimal("10.000"),
+        is_active=False,
+    )
+    db_session.add(b_inactive)
+    db_session.flush()
+
+    with pytest.raises(ValueError, match="inactive and cannot be sold"):
+        BatchService.validate_batch_allocation(
+            prod.id, b_inactive.id, Decimal("1.000"), allow_expired=True, session=db_session
+        )
+
+
+def test_issue_926_reconcile_batches_when_toggling_tracking_restores_invariant(db_session):
+    """Toggling tracks_batches off, moving stock, and toggling back on reconciles batch quantities."""
+    from cbpos.core.models import Role, User
+    from cbpos.core.services.inventory_service import InventoryService
+    from cbpos.core.services.stock_service import StockService
+
+    role = Role(name="ReconcileTestRole")
+    user = User(username="reconcile_user", pin_hash="hash", role=role)
+    db_session.add_all([role, user])
+    db_session.flush()
+
+    prod = Product(
+        barcode="TOGGLE-RECON-01",
+        name_en="Toggle Reconcile Item",
+        price=Decimal("500.00"),
+        cost=Decimal("350.00"),
+        stock_qty=Decimal("10.000"),
+        tracks_batches=True,
+    )
+    db_session.add(prod)
+    db_session.flush()
+
+    # Initial opening batch
+    b_opening = BatchService.create_synthetic_opening_batch(prod, session=db_session)
+    assert b_opening.qty_on_hand == Decimal("10.000")
+
+    # 1. Toggle tracking off
+    inv_service = InventoryService()
+    inv_service.update_product(prod.id, {"tracks_batches": False})
+    db_session.refresh(prod)
+    assert prod.tracks_batches is False
+
+    # 2. Stock moves while tracking is off (e.g. sale of 4 units)
+    StockService.record_movement(
+        product_id=prod.id,
+        qty_change=Decimal("-4.000"),
+        movement_type="SALE",
+        user_id=user.id,
+        session=db_session,
+        batch_id=None,
+    )
+    db_session.refresh(prod)
+    assert prod.stock_qty == Decimal("6.000")
+
+    # 3. Toggle tracking back on
+    inv_service.update_product(prod.id, {"tracks_batches": True})
+    db_session.refresh(prod)
+    assert prod.tracks_batches is True
+
+    # 4. Invariant must hold: sum of batches == product.stock_qty
+    all_batches = db_session.query(ProductBatch).filter_by(product_id=prod.id).all()
+    total_batch_qty = sum(b.qty_on_hand for b in all_batches)
+    assert total_batch_qty == prod.stock_qty == Decimal("6.000")

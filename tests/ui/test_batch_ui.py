@@ -317,3 +317,71 @@ def test_issue_926_dashboard_expiring_tile_integration(qtbot, db_session):
         view._on_expiring_batches_tile_ready({"expiring_30": 4, "expired": 2})
         assert view.lbl_expiring_soon_val.text() == "4"
         assert view.lbl_expired_val.text() == "2"
+
+
+def test_issue_926_product_editor_preserves_tracks_batches_when_feature_off(qtbot, db_session):
+    """ProductEditor preserves existing tracks_batches state when BATCHES feature is off."""
+    prod = Product(
+        name_en="Tracked Tea",
+        barcode="BAR-TEA-999",
+        price=Decimal("450.00"),
+        cost=Decimal("300.00"),
+        stock_qty=Decimal("12.000"),
+        tracks_batches=True,
+    )
+    db_session.add(prod)
+    db_session.commit()
+
+    with patch("cbpos.core.services.feature_flags.feature_visible", return_value=False):
+        editor = ProductEditor(product=prod)
+        qtbot.addWidget(editor)
+
+        assert editor.chk_tracks_batches is None
+        with patch.object(editor.inventory_service, "update_product") as mock_update:
+            editor.save_product()
+            mock_update.assert_called_once()
+            _, update_data = mock_update.call_args[0]
+            assert update_data["tracks_batches"] is True
+
+
+def test_issue_926_stock_adjustment_dialog_requires_batch_for_tracked_product(qtbot, db_session, test_user):
+    """StockAdjustmentDialog blocks saving if no batch is selected for a batch-tracked product."""
+    prod = Product(
+        name_en="Tracked Butter",
+        barcode="BAR-BUTTER-001",
+        price=Decimal("600.00"),
+        cost=Decimal("450.00"),
+        stock_qty=Decimal("10.000"),
+        tracks_batches=True,
+    )
+    db_session.add(prod)
+    db_session.flush()
+
+    batch = ProductBatch(
+        product_id=prod.id,
+        batch_no="B-BUTTER-1",
+        qty_on_hand=Decimal("10.000"),
+        is_active=True,
+    )
+    db_session.add(batch)
+    db_session.commit()
+
+    dialog = StockAdjustmentDialog(prod)
+    qtbot.addWidget(dialog)
+
+    from cbpos.core.services.auth_service import AuthService
+
+    AuthService._current_user = test_user
+
+    # When no batch is selected (index 0 "-- Select Batch --")
+    dialog.cmb_batch.setCurrentIndex(0)
+    dialog.qty_spin.setValue(1.0)
+
+    with (
+        patch("cbpos.ui.dialogs.stock_adjustment_dialog.check_permission_with_override", return_value=test_user),
+        patch("cbpos.ui.dialogs.stock_adjustment_dialog.QMessageBox.warning") as mock_warn,
+        patch.object(dialog.inventory_service, "adjust_stock") as mock_adj,
+    ):
+        dialog.save_adjustment()
+        mock_warn.assert_called_once()
+        mock_adj.assert_not_called()

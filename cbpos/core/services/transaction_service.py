@@ -150,11 +150,13 @@ class TransactionService:
         parent_ids = [item["product"].id for item in cart_items]
         child_ids = [c.child_product_id for comps in composite_map.values() for c in comps]
 
-        # Fetch ALL involved Products (Parents + Children) in one query
+        # Fetch ALL involved Products (Parents + Children) in deterministic ascending order
+        sorted_pids = sorted(set(parent_ids) | set(child_ids))
         all_products = (
             session.query(Product)
-            .filter(Product.id.in_(set(parent_ids) | set(child_ids)))
-            .with_for_update()  # Lock rows for stock check
+            .filter(Product.id.in_(sorted_pids))
+            .order_by(Product.id.asc())
+            .with_for_update()  # Lock rows for stock check in ascending order
             .all()
         )
         product_map = {p.id: p for p in all_products}
@@ -303,6 +305,26 @@ class TransactionService:
         """
         components = composite_map.get(product_id, [])
         if not components:
+            if batch_id is None:
+                from cbpos.core.models import ProductBatch
+
+                prod = session.get(Product, product_id)
+                if prod and getattr(prod, "tracks_batches", False):
+                    fallback_b = (
+                        session.query(ProductBatch)
+                        .filter(ProductBatch.product_id == product_id, ProductBatch.batch_no == "OPENING")
+                        .first()
+                    )
+                    if fallback_b is None:
+                        fallback_b = (
+                            session.query(ProductBatch)
+                            .filter(ProductBatch.product_id == product_id, ProductBatch.is_active.is_(True))
+                            .order_by(ProductBatch.received_at.desc(), ProductBatch.id.desc())
+                            .first()
+                        )
+                    if fallback_b is not None:
+                        batch_id = fallback_b.id
+
             StockService.record_movement(
                 product_id=product_id,
                 qty_change=qty_change,
@@ -315,6 +337,20 @@ class TransactionService:
             return
 
         for comp in components:
+            child_batch_id = None
+            child_prod = session.get(Product, comp.child_product_id)
+            if child_prod and getattr(child_prod, "tracks_batches", False):
+                from cbpos.core.models import ProductBatch
+
+                fallback_b = (
+                    session.query(ProductBatch)
+                    .filter(ProductBatch.product_id == comp.child_product_id, ProductBatch.is_active.is_(True))
+                    .order_by(ProductBatch.received_at.desc(), ProductBatch.id.desc())
+                    .first()
+                )
+                if fallback_b is not None:
+                    child_batch_id = fallback_b.id
+
             StockService.record_movement(
                 product_id=comp.child_product_id,
                 qty_change=comp.qty * qty_change,
@@ -322,6 +358,7 @@ class TransactionService:
                 document_id=document_id,
                 user_id=user_id,
                 session=session,
+                batch_id=child_batch_id,
             )
 
     @staticmethod

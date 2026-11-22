@@ -733,7 +733,9 @@
     "note_required": "කරුණාකර 'වෙනත්' සඳහා සටහනක් ලියන්න.",
     "negative_blocked": "මෙයින් තොගය බිංදුවට වඩා අඩුවේ, එය Settings වල ඉඩ දී නැත.",
     "batch": "කාණ්ඩය",
-    "no_batch_selected": "සියල්ල / සඳහන් කර නැත"
+    "no_batch_selected": "සියල්ල / සඳහන් කර නැත",
+    "select_batch": "-- කාණ්ඩය තෝරන්න --",
+    "batch_required": "කරුණාකර මෙම භාණ්ඩය සඳහා කාණ්ඩයක් තෝරන්න."
   },
   "stock_adjustment": {
     "title": "තොග සකසීම: {product_name}",

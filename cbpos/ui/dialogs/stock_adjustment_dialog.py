@@ -119,7 +119,7 @@ class StockAdjustmentDialog(QDialog):
             self.cmb_batch = QComboBox()
             self.cmb_batch.setObjectName("CmbBatch")
             batches = BatchService.get_batches_for_product(self.product.id)
-            self.cmb_batch.addItem(_t("stock_adjust.no_batch_selected", default="All / Unspecified"), None)
+            self.cmb_batch.addItem(_t("stock_adjust.select_batch", default="-- Select Batch --"), None)
             selected_idx = 0
             for idx, b in enumerate(batches, start=1):
                 b_str = b.batch_no or "-"
@@ -128,6 +128,8 @@ class StockAdjustmentDialog(QDialog):
                 self.cmb_batch.addItem(f"{b_str} ({exp_str}, {qty_str})", b.id)
                 if self.initial_batch_id and b.id == self.initial_batch_id:
                     selected_idx = idx
+            if len(batches) == 1 and not self.initial_batch_id:
+                selected_idx = 1
             self.cmb_batch.setCurrentIndex(selected_idx)
             form_layout.addRow(_t("stock_adjust.batch", default="Batch / Lot") + ":", self.cmb_batch)
 
@@ -242,6 +244,16 @@ class StockAdjustmentDialog(QDialog):
         user = check_permission_with_override(Permissions.INVENTORY_STOCK_ADJUST, self)
         if not user:
             return
+
+        if getattr(self.product, "tracks_batches", False):
+            selected_batch_id = self.cmb_batch.currentData() if self.cmb_batch else None
+            if selected_batch_id is None:
+                QMessageBox.warning(
+                    self,
+                    _t("common.validation_error"),
+                    _t("stock_adjust.batch_required", default="Please select a batch for batch-tracked products."),
+                )
+                return
 
         try:
             selected_batch_id = self.cmb_batch.currentData() if self.cmb_batch else None

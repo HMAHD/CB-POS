@@ -138,23 +138,27 @@ class StockCountService:
             for product in products:
                 if getattr(product, "tracks_batches", False):
                     from cbpos.core.models import ProductBatch
+                    from cbpos.core.services.batch_service import BatchService
 
                     batches = (
                         session.query(ProductBatch)
                         .filter(ProductBatch.product_id == product.id, ProductBatch.is_active.is_(True))
                         .all()
                     )
-                    if batches:
-                        for b in batches:
-                            item = StockCountItem(
-                                stock_count_id=stock_count_id,
-                                product_id=product.id,
-                                batch_id=b.id,
-                                expected_qty=b.qty_on_hand,
-                            )
-                            session.add(item)
-                            count += 1
-                        continue
+                    if not batches:
+                        opening_b = BatchService.create_synthetic_opening_batch(product, session=session)
+                        batches = [opening_b] if opening_b else []
+
+                    for b in batches:
+                        item = StockCountItem(
+                            stock_count_id=stock_count_id,
+                            product_id=product.id,
+                            batch_id=b.id,
+                            expected_qty=b.qty_on_hand,
+                        )
+                        session.add(item)
+                        count += 1
+                    continue
 
                 if product.id in existing_ids:
                     continue
@@ -216,11 +220,17 @@ class StockCountService:
 
             # batch_id is None
             if getattr(product, "tracks_batches", False):
+                from cbpos.core.services.batch_service import BatchService
+
                 batches = (
                     session.query(ProductBatch)
                     .filter(ProductBatch.product_id == product_id, ProductBatch.is_active.is_(True))
                     .all()
                 )
+                if not batches:
+                    opening_b = BatchService.create_synthetic_opening_batch(product, session=session)
+                    batches = [opening_b] if opening_b else []
+
                 if batches:
                     first_item = None
                     for b in batches:

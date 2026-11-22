@@ -126,6 +126,19 @@ The owner explicitly authorized internal development of Phase 10A (Packaging and
 3. A fresh database with no applied preset remains OFF.
 4. Upgraded/existing shops: do not reapply a whole preset because that could overwrite customized flags. If a shop already has configured feature flags, the migration / compatibility path safely ensures `power_cut_autosave` is enabled without resetting any user-configured flags.
 
+**D37 — 2026-11-20 — roadmap, Phase U — Phase sequencing and ownership.**
+1. Complete Phase 10B before Phase U. Defer Phase 10C to a later release.
+2. Run the risk-ranked retrospective integrity audit of completed remediation work before Phase U structural changes.
+3. Claude owns all Phase U discovery, architecture, implementation, review, and integration. This supersedes D19's Claude-foundation/Gemini-migration split for Phase U.
+4. Existing issues #963–#975 remain inputs, but none proceeds automatically: Phase U.0 must re-baseline and reconcile them against the final Phase 10B `main`.
+
+**D38 — 2026-11-20 — Phase U — Discovery gate and interaction model.**
+1. CB POS is keyboard-first and mouse-friendly. Touch-specific sizing, gestures, and interaction patterns are not current Phase U requirements unless separately approved later.
+2. Phase U begins with U.0 discovery: a complete surface inventory, UI architecture map, journey-based UX audit, dark/light and trilingual visual audit, measured performance baseline, and reconciliation of `UI_SYSTEM_AUDIT.md` plus issues #963–#975.
+3. U.0 must investigate the owner's six concerns: oversized view responsibilities; unfriendly workflows; scattered view/dialog ownership; opaque or mismatched text backgrounds; duplicated update/hardware checking; and moving Help/About from Sales navigation toward Settings while retaining keyboard-accessible contextual help.
+4. File length is a maintainability signal, not proof of slowness. Runtime claims require measurements, and extraction follows natural responsibility seams rather than an arbitrary line target.
+5. Before implementation issues are created or expanded, present an evidence-backed, deduplicated issue map for owner approval. The durable brief is `PHASE_U_DISCOVERY_BRIEF.md`.
+
 ## 2026-11-21
 
 **D39 — 2026-11-21 — #931 — Phase 10B.2 Price Board scope, keyboard shortcut, and actions.**
@@ -140,6 +153,14 @@ Price Board is an operator-facing management dialog, so product names follow the
 1. Build and test #937 internally now; validation with 5–10 real shop owners remains mandatory before public release.
 2. MVP supports purchasing in one purchase unit and stocking/selling in the base unit only.
 3. Multi-unit selling and separate sale prices per unit are deferred.
+
+## 2026-11-22
+
+**D42 — 2026-11-22 — roadmap, Phase U — Token-limited parallel handoff (amending D37(1) and D37(3)).**
+1. As an exception to D37(1), after #937 is merged and post-merge `main` CI is green, provisional Phase U.0 discovery may begin while Gemini completes remaining Phase 10B work whose issue-specific owner gate has passed and decision has been recorded. This concurrency exception does not approve any feature's scope. Phase U product-code implementation still waits for the Phase 10B exit gate.
+2. U.0 remains provisional until the Phase 10B exit gate has passed and discovery is delta-rebaselined against the recorded final Phase 10B `main` SHA with green post-merge CI.
+3. No Phase U product-code implementation starts until that final baseline exists, the risk-ranked retrospective integrity audit is complete with release/data-integrity blockers resolved, and the owner has approved the deduplicated issue map.
+4. Claude starts Phase U. As the exception to D37(3), Gemini may continue Phase U from the Phase 10B/Phase U execution playbook if Claude usage is unavailable; the same discovery, review, and integration gates still apply.
 
 
 

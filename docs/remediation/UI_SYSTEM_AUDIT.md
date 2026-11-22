@@ -1,7 +1,7 @@
 # UI System Audit — Purchasing, Stock, Dashboard, Reports and Cross-Cutting Design
 
 **Date:** 2026-10-29 · **Source:** owner's screenshots and notes, traced to code on `main` @ `5a45f5b`.
-**Status:** analysis complete; decisions pending (see the end of this file).
+**Status:** historical pre-U.0 baseline. The owner decisions are locked as D16–D20 in `DECISIONS.md`; every finding still awaits U.0 revalidation and an evidence-backed disposition against the current baseline.
 
 ## The one root cause
 
@@ -127,4 +127,4 @@ Related open bugs that this rebuild should close: #950 (filter bar layout), #806
 
 ## Decisions (filled in from the owner's answers)
 
-_See the bottom of the conversation's decision log; recorded as D-numbers in DECISIONS.md once answered._
+_The owner's 2026-10-29 answers are recorded as D16–D20 in `DECISIONS.md`. U.0 must revalidate and disposition the findings; it must not reopen those locked decisions without new evidence and Stop & Ask._

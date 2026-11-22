@@ -8,7 +8,7 @@
 
 **Outcome:** shops of each type switch on only what they need. A grocery cashier never sees pharmacy screens. The validated features work with correct stock, money, tax, sync and audit.
 
-**Depends on:** the public release gate; Phases 3A (refund engine), 4 (StockService single source, GRN service), 6 (tax snapshots), 2 (sync, read-only catalog on tills).
+**Depends on:** the public release gate for public shipment. D34 authorizes internal/test-only Phase 10B development before that gate; it does not waive any issue-specific human gate. Technical dependencies remain Phases 3A (refund engine), 4 (StockService single source, GRN service), 6 (tax snapshots), and 2 (sync, read-only catalog on tills).
 
 **Global rules for every feature in 10B and 10C:**
 1. **Off by default.** Gate it with the `FeatureFlags` service from #942. When off, the UI is completely hidden: no dead buttons, no empty tabs. Add a test per feature that a fresh DB shows nothing.
@@ -178,3 +178,4 @@ Recommendation: close as delivered. Inbound serial inventory is a large feature,
 - [ ] The invariant suites include each built feature's scenarios.
 - [ ] i18n review list submitted for native review.
 - [ ] UI gate screenshots for every new screen.
+- [ ] After all built/dispositioned work is merged, `PROGRESS.md` records the exact final Phase 10B `main` SHA and the post-merge CI run ID/URL with every required job green. This gate does not pass until that record exists.

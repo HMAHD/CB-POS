@@ -2785,6 +2785,7 @@
       "sales.change_price": "Change prices at checkout",
       "sales.refund": "Process refunds",
       "sales.refund_override_tender": "Override refund payment method",
+      "sales.override_expired_batch": "Override expired batch restriction",
       "sales.reprint": "Reprint receipts",
       "sales.tax_invoice": "Issue official Tax Invoices",
       "inventory.view": "View products and stock",
@@ -4009,7 +4010,9 @@
       "cheques": "Cheque Payments",
       "power_cut_autosave": "Power-Cut Autosave",
       "price_board": "Price Board (Daily Prices)",
-      "unit_conversion": "Purchase-Unit Conversion"
+      "unit_conversion": "Purchase-Unit Conversion",
+      "batches": "Batches & Lot Tracking",
+      "expiry_dates": "Expiry Date Tracking"
     },
     "desc": {
       "warranty": "Manage warranty policies, claims, returns, and repairs",
@@ -4018,7 +4021,9 @@
       "cheques": "Accept cheques and record cheque payments at checkout",
       "power_cut_autosave": "Automatically save the open bill and restore it if power cuts or app restarts",
       "price_board": "Fast daily price editing table for fluctuating items like vegetables, fish, gas, and cement",
-      "unit_conversion": "Buy items in bulk units (box, carton, bag) and stock/sell in base units (piece, kg, meter)"
+      "unit_conversion": "Buy items in bulk units (box, carton, bag) and stock/sell in base units (piece, kg, meter)",
+      "batches": "Track products by batch or lot numbers with per-batch MRP and FIFO/FEFO allocation",
+      "expiry_dates": "Track product expiration dates, block expired sales, and view expiring stock alerts"
     },
     "saved": "Feature '{name}' updated."
   },

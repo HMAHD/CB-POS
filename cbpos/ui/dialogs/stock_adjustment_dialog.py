@@ -1,4 +1,5 @@
 from decimal import Decimal
+from typing import Any
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
@@ -244,14 +245,16 @@ class StockAdjustmentDialog(QDialog):
 
         try:
             selected_batch_id = self.cmb_batch.currentData() if self.cmb_batch else None
-            self.inventory_service.adjust_stock(
-                product_id=self.product.id,
-                qty_change=qty_change,
-                reason=reason_code,
-                user_id=user.id,
-                note=note,
-                batch_id=selected_batch_id,
-            )
+            kwargs: dict[str, Any] = {
+                "product_id": self.product.id,
+                "qty_change": qty_change,
+                "reason": reason_code,
+                "user_id": user.id,
+                "note": note,
+            }
+            if selected_batch_id is not None:
+                kwargs["batch_id"] = selected_batch_id
+            self.inventory_service.adjust_stock(**kwargs)
             self.accept()
         except Exception as e:
             QMessageBox.critical(self, _t("common.error"), str(e))

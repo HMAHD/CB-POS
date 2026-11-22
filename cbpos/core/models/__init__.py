@@ -523,6 +523,13 @@ class ProductBatch(Base):
         Index("ix_product_batches_fefo", "product_id", "is_active", "expiry_date", "received_at"),
     )
 
+    @property
+    def is_expired(self) -> bool:
+        """True if batch has an expiry date strictly earlier than today."""
+        if self.expiry_date is None:
+            return False
+        return self.expiry_date < date.today()
+
 
 class Customer(Base):
     """A customer record, optionally a company, with credit-limit/current-debt tracking for the Credit Book and loyalty points."""

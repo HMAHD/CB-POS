@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: U · Batch: Phase U record restoration (pre-U.0) · Branch: docs/phase-u-record · PR: — · Last session: 2026-11-22
+- Phase: U · Batch: Phase U record restoration (pre-U.0) · Branch: docs/phase-u-record · PR: #1038 · Last session: 2026-11-22
 
 ## Issues
 

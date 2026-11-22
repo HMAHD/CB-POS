@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # Sync Protocol Version — bump when envelope format changes.
 # Server and client must agree on the major version.
 # ---------------------------------------------------------------------------
-SYNC_PROTOCOL_VERSION = "1.6"
+SYNC_PROTOCOL_VERSION = "1.7"
 
 # ---------------------------------------------------------------------------
 # Default sync server port
@@ -56,6 +56,7 @@ CATALOG_TABLES = [
     "price_lists",
     "price_list_items",
     "products",
+    "product_batches",
     "promotions",
     "payment_methods",
     "composite_items",
@@ -66,6 +67,7 @@ CATALOG_TABLES = [
 CATALOG_DELETION_ORDER = [
     "composite_items",
     "price_list_items",
+    "product_batches",
     "products",
     "promotions",
     "payment_methods",
@@ -384,6 +386,7 @@ def get_table_model_map() -> dict[str, type[Base]]:
         PriceList,
         PriceListItem,
         Product,
+        ProductBatch,
         Proforma,
         ProformaItem,
         Promotion,
@@ -427,6 +430,7 @@ def get_table_model_map() -> dict[str, type[Base]]:
         "units": Unit,
         "categories": Category,
         "products": Product,
+        "product_batches": ProductBatch,
         "customers": Customer,
         "customer_contacts": CustomerContact,
         "suppliers": Supplier,

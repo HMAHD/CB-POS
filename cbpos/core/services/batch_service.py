@@ -187,8 +187,19 @@ class BatchService:
                 )
             )
 
-            # Concurrency row-locking
-            candidate_batches = candidate_query.with_for_update().all()
+            # Concurrency row-locking in deterministic ascending ID order
+            candidate_batches = candidate_query.all()
+            if candidate_batches:
+                candidate_ids = sorted(b.id for b in candidate_batches)
+                locked_map = {
+                    b.id: b
+                    for b in s.query(ProductBatch)
+                    .filter(ProductBatch.id.in_(candidate_ids))
+                    .order_by(ProductBatch.id.asc())
+                    .with_for_update()
+                    .all()
+                }
+                candidate_batches = [locked_map[b.id] for b in candidate_batches]
 
             allocations: list[tuple[ProductBatch, Decimal]] = []
             remaining_qty = requested_qty
@@ -220,9 +231,12 @@ class BatchService:
                         ProductBatch.received_at.desc(),
                         ProductBatch.id.desc(),
                     )
-                    .with_for_update()
                     .first()
                 )
+                if newest_batch is not None and newest_batch.id not in [b.id for b in candidate_batches]:
+                    newest_batch = (
+                        s.query(ProductBatch).filter(ProductBatch.id == newest_batch.id).with_for_update().first()
+                    )
 
                 if newest_batch is not None:
                     # Check if already in allocations

@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: U · Batch: Phase U record restoration (pre-U.0) · Branch: docs/phase-u-record · PR: #1038 · Last session: 2026-11-22
+- Phase: U · Batch: U.0 discovery and re-baselining (#1041) · Branch: docs/phase-u-u0 · PR: — · Last session: 2026-11-22
 
 ## Issues
 
@@ -254,7 +254,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 | # | Title | Owner | Item | Status | PR | Notes |
 |---|---|---|---|---|---|---|
-| — | Discovery and re-baselining | Claude | U.0 | todo | | create the Phase U parent epic and U.0 issue after this record merges; provisional baseline `69fd64a`; Phase 10B exit/final-SHA delta re-baseline and retrospective audit required |
+| #1041 | Discovery, integrity audit, and final re-baselining | Claude | U.0 | in-progress | | parent #1040; provisional product-code baseline `69fd64a`, record baseline `504df7f`; Phase 10B exit/final-SHA deltas and owner approval still required |
 | #963 | DataTable + ContextMenu builder | Claude | UF-1 | todo | | provisional; needs U.0 reconciliation |
 | #964 | PageHeader + DetailHeader | Claude | UF-2 | todo | | provisional; needs U.0 reconciliation |
 | #965 | FormDialog | Claude | UF-3 | todo | | provisional; needs U.0 reconciliation |
@@ -276,6 +276,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #832 | Pre-release audit: fixes required before the first public build | all audit children (#791–#819, #831) and #922 closed |
 | #922 | Pre-release bug hunt: 89 verified defects (2026-10-21) | all of #833–#921 closed |
 | #820 | EPIC: Product warranty and repairs (policies, per-unit warranties, cla | #821–#830 closed |
+| #1040 | EPIC: Phase U — UI/UX and UI architecture | #1041 and the owner-approved post-U.0 implementation map reach their approved dispositions |
 | #944 | EPIC: Feature & printing backlog (researched, not scheduled) | its children closed or explicitly parked in #943 |
 
 ## Open questions (Stop & Ask, §0.5)
@@ -330,10 +331,11 @@ Phase 10B.0–10B.3 are merged and verified closed:
 - #931 Price Board: PR #1035 (`967a5b3`).
 - #937 purchase-unit conversion: PR #1037, merge `69fd64a`; post-merge main CI run `44994304427` passed all jobs.
 
-Phase U record restoration is starting under D37–D42; U.0 has not started yet:
-- Restore `PHASE_U_DISCOVERY_BRIEF.md`, the discovery-first Phase U spec, D37–D38, and the keyboard-first/mouse-friendly instruction through the docs-only branch `docs/phase-u-record`.
-- After this record merges, create one Phase U parent epic and one U.0 issue, then mark U.0 in progress.
-- U.0 is documentation/evidence work only. Do not refactor UI or expand #963–#975 before the Phase 10B exit/final-SHA delta re-baseline, retrospective integrity audit, and owner-approved evidence map are complete.
-- Baseline provisional discovery against `main` at `69fd64a`; the final implementation gate uses the exact final Phase 10B `main` SHA and green post-merge CI.
-- Gemini may continue #926, #930, #933, #936, or #941 only after that issue’s owner gate passes and its D-number is recorded. The local convenience playbook is `/Users/akash/Documents/CB-POS_PHASE_10B_PHASE_U_GEMINI_PLAYBOOK.md`; it is non-normative, and the reviewed repository documents remain the source of truth. Phase 10C remains deferred.
+Phase U record restoration merged in PR #1038 (`504df7f`); post-merge main CI run `45034798273` and Documentation run `45034798256` passed. Phase U parent #1040 and U.0 child #1041 are open.
+
+U.0 is now in progress on `docs/phase-u-u0`:
+- Documentation/evidence work only; do not refactor UI or expand #963–#975 before the final Phase 10B re-baseline, retrospective integrity audit, and owner-approved evidence map.
+- Provisional product-code baseline: `69fd64a`; record baseline: `504df7f`.
+- Start with the complete surface/navigation inventory and architecture ownership map, then journey, visual, and measured-performance evidence.
+- Gemini may continue #926, #930, #933, #936, or #941 only after that issue’s owner gate passes and its D-number is recorded. The local convenience playbook is non-normative; repository documents remain the source of truth. Phase 10C remains deferred.
 

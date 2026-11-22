@@ -254,7 +254,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 | # | Title | Owner | Item | Status | PR | Notes |
 |---|---|---|---|---|---|---|
-| #1041 | Discovery, integrity audit, and final re-baselining | Claude | U.0 | in-progress | | parent #1040; provisional product-code baseline `69fd64a`, record baseline `504df7f`; Phase 10B exit/final-SHA deltas and owner approval still required |
+| #1041 | Discovery, integrity audit, and final re-baselining | Claude | U.0 | in-progress | #1042 (draft) | parent #1040; provisional product-code baseline `69fd64a`, record baseline `504df7f`; mechanical inventory plus shell/Help/update/hardware ownership trace recorded; R2=1, R3=1; Phase 10B exit/final-SHA deltas and owner approval still required |
 | #963 | DataTable + ContextMenu builder | Claude | UF-1 | todo | | provisional; needs U.0 reconciliation |
 | #964 | PageHeader + DetailHeader | Claude | UF-2 | todo | | provisional; needs U.0 reconciliation |
 | #965 | FormDialog | Claude | UF-3 | todo | | provisional; needs U.0 reconciliation |

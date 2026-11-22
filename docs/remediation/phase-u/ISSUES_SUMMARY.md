@@ -7,8 +7,8 @@
 
 | Area | Status | Evidence |
 |---|---|---|
-| Surface/navigation inventory | in progress | `UI_SURFACE_INVENTORY.md` — 143 class-bearing UI files, 12 helper-only modules |
-| Architecture/ownership map | todo | — |
+| Surface/navigation inventory | in progress | `UI_SURFACE_INVENTORY.md` — 143 class-bearing UI files, 12 helper-only modules; shell reachability traced |
+| Architecture/ownership map | in progress | `UI_ARCHITECTURE_MAP.md` — top-level shell, permissions, lifecycle, Help/About, updates, and hardware |
 | Journey audit | todo | — |
 | Dark/light + EN/SI/TA visual audit | todo | — |
 | Measured performance baseline | todo | — |
@@ -18,13 +18,18 @@
 
 ## Findings
 
-No finding is recorded from file size or static inventory alone. Per-screen files under `issues/` are created only when that screen has been traced and evidence exists.
+Two evidence-backed findings are recorded. File length remains an inventory signal only.
 
 | Severity | Count |
 |---|---:|
 | R1 release/data-integrity blocker | 0 |
-| R2 important correctness/recovery | 0 |
-| R3 evidence gap/maintainability | 0 |
+| R2 important correctness/recovery | 1 |
+| R3 evidence gap/maintainability | 1 |
+
+| ID | Risk | Surface | Finding | Evidence |
+|---|---|---|---|---|
+| U0-SETTINGS-001 | R2 | Admin Tools / Hardware | The 15-second timeout re-enables a hardware-test action while its worker still runs, allowing overlapping device operations | `issues/settings_issues.md` |
+| U0-SHELL-001 | R3 | Shell / Support | Global About/support is exposed only through the Sales side menu; a Settings move must preserve access for roles without Settings permission and keep Sales F1 | `issues/shell_support_issues.md` |
 
 ## Owner concerns tracker
 
@@ -32,10 +37,10 @@ No finding is recorded from file size or static inventory alone. Per-screen file
 |---|---|
 | Large view responsibilities | inventory flags recorded; responsibility tracing pending |
 | Full-product workflow and recovery UX | todo |
-| Scattered ownership | architecture map todo |
+| Scattered ownership | shell ownership and lifecycle traced; feature-level map pending |
 | Opaque/mismatched text backgrounds | visual audit todo |
-| Duplicate update/hardware checks | entry-point trace todo |
-| Help/About placement with contextual F1 help | navigation trace todo |
+| Duplicate update/hardware checks | traced: multiple entry points share existing controller/service/worker seams; one Admin Tools worker-timeout defect recorded |
+| Help/About placement with contextual F1 help | traced: global support is Sales-menu-only; preserve permission-independent access and Sales F1 when dispositioned |
 
 ## Provisional issue reconciliation
 

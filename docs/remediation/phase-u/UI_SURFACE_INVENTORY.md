@@ -7,7 +7,7 @@
 
 - AST-scanned every Python file under `cbpos/ui/` for top-level classes and service/database imports.
 - Classified files by their current package ownership; this does not endorse the current directory structure.
-- The inventory is complete mechanically but still needs journey-by-journey reachability, state, and Windows verification.
+- The inventory is complete mechanically. Shell reachability, permission ownership, lifecycle, Help/About, update, and hardware paths are traced in `UI_ARCHITECTURE_MAP.md`; feature journeys, dialog reachability, state coverage, and Windows verification remain pending.
 
 ## Navigation roots
 

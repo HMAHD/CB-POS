@@ -150,11 +150,13 @@ class TransactionService:
         parent_ids = [item["product"].id for item in cart_items]
         child_ids = [c.child_product_id for comps in composite_map.values() for c in comps]
 
-        # Fetch ALL involved Products (Parents + Children) in one query
+        # Fetch ALL involved Products (Parents + Children) in deterministic ascending order
+        sorted_pids = sorted(set(parent_ids) | set(child_ids))
         all_products = (
             session.query(Product)
-            .filter(Product.id.in_(set(parent_ids) | set(child_ids)))
-            .with_for_update()  # Lock rows for stock check
+            .filter(Product.id.in_(sorted_pids))
+            .order_by(Product.id.asc())
+            .with_for_update()  # Lock rows for stock check in ascending order
             .all()
         )
         product_map = {p.id: p for p in all_products}
@@ -283,6 +285,7 @@ class TransactionService:
         movement_type: str,
         document_id: int,
         user_id: int,
+        batch_id: int | None = None,
     ) -> None:
         """Record one line's stock movement, exploding a composite into its components.
 
@@ -298,9 +301,30 @@ class TransactionService:
             movement_type: StockMovement type -- "SALE", "VOID" or "RETURN".
             document_id: The sale/refund/voided document the movement belongs to.
             user_id: User the movement is recorded against.
+            batch_id: Optional batch ID for batch-tracked products (#926).
         """
         components = composite_map.get(product_id, [])
         if not components:
+            if batch_id is None:
+                from cbpos.core.models import ProductBatch
+
+                prod = session.get(Product, product_id)
+                if prod and getattr(prod, "tracks_batches", False):
+                    fallback_b = (
+                        session.query(ProductBatch)
+                        .filter(ProductBatch.product_id == product_id, ProductBatch.batch_no == "OPENING")
+                        .first()
+                    )
+                    if fallback_b is None:
+                        fallback_b = (
+                            session.query(ProductBatch)
+                            .filter(ProductBatch.product_id == product_id, ProductBatch.is_active.is_(True))
+                            .order_by(ProductBatch.received_at.desc(), ProductBatch.id.desc())
+                            .first()
+                        )
+                    if fallback_b is not None:
+                        batch_id = fallback_b.id
+
             StockService.record_movement(
                 product_id=product_id,
                 qty_change=qty_change,
@@ -308,10 +332,25 @@ class TransactionService:
                 document_id=document_id,
                 user_id=user_id,
                 session=session,
+                batch_id=batch_id,
             )
             return
 
         for comp in components:
+            child_batch_id = None
+            child_prod = session.get(Product, comp.child_product_id)
+            if child_prod and getattr(child_prod, "tracks_batches", False):
+                from cbpos.core.models import ProductBatch
+
+                fallback_b = (
+                    session.query(ProductBatch)
+                    .filter(ProductBatch.product_id == comp.child_product_id, ProductBatch.is_active.is_(True))
+                    .order_by(ProductBatch.received_at.desc(), ProductBatch.id.desc())
+                    .first()
+                )
+                if fallback_b is not None:
+                    child_batch_id = fallback_b.id
+
             StockService.record_movement(
                 product_id=comp.child_product_id,
                 qty_change=comp.qty * qty_change,
@@ -319,6 +358,7 @@ class TransactionService:
                 document_id=document_id,
                 user_id=user_id,
                 session=session,
+                batch_id=child_batch_id,
             )
 
     @staticmethod
@@ -441,6 +481,8 @@ class TransactionService:
     ) -> list[SaleItem]:
         """Add a SaleItem per cart line and take its stock out (components for a composite).
 
+        Handles batch tracking, FEFO splitting, and per-batch deduction (#926).
+
         Args:
             session: The open session the sale is being written in.
             sale: The flushed sale (id and cashier set).
@@ -450,6 +492,8 @@ class TransactionService:
         Returns:
             list[SaleItem]: The created sale items.
         """
+        from cbpos.core.services.batch_service import BatchService
+
         written_items: list[SaleItem] = []
         line_map: dict[str, SaleItem] = {}
         for item in cart_items:
@@ -460,33 +504,180 @@ class TransactionService:
             unit_cost = round_money(cost) if cost is not None else Decimal("0.00")
             vat_exempt = bool(item.get("vat_exempt", item.get("tax_exempt", False)))
             sscl_exempt = bool(item.get("sscl_exempt", False))
+            explicit_batch_id = item.get("batch_id")
+            allow_expired = item.get("allow_expired", False)
+            serials = item.get("serials", [])
+            cov_line_id = item.get("covered_line_id")
 
-            sale_item = SaleItem(
-                sale=sale,
-                sale_id=sale.id,
-                product_id=product.id,
-                qty=qty,
-                unit_price=item["unit_price"],
-                original_price=item["original_price"],
-                subtotal=item["total"],
-                vat_exempt=vat_exempt,
-                sscl_exempt=sscl_exempt,
-                unit_cost=unit_cost,
-                notes=item.get("note") or None,
-            )
-            # In-memory warranties initialization to avoid N+1 query
-            sale_item.warranties = []
-            line_id = item.get("line_id")
-            if line_id:
-                line_map[line_id] = sale_item
-            session.add(sale_item)
-            written_items.append(sale_item)
+            if explicit_batch_id is not None:
+                # Explicit batch chosen by cashier (via BatchPicker)
+                batch = BatchService.validate_batch_allocation(
+                    product.id, explicit_batch_id, qty, allow_expired=allow_expired, session=session
+                )
+                sale_item = SaleItem(
+                    sale=sale,
+                    sale_id=sale.id,
+                    product_id=product.id,
+                    qty=qty,
+                    unit_price=item["unit_price"],
+                    original_price=item["original_price"],
+                    discount_type=item.get("discount_type", "NONE"),
+                    discount_value=item.get("discount_value", Decimal("0.00")),
+                    is_manual_price=item.get("is_manual_price", False),
+                    subtotal=item["total"],
+                    vat_exempt=vat_exempt,
+                    sscl_exempt=sscl_exempt,
+                    unit_cost=unit_cost,
+                    notes=item.get("note") or None,
+                    batch_id=batch.id,
+                )
+                sale_item.warranties = []
+                sale_item._cart_serials = serials
+                sale_item._covered_line_id = cov_line_id
+                line_id = item.get("line_id")
+                if line_id:
+                    line_map[line_id] = sale_item
+                session.add(sale_item)
+                written_items.append(sale_item)
+                TransactionService._move_stock(
+                    session, composite_map, product.id, -qty, "SALE", sale.id, sale.user_id, batch_id=batch.id
+                )
+            elif getattr(product, "tracks_batches", False):
+                # Automated FEFO allocation
+                allow_neg = bool(ConfigService.get("allow_negative_stock"))
+                allocations = BatchService.allocate_fefo_stock(
+                    product.id, qty, allow_negative_stock=allow_neg, session=session
+                )
+                if len(allocations) <= 1:
+                    alloc_batch_id = allocations[0][0].id if allocations else None
+                    sale_item = SaleItem(
+                        sale=sale,
+                        sale_id=sale.id,
+                        product_id=product.id,
+                        qty=qty,
+                        unit_price=item["unit_price"],
+                        original_price=item["original_price"],
+                        discount_type=item.get("discount_type", "NONE"),
+                        discount_value=item.get("discount_value", Decimal("0.00")),
+                        is_manual_price=item.get("is_manual_price", False),
+                        subtotal=item["total"],
+                        vat_exempt=vat_exempt,
+                        sscl_exempt=sscl_exempt,
+                        unit_cost=unit_cost,
+                        notes=item.get("note") or None,
+                        batch_id=alloc_batch_id,
+                    )
+                    sale_item.warranties = []
+                    sale_item._cart_serials = serials
+                    sale_item._covered_line_id = cov_line_id
+                    line_id = item.get("line_id")
+                    if line_id:
+                        line_map[line_id] = sale_item
+                    session.add(sale_item)
+                    written_items.append(sale_item)
+                    TransactionService._move_stock(
+                        session,
+                        composite_map,
+                        product.id,
+                        -qty,
+                        "SALE",
+                        sale.id,
+                        sale.user_id,
+                        batch_id=alloc_batch_id,
+                    )
+                else:
+                    # Line split across batches
+                    orig_subtotal = item["total"]
+                    accum_subtotal = Decimal("0.00")
+                    disc_type = item.get("discount_type", "NONE")
+                    disc_val = item.get("discount_value", Decimal("0.00"))
+                    accum_disc = Decimal("0.00")
+                    serial_offset = 0
 
-            TransactionService._move_stock(session, composite_map, product.id, -qty, "SALE", sale.id, sale.user_id)
+                    for idx_alloc, (alloc_b, alloc_q) in enumerate(allocations):
+                        if idx_alloc == len(allocations) - 1:
+                            line_subtotal = orig_subtotal - accum_subtotal
+                            line_disc_val = (disc_val - accum_disc) if disc_type == "FIXED" else disc_val
+                        else:
+                            ratio = alloc_q / qty
+                            line_subtotal = round_money(orig_subtotal * ratio)
+                            accum_subtotal += line_subtotal
+                            if disc_type == "FIXED":
+                                line_disc_val = round_money(disc_val * ratio)
+                                accum_disc += line_disc_val
+                            else:
+                                line_disc_val = disc_val
+
+                        split_item = SaleItem(
+                            sale=sale,
+                            sale_id=sale.id,
+                            product_id=product.id,
+                            qty=alloc_q,
+                            unit_price=item["unit_price"],
+                            original_price=item["original_price"],
+                            discount_type=disc_type,
+                            discount_value=line_disc_val,
+                            is_manual_price=item.get("is_manual_price", False),
+                            subtotal=line_subtotal,
+                            vat_exempt=vat_exempt,
+                            sscl_exempt=sscl_exempt,
+                            unit_cost=unit_cost,
+                            notes=item.get("note") or None,
+                            batch_id=alloc_b.id,
+                        )
+                        split_item.warranties = []
+                        int_q = int(alloc_q)
+                        split_item._cart_serials = serials[serial_offset : serial_offset + int_q] if serials else []
+                        serial_offset += int_q
+                        split_item._covered_line_id = cov_line_id
+                        session.add(split_item)
+                        written_items.append(split_item)
+                        TransactionService._move_stock(
+                            session,
+                            composite_map,
+                            product.id,
+                            -alloc_q,
+                            "SALE",
+                            sale.id,
+                            sale.user_id,
+                            batch_id=alloc_b.id,
+                        )
+                    line_id = item.get("line_id")
+                    if line_id and written_items:
+                        line_map[line_id] = written_items[-len(allocations)]
+            else:
+                sale_item = SaleItem(
+                    sale=sale,
+                    sale_id=sale.id,
+                    product_id=product.id,
+                    qty=qty,
+                    unit_price=item["unit_price"],
+                    original_price=item["original_price"],
+                    discount_type=item.get("discount_type", "NONE"),
+                    discount_value=item.get("discount_value", Decimal("0.00")),
+                    is_manual_price=item.get("is_manual_price", False),
+                    subtotal=item["total"],
+                    vat_exempt=vat_exempt,
+                    sscl_exempt=sscl_exempt,
+                    unit_cost=unit_cost,
+                    notes=item.get("note") or None,
+                    batch_id=None,
+                )
+                sale_item.warranties = []
+                sale_item._cart_serials = serials
+                sale_item._covered_line_id = cov_line_id
+                line_id = item.get("line_id")
+                if line_id:
+                    line_map[line_id] = sale_item
+                session.add(sale_item)
+                written_items.append(sale_item)
+                TransactionService._move_stock(
+                    session, composite_map, product.id, -qty, "SALE", sale.id, sale.user_id, batch_id=None
+                )
 
         # Wire covered_item relationships
-        for item, sale_item in zip(cart_items, written_items, strict=True):
-            cov_id = item.get("covered_line_id")
+        for sale_item in written_items:
+            cov_id = getattr(sale_item, "_covered_line_id", None)
             if cov_id and cov_id in line_map:
                 sale_item.covered_item = line_map[cov_id]
 
@@ -511,6 +702,7 @@ class TransactionService:
         for item in sale.items:
             _ = item.product
             _ = item.warranties
+            _ = item.batch
 
     @staticmethod
     def _normalise_payments(
@@ -729,8 +921,8 @@ class TransactionService:
                     si for si in written_items if (getattr(si.product, "is_warranty_plan", False) is True)
                 ]
                 items_with_policies_and_serials = [
-                    (si, policy_map[si.product_id], c_item.get("serials", []))
-                    for si, c_item in zip(written_items, cart_items, strict=True)
+                    (si, policy_map[si.product_id], getattr(si, "_cart_serials", []))
+                    for si in written_items
                     if policy_map.get(si.product_id) is not None
                 ]
                 if items_with_policies_and_serials or plan_sale_items:
@@ -843,7 +1035,14 @@ class TransactionService:
                 # Reverse Stock via StockService
                 for item in sale.items:
                     TransactionService._move_stock(
-                        session, composite_map, item.product_id, item.qty, "VOID", sale.id, user_id
+                        session,
+                        composite_map,
+                        item.product_id,
+                        item.qty,
+                        "VOID",
+                        sale.id,
+                        user_id,
+                        batch_id=item.batch_id,
                     )
 
                 # Give back any credit this sale put on the customer's book,

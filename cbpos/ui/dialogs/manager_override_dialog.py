@@ -18,23 +18,35 @@ class ManagerOverrideDialog(QDialog):
     Dialog to request Manager PIN for restricted actions.
     """
 
-    def __init__(self, permission_required: str, parent=None):
+    def __init__(self, permission_required: str, parent=None, warning_message: str | None = None):
         """Initialize the dialog for the permission code that requires manager approval."""
         super().__init__(parent)
         self.permission_required = permission_required
+        self.warning_message = warning_message
         self.authorized_user = None
         self._pin_worker: PinCheckWorker | None = None
         self._pin_check_gen: int = 0
 
         self.setWindowTitle(_t("manager_override.title"))
-        self.setMinimumSize(300, 200)
-        self.resize(300, 200)
+        self.setMinimumSize(320, 200)
+        self.resize(320, 200)
         self.setWindowModality(Qt.WindowModality.ApplicationModal)
         self.init_ui()
 
     def init_ui(self):
         """Build the PIN input and verify/cancel buttons."""
         layout = QVBoxLayout(self)
+
+        if self.warning_message:
+            from PyQt6.QtWidgets import QLabel
+
+            self.lbl_warning = QLabel(self.warning_message)
+            self.lbl_warning.setObjectName("LblOverrideWarning")
+            self.lbl_warning.setWordWrap(True)
+            self.lbl_warning.setStyleSheet("color: #FF4136; font-size: 13px; font-weight: bold; margin-bottom: 8px;")
+            layout.addWidget(self.lbl_warning)
+            self.setMinimumSize(360, 250)
+            self.resize(380, 260)
 
         self.pin_input = QLineEdit()
         self.pin_input.setEchoMode(QLineEdit.EchoMode.Password)

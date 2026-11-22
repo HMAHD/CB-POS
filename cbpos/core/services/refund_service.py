@@ -664,6 +664,7 @@ class RefundService:
                     vat_exempt=orig_item.vat_exempt,
                     sscl_exempt=orig_item.sscl_exempt,
                     unit_cost=orig_item.unit_cost,
+                    batch_id=orig_item.batch_id,
                 )
                 session.add(refund_item)
                 orig_item.refunded_qty = (orig_item.refunded_qty or Decimal("0.000")) + req.qty
@@ -677,6 +678,7 @@ class RefundService:
                     MovementType.RETURN,
                     refund_sale.id,
                     user_id,
+                    batch_id=orig_item.batch_id,
                 )
 
             # 7. Customer credit reversal if CREDIT tender allocated

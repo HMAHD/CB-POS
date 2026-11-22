@@ -1,4 +1,5 @@
 import logging
+from datetime import date
 from decimal import Decimal
 
 from PyQt6.QtCore import QDateTime, QEasingCurve, QPoint, QPropertyAnimation, QSize, Qt, QTimer, pyqtSignal
@@ -28,6 +29,7 @@ from sqlalchemy.exc import OperationalError
 
 from cbpos.config import Config
 from cbpos.core.services.auth_service import AuthService
+from cbpos.core.services.batch_service import ExpiredBatchError, InsufficientStockError
 from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.customer_service import CustomerService
@@ -1376,6 +1378,35 @@ class SalesView(QWidget):
                         _t("sales.transaction_failed", reason=_t("errors.unknown_error")),
                     )
                     return False
+            except ExpiredBatchError as e:
+                logger.warning("Checkout blocked by expired batch: %s", e)
+                from cbpos.core.constants.permissions import Permissions
+                from cbpos.ui.dialogs.manager_override_dialog import ManagerOverrideDialog
+
+                exp_str = e.expiry_date.strftime("%Y-%m-%d") if e.expiry_date else "-"
+                warning = _t("manager_override.expired_batch_warning", date=exp_str)
+                override_dlg = ManagerOverrideDialog(
+                    Permissions.SALES_OVERRIDE_EXPIRED_BATCH,
+                    parent=self,
+                    warning_message=warning,
+                )
+                if override_dlg.exec() and override_dlg.authorized_user:
+                    LoggingService.log_audit(
+                        user_id=override_dlg.authorized_user.id,
+                        action="EXPIRED_BATCH_OVERRIDE",
+                        event_type="SALES",
+                        details=f"Override expired batch {e.batch_id} at checkout: {e}",
+                    )
+                    for it in self.cart_service.items:
+                        if it.get("batch_id") == e.batch_id or it["product"].id == e.product_id:
+                            it["allow_expired"] = True
+                else:
+                    QMessageBox.warning(dialog_ref, _t("common.error"), str(e))
+                return False
+            except InsufficientStockError as e:
+                logger.warning("Checkout blocked by insufficient stock: %s", e)
+                QMessageBox.warning(dialog_ref, _t("sales.validation_error"), str(e))
+                return False
             except ValueError as e:
                 logger.warning("Payment validation failed: %s", e)
                 QMessageBox.warning(dialog_ref, _t("sales.validation_error"), translate_error(str(e)))
@@ -2122,7 +2153,55 @@ class SalesView(QWidget):
             serials = self._prompt_serial_capture(product, int(qty))
             if serials is None:
                 return False
-        self.cart_service.add_item(product, qty=qty, serials=serials, covered_line_id=covered_line_id)
+
+        chosen_batch_id = None
+        chosen_batch_mrp = None
+        allow_expired = False
+
+        if getattr(product, "tracks_batches", False):
+            from cbpos.core.constants.permissions import Permissions
+            from cbpos.core.services.batch_service import BatchService
+            from cbpos.ui.dialogs.batch_picker import BatchPickerModal
+            from cbpos.ui.dialogs.manager_override_dialog import ManagerOverrideDialog
+
+            if BatchService.requires_batch_picker(product.id):
+                dlg = BatchPickerModal(product, parent=self)
+                if dlg.exec():
+                    selected_batch = dlg.get_selected_batch()
+                    if selected_batch is not None:
+                        chosen_batch_id = selected_batch.id
+                        chosen_batch_mrp = selected_batch.mrp
+                        today = date.today()
+                        if selected_batch.expiry_date and selected_batch.expiry_date < today:
+                            exp_str = selected_batch.expiry_date.strftime("%Y-%m-%d")
+                            warning = _t("manager_override.expired_batch_warning", date=exp_str)
+                            override_dlg = ManagerOverrideDialog(
+                                Permissions.SALES_OVERRIDE_EXPIRED_BATCH,
+                                parent=self,
+                                warning_message=warning,
+                            )
+                            if override_dlg.exec() and override_dlg.authorized_user:
+                                LoggingService.log_audit(
+                                    user_id=override_dlg.authorized_user.id,
+                                    action="EXPIRED_BATCH_OVERRIDE",
+                                    event_type="SALES",
+                                    details=f"Override expired batch {selected_batch.batch_no} (expired {exp_str}) for product {product.name_en}",
+                                )
+                                allow_expired = True
+                            else:
+                                return False
+                else:
+                    return False
+
+        self.cart_service.add_item(
+            product,
+            qty=qty,
+            serials=serials,
+            covered_line_id=covered_line_id,
+            batch_id=chosen_batch_id,
+            batch_mrp=chosen_batch_mrp,
+            allow_expired=allow_expired,
+        )
         self.update_cart_display()
         return True
 

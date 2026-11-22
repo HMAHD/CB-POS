@@ -46,7 +46,16 @@ from typing import Any
 
 from sqlalchemy import inspect as sa_inspect
 
-from cbpos.core.models import Customer, CustomerContact, Document, Product, Supplier, SyncIdMap
+from cbpos.core.models import (
+    AuditLog,
+    Customer,
+    CustomerContact,
+    Document,
+    Product,
+    ProductBatch,
+    Supplier,
+    SyncIdMap,
+)
 from cbpos.core.services.sync_change_tracking import SKIP_CHANGE_TRACKING
 from cbpos.core.services.sync_protocol import (
     REJECTED_TABLE_ERROR,
@@ -780,6 +789,24 @@ class SyncApplyService:
                 # update raises StaleDataError at flush/commit, which the sync
                 # server retries with a fresh session.
                 product.stock_qty += instance.qty_change
+            if instance.batch_id is not None:
+                batch = self._session.get(ProductBatch, instance.batch_id)
+                if batch is not None:
+                    batch.qty_on_hand += instance.qty_change
+                    if batch.qty_on_hand < Decimal("0.000"):
+                        # Log audit entry as mandated by D51
+                        log = AuditLog(
+                            user_id=instance.user_id,
+                            action="BATCH_OVERDRAFT_SYNC_CONFLICT",
+                            event_type="SYNC_CONFLICT",
+                            terminal_id=self._terminal_id,
+                            details=(
+                                f"Till {self._terminal_id} overdrafted batch {batch.id} "
+                                f"({batch.batch_no}) by {abs(instance.qty_change)}. "
+                                f"New balance: {batch.qty_on_hand}."
+                            ),
+                        )
+                        self._session.add(log)
         elif table_name in _LEDGER_BALANCES:
             # Same for credit book / payables (#678) and loyalty points
             # (#716): the till moved its own figure together with this ledger

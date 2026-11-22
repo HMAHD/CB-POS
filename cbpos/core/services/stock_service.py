@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from cbpos.core.constants.status import MovementType
 from cbpos.core.database import Database
-from cbpos.core.models import Product, StockMovement
+from cbpos.core.models import Product, ProductBatch, StockMovement
 from cbpos.core.services.product_service import ProductService
 
 logger = logging.getLogger(__name__)
@@ -57,9 +57,10 @@ class StockService:
         document_id: int | None = None,
         session: Session | None = None,
         enforce_non_negative: bool = True,
+        batch_id: int | None = None,
     ) -> StockMovement | None:
-        """
-        Record a stock movement and update product quantity.
+        """Record a stock movement and update product quantity (and batch quantity if tracked).
+
         Atomic operation with negative stock validation.
         """
         if movement_type not in _VALID_MOVEMENT_TYPES:
@@ -79,6 +80,7 @@ class StockService:
                 document_id,
                 commit=False,
                 enforce_non_negative=enforce_non_negative,
+                batch_id=batch_id,
             )
 
         db = Database()
@@ -92,6 +94,7 @@ class StockService:
                 document_id,
                 commit=True,
                 enforce_non_negative=enforce_non_negative,
+                batch_id=batch_id,
             )
 
     @staticmethod
@@ -104,6 +107,7 @@ class StockService:
         document_id: int | None,
         commit: bool,
         enforce_non_negative: bool = True,
+        batch_id: int | None = None,
     ) -> StockMovement | None:
         product = session.get(Product, product_id)
         if not product:
@@ -112,6 +116,20 @@ class StockService:
         # Skip inventory tracking for service items
         if product.is_service:
             return None
+
+        if getattr(product, "tracks_batches", False) and batch_id is None:
+            raise ValueError(f"Batch ID required for batch-tracked product '{product.name_en}' ({product.barcode})")
+
+        if getattr(product, "tracks_batches", False) and batch_id is None:
+            raise ValueError(f"Batch ID required for batch-tracked product '{product.name_en}' ({product.barcode})")
+
+        batch = None
+        if batch_id is not None:
+            batch = session.get(ProductBatch, batch_id, with_for_update=True)
+            if not batch:
+                raise ValueError(f"Batch {batch_id} not found")
+            if batch.product_id != product_id:
+                raise ValueError(f"Batch {batch_id} does not belong to product {product_id}")
 
         # Check for negative stock (if deducting)
         if qty_change < 0 and enforce_non_negative:
@@ -126,8 +144,20 @@ class StockService:
                     f"Insufficient Stock: {product.name_en} (Available: {product.stock_qty:.3f}, Required: {abs(qty_change):.3f})"
                 )
 
+            if batch is not None:
+                new_batch_balance = batch.qty_on_hand + qty_change
+                if not allow_negative and new_batch_balance < 0:
+                    raise ValueError(
+                        f"Insufficient Batch Stock: {product.name_en} batch {batch.batch_no or '(no batch)'} "
+                        f"(Available: {batch.qty_on_hand:.3f}, Required: {abs(qty_change):.3f})"
+                    )
+
         # Update Stock
         product.stock_qty += qty_change
+        if batch is not None:
+            batch.qty_on_hand += qty_change
+            if qty_change > 0 and not batch.is_active:
+                batch.is_active = True
 
         # Create Movement Record
         from cbpos.core.services.config_service import ConfigService
@@ -140,6 +170,7 @@ class StockService:
             document_id=document_id,
             type=movement_type,
             terminal_id=ConfigService.get("terminal_id") or "TERM-01",
+            batch_id=batch_id,
         )
         session.add(movement)
 

@@ -68,6 +68,8 @@ IMPLEMENTED_FEATURES = {
     Features.POWER_CUT_AUTOSAVE,
     Features.PRICE_BOARD,
     Features.UNIT_CONVERSION,
+    Features.BATCHES,
+    Features.EXPIRY_DATES,
 }
 
 # Approved 7-shop preset matrix (Decision D34).

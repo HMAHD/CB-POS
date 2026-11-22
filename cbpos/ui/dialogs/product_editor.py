@@ -445,6 +445,30 @@ class ProductEditor(QDialog):
         row_age_restricted.addWidget(self.age_restricted_hint, 1, Qt.AlignmentFlag.AlignVCenter)
         type_layout.addLayout(row_age_restricted)
 
+        # 6. Batch / Expiry tracking (#926)
+        self._batches_visible = feature_visible(Features.BATCHES) or feature_visible(Features.EXPIRY_DATES)
+        if self._batches_visible:
+            row_tracks_batches = QHBoxLayout()
+            row_tracks_batches.setSpacing(0)
+            self.chk_tracks_batches = QCheckBox(_t("product_editor.tracks_batches", default="Track Batches & Expiry"))
+            self.chk_tracks_batches.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+            self.chk_tracks_batches.setChecked(False)
+            row_tracks_batches.addWidget(self.chk_tracks_batches, 0, Qt.AlignmentFlag.AlignVCenter)
+            row_tracks_batches.addSpacing(20)
+            self.tracks_batches_hint = QLabel(
+                _t(
+                    "product_editor.tracks_batches_hint",
+                    default="Track per-batch expiry dates, lot numbers, and MRPs for this product",
+                )
+            )
+            self.tracks_batches_hint.setObjectName("ToggleHint")
+            self.tracks_batches_hint.setWordWrap(True)
+            self.tracks_batches_hint.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+            row_tracks_batches.addWidget(self.tracks_batches_hint, 1, Qt.AlignmentFlag.AlignVCenter)
+            type_layout.addLayout(row_tracks_batches)
+        else:
+            self.chk_tracks_batches = None
+
         layout.addWidget(grp_type)
         layout.addStretch(1)
 
@@ -541,6 +565,7 @@ class ProductEditor(QDialog):
 
         self.comp_barcode_input.clear()
         self.comp_barcode_input.setFocus()
+        self._update_batch_tracking_enabled()
 
     def _on_remove_component_clicked(self) -> None:
         """Handle component removal from sender button click without lambda closure."""
@@ -549,12 +574,24 @@ class ProductEditor(QDialog):
             for r in range(self.comp_table.rowCount()):
                 if self.comp_table.cellWidget(r, 3) is sender:
                     self.comp_table.removeRow(r)
+                    self._update_batch_tracking_enabled()
                     break
 
     def _remove_component(self, row: int) -> None:
         """Remove a component row by index."""
         if row < self.comp_table.rowCount():
             self.comp_table.removeRow(row)
+            self._update_batch_tracking_enabled()
+
+    def _update_batch_tracking_enabled(self) -> None:
+        """Disable batch tracking for composite products (#926)."""
+        if getattr(self, "chk_tracks_batches", None):
+            is_composite = self.comp_table.rowCount() > 0
+            if is_composite:
+                self.chk_tracks_batches.setChecked(False)
+                self.chk_tracks_batches.setEnabled(False)
+            else:
+                self.chk_tracks_batches.setEnabled(True)
 
     def setup_image_tab(self):
         """Build the Image tab: preview label and upload/clear buttons."""
@@ -927,6 +964,8 @@ class ProductEditor(QDialog):
         self.price_change_allowed_check.setChecked(bool(self.product.price_change_allowed))
         self.price_changes_often_check.setChecked(bool(getattr(self.product, "price_changes_often", False)))
         self.age_restricted_check.setChecked(bool(self.product.is_age_restricted))
+        if getattr(self, "chk_tracks_batches", None):
+            self.chk_tracks_batches.setChecked(bool(getattr(self.product, "tracks_batches", False)))
 
         # Load unit
         if self.product.unit_id:
@@ -990,6 +1029,8 @@ class ProductEditor(QDialog):
                 remove_btn.clicked.connect(on_remove)
                 set_cell_widget(row, 3, remove_btn)
 
+        self._update_batch_tracking_enabled()
+
         # Load warranty
         if hasattr(self, "warranty_override_combo"):
             is_plan = bool(getattr(self.product, "is_warranty_plan", False))
@@ -1051,6 +1092,11 @@ class ProductEditor(QDialog):
             "price_change_allowed": self.price_change_allowed_check.isChecked(),
             "price_changes_often": self.price_changes_often_check.isChecked(),
             "is_age_restricted": self.age_restricted_check.isChecked(),
+            "tracks_batches": (
+                self.chk_tracks_batches.isChecked()
+                if self.chk_tracks_batches is not None
+                else bool(getattr(self.product, "tracks_batches", False))
+            ),
             "image_path": self.current_image_path,
             "is_active": True,
         }

@@ -48,10 +48,14 @@ class CartService:
         serials: list[str | None] | None = None,
         covered_line_id: str | None = None,
         line_id: str | None = None,
+        batch_id: int | None = None,
+        batch_mrp: Decimal | None = None,
+        allow_expired: bool = False,
     ):
-        """
-        Add a product to the cart.
-        If product exists (matching product_id and covered_line_id), update quantity and append serial slots.
+        """Add a product to the cart.
+
+        If product exists (matching product_id, covered_line_id, and batch_id),
+        update quantity and append serial slots.
         """
         if qty <= Decimal("0"):
             raise ValueError("Quantity must be positive")
@@ -77,16 +81,23 @@ class CartService:
         int_qty = int(qty) if (qty > 0 and qty % Decimal("1") == Decimal("0")) else 0
         new_slots = list(serials) if serials is not None else [None] * int_qty
 
-        # Check if product already in cart with matching covered_line_id
+        # Check if product already in cart with matching covered_line_id and batch_id
         for idx, item in enumerate(self.items):
-            if item["product"].id == product.id and item.get("covered_line_id") == covered_line_id:
+            if (
+                item["product"].id == product.id
+                and item.get("covered_line_id") == covered_line_id
+                and item.get("batch_id") == batch_id
+            ):
                 old_serials = list(item.get("serials", []))
                 item["serials"] = old_serials + new_slots
                 self.update_quantity(idx, item["qty"] + qty)
                 return
 
-        # Calculate price using Pricing Engine
-        pricing = PricingService.calculate_price(product, self._customer)
+        # Calculate price using Pricing Engine (passing optional batch_mrp)
+        if batch_mrp is not None:
+            pricing = PricingService.calculate_price(product, self._customer, batch_mrp=batch_mrp)
+        else:
+            pricing = PricingService.calculate_price(product, self._customer)
 
         flags = self._resolve_effective_flags(product)
         new_item = {
@@ -110,6 +121,9 @@ class CartService:
             "note": None,
             "override_approved_by": None,
             "serials": new_slots,
+            "batch_id": batch_id,
+            "batch_mrp": batch_mrp,
+            "allow_expired": allow_expired,
         }
         self._recalculate_line(new_item)
         self.items.append(new_item)

@@ -156,6 +156,42 @@ Price Board is an operator-facing management dialog, so product names follow the
 
 ## 2026-11-22
 
+**D42 — 2026-11-22 — #926 — Batch tracking toggle and independent nullability.**
+Product batch tracking is controlled via a single per-product toggle `Product.tracks_batches: bool` (default False). In `ProductBatch`, `batch_no` and `expiry_date` are independently nullable in the database schema. Validation requires at least one of `batch_no` or `expiry_date` to be specified upon batch creation (supporting expiry-only bakery items, batch-only hardware items, and full pharmacy batches).
+
+**D43 — 2026-11-22 — #926 — Synthetic opening batch migration.**
+When `tracks_batches` is enabled for an existing product with `stock_qty != 0`, the service automatically generates a synthetic opening batch (`batch_no="OPENING"`, `expiry_date=None`, `qty_on_hand=stock_qty`, `cost=product.cost`, `mrp=product.price`, `is_active=True`). This guarantees the mathematical invariant `Σ batch.qty_on_hand == product.stock_qty` holds from the exact moment tracking is enabled without blocking the merchant or requiring an upfront inventory count, even if stock is negative under `allow_negative_stock = True`.
+
+**D44 — 2026-11-22 — #926 — Per-batch stock count (stock take).**
+Stock counts (stock take) for batch-tracked products are conducted per batch. The counting interface displays expected quantities grouped by batch (`batch_no`, `expiry_date`, `mrp`), records counted quantities per batch in `StockCountItem.batch_id`, and generates `StockMovement` rows capturing `batch_id`. Variance adjustments adjust specific batches directly so `Σ batch.qty_on_hand == Product.stock_qty` is preserved without arbitrary variance dumping.
+
+**D45 — 2026-11-22 — #926 — FEFO allocation, line splitting, and concurrency locking.**
+Automated allocation applies strict First-Expiry-First-Out (FEFO) sorting (`expiry_date ASC NULLS LAST`, `received_at ASC`, `id ASC`). In PostgreSQL network mode, candidate batches are locked using `SELECT ... FOR UPDATE` in deterministic order. If a requested quantity spans multiple batches, the sale splits into distinct `SaleItem` rows. When negative stock is permitted by shop settings and available batch stock is exhausted, the newest active batch absorbs the negative balance to maintain `Σ batch.qty_on_hand == product.stock_qty`.
+
+**D46 — 2026-11-22 — #926 — Cashier interaction, differing MRPs, and mid-sale expiry.**
+When active batches share identical MRPs, FEFO allocation is silent. When active batches carry differing MRPs, a lightweight `BatchPicker` dialog appears (defaulting to FEFO, displaying batch, expiry, MRP, and stock) enabling the cashier to match the shelf box. Lines with different MRPs are displayed as distinct cart lines. At checkout payment commit, `process_sale` re-validates expiry dates against current system date; if expired, checkout blocks until manager override or line removal.
+
+**D47 — 2026-11-22 — #926 — Manager override permission and audit for expired stock.**
+Selling an expired batch requires the `sales.override_expired_batch` permission (assigned by default to Admin and Manager roles). Encountering an expired batch presents `ManagerOverrideDialog` with regulatory warnings (NMRA/CAA compliance). On manager PIN authorization, an `AuditLog` row (`EXPIRED_BATCH_OVERRIDE`) records manager ID, cashier ID, product ID, batch number, and expiry date. If cancelled, the line or checkout remains blocked.
+
+**D48 — 2026-11-22 — #926 — Voids and refunds return to original batch.**
+Stock returned via sale void or customer refund returns strictly to the original `SaleItem.batch_id` via `StockMovement(type="RETURN"|"VOID", batch_id=...)`. Foreign key `RESTRICT` prevents deletion of referenced batches. If the batch was inactive (`is_active=False`) or at zero quantity, receiving returns reactivates it (`is_active=True`). Expired returned stock correctly appears as expired on hand.
+
+**D49 — 2026-11-22 — #926 — Per-batch MRP as line base price and tax/receipt truth.**
+When `ProductBatch.mrp` is defined, it establishes the line's `original_price` and default `unit_price`. Line discounts and promotions reduce from this MRP. Overriding prices above `batch.mrp` requires manager override (CAA compliance). Phase 6 tax calculations and `round_money` apply to the resulting line subtotal. Thermal receipts and A4 tax invoices print the batch number and expiration date alongside the item name.
+
+**D50 — 2026-11-22 — #926 — GRN interaction with unit conversion (#937).**
+On GRN entry, batch details (`batch_no`, `expiry_date` [MM/YY parsed to month end], and optional base `mrp`) are captured. `ProductBatch` stores stock and cost strictly in base units (`base_qty = purchase_qty * factor`, `base_unit_cost = purchase_unit_cost / factor`). If an identical `(product_id, batch_no, expiry_date, mrp)` lot exists, its `qty_on_hand` is incremented and `received_at` updated; otherwise a new batch is created. `PurchaseItem.batch_id` captures the immutable batch reference.
+
+**D51 — 2026-11-22 — #926 — Main-PC catalog ownership, LAN sync 1.7, and offline conflict handling.**
+Batches are catalog entities created and edited exclusively on the Main PC under `require_catalog_writable`. Batch definitions and active balances sync down to tills via LAN sync protocol 1.7. Deletions propagate via `sync_deletions` tombstones. Tills push sales referencing `batch_id`. If concurrent offline tills overdraft a batch, the Main PC absorbs the overdraft as a negative batch balance, records the stock movement, and writes a `BATCH_OVERDRAFT_SYNC_CONFLICT` audit log entry, never retroactively invalidating completed offline sales.
+
+**D52 — 2026-11-22 — #926 — Dashboard expiring list actions pending #930.**
+The Dashboard "Expiring in 30/60/90 Days" view provides two active remediation workflows: "Write-off / Mark Expired" (opening Phase 4 `StockAdjustmentDialog` with reason `EXPIRED` and preselected batch) and "Discount / Clearance" (opening quick price markdown). The "Return to Supplier" action is shown but disabled with an informative tooltip (`batches.supplier_return_available_soon`) pending Phase 10B.5 (#930 Supplier Returns).
+
+**D53 — 2026-11-22 — #926 — Alembic migration and recovery policy.**
+Database changes use a dedicated Alembic migration: creates `product_batches` table with `version_id` optimistic locking, check constraint `ck_product_batches_has_identity`, and indexes on `(product_id, is_active, expiry_date, received_at)`, adds `tracks_batches` (Boolean, server_default 0) to `products`, and adds nullable `batch_id` FKs (with `ondelete="RESTRICT"`) to `sale_items`, `stock_movements`, `purchase_items`, `stock_count_items`, and `inventory_logs`. Batch mode (`batch_alter_table`) is strictly enforced for SQLite compatibility. Standard recovery policy applies: automatic pre-upgrade backup; transaction rollback on failure; in production, restore from backup if rollback is required after data entry.
+
 **D42 — 2026-11-22 — roadmap, Phase U — Token-limited parallel handoff (amending D37(1) and D37(3)).**
 1. As an exception to D37(1), after #937 is merged and post-merge `main` CI is green, provisional Phase U.0 discovery may begin while Gemini completes remaining Phase 10B work whose issue-specific owner gate has passed and decision has been recorded. This concurrency exception does not approve any feature's scope. Phase U product-code implementation still waits for the Phase 10B exit gate.
 2. U.0 remains provisional until the Phase 10B exit gate has passed and discovery is delta-rebaselined against the recorded final Phase 10B `main` SHA with green post-merge CI.

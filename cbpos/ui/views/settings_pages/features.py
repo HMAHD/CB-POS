@@ -32,6 +32,8 @@ FEATURE_ORDER = [
     Features.POWER_CUT_AUTOSAVE,
     Features.PRICE_BOARD,
     Features.UNIT_CONVERSION,
+    Features.BATCHES,
+    Features.EXPIRY_DATES,
 ]
 
 

@@ -12,6 +12,7 @@ from cbpos.core.database import Database
 from cbpos.core.models import (
     AuditLog,
     Product,
+    ProductBatch,
     Purchase,
     PurchaseItem,
     PurchaseOrder,
@@ -53,11 +54,15 @@ class GrnLine:
     purchase_factor: Any = _UNSET
     expected_unit_conversion_on: Any = _UNSET
     expected_base_unit_id: Any = _UNSET
+    batch_no: str | None = None
+    expiry_date: Any = None
+    mrp: Decimal | None = None
+    batch_id: int | None = None
 
 
 @dataclass
 class ValidatedGrnLine:
-    """Pre-validated and normalized GRN line ready for application (#937)."""
+    """Pre-validated and normalized GRN line ready for application (#937, #926)."""
 
     product: Product
     product_id: int
@@ -72,6 +77,10 @@ class ValidatedGrnLine:
     b_unit_name: str | None
     raw_qty: Decimal
     raw_cost: Decimal
+    batch_no: str | None = None
+    expiry_date: Any = None
+    mrp: Decimal | None = None
+    batch_id: int | None = None
 
 
 @dataclass
@@ -105,12 +114,29 @@ class PurchaseService:
         purchase_factor: Any,
         expected_unit_conversion_on: Any,
         is_unit_conv_on: bool,
+        batch_no: str | None = None,
+        expiry_date: Any = None,
+        mrp: Decimal | None = None,
+        batch_id: int | None = None,
     ) -> ValidatedGrnLine:
-        """Validate configuration snapshots and normalize quantities/costs (#937)."""
+        """Validate configuration snapshots, batch information, and normalize quantities/costs (#937, #926)."""
         if raw_qty <= Decimal("0"):
             raise ValueError(f"grn_invalid_qty: {raw_qty}")
         if raw_cost < Decimal("0.00"):
             raise ValueError(f"grn_invalid_cost: {raw_cost}")
+
+        parsed_batch_no = (batch_no or "").strip() or None
+        parsed_expiry_date = expiry_date
+        parsed_mrp = round_money(Decimal(str(mrp))) if mrp is not None else None
+
+        if getattr(product, "tracks_batches", False):
+            if batch_id is None:
+                if parsed_batch_no is None and (parsed_expiry_date is None or str(parsed_expiry_date).strip() == ""):
+                    raise ValueError(f"Product {product.name_en} requires a batch number or expiry date.")
+                if isinstance(parsed_expiry_date, str) and parsed_expiry_date.strip():
+                    from cbpos.core.services.batch_service import BatchService
+
+                    parsed_expiry_date = BatchService.parse_mmyy_to_month_end(parsed_expiry_date)
 
         if expected_unit_conversion_on is not _UNSET and expected_unit_conversion_on is not None:
             if expected_unit_conversion_on != is_unit_conv_on:
@@ -213,6 +239,10 @@ class PurchaseService:
             b_unit_name=b_unit_name,
             raw_qty=raw_qty,
             raw_cost=raw_cost,
+            batch_no=parsed_batch_no,
+            expiry_date=parsed_expiry_date,
+            mrp=parsed_mrp,
+            batch_id=batch_id,
         )
 
     @staticmethod
@@ -285,6 +315,10 @@ class PurchaseService:
                     purchase_factor=getattr(line, "purchase_factor", _UNSET),
                     expected_unit_conversion_on=getattr(line, "expected_unit_conversion_on", _UNSET),
                     is_unit_conv_on=is_unit_conv_on,
+                    batch_no=getattr(line, "batch_no", None),
+                    expiry_date=getattr(line, "expiry_date", None),
+                    mrp=getattr(line, "mrp", None),
+                    batch_id=getattr(line, "batch_id", None),
                 )
                 validated_lines.append(vline)
 
@@ -313,6 +347,39 @@ class PurchaseService:
                 if order_item:
                     order_item.qty_received += vline.base_qty
 
+                line_batch_id = vline.batch_id
+                if vline.product.tracks_batches and line_batch_id is None:
+                    # Lock parent Product first to preserve Product -> ProductBatch hierarchy
+                    session.query(Product).filter(Product.id == vline.product_id).with_for_update().first()
+                    # Match existing batch on (product_id, batch_no, expiry_date, mrp) or create new batch
+                    existing_batch = (
+                        session.query(ProductBatch)
+                        .filter(
+                            ProductBatch.product_id == vline.product_id,
+                            ProductBatch.batch_no == vline.batch_no,
+                            ProductBatch.expiry_date == vline.expiry_date,
+                            ProductBatch.mrp == vline.mrp,
+                        )
+                        .with_for_update()
+                        .first()
+                    )
+                    if existing_batch is not None:
+                        existing_batch.received_at = datetime.now()
+                        line_batch_id = existing_batch.id
+                    else:
+                        new_batch = ProductBatch(
+                            product_id=vline.product_id,
+                            batch_no=vline.batch_no,
+                            expiry_date=vline.expiry_date,
+                            mrp=vline.mrp,
+                            cost=vline.base_unit_cost,
+                            qty_on_hand=Decimal("0.000"),
+                            is_active=True,
+                        )
+                        session.add(new_batch)
+                        session.flush()
+                        line_batch_id = new_batch.id
+
                 purchase_item = PurchaseItem(
                     purchase_id=purchase.id,
                     product_id=vline.product_id,
@@ -325,6 +392,7 @@ class PurchaseService:
                     purchase_unit_cost=vline.purchase_unit_cost,
                     purchase_unit_name=vline.p_unit_name,
                     base_unit_name=vline.b_unit_name,
+                    batch_id=line_batch_id,
                 )
                 session.add(purchase_item)
 
@@ -341,6 +409,7 @@ class PurchaseService:
                     user_id=request.user_id,
                     document_id=purchase.id,
                     session=session,
+                    batch_id=line_batch_id,
                 )
 
                 # Invariant 2: if old_qty <= 0, new_cost = base_unit_cost; else weighted average
@@ -527,6 +596,10 @@ class PurchaseService:
                     purchase_factor=purchase_factor,
                     expected_unit_conversion_on=expected_conv_on,
                     is_unit_conv_on=is_unit_conv_on,
+                    batch_no=item_data.get("batch_no"),
+                    expiry_date=item_data.get("expiry_date"),
+                    mrp=item_data.get("mrp"),
+                    batch_id=item_data.get("batch_id"),
                 )
                 validated_items.append(vline)
 
@@ -534,6 +607,38 @@ class PurchaseService:
                 order_item = order_items_by_product.get(vline.product_id)
                 if order_item:
                     order_item.qty_received += vline.base_qty
+
+                line_batch_id = vline.batch_id
+                if vline.product.tracks_batches and line_batch_id is None:
+                    # Lock parent Product first to preserve Product -> ProductBatch hierarchy
+                    session.query(Product).filter(Product.id == vline.product_id).with_for_update().first()
+                    existing_batch = (
+                        session.query(ProductBatch)
+                        .filter(
+                            ProductBatch.product_id == vline.product_id,
+                            ProductBatch.batch_no == vline.batch_no,
+                            ProductBatch.expiry_date == vline.expiry_date,
+                            ProductBatch.mrp == vline.mrp,
+                        )
+                        .with_for_update()
+                        .first()
+                    )
+                    if existing_batch is not None:
+                        existing_batch.received_at = datetime.now()
+                        line_batch_id = existing_batch.id
+                    else:
+                        new_batch = ProductBatch(
+                            product_id=vline.product_id,
+                            batch_no=vline.batch_no,
+                            expiry_date=vline.expiry_date,
+                            mrp=vline.mrp,
+                            cost=vline.base_unit_cost,
+                            qty_on_hand=Decimal("0.000"),
+                            is_active=True,
+                        )
+                        session.add(new_batch)
+                        session.flush()
+                        line_batch_id = new_batch.id
 
                 # Create Purchase Item
                 purchase_item = PurchaseItem(
@@ -548,6 +653,7 @@ class PurchaseService:
                     purchase_unit_cost=vline.purchase_unit_cost,
                     purchase_unit_name=vline.p_unit_name,
                     base_unit_name=vline.b_unit_name,
+                    batch_id=line_batch_id,
                 )
                 session.add(purchase_item)
 
@@ -564,6 +670,7 @@ class PurchaseService:
                     user_id=purchase.user_id,
                     document_id=purchase.id,
                     session=session,
+                    batch_id=line_batch_id,
                 )
 
                 # 2. Calculate Weighted Average Cost (Invariant 2, #899)

@@ -30,6 +30,7 @@ class SaleQueryService:
                 session.query(Sale)
                 .options(
                     joinedload(Sale.items).joinedload(SaleItem.product),
+                    joinedload(Sale.items).joinedload(SaleItem.batch),
                     joinedload(Sale.user),
                     joinedload(Sale.customer),
                     joinedload(Sale.payments),
@@ -42,6 +43,7 @@ class SaleQueryService:
                 _ = sale.user
                 for it in sale.items:
                     _ = it.product
+                    _ = it.batch
                     _ = it.warranties
                 _ = sale.payments
                 session.expunge_all()
@@ -88,6 +90,7 @@ class SaleQueryService:
                     joinedload(Sale.user),
                     joinedload(Sale.customer),
                     joinedload(Sale.items).joinedload(SaleItem.product),
+                    joinedload(Sale.items).joinedload(SaleItem.batch),
                     joinedload(Sale.payments),
                     joinedload(Sale.warranties),
                 )
@@ -98,6 +101,8 @@ class SaleQueryService:
 
             # Detach from session
             for sale in sales:
+                for it in sale.items:
+                    _ = it.batch
                 session.expunge(sale)
 
             return sales
@@ -120,6 +125,7 @@ class SaleQueryService:
                 sale_id,
                 options=[
                     joinedload(Sale.items).joinedload(SaleItem.product),
+                    joinedload(Sale.items).joinedload(SaleItem.batch),
                     joinedload(Sale.user),
                     joinedload(Sale.customer),
                     joinedload(Sale.payments),
@@ -130,6 +136,7 @@ class SaleQueryService:
                 _ = sale.user
                 for it in sale.items:
                     _ = it.product
+                    _ = it.batch
                     _ = it.warranties
                 _ = sale.payments
                 session.expunge_all()

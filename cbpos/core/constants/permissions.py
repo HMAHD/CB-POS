@@ -19,6 +19,7 @@ class Permissions:
     SALES_REFUND_OVERRIDE_TENDER = "sales.refund_override_tender"
     SALES_REPRINT = "sales.reprint"
     SALES_TAX_INVOICE = "sales.tax_invoice"
+    SALES_OVERRIDE_EXPIRED_BATCH = "sales.override_expired_batch"
 
     # Inventory Group
     INVENTORY_VIEW = "inventory.view"
@@ -107,6 +108,7 @@ class Permissions:
                 cls.SALES_REFUND_OVERRIDE_TENDER,
                 cls.SALES_REPRINT,
                 cls.SALES_TAX_INVOICE,
+                cls.SALES_OVERRIDE_EXPIRED_BATCH,
             ],
             "Inventory": [
                 cls.INVENTORY_VIEW,

@@ -4,7 +4,7 @@ Contains SQLAlchemy declarative ORM models spanning users, authentication, produ
 inventory, suppliers, price lists, promotions, sales, documents, and audit logging.
 """
 
-from datetime import datetime, time
+from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Optional
 
@@ -425,6 +425,7 @@ class Product(Base):
     warranty_override: Mapped[str] = mapped_column(String(10), default="INHERIT", server_default="INHERIT")
     serial_mode: Mapped[str] = mapped_column(String(10), default="OFF", server_default="OFF")
     is_warranty_plan: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0", nullable=False)
+    tracks_batches: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0", nullable=False)
     plan_policy_id: Mapped[int | None] = mapped_column(ForeignKey("warranty_policies.id"), nullable=True, index=True)
     plan_category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id"), nullable=True, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -448,6 +449,7 @@ class Product(Base):
     )
     suppliers: Mapped[list["Supplier"]] = relationship(secondary=product_suppliers, back_populates="products")
     default_supplier: Mapped[Optional["Supplier"]] = relationship("Supplier", foreign_keys=[default_supplier_id])
+    batches: Mapped[list["ProductBatch"]] = relationship("ProductBatch", back_populates="product")
 
     __mapper_args__ = {"version_id_col": version_id}  # Enable Optimistic Locking
     __table_args__ = (CheckConstraint("purchase_factor > 0", name="ck_products_purchase_factor_positive"),)
@@ -485,6 +487,48 @@ class Product(Base):
     def display_name(self) -> str:
         """Product name in the current UI language, falling back to English or any populated name."""
         return self.get_display_name()
+
+
+class ProductBatch(Base):
+    """A specific manufactured or received lot/batch of a product with optional batch number,
+    expiry date, per-batch MRP, cost, and stock on hand.
+
+    Optimistic locking (`version_id`) ensures concurrent updates are detected.
+    Check constraint ensures at least one of batch_no or expiry_date is populated.
+    """
+
+    __tablename__ = "product_batches"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="RESTRICT"), index=True, nullable=False)
+    batch_no: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
+    expiry_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    mrp: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    qty_on_hand: Mapped[Decimal] = mapped_column(
+        Numeric(10, 3), nullable=False, default=Decimal("0.000"), server_default="0.000"
+    )
+    received_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, index=True, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1", index=True, nullable=False)
+    version_id: Mapped[int] = mapped_column(Integer, default=1, server_default="1", nullable=False)
+    last_modified: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.now, onupdate=datetime.now, index=True, nullable=False
+    )
+
+    product: Mapped["Product"] = relationship("Product", back_populates="batches")
+
+    __mapper_args__ = {"version_id_col": version_id}
+    __table_args__ = (
+        CheckConstraint("batch_no IS NOT NULL OR expiry_date IS NOT NULL", name="ck_product_batches_has_identity"),
+        Index("ix_product_batches_fefo", "product_id", "is_active", "expiry_date", "received_at"),
+    )
+
+    @property
+    def is_expired(self) -> bool:
+        """True if batch has an expiry date strictly earlier than today."""
+        if self.expiry_date is None:
+            return False
+        return self.expiry_date < date.today()
 
 
 class Customer(Base):
@@ -582,9 +626,13 @@ class SaleItem(Base):
     vat_exempt: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     sscl_exempt: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     unit_cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    batch_id: Mapped[int | None] = mapped_column(
+        ForeignKey("product_batches.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
 
     sale: Mapped["Sale"] = relationship(back_populates="items")
     product: Mapped["Product"] = relationship("Product")
+    batch: Mapped[Optional["ProductBatch"]] = relationship("ProductBatch")
     warranties: Mapped[list["Warranty"]] = relationship(
         "Warranty", foreign_keys="[Warranty.sale_item_id]", back_populates="sale_item", lazy="selectin"
     )
@@ -650,11 +698,15 @@ class PurchaseItem(Base):
     purchase_unit_cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     purchase_unit_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
     base_unit_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    batch_id: Mapped[int | None] = mapped_column(
+        ForeignKey("product_batches.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
 
     purchase: Mapped["Purchase"] = relationship(back_populates="items")
     product: Mapped["Product"] = relationship("Product")
     purchase_order_item: Mapped["PurchaseOrderItem | None"] = relationship()
     purchase_unit: Mapped[Optional["Unit"]] = relationship("Unit", lazy="joined", foreign_keys=[purchase_unit_id])
+    batch: Mapped[Optional["ProductBatch"]] = relationship("ProductBatch")
 
     @property
     def line_total(self) -> Decimal:
@@ -700,10 +752,14 @@ class StockMovement(Base):
     type: Mapped[str] = mapped_column(String(20), nullable=False)  # SALE, PURCHASE, ADJUSTMENT, RETURN, VOID
     terminal_id: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
     synced: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    batch_id: Mapped[int | None] = mapped_column(
+        ForeignKey("product_batches.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
 
     product: Mapped["Product"] = relationship()
     user: Mapped["User"] = relationship()
     document: Mapped["Document"] = relationship()
+    batch: Mapped[Optional["ProductBatch"]] = relationship("ProductBatch")
 
 
 class CompositeItem(Base):
@@ -761,9 +817,13 @@ class InventoryLog(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     synced: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false(), index=True)
+    batch_id: Mapped[int | None] = mapped_column(
+        ForeignKey("product_batches.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
 
     product: Mapped["Product"] = relationship()
     user: Mapped["User"] = relationship()
+    batch: Mapped[Optional["ProductBatch"]] = relationship("ProductBatch")
 
 
 class Shift(Base):
@@ -923,9 +983,13 @@ class StockCountItem(Base):
     counted_qty: Mapped[Decimal | None] = mapped_column(Numeric(10, 3), nullable=True)
     variance_qty: Mapped[Decimal | None] = mapped_column(Numeric(10, 3), nullable=True)
     variance_value: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    batch_id: Mapped[int | None] = mapped_column(
+        ForeignKey("product_batches.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
 
     stock_count: Mapped["StockCount"] = relationship(back_populates="items")
     product: Mapped["Product"] = relationship()
+    batch: Mapped[Optional["ProductBatch"]] = relationship("ProductBatch")
 
 
 class SupplierPayment(Base):

@@ -164,12 +164,21 @@ class InventoryService:
                 curr = AuthService.get_current_user()
                 uid = curr.id if curr else 1
 
+            batch_id = None
+            if getattr(product, "tracks_batches", False):
+                from cbpos.core.services.batch_service import BatchService
+
+                opening_batch = BatchService.create_synthetic_opening_batch(product, session=session)
+                if opening_batch:
+                    batch_id = opening_batch.id
+
             StockService.record_movement(
                 product_id=product.id,
                 qty_change=opening_stock,
                 movement_type=MovementType.OPENING,
                 user_id=uid,
                 session=session,
+                batch_id=batch_id,
             )
 
         # Handle composite items
@@ -247,9 +256,16 @@ class InventoryService:
             # Extract composite items data if present
             components_data = data.pop("components", None)
 
+            tracks_batches_enabled = data.get("tracks_batches") is True and not product.tracks_batches
+
             for key, value in data.items():
                 if hasattr(product, key):
                     setattr(product, key, value)
+
+            if tracks_batches_enabled:
+                from cbpos.core.services.batch_service import BatchService
+
+                BatchService.create_synthetic_opening_batch(product, session=session)
 
             if components_data is not None:
                 # Clear existing components
@@ -350,8 +366,9 @@ class InventoryService:
         reason: str,
         user_id: int,
         note: str | None = None,
+        batch_id: int | None = None,
     ) -> StockMovement:
-        """Adjust stock quantity via StockService and record in InventoryLog & AuditLog (#794).
+        """Adjust stock quantity via StockService and record in InventoryLog & AuditLog (#794, #926).
 
         Args:
             product_id: The product to adjust.
@@ -359,6 +376,7 @@ class InventoryService:
             reason: Reason code (DAMAGED, EXPIRED, THEFT, FOUND, CORRECTION, OTHER).
             user_id: ID of the user performing the adjustment.
             note: Optional note (mandatory when reason is OTHER).
+            batch_id: Optional ID of the specific ProductBatch being adjusted (#926).
 
         Returns:
             The created StockMovement.
@@ -392,13 +410,17 @@ class InventoryService:
             if product.is_service:
                 raise ValueError("Cannot adjust stock for service products")
 
-            # 3. Record movement via StockService (updates product.stock_qty and enforces negative stock)
+            if getattr(product, "tracks_batches", False) and batch_id is None:
+                raise ValueError(f"Batch selection required for batch-tracked product '{product.name_en}'")
+
+            # 3. Record movement via StockService (updates product.stock_qty, batch.qty_on_hand and enforces negative stock)
             movement = StockService.record_movement(
                 product_id=product.id,
                 qty_change=qty_change,
                 movement_type=MovementType.ADJUSTMENT,
                 user_id=user_id,
                 session=session,
+                batch_id=batch_id,
             )
 
             # 4. Record InventoryLog
@@ -409,6 +431,7 @@ class InventoryService:
                 new_qty=product.stock_qty,
                 reason=log_reason,
                 user_id=user_id,
+                batch_id=batch_id,
             )
             session.add(inv_log)
 

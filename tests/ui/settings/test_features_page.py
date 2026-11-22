@@ -26,11 +26,15 @@ def test_features_page_renders_only_implemented_features(clean_flags):
     rendered_flags = set(page._switches.keys())
     assert rendered_flags == IMPLEMENTED_FEATURES
 
+    # Implemented in #926
+    assert Features.EXPIRY_DATES in rendered_flags
+    assert Features.BATCHES in rendered_flags
+
     # Unimplemented flags from the preset matrix must NOT be rendered
-    assert Features.EXPIRY_DATES not in rendered_flags
-    assert Features.BATCHES not in rendered_flags
     assert Features.VARIANTS not in rendered_flags
     assert Features.WEIGHT_SCALE not in rendered_flags
+    assert Features.QUOTATIONS not in rendered_flags
+    assert Features.DEPOSITS not in rendered_flags
 
 
 def test_features_page_reflects_current_flag_state(clean_flags):

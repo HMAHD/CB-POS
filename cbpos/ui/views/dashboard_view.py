@@ -140,6 +140,27 @@ class _WarrantyTileWorker(QThread):
             self.error_occurred.emit(str(e))
 
 
+class _ExpiringBatchesWorker(QThread):
+    """Fetches expiring batches summary counts off the UI thread (#926)."""
+
+    loaded = pyqtSignal(dict)
+    error_occurred = pyqtSignal(str)
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        self.finished.connect(self.deleteLater)
+
+    def run(self) -> None:
+        from cbpos.core.services.batch_service import BatchService
+
+        try:
+            summary = BatchService.get_expiring_batches_summary()
+            self.loaded.emit(summary)
+        except Exception as e:
+            logger.exception("Failed to load expiring batches summary for dashboard")
+            self.error_occurred.emit(str(e))
+
+
 class DashboardView(QWidget):
     """Business insights screen: yearly and period-scoped sales charts and stats."""
 
@@ -150,11 +171,13 @@ class DashboardView(QWidget):
         self._yearly_loading: bool = False
         self._periodic_loading: bool = False
         self._warranty_loading: bool = False
+        self._expiring_loading: bool = False
         self._yearly_generation: int = 0
         self._periodic_generation: int = 0
         self._yearly_worker: _YearlyWorker | None = None
         self._periodic_worker: _PeriodicWorker | None = None
         self._warranty_worker: _WarrantyTileWorker | None = None
+        self._expiring_worker: _ExpiringBatchesWorker | None = None
         self.init_ui()
 
         from cbpos.ui.widgets.loading_overlay import LoadingOverlay
@@ -206,12 +229,13 @@ class DashboardView(QWidget):
         self._build_tax_today_panel(row3)
         layout.addLayout(row3, 3)
 
-        # === ROW 4: Categories Donut + Top Customers + Warranty Claims ===
+        # === ROW 4: Categories Donut + Top Customers + Warranty Claims + Expiring Batches ===
         row4 = QHBoxLayout()
         row4.setSpacing(16)
         self._build_categories_panel(row4)
         self._build_customers_panel(row4)
         self._build_warranty_claims_panel(row4)
+        self._build_expiring_batches_panel(row4)
         layout.addLayout(row4, 3)
 
         scroll.setWidget(container)
@@ -624,6 +648,81 @@ class DashboardView(QWidget):
         panel.setMinimumWidth(220)
         parent_layout.addWidget(panel, 1)
 
+    def _build_expiring_batches_panel(self, parent_layout: QHBoxLayout) -> None:
+        panel = QFrame()
+        panel.setObjectName("ExpiringBatchesPanel")
+        vbox = QVBoxLayout(panel)
+        vbox.setContentsMargins(16, 12, 16, 12)
+        vbox.setSpacing(8)
+
+        header = QHBoxLayout()
+        self.lbl_expiring_batches_title = QLabel()
+        self.lbl_expiring_batches_title.setObjectName("PanelTitle")
+        header.addWidget(self.lbl_expiring_batches_title)
+        header.addStretch()
+        vbox.addLayout(header)
+
+        def _make_clickable_batch_card(title_lbl: QLabel, value_lbl: QLabel, filter_mode: str) -> QFrame:
+            card = QFrame()
+            card.setObjectName("ClickableStatCard")
+            card.setCursor(Qt.CursorShape.PointingHandCursor)
+            card_layout = QVBoxLayout(card)
+            card_layout.setContentsMargins(12, 8, 12, 8)
+            card_layout.setSpacing(2)
+            card_layout.addWidget(title_lbl)
+            card_layout.addWidget(value_lbl)
+
+            card.mousePressEvent = lambda e: self._on_open_expiring_batches(filter_mode)
+            return card
+
+        # Expiring Soon (< 30 days)
+        self.lbl_expiring_soon_title = QLabel()
+        self.lbl_expiring_soon_title.setObjectName("StatLabel")
+        self.lbl_expiring_soon_val = QLabel("0")
+        self.lbl_expiring_soon_val.setObjectName("StatBigValue")
+        vbox.addWidget(_make_clickable_batch_card(self.lbl_expiring_soon_title, self.lbl_expiring_soon_val, "30"))
+
+        # Expired
+        self.lbl_expired_title = QLabel()
+        self.lbl_expired_title.setObjectName("StatLabel")
+        self.lbl_expired_val = QLabel("0")
+        self.lbl_expired_val.setObjectName("StatValue")
+        vbox.addWidget(_make_clickable_batch_card(self.lbl_expired_title, self.lbl_expired_val, "expired"))
+
+        vbox.addStretch()
+        self.expiring_batches_panel = panel
+        panel.setMinimumWidth(220)
+        parent_layout.addWidget(panel, 1)
+
+    def _on_open_expiring_batches(self, initial_tab: str = "30") -> None:
+        """Open Expiring Batches dialog with specified filter (#926)."""
+        from cbpos.ui.dialogs.expiring_batches_dialog import ExpiringBatchesDialog
+
+        dlg = ExpiringBatchesDialog(parent=self, initial_tab=initial_tab)
+        if dlg.exec():
+            self._refresh_expiring_batches_tile()
+
+    def _refresh_expiring_batches_tile(self) -> None:
+        """Start worker to load expiring batches counts off UI thread (#926)."""
+        if self._expiring_loading:
+            return
+        self._expiring_loading = True
+        worker = _ExpiringBatchesWorker(self)
+        self._expiring_worker = worker
+        worker.loaded.connect(self._on_expiring_batches_tile_ready)
+        worker.error_occurred.connect(self._on_expiring_batches_tile_error)
+        start_background_job(worker)
+
+    def _on_expiring_batches_tile_ready(self, summary: dict[str, int]) -> None:
+        """Update expiring batches tile counts safely on UI thread."""
+        self._expiring_loading = False
+        self.lbl_expiring_soon_val.setText(str(summary.get("expiring_30", 0)))
+        self.lbl_expired_val.setText(str(summary.get("expired", 0)))
+
+    def _on_expiring_batches_tile_error(self, message: str) -> None:
+        """Handle worker failure by clearing in-flight flag."""
+        self._expiring_loading = False
+
     def _on_open_claims_board(self, filter_status: str) -> None:
         """Open Warranty Claims board with specified filter (#830)."""
         from cbpos.ui.views.warranty_claims_board_view import WarrantyClaimsBoardDialog
@@ -684,6 +783,10 @@ class DashboardView(QWidget):
             self.lbl_open_claims_title.setText(_t("dashboard.open_claims", default="Open Claims"))
             self.lbl_ready_pickup_title.setText(_t("dashboard.ready_for_pickup", default="Ready for Pickup"))
             self.lbl_overdue_supplier_title.setText(_t("dashboard.overdue_supplier", default="At Supplier (> 14 days)"))
+        if hasattr(self, "lbl_expiring_batches_title"):
+            self.lbl_expiring_batches_title.setText(_t("dashboard.expiring_batches_title", default="Expiring Soon"))
+            self.lbl_expiring_soon_title.setText(_t("dashboard.card_expiring_soon", default="Expiring Soon"))
+            self.lbl_expired_title.setText(_t("dashboard.card_expired", default="Expired"))
 
     # ------------------------------------------------------------------
     # Data loading
@@ -695,10 +798,20 @@ class DashboardView(QWidget):
         self.refresh_all()
 
     def refresh_all(self) -> None:
-        """Refresh yearly, periodic, and warranty data."""
+        """Refresh yearly, periodic, warranty, and expiring batches data."""
+        from cbpos.core.constants.features import Features
+        from cbpos.core.services.feature_flags import feature_visible
+
         self.tax_today_panel.setVisible(TaxService.is_vat_active())
         self._refresh_yearly()
         self._refresh_warranty_tile()
+
+        is_batches = feature_visible(Features.BATCHES) or feature_visible(Features.EXPIRY_DATES)
+        if hasattr(self, "expiring_batches_panel"):
+            self.expiring_batches_panel.setVisible(is_batches)
+        if is_batches:
+            self._refresh_expiring_batches_tile()
+
         self.refresh_periodic()
 
     def _refresh_yearly(self) -> None:

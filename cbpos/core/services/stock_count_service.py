@@ -136,6 +136,30 @@ class StockCountService:
             count = 0
 
             for product in products:
+                if getattr(product, "tracks_batches", False):
+                    from cbpos.core.models import ProductBatch
+                    from cbpos.core.services.batch_service import BatchService
+
+                    batches = (
+                        session.query(ProductBatch)
+                        .filter(ProductBatch.product_id == product.id, ProductBatch.is_active.is_(True))
+                        .all()
+                    )
+                    if not batches:
+                        opening_b = BatchService.create_synthetic_opening_batch(product, session=session)
+                        batches = [opening_b] if opening_b else []
+
+                    for b in batches:
+                        item = StockCountItem(
+                            stock_count_id=stock_count_id,
+                            product_id=product.id,
+                            batch_id=b.id,
+                            expected_qty=b.qty_on_hand,
+                        )
+                        session.add(item)
+                        count += 1
+                    continue
+
                 if product.id in existing_ids:
                     continue
 
@@ -156,39 +180,88 @@ class StockCountService:
             return count
 
     @staticmethod
-    def add_single_item(stock_count_id: int, product_id: int) -> StockCountItem:
-        """
-        Add a single product to the stock count (e.g. via barcode scan).
-
-        Args:
-            stock_count_id: Stock count document ID.
-            product_id: Product to add.
-
-        Returns:
-            The created StockCountItem.
-
-        Raises:
-            ValueError: If product already in count, count not in DRAFT, or
-                the product is a service (services carry no stock, so
-                ``add_all_products`` leaves them out too).
-        """
+    def add_single_item(stock_count_id: int, product_id: int, batch_id: int | None = None) -> StockCountItem:
+        """Add a single product (or specific batch) to the stock count (e.g. via barcode scan)."""
         db = Database()
         with db.get_session() as session:
             stock_count = session.get(StockCount, stock_count_id)
             if not stock_count or stock_count.status != DocumentStatus.DRAFT:
                 raise ValueError("Stock count not found or not in DRAFT status.")
 
-            existing = (
-                session.query(StockCountItem).filter_by(stock_count_id=stock_count_id, product_id=product_id).first()
-            )
-            if existing:
-                raise ValueError("Product already in this stock count.")
-
             product = session.get(Product, product_id)
             if not product:
                 raise ValueError("Product not found.")
             if product.is_service:
                 raise ValueError("Service items are not stock-counted.")
+
+            from cbpos.core.models import ProductBatch
+
+            if batch_id is not None:
+                existing = (
+                    session.query(StockCountItem)
+                    .filter_by(stock_count_id=stock_count_id, product_id=product_id, batch_id=batch_id)
+                    .first()
+                )
+                if existing:
+                    raise ValueError("Product batch already in this stock count.")
+
+                batch = session.get(ProductBatch, batch_id)
+                expected = batch.qty_on_hand if batch else Decimal("0.000")
+                item = StockCountItem(
+                    stock_count_id=stock_count_id,
+                    product_id=product_id,
+                    batch_id=batch_id,
+                    expected_qty=expected,
+                )
+                session.add(item)
+                session.commit()
+                session.refresh(item)
+                return item
+
+            # batch_id is None
+            if getattr(product, "tracks_batches", False):
+                from cbpos.core.services.batch_service import BatchService
+
+                batches = (
+                    session.query(ProductBatch)
+                    .filter(ProductBatch.product_id == product_id, ProductBatch.is_active.is_(True))
+                    .all()
+                )
+                if not batches:
+                    opening_b = BatchService.create_synthetic_opening_batch(product, session=session)
+                    batches = [opening_b] if opening_b else []
+
+                if batches:
+                    first_item = None
+                    for b in batches:
+                        existing = (
+                            session.query(StockCountItem)
+                            .filter_by(stock_count_id=stock_count_id, product_id=product_id, batch_id=b.id)
+                            .first()
+                        )
+                        if not existing:
+                            it = StockCountItem(
+                                stock_count_id=stock_count_id,
+                                product_id=product_id,
+                                batch_id=b.id,
+                                expected_qty=b.qty_on_hand,
+                            )
+                            session.add(it)
+                            if first_item is None:
+                                first_item = it
+                    if first_item is not None:
+                        session.commit()
+                        session.refresh(first_item)
+                        return first_item
+                    raise ValueError("Product already in this stock count.")
+
+            existing = (
+                session.query(StockCountItem)
+                .filter_by(stock_count_id=stock_count_id, product_id=product_id, batch_id=None)
+                .first()
+            )
+            if existing:
+                raise ValueError("Product already in this stock count.")
 
             item = StockCountItem(
                 stock_count_id=stock_count_id,
@@ -225,8 +298,15 @@ class StockCountService:
             product = session.get(Product, item.product_id)
 
             # #861: Snapshot expected_qty when the line is first counted
-            if item.counted_qty is None and product:
-                item.expected_qty = product.stock_qty
+            if item.counted_qty is None:
+                if item.batch_id:
+                    from cbpos.core.models import ProductBatch
+
+                    batch = session.get(ProductBatch, item.batch_id)
+                    if batch:
+                        item.expected_qty = batch.qty_on_hand
+                elif product:
+                    item.expected_qty = product.stock_qty
 
             item.counted_qty = round_qty(counted_qty)
             item.variance_qty = round_qty(item.counted_qty - item.expected_qty)
@@ -275,8 +355,15 @@ class StockCountService:
             product = session.get(Product, item.product_id)
 
             # #861: Snapshot expected_qty when the line is first counted
-            if item.counted_qty is None and product:
-                item.expected_qty = product.stock_qty
+            if item.counted_qty is None:
+                if item.batch_id:
+                    from cbpos.core.models import ProductBatch
+
+                    batch = session.get(ProductBatch, item.batch_id)
+                    if batch:
+                        item.expected_qty = batch.qty_on_hand
+                elif product:
+                    item.expected_qty = product.stock_qty
 
             session.execute(
                 update(StockCountItem)
@@ -411,6 +498,7 @@ class StockCountService:
                         document_id=stock_count.id,
                         session=session,
                         enforce_non_negative=False,
+                        batch_id=item.batch_id,
                     )
 
             stock_count.total_variance_value = StockCountService.variance_totals(stock_count.items).discrepancy
@@ -462,11 +550,17 @@ class StockCountService:
                 stock_count_id,
                 options=[
                     joinedload(StockCount.items).joinedload(StockCountItem.product),
+                    joinedload(StockCount.items).joinedload(StockCountItem.batch),
                     joinedload(StockCount.user),
                 ],
             )
             if stock_count:
-                session.expunge(stock_count)
+                _ = stock_count.items
+                for it in stock_count.items:
+                    _ = it.product
+                    _ = it.batch
+                _ = stock_count.user
+                session.expunge_all()
             return stock_count
 
     @staticmethod

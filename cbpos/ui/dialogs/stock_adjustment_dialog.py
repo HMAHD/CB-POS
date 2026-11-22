@@ -1,4 +1,5 @@
 from decimal import Decimal
+from typing import Any
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
@@ -28,12 +29,22 @@ from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 class StockAdjustmentDialog(QDialog):
     """Dialog to record a manual stock quantity change (damage, theft, expiry, correction, etc.)."""
 
-    def __init__(self, product: Product, inventory_service: InventoryService | None = None, parent=None):
+    def __init__(
+        self,
+        product: Product,
+        inventory_service: InventoryService | None = None,
+        parent=None,
+        batch_id: int | None = None,
+        default_reason: str | None = None,
+    ):
         """Build the dialog for adjusting stock of `product`."""
         super().__init__(parent)
         self.setObjectName("StockAdjustmentDialog")
         self.product = product
         self.inventory_service = inventory_service or InventoryService()
+        self.initial_batch_id = batch_id
+        self.default_reason = default_reason
+        self.cmb_batch: QComboBox | None = None
 
         self.setWindowTitle(_t("stock_adjust.title", name=product.name_en))
         self.setMinimumWidth(440)
@@ -101,6 +112,27 @@ class StockAdjustmentDialog(QDialog):
 
         form_layout.addRow("", mode_qty_layout)
 
+        # Batch combo if product tracks batches (#926)
+        if getattr(self.product, "tracks_batches", False):
+            from cbpos.core.services.batch_service import BatchService
+
+            self.cmb_batch = QComboBox()
+            self.cmb_batch.setObjectName("CmbBatch")
+            batches = BatchService.get_batches_for_product(self.product.id)
+            self.cmb_batch.addItem(_t("stock_adjust.select_batch", default="-- Select Batch --"), None)
+            selected_idx = 0
+            for idx, b in enumerate(batches, start=1):
+                b_str = b.batch_no or "-"
+                exp_str = f"Exp: {b.expiry_date.strftime('%Y-%m-%d')}" if b.expiry_date else "No Exp"
+                qty_str = f"Qty: {b.qty_on_hand}"
+                self.cmb_batch.addItem(f"{b_str} ({exp_str}, {qty_str})", b.id)
+                if self.initial_batch_id and b.id == self.initial_batch_id:
+                    selected_idx = idx
+            if len(batches) == 1 and not self.initial_batch_id:
+                selected_idx = 1
+            self.cmb_batch.setCurrentIndex(selected_idx)
+            form_layout.addRow(_t("stock_adjust.batch", default="Batch / Lot") + ":", self.cmb_batch)
+
         # Reason combo
         self.cmb_reason = QComboBox()
         self.cmb_reason.setObjectName("CmbReason")
@@ -110,6 +142,10 @@ class StockAdjustmentDialog(QDialog):
         self.cmb_reason.addItem(_t("stock_adjust.reason_found"), "FOUND")
         self.cmb_reason.addItem(_t("stock_adjust.reason_correction"), "CORRECTION")
         self.cmb_reason.addItem(_t("stock_adjust.reason_other"), "OTHER")
+        if self.default_reason:
+            r_idx = self.cmb_reason.findData(self.default_reason)
+            if r_idx >= 0:
+                self.cmb_reason.setCurrentIndex(r_idx)
         form_layout.addRow(_t("stock_adjust.reason") + ":", self.cmb_reason)
 
         # Note field
@@ -209,14 +245,28 @@ class StockAdjustmentDialog(QDialog):
         if not user:
             return
 
+        if getattr(self.product, "tracks_batches", False):
+            selected_batch_id = self.cmb_batch.currentData() if self.cmb_batch else None
+            if selected_batch_id is None:
+                QMessageBox.warning(
+                    self,
+                    _t("common.validation_error"),
+                    _t("stock_adjust.batch_required", default="Please select a batch for batch-tracked products."),
+                )
+                return
+
         try:
-            self.inventory_service.adjust_stock(
-                product_id=self.product.id,
-                qty_change=qty_change,
-                reason=reason_code,
-                user_id=user.id,
-                note=note,
-            )
+            selected_batch_id = self.cmb_batch.currentData() if self.cmb_batch else None
+            kwargs: dict[str, Any] = {
+                "product_id": self.product.id,
+                "qty_change": qty_change,
+                "reason": reason_code,
+                "user_id": user.id,
+                "note": note,
+            }
+            if selected_batch_id is not None:
+                kwargs["batch_id"] = selected_batch_id
+            self.inventory_service.adjust_stock(**kwargs)
             self.accept()
         except Exception as e:
             QMessageBox.critical(self, _t("common.error"), str(e))

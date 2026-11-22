@@ -388,3 +388,69 @@ def test_issue_937_purchase_view_populated_grid_prompts_on_feature_toggle_cancel
         purchase = db_session.query(Purchase).filter_by(reference_external="INV-AFTER-RELOAD").first()
         assert purchase is not None
         assert purchase.status == "COMPLETED"
+
+
+def test_issue_937_document_view_coherent_purchase_conversion_row(qtbot, db_session, test_user, test_supplier, units):
+    """DocumentBrowserView renders converted purchase rows with coherent quantity, unit, and total (#937)."""
+    from datetime import datetime
+
+    from cbpos.core.services.document_browser_service import DocumentBrowserService
+    from cbpos.core.services.purchase_service import GrnLine, GrnRequest, PurchaseService
+    from cbpos.core.utils.formatters import format_currency
+    from cbpos.ui.views.document_view import DocumentBrowserView
+
+    prod = Product(
+        name_en="Tri-Pack Battery",
+        barcode="B_TRIPACK",
+        cost=Decimal("10.00"),
+        price=Decimal("20.00"),
+        stock_qty=Decimal("0.000"),
+        unit_id=units["piece"].id,
+        purchase_unit_id=units["box"].id,
+        purchase_factor=Decimal("3.000"),
+    )
+    db_session.add(prod)
+    db_session.commit()
+
+    with patch.object(
+        FeatureFlags,
+        "is_on",
+        side_effect=lambda name: name == Features.UNIT_CONVERSION,
+    ):
+        req = GrnRequest(
+            supplier_id=test_supplier.id,
+            date_received=datetime.now(),
+            supplier_invoice_no="INV-COHERENT-ROW",
+            input_vat=Decimal("0.00"),
+            lines=[
+                GrnLine(
+                    product_id=prod.id,
+                    qty=Decimal("1.000"),
+                    unit_cost=Decimal("10.00"),
+                    mode="PURCHASE",
+                    purchase_unit_id=units["box"].id,
+                    purchase_factor=Decimal("3.000"),
+                    expected_unit_conversion_on=True,
+                    expected_base_unit_id=units["piece"].id,
+                )
+            ],
+            user_id=test_user.id,
+        )
+        purchase = PurchaseService.receive_goods(req)
+
+        doc = DocumentBrowserService.get_document_details(purchase.id, "purchase")
+        assert doc is not None
+
+        view = DocumentBrowserView()
+        qtbot.addWidget(view)
+        view.display_details(doc)
+
+        assert view.items_table.rowCount() == 1
+        # Column 0: Product Name
+        assert view.items_table.item(0, 0).text() == "Tri-Pack Battery"
+        # Column 1: Quantity with Unit
+        assert view.items_table.item(0, 1).text() in ("1 Box", "1.000 Box")
+        # Column 2: Unit Price
+        assert view.items_table.item(0, 2).text() == format_currency(Decimal("10.00"))
+        # Column 4: Total
+        assert view.items_table.item(0, 4).text() == format_currency(Decimal("10.00"))

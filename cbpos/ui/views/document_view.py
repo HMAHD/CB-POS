@@ -771,7 +771,11 @@ class DocumentBrowserView(QWidget, Activatable):
                     name_item.setToolTip(note)
                 set_item(idx, 0, name_item)
 
-                qty_item = TableItem(fmt_qty(item["quantity"]))
+                unit_label = (item.get("unit_name") or "").strip()
+                qty_text = (
+                    f"{fmt_qty(item['quantity'])} {unit_label}".strip() if unit_label else fmt_qty(item["quantity"])
+                )
+                qty_item = TableItem(qty_text)
                 qty_item.setTextAlignment(align_right_vc)
                 set_item(idx, 1, qty_item)
 

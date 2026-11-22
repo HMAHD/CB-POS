@@ -1248,7 +1248,15 @@ def test_issue_937_authoritative_supplier_line_total_rounding_reconciliation(
         purchase_unit_id=units["box"].id,
         purchase_factor=Decimal("3.000"),
     )
-    db_session.add(p_third)
+    p_base = Product(
+        name_en="Base Item",
+        barcode="BASE001",
+        price=Decimal("25.00"),
+        cost=Decimal("15.00"),
+        stock_qty=Decimal("0.000"),
+        unit_id=units["piece"].id,
+    )
+    db_session.add_all([p_third, p_base])
     db_session.commit()
 
     req = GrnRequest(
@@ -1265,22 +1273,375 @@ def test_issue_937_authoritative_supplier_line_total_rounding_reconciliation(
                 purchase_unit_id=units["box"].id,
                 purchase_factor=Decimal("3.000"),
                 expected_unit_conversion_on=True,
-            )
+                expected_base_unit_id=units["piece"].id,
+            ),
+            GrnLine(
+                product_id=p_base.id,
+                qty=Decimal("2.000"),
+                unit_cost=Decimal("15.00"),
+                mode="BASE",
+                expected_base_unit_id=units["piece"].id,
+            ),
         ],
         user_id=test_user.id,
     )
     purchase = PurchaseService.receive_goods(req)
 
-    # Authoritative total cost on Purchase is Rs 10.00
-    assert purchase.total_cost == Decimal("10.00")
+    # Authoritative total cost on Purchase is Rs 10.00 + 30.00 = 40.00
+    assert purchase.total_cost == Decimal("40.00")
 
-    item = purchase.items[0]
+    item0 = purchase.items[0]
     # line_total must be Rs 10.00, NOT 3 * 3.33 = 9.99
-    assert item.line_total == Decimal("10.00")
+    assert item0.line_total == Decimal("10.00")
     assert sum(it.line_total for it in purchase.items) == purchase.total_cost
 
-    # DocumentBrowserService must also report line_total == Rs 10.00
+    # DocumentBrowserService must report mapped values for converted and base rows
     doc = DocumentBrowserService.get_document_details(purchase.id, "purchase")
     assert doc is not None
-    assert doc["items"][0]["line_total"] == Decimal("10.00")
-    assert sum(it["line_total"] for it in doc["items"]) == doc["total_amount"]
+
+    conv_row = doc["items"][0]
+    assert conv_row["quantity"] == Decimal("1.000")
+    assert conv_row["unit_price"] == Decimal("10.00")
+    assert conv_row["line_total"] == Decimal("10.00")
+    assert conv_row["unit_name"] == "Box"
+    assert conv_row["purchase_qty"] == Decimal("1.000")
+    assert conv_row["purchase_unit_cost"] == Decimal("10.00")
+    assert conv_row["purchase_unit_name"] == "Box"
+
+    base_row = doc["items"][1]
+    assert base_row["quantity"] == Decimal("2.000")
+    assert base_row["unit_price"] == Decimal("15.00")
+    assert base_row["line_total"] == Decimal("30.00")
+    assert base_row["unit_name"] == "Piece"
+    assert "purchase_qty" not in base_row or base_row["purchase_qty"] is None
+
+    assert sum(it["line_total"] for it in doc["items"]) == doc["total_amount"] == Decimal("40.00")
+
+
+def test_issue_937_explicit_null_configuration_snapshots(db_session, test_user, test_supplier, conv_product, units):
+    """Explicit null configuration snapshots must be validated exactly against DB state (#937)."""
+    db_session.commit()
+
+    # Product with no units initially
+    p_bare = Product(
+        name_en="Bare Product",
+        barcode="BARE001",
+        price=Decimal("50.00"),
+        cost=Decimal("20.00"),
+        stock_qty=Decimal("0.000"),
+        unit_id=None,
+        purchase_unit_id=None,
+        purchase_factor=Decimal("1.000"),
+    )
+    db_session.add(p_bare)
+    db_session.commit()
+
+    # --- receive_goods cases ---
+
+    # 1. Base unit None -> unit: caller observed unit_id=None, but product now has piece
+    p_bare.unit_id = units["piece"].id
+    db_session.commit()
+
+    req_base_none_to_unit = GrnRequest(
+        supplier_id=test_supplier.id,
+        date_received=datetime.now(),
+        supplier_invoice_no="INV-BASE-NONE-TO-UNIT",
+        input_vat=Decimal("0.00"),
+        lines=[
+            GrnLine(
+                product_id=p_bare.id,
+                qty=Decimal("5.000"),
+                unit_cost=Decimal("20.00"),
+                mode="BASE",
+                expected_base_unit_id=None,  # Observed None, but product has piece
+            )
+        ],
+        user_id=test_user.id,
+    )
+    with pytest.raises(ValueError, match=r"stale_conversion_configuration.*base unit changed"):
+        PurchaseService.receive_goods(req_base_none_to_unit)
+    assert db_session.query(Purchase).filter_by(reference_external="INV-BASE-NONE-TO-UNIT").count() == 0
+
+    # 2. Base unit unit -> None: caller observed unit_id=piece, but product cleared to None
+    p_bare.unit_id = None
+    db_session.commit()
+
+    req_base_unit_to_none = GrnRequest(
+        supplier_id=test_supplier.id,
+        date_received=datetime.now(),
+        supplier_invoice_no="INV-BASE-UNIT-TO-NONE",
+        input_vat=Decimal("0.00"),
+        lines=[
+            GrnLine(
+                product_id=p_bare.id,
+                qty=Decimal("5.000"),
+                unit_cost=Decimal("20.00"),
+                mode="BASE",
+                expected_base_unit_id=units["piece"].id,  # Observed piece, but product has None
+            )
+        ],
+        user_id=test_user.id,
+    )
+    with pytest.raises(ValueError, match=r"stale_conversion_configuration.*base unit changed"):
+        PurchaseService.receive_goods(req_base_unit_to_none)
+    assert db_session.query(Purchase).filter_by(reference_external="INV-BASE-UNIT-TO-NONE").count() == 0
+
+    # 3. Purchase unit None -> unit in BASE mode: caller observed purchase_unit_id=None, but product now has box
+    req_purch_none_to_unit_base = GrnRequest(
+        supplier_id=test_supplier.id,
+        date_received=datetime.now(),
+        supplier_invoice_no="INV-PURCH-NONE-TO-UNIT-BASE",
+        input_vat=Decimal("0.00"),
+        lines=[
+            GrnLine(
+                product_id=conv_product.id,  # has purchase_unit_id = box
+                qty=Decimal("5.000"),
+                unit_cost=Decimal("20.00"),
+                mode="BASE",
+                purchase_unit_id=None,  # Observed None, but product has box
+            )
+        ],
+        user_id=test_user.id,
+    )
+    with pytest.raises(ValueError, match=r"stale_conversion_configuration.*purchase unit changed"):
+        PurchaseService.receive_goods(req_purch_none_to_unit_base)
+    assert db_session.query(Purchase).filter_by(reference_external="INV-PURCH-NONE-TO-UNIT-BASE").count() == 0
+
+    # 4. Purchase unit None -> unit in PURCHASE mode: line passes purchase_unit_id=None, product has box
+    req_purch_none_to_unit_purch = GrnRequest(
+        supplier_id=test_supplier.id,
+        date_received=datetime.now(),
+        supplier_invoice_no="INV-PURCH-NONE-TO-UNIT-PURCH",
+        input_vat=Decimal("0.00"),
+        lines=[
+            GrnLine(
+                product_id=conv_product.id,
+                qty=Decimal("1.000"),
+                unit_cost=Decimal("100.00"),
+                mode="PURCHASE",
+                purchase_unit_id=None,  # Observed None, but product has box
+            )
+        ],
+        user_id=test_user.id,
+    )
+    with pytest.raises(ValueError, match=r"stale_conversion_configuration.*purchase unit changed"):
+        PurchaseService.receive_goods(req_purch_none_to_unit_purch)
+    assert db_session.query(Purchase).filter_by(reference_external="INV-PURCH-NONE-TO-UNIT-PURCH").count() == 0
+
+    # 5. Purchase unit unit -> None in BASE mode: caller observed box, but product cleared to None
+    conv_product.purchase_unit_id = None
+    db_session.commit()
+
+    req_purch_unit_to_none_base = GrnRequest(
+        supplier_id=test_supplier.id,
+        date_received=datetime.now(),
+        supplier_invoice_no="INV-PURCH-UNIT-TO-NONE-BASE",
+        input_vat=Decimal("0.00"),
+        lines=[
+            GrnLine(
+                product_id=conv_product.id,
+                qty=Decimal("5.000"),
+                unit_cost=Decimal("20.00"),
+                mode="BASE",
+                purchase_unit_id=units["box"].id,  # Observed box, product now None
+            )
+        ],
+        user_id=test_user.id,
+    )
+    with pytest.raises(ValueError, match=r"stale_conversion_configuration.*purchase unit changed"):
+        PurchaseService.receive_goods(req_purch_unit_to_none_base)
+    assert db_session.query(Purchase).filter_by(reference_external="INV-PURCH-UNIT-TO-NONE-BASE").count() == 0
+
+    # 6. Purchase unit unit -> None in PURCHASE mode: caller observed box, product cleared to None
+    req_purch_unit_to_none_purch = GrnRequest(
+        supplier_id=test_supplier.id,
+        date_received=datetime.now(),
+        supplier_invoice_no="INV-PURCH-UNIT-TO-NONE-PURCH",
+        input_vat=Decimal("0.00"),
+        lines=[
+            GrnLine(
+                product_id=conv_product.id,
+                qty=Decimal("1.000"),
+                unit_cost=Decimal("100.00"),
+                mode="PURCHASE",
+                purchase_unit_id=units["box"].id,  # Observed box, product has no purchase unit configured
+            )
+        ],
+        user_id=test_user.id,
+    )
+    with pytest.raises(
+        ValueError,
+        match=r"stale_conversion_configuration.*(has no purchase unit configured|purchase unit changed)",
+    ):
+        PurchaseService.receive_goods(req_purch_unit_to_none_purch)
+    assert db_session.query(Purchase).filter_by(reference_external="INV-PURCH-UNIT-TO-NONE-PURCH").count() == 0
+
+    # 7. Unchanged explicit None succeeds where valid (product has no base unit and no purchase unit)
+    req_unchanged_none_success = GrnRequest(
+        supplier_id=test_supplier.id,
+        date_received=datetime.now(),
+        supplier_invoice_no="INV-UNCHANGED-NONE-OK",
+        input_vat=Decimal("0.00"),
+        lines=[
+            GrnLine(
+                product_id=p_bare.id,  # unit_id=None, purchase_unit_id=None
+                qty=Decimal("3.000"),
+                unit_cost=Decimal("20.00"),
+                mode="BASE",
+                expected_base_unit_id=None,
+                purchase_unit_id=None,
+            )
+        ],
+        user_id=test_user.id,
+    )
+    p_ok = PurchaseService.receive_goods(req_unchanged_none_success)
+    assert p_ok.status == "COMPLETED"
+
+    # 8. Omitted legacy snapshots retain supported behavior (conv_product restored to box)
+    conv_product.purchase_unit_id = units["box"].id
+    conv_product.purchase_factor = Decimal("10.000")
+    db_session.commit()
+
+    req_legacy_omitted = GrnRequest(
+        supplier_id=test_supplier.id,
+        date_received=datetime.now(),
+        supplier_invoice_no="INV-LEGACY-OMITTED-OK",
+        input_vat=Decimal("0.00"),
+        lines=[
+            GrnLine(
+                product_id=conv_product.id,
+                qty=Decimal("2.000"),
+                unit_cost=Decimal("10.00"),
+                mode="BASE",
+                # expected_base_unit_id and purchase_unit_id omitted entirely!
+            )
+        ],
+        user_id=test_user.id,
+    )
+    p_legacy = PurchaseService.receive_goods(req_legacy_omitted)
+    assert p_legacy.status == "COMPLETED"
+
+    # --- commit_purchase cases ---
+
+    # 9. commit_purchase: base unit None -> unit
+    p_cp1 = PurchaseService.create_purchase(test_supplier.id, "INV-CP-BASE-NONE-TO-UNIT", test_user.id)
+    with pytest.raises(ValueError, match=r"stale_conversion_configuration.*base unit changed"):
+        PurchaseService.commit_purchase(
+            p_cp1.id,
+            [
+                {
+                    "product_id": conv_product.id,  # unit_id = piece
+                    "qty": Decimal("1.000"),
+                    "cost": Decimal("10.00"),
+                    "mode": "BASE",
+                    "expected_base_unit_id": None,  # Observed None, but product has piece
+                }
+            ],
+        )
+
+    # 10. commit_purchase: base unit unit -> None
+    p_bare.unit_id = None
+    db_session.commit()
+    p_cp2 = PurchaseService.create_purchase(test_supplier.id, "INV-CP-BASE-UNIT-TO-NONE", test_user.id)
+    with pytest.raises(ValueError, match=r"stale_conversion_configuration.*base unit changed"):
+        PurchaseService.commit_purchase(
+            p_cp2.id,
+            [
+                {
+                    "product_id": p_bare.id,  # unit_id = None
+                    "qty": Decimal("1.000"),
+                    "cost": Decimal("10.00"),
+                    "mode": "BASE",
+                    "expected_base_unit_id": units["piece"].id,  # Observed piece, product is None
+                }
+            ],
+        )
+
+    # 11. commit_purchase: purchase unit None -> unit in BASE mode
+    p_cp3 = PurchaseService.create_purchase(test_supplier.id, "INV-CP-PURCH-NONE-TO-UNIT-BASE", test_user.id)
+    with pytest.raises(ValueError, match=r"stale_conversion_configuration.*purchase unit changed"):
+        PurchaseService.commit_purchase(
+            p_cp3.id,
+            [
+                {
+                    "product_id": conv_product.id,  # purchase_unit_id = box
+                    "qty": Decimal("1.000"),
+                    "cost": Decimal("10.00"),
+                    "mode": "BASE",
+                    "purchase_unit_id": None,  # Observed None, product has box
+                }
+            ],
+        )
+
+    # 12. commit_purchase: purchase unit unit -> None in BASE mode
+    conv_product.purchase_unit_id = None
+    db_session.commit()
+    p_cp4 = PurchaseService.create_purchase(test_supplier.id, "INV-CP-PURCH-UNIT-TO-NONE-BASE", test_user.id)
+    with pytest.raises(ValueError, match=r"stale_conversion_configuration.*purchase unit changed"):
+        PurchaseService.commit_purchase(
+            p_cp4.id,
+            [
+                {
+                    "product_id": conv_product.id,  # purchase_unit_id = None
+                    "qty": Decimal("1.000"),
+                    "cost": Decimal("10.00"),
+                    "mode": "BASE",
+                    "purchase_unit_id": units["box"].id,  # Observed box, product has None
+                }
+            ],
+        )
+
+    # 13. commit_purchase: purchase unit unit -> None in PURCHASE mode
+    p_cp5 = PurchaseService.create_purchase(test_supplier.id, "INV-CP-PURCH-UNIT-TO-NONE-PURCH", test_user.id)
+    with pytest.raises(
+        ValueError,
+        match=r"stale_conversion_configuration.*(has no purchase unit configured|purchase unit changed)",
+    ):
+        PurchaseService.commit_purchase(
+            p_cp5.id,
+            [
+                {
+                    "product_id": conv_product.id,
+                    "qty": Decimal("1.000"),
+                    "cost": Decimal("10.00"),
+                    "mode": "PURCHASE",
+                    "purchase_unit_id": units["box"].id,
+                }
+            ],
+        )
+
+    # 14. commit_purchase: unchanged explicit None succeeds where valid
+    p_cp6 = PurchaseService.create_purchase(test_supplier.id, "INV-CP-UNCHANGED-NONE-OK", test_user.id)
+    p_cp6_res = PurchaseService.commit_purchase(
+        p_cp6.id,
+        [
+            {
+                "product_id": p_bare.id,  # unit_id = None, purchase_unit_id = None
+                "qty": Decimal("2.000"),
+                "cost": Decimal("10.00"),
+                "mode": "BASE",
+                "expected_base_unit_id": None,
+                "purchase_unit_id": None,
+            }
+        ],
+    )
+    assert p_cp6_res.status == "COMPLETED"
+
+    # 15. commit_purchase: omitted legacy snapshots retain supported behavior
+    conv_product.purchase_unit_id = units["box"].id
+    conv_product.purchase_factor = Decimal("10.000")
+    db_session.commit()
+    p_cp7 = PurchaseService.create_purchase(test_supplier.id, "INV-CP-LEGACY-OMITTED-OK", test_user.id)
+    p_cp7_res = PurchaseService.commit_purchase(
+        p_cp7.id,
+        [
+            {
+                "product_id": conv_product.id,
+                "qty": Decimal("2.000"),
+                "cost": Decimal("10.00"),
+                "mode": "BASE",
+                # no expected_base_unit_id or purchase_unit_id
+            }
+        ],
+    )
+    assert p_cp7_res.status == "COMPLETED"

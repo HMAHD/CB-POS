@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: U · Batch: U.0 discovery and re-baselining (#1041) · Branch: docs/phase-u-u0 · PR: — · Last session: 2026-11-22
+- Phase: U · Batch: U.0 discovery and re-baselining (#1041) · Branch: docs/phase-u-u0 · PR: #1042 (draft) · Last session: 2026-11-22
 
 ## Issues
 

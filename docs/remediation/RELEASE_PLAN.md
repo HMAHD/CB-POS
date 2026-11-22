@@ -357,12 +357,14 @@ The ordering principle: **data loss and money first, then security, then cross-t
 | 6 | Tax calculation and report truth | 16 | Yes | [phase-06](phases/phase-06-tax-reports.md) |
 | 7 | Printing, scanning, PDF, multilingual output, UI concurrency | 14 | Yes | [phase-07](phases/phase-07-printing-i18n-hardware.md) |
 | 8 | Release, legal, update checks, documentation | 8 | Yes | [phase-08](phases/phase-08-release-legal-docs.md) |
-| U | UI system: shared components (Claude) + screen migration (Gemini) | 13 | Yes (UI is release-critical, §0.7) | [phase-U](phases/phase-U-ui-system.md) |
+| 9 | Warranty and repairs (epic #820; internal pre-release exception D28) | 10 (+ epic #820) | Owner's call | [phase-09](phases/phase-09-warranty.md) |
+| 10A | Packaging and printing improvements (internal pre-release exception D31) | 4 | No | [phase-10a](phases/phase-10a-packaging-printing.md) |
+| 10B | Shop workflow features + feature-flag foundation (internal pre-release exception D34) | 9 | No | [phase-10b](phases/phase-10b-shop-workflows.md) |
+| U | UI/UX and UI architecture: U.0 discovery, shared foundations, journey migration | provisional map | Yes (UI is release-critical, §0.7) | [phase-U](phases/phase-U-ui-system.md) |
 | — | **Public release gate** (§1.3) | — | — | — |
-| 9 | Warranty and repairs (epic #820) | 10 (+ epic #820) | Owner's call | [phase-09](phases/phase-09-warranty.md) |
-| 10A | Packaging and printing improvements | 4 | No | [phase-10a](phases/phase-10a-packaging-printing.md) |
-| 10B | Shop workflow features (stock, catalog, POS) + feature-flag foundation | 9 | No | [phase-10b](phases/phase-10b-shop-workflows.md) |
-| 10C | Communication, finance, onboarding features | 9 (+ epic #944) | No | [phase-10c](phases/phase-10c-comms-finance-onboarding.md) |
+| 10C | Communication, finance, onboarding features — deferred under D37 | 9 (+ epic #944) | No | [phase-10c](phases/phase-10c-comms-finance-onboarding.md) |
+
+D28, D31, and D34 authorized Phases 9, 10A, and 10B as internal/test-only pre-release work; they did not pass the public-release gate. D42 amends D37(1) and D37(3): after #937, provisional U.0 discovery may overlap remaining Phase 10B work whose issue-specific owner gate has passed, and Gemini may continue Phase U if Claude usage is unavailable. Phase U product-code implementation waits for the Phase 10B exit gate, the exact final `main` SHA with green post-merge CI, the U.0 delta re-baseline, the completed retrospective integrity audit, and owner approval of the evidence-backed issue map. Phase 10C remains deferred.
 
 The tracking epics #832, #922 (pre-release) and #944 (feature backlog) close when all their children close.
 
@@ -383,9 +385,24 @@ Phase 1 (safety/auth/recovery)
                Phase 7 (printing/i18n)             Phase 8 (release/legal)
                         └─────────────────┬─────────────────┘
                                           v
-                                 PUBLIC RELEASE GATE
+                    owner-approved internal pre-release work
+                     Phase 9 ──> Phase 10A ──> Phase 10B
+                                          │
+                     after #937, in parallel:
+                     ├── issue-gated remaining Phase 10B work
+                     └── provisional U.0 discovery
+                                          │
+                       Phase 10B exit + final main SHA/green CI
                                           v
-                        Phase 9 (warranty) ──> 10A / 10B / 10C
+                  U.0 delta re-baseline + retrospective integrity audit
+                                          v
+                         owner-approved implementation map
+                                          v
+                              Phase U implementation
+                                          v
+                                 PUBLIC RELEASE GATE
+
+                         Phase 10C: deferred under D37/D42
 ```
 
 - Phases 2, 3A, 4 and 5 can run in parallel on separate branches once Phase 1 batch 1 (setup safety) and batch 2 (auth/session) are merged.
@@ -395,7 +412,7 @@ Phase 1 (safety/auth/recovery)
 
 ## 1.3 Public release gate
 
-- [ ] Phases 1–8 done; zero open `severity:critical` / `severity:high` issues
+- [ ] Phases 1–8 and all items in the owner-approved Phase U implementation map done; zero open `severity:critical` / `severity:high` issues
 - [ ] Full suite and pre-commit green on a clean checkout of `main`
 - [ ] Upgrade from every shipped release's database to head on SQLite and PostgreSQL
 - [ ] Multi-terminal smoke: Main PC and 2 tills, sales, refunds, catalog edits and permission changes all sync

@@ -1,10 +1,10 @@
-# Phase U — UI System: Shared Components and Screen Migration
+# Phase U — UI System: Discovery, Shared Foundations, and Screen Migration
 
-> **Agent:** before anything else, read `docs/remediation/RELEASE_PLAN.md` Part 0 (especially §0.7, the UI gate), `docs/remediation/UI_SYSTEM_AUDIT.md`, and decisions D16–D20 in `DECISIONS.md`.
-> **Two tracks.**
-> - **Foundation (UF-x)** is built by Claude (D19). Don't start a foundation item.
-> - **Migration (UM-x)** is yours. Each one lists the foundation items it needs. **Don't start a migration until its foundation items are merged.** Check that the component exists in `cbpos/ui/components/`; if it doesn't, tell the human.
-> Verified against `main` @ `393d377` on 2026-10-29.
+> **Agent:** before anything else, read `docs/remediation/RELEASE_PLAN.md` Part 0 (especially §0.7, the UI gate), `docs/remediation/PHASE_U_DISCOVERY_BRIEF.md`, `docs/remediation/UI_SYSTEM_AUDIT.md`, and decisions D16–D20 plus D37–D42 in `DECISIONS.md`.
+> **Status:** this file is the pre-discovery implementation baseline. It was verified against `main` @ `393d377` on 2026-10-29. D42 permits provisional U.0 discovery against post-#937 `main`, but a delta re-baseline against final Phase 10B is mandatory before owner approval or implementation.
+> **Ownership:** Claude starts every Phase U track under D37. D37 supersedes D19's split; D42 explicitly amends D37(3) so Gemini may continue Phase U from the execution playbook if Claude usage is unavailable, under the same gates.
+> **Discovery gate:** do not start UF or UM implementation until the Phase 10B exit gate and final-SHA re-baseline are recorded, U.0 has reconciled `UI_SYSTEM_AUDIT.md` and issues #963–#975, the retrospective integrity audit is complete with release/data-integrity blockers resolved, and the owner has approved the deduplicated issue map.
+> **Interaction model:** keyboard-first and mouse-friendly. Touch-specific optimization is outside current Phase U scope unless separately approved (D38).
 
 ## Goal
 
@@ -37,6 +37,14 @@ Every screen is built from the same few components. A change to one component, o
    - screenshots in dark and light, in English and Sinhala/Tamil, at 1366×768;
    - a keyboard-only walkthrough;
    - every state covered: loading, empty, error, permission-denied.
+
+---
+
+## U.0 — Discovery and re-baselining (must run first)
+
+Follow `docs/remediation/PHASE_U_DISCOVERY_BRIEF.md`. Inventory every UI surface, map ownership and dependencies, audit complete keyboard and mouse journeys, inspect both themes and all three languages, measure representative performance, and verify every existing finding against post-#937 `main`. Before U.0 completes, pass every checkbox in the Phase 10B exit gate, record its final `main` SHA and green post-merge CI, repeat both the discovery re-baseline and retrospective integrity-audit delta against that SHA, and resolve every surviving release or data-integrity blocker recorded in `docs/remediation/phase-u/RETROSPECTIVE_INTEGRITY_AUDIT.md`.
+
+U.0 ends with an owner-approved, deduplicated issue map derived from that evidence. The UF/UM items below may be retained, expanded, replaced, deferred, or rejected; retained work is regrouped into however many implementation batches the evidence supports.
 
 ---
 
@@ -83,9 +91,9 @@ Every screen is built from the same few components. A change to one component, o
 
 ---
 
-## Track 2 — Migration (Gemini)
+## Track 2 — Migration (Claude)
 
-Each item: read the linked audit rows, use the named components, and pass the UI gate. Sizes: S < 1 day, M 1–3 days, L > 3 days.
+After U.0 approval, each retained item must use the named foundations, satisfy its dependencies, and pass the UI gate. Sizes: S < 1 day, M 1–3 days, L > 3 days.
 
 ### UM-1 — Purchasing tabs and a Purchase Orders screen
 
@@ -205,7 +213,9 @@ Each item: read the linked audit rows, use the named components, and pass the UI
 
 ---
 
-## Issue map
+## Provisional issue map
+
+> U.0 must verify every row before implementation. Existing issue numbers are preserved for reconciliation, not treated as automatically approved scope.
 
 | Item | Issue | Owner | Needs |
 |---|---|---|---|
@@ -213,20 +223,21 @@ Each item: read the linked audit rows, use the named components, and pass the UI
 | UF-2 | #964 | Claude | — |
 | UF-3 | #965 | Claude | — |
 | UF-4 | #966 | Claude | — |
-| UM-1 | #967 | Gemini | UF-1, UF-3 |
-| UM-2 | #968 | Gemini | UF-3 |
-| UM-3 | #969 | Gemini | UF-3 |
-| UM-4 | #970 | Gemini | UF-1, UF-2 |
-| UM-5 | #971 | Gemini | UF-1 |
-| UM-6 | #972 | Gemini | — |
-| UM-7 | #973 | Gemini | UF-4 |
-| UM-8 | #974 | Gemini | — |
-| UM-9 | #975 | Gemini | UF-1, UF-4 |
+| UM-1 | #967 | Claude | UF-1, UF-3 |
+| UM-2 | #968 | Claude | UF-3 |
+| UM-3 | #969 | Claude | UF-3 |
+| UM-4 | #970 | Claude | UF-1, UF-2 |
+| UM-5 | #971 | Claude | UF-1 |
+| UM-6 | #972 | Claude | — |
+| UM-7 | #973 | Claude | UF-4 |
+| UM-8 | #974 | Claude | — |
+| UM-9 | #975 | Claude | UF-1, UF-4 |
 
 ## Exit gate
 
-- [ ] All UF and UM items merged and closed with closing comments (§0.10).
+- [ ] Phase 10B exit, final `main` SHA/green CI, U.0 delta re-baseline, retrospective integrity audit, and owner approval are recorded.
+- [ ] Every item in the owner-approved post-U.0 map has reached its approved disposition; this provisional map and gate were rewritten to match that map when approval was recorded.
 - [ ] Guardrails green: colour tokens (QSS and Python), menus with icons, views implement `on_activated`.
 - [ ] Remove the strict-xfail markers for #950 and #956.
 - [ ] Screenshots of every migrated screen in both themes plus si/ta attached to its PR.
-- [ ] `UI_SYSTEM_AUDIT.md` updated: each finding marked fixed with its PR number.
+- [ ] `UI_SYSTEM_AUDIT.md` updated: every finding records its approved disposition and, when fixed, its PR number.

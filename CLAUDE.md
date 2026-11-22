@@ -313,6 +313,12 @@ net_revenue = round_money(total_mrp) - vat - sscl
 
 ## UI/UX Guidelines
 
+### Interaction Model
+
+- CB POS is **keyboard-first and mouse-friendly**.
+- Keyboard navigation, shortcuts, focus order, visible focus, and Enter/Escape behavior are release requirements.
+- Touch-specific sizing, gestures, and interaction patterns are not current requirements unless separately approved.
+
 ### Color Palette
 
 **Dark Theme (`dark.qss`):**

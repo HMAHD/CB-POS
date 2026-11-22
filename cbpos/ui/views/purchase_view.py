@@ -297,7 +297,7 @@ class GrnNumericDelegate(QStyledItemDelegate):
         if col == 2:
             editor.setValidator(QRegularExpressionValidator(self._qty_regex, editor))
             editor.setToolTip(_t("grn.qty_positive"))
-        elif col in (3, 5):
+        else:
             editor.setValidator(QRegularExpressionValidator(self._cost_regex, editor))
             editor.setToolTip(_t("grn.cost_not_negative"))
         return editor
@@ -310,7 +310,7 @@ class GrnNumericDelegate(QStyledItemDelegate):
             val = Decimal(text)
             if col == 2 and val <= Decimal("0"):
                 return  # Refuse non-positive qty
-            if col in (3, 5) and val < Decimal("0"):
+            if col != 2 and val < Decimal("0"):
                 return  # Refuse negative cost
         except (InvalidOperation, ValueError):
             return
@@ -485,12 +485,20 @@ class PurchaseView(QWidget, Activatable):
 
         # Items Grid
         self._is_unit_conv = feature_visible(Features.UNIT_CONVERSION)
-        cols = 7 if self._is_unit_conv else 5
+        self._is_batches = feature_visible(Features.BATCHES) or feature_visible(Features.EXPIRY_DATES)
+        if self._is_unit_conv and self._is_batches:
+            cols = 10
+        elif self._is_unit_conv and not self._is_batches:
+            cols = 7
+        elif not self._is_unit_conv and self._is_batches:
+            cols = 8
+        else:
+            cols = 5
         self.grn_model = QStandardItemModel(0, cols)
 
         self.grn_table = QTableView()
         self.grn_table.setModel(self.grn_model)
-        self._rebuild_grn_table(self._is_unit_conv)
+        self._rebuild_grn_table(self._is_unit_conv, self._is_batches)
 
         self.shortcut_delete_line = QShortcut(QKeySequence(Qt.Key.Key_Delete), self.grn_table)
         self.shortcut_delete_line.activated.connect(self.remove_selected_grn_row)
@@ -654,30 +662,64 @@ class PurchaseView(QWidget, Activatable):
         self.product_search.setPlaceholderText(_t("purchase.product_search_placeholder"))
         self.btn_remove_line.setText(_t("purchase.remove_line"))
         self.btn_remove_line.setToolTip(_t("purchase.remove_line"))
-        if getattr(self, "_is_unit_conv", False):
-            self.grn_model.setHorizontalHeaderLabels(
-                [
-                    _t("purchase.grn_header_id"),
-                    _t("purchase.grn_header_product"),
-                    _t("purchase.grn_header_purchase_qty"),
-                    _t("purchase.grn_header_purchase_unit"),
-                    _t("purchase.grn_header_base_qty"),
-                    _t("purchase.grn_header_purchase_cost"),
-                    _t("purchase.grn_header_total"),
-                ]
-            )
-            align_numeric_headers(self.grn_table, [2, 4, 5, 6])
+        is_conv = getattr(self, "_is_unit_conv", False)
+        is_batch = getattr(self, "_is_batches", False)
+        if is_conv:
+            if is_batch:
+                self.grn_model.setHorizontalHeaderLabels(
+                    [
+                        _t("purchase.grn_header_id"),
+                        _t("purchase.grn_header_product"),
+                        _t("purchase.grn_header_purchase_qty"),
+                        _t("purchase.grn_header_purchase_unit"),
+                        _t("purchase.grn_header_base_qty"),
+                        _t("purchase.grn_header_purchase_cost"),
+                        _t("purchase.grn_header_batch_no", default="Batch No"),
+                        _t("purchase.grn_header_expiry", default="Expiry (MM/YY)"),
+                        _t("purchase.grn_header_mrp", default="MRP"),
+                        _t("purchase.grn_header_total"),
+                    ]
+                )
+                align_numeric_headers(self.grn_table, [2, 4, 5, 8, 9])
+            else:
+                self.grn_model.setHorizontalHeaderLabels(
+                    [
+                        _t("purchase.grn_header_id"),
+                        _t("purchase.grn_header_product"),
+                        _t("purchase.grn_header_purchase_qty"),
+                        _t("purchase.grn_header_purchase_unit"),
+                        _t("purchase.grn_header_base_qty"),
+                        _t("purchase.grn_header_purchase_cost"),
+                        _t("purchase.grn_header_total"),
+                    ]
+                )
+                align_numeric_headers(self.grn_table, [2, 4, 5, 6])
         else:
-            self.grn_model.setHorizontalHeaderLabels(
-                [
-                    _t("purchase.grn_header_id"),
-                    _t("purchase.grn_header_product"),
-                    _t("purchase.grn_header_qty"),
-                    _t("purchase.grn_header_cost"),
-                    _t("purchase.grn_header_total"),
-                ]
-            )
-            align_numeric_headers(self.grn_table, [2, 3, 4])
+            if is_batch:
+                self.grn_model.setHorizontalHeaderLabels(
+                    [
+                        _t("purchase.grn_header_id"),
+                        _t("purchase.grn_header_product"),
+                        _t("purchase.grn_header_qty"),
+                        _t("purchase.grn_header_cost"),
+                        _t("purchase.grn_header_batch_no", default="Batch No"),
+                        _t("purchase.grn_header_expiry", default="Expiry (MM/YY)"),
+                        _t("purchase.grn_header_mrp", default="MRP"),
+                        _t("purchase.grn_header_total"),
+                    ]
+                )
+                align_numeric_headers(self.grn_table, [2, 3, 6, 7])
+            else:
+                self.grn_model.setHorizontalHeaderLabels(
+                    [
+                        _t("purchase.grn_header_id"),
+                        _t("purchase.grn_header_product"),
+                        _t("purchase.grn_header_qty"),
+                        _t("purchase.grn_header_cost"),
+                        _t("purchase.grn_header_total"),
+                    ]
+                )
+                align_numeric_headers(self.grn_table, [2, 3, 4])
         self.btn_commit.setText(_t("purchase.btn_commit_stock"))
         self.total_label.setText(f"{_t('purchase.total_cost_label')}: 0.00")
 
@@ -930,14 +972,16 @@ class PurchaseView(QWidget, Activatable):
         self.update_total()
 
     def _add_grn_row(self, product, qty: Decimal, cost: Decimal, mode: str = "AUTO") -> None:
-        """Append one line item to the GRN grid and the underlying grn_items list."""
+        """Append one line item to the GRN grid and the underlying grn_items list (#937, #926)."""
         is_conv = getattr(self, "_is_unit_conv", False)
+        is_batch = getattr(self, "_is_batches", False)
         has_prod_conv = is_conv and _product_has_conversion(product)
 
         resolved_mode = mode
         if resolved_mode == "AUTO":
             resolved_mode = "PURCHASE" if has_prod_conv else "BASE"
 
+        default_mrp = getattr(product, "price", Decimal("0.00")) or Decimal("0.00")
         self.grn_items.append(
             {
                 "product": product,
@@ -948,6 +992,9 @@ class PurchaseView(QWidget, Activatable):
                 "purchase_unit_id": getattr(product, "purchase_unit_id", None) if product else None,
                 "purchase_factor": _get_product_purchase_factor(product) if product else Decimal("1.000"),
                 "expected_unit_conversion_on": is_conv,
+                "batch_no": None,
+                "expiry_date": None,
+                "mrp": default_mrp,
             }
         )
 
@@ -962,6 +1009,11 @@ class PurchaseView(QWidget, Activatable):
         name_item = QStandardItem(name_str)
         name_item.setFlags(name_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
         self.grn_model.setItem(row, 1, name_item)
+
+        batch_no_item = QStandardItem("")
+        expiry_item = QStandardItem("")
+        mrp_item = QStandardItem(str(default_mrp))
+        mrp_item.setTextAlignment(NUMERIC_ALIGNMENT)
 
         if is_conv:
             if resolved_mode == "PURCHASE":
@@ -997,12 +1049,19 @@ class PurchaseView(QWidget, Activatable):
             cost_item.setTextAlignment(NUMERIC_ALIGNMENT)
             self.grn_model.setItem(row, 5, cost_item)
 
-            # col 6: total (read-only)
+            # total (read-only)
             tot = round_money(qty * cost)
             tot_item = QStandardItem(format(tot, ".2f"))
             tot_item.setFlags(tot_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
             tot_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.grn_model.setItem(row, 6, tot_item)
+
+            if is_batch:
+                self.grn_model.setItem(row, 6, batch_no_item)
+                self.grn_model.setItem(row, 7, expiry_item)
+                self.grn_model.setItem(row, 8, mrp_item)
+                self.grn_model.setItem(row, 9, tot_item)
+            else:
+                self.grn_model.setItem(row, 6, tot_item)
         else:
             qty_item = QStandardItem(str(qty))
             qty_item.setTextAlignment(NUMERIC_ALIGNMENT)
@@ -1012,24 +1071,51 @@ class PurchaseView(QWidget, Activatable):
             cost_item.setTextAlignment(NUMERIC_ALIGNMENT)
             self.grn_model.setItem(row, 3, cost_item)
 
-            tot_item = QStandardItem(format(qty * cost, ".2f"))
+            tot = round_money(qty * cost)
+            tot_item = QStandardItem(format(tot, ".2f"))
             tot_item.setFlags(tot_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
             tot_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.grn_model.setItem(row, 4, tot_item)
+
+            if is_batch:
+                self.grn_model.setItem(row, 4, batch_no_item)
+                self.grn_model.setItem(row, 5, expiry_item)
+                self.grn_model.setItem(row, 6, mrp_item)
+                self.grn_model.setItem(row, 7, tot_item)
+            else:
+                self.grn_model.setItem(row, 4, tot_item)
 
     def _on_grn_item_changed(self, item: QStandardItem) -> None:
-        """Recalculate line total and footer total when quantity or cost is edited (#902, #937)."""
+        """Recalculate line total and capture batch attributes when cells are edited (#902, #937, #926)."""
         col = item.column()
+        row = item.row()
         is_conv = getattr(self, "_is_unit_conv", False)
-        target_cols = (2, 5) if is_conv else (2, 3)
+        is_batch = getattr(self, "_is_batches", False)
 
-        if col in target_cols:
-            row = item.row()
+        qty_col = 2
+        cost_col = 5 if is_conv else 3
+        if is_conv and is_batch:
+            batch_col, expiry_col, mrp_col, tot_col = 6, 7, 8, 9
+        elif is_conv and not is_batch:
+            batch_col, expiry_col, mrp_col, tot_col = -1, -1, -1, 6
+        elif not is_conv and is_batch:
+            batch_col, expiry_col, mrp_col, tot_col = 4, 5, 6, 7
+        else:
+            batch_col, expiry_col, mrp_col, tot_col = -1, -1, -1, 4
+
+        if row < len(self.grn_items):
+            if col == batch_col:
+                self.grn_items[row]["batch_no"] = item.text().strip() or None
+            elif col == expiry_col:
+                self.grn_items[row]["expiry_date"] = item.text().strip() or None
+            elif col == mrp_col:
+                val = item.text().strip()
+                try:
+                    self.grn_items[row]["mrp"] = Decimal(val) if val else None
+                except (InvalidOperation, ValueError):
+                    pass
+
+        if col in (qty_col, cost_col):
             try:
-                qty_col = 2
-                cost_col = 5 if is_conv else 3
-                tot_col = 6 if is_conv else 4
-
                 qty_item = self.grn_model.item(row, qty_col)
                 cost_item = self.grn_model.item(row, cost_col)
                 if qty_item and cost_item:
@@ -1228,6 +1314,16 @@ class PurchaseView(QWidget, Activatable):
             items_data = []
             grn_lines = []
             is_conv = getattr(self, "_is_unit_conv", False)
+            is_batch = getattr(self, "_is_batches", False)
+            if is_conv and is_batch:
+                batch_col, expiry_col, mrp_col = 6, 7, 8
+            elif is_conv and not is_batch:
+                batch_col, expiry_col, mrp_col = -1, -1, -1
+            elif not is_conv and is_batch:
+                batch_col, expiry_col, mrp_col = 4, 5, 6
+            else:
+                batch_col, expiry_col, mrp_col = -1, -1, -1
+
             for i in range(self.grn_model.rowCount()):
                 # Read from table in case user edited
                 prod_id = int(self.grn_model.item(i, 0).text())
@@ -1266,6 +1362,56 @@ class PurchaseView(QWidget, Activatable):
                     base_qty = qty
                     line_mode = "BASE"
 
+                if is_batch:
+                    batch_item = self.grn_model.item(i, batch_col)
+                    line_batch_no = batch_item.text().strip() if batch_item else ""
+                    line_batch_no = line_batch_no or None
+
+                    expiry_item = self.grn_model.item(i, expiry_col)
+                    line_expiry_str = expiry_item.text().strip() if expiry_item else ""
+                    line_expiry_str = line_expiry_str or None
+
+                    mrp_item = self.grn_model.item(i, mrp_col)
+                    mrp_str = mrp_item.text().strip() if mrp_item else ""
+                    if mrp_str:
+                        try:
+                            line_mrp = Decimal(mrp_str)
+                            if line_mrp < Decimal("0.00"):
+                                raise InvalidOperation()
+                        except InvalidOperation:
+                            QMessageBox.warning(self, _t("common.error"), _t("purchase.error_invalid_line"))
+                            return
+                    else:
+                        line_mrp = None
+                else:
+                    line_batch_no = item_entry.get("batch_no")
+                    line_expiry_str = item_entry.get("expiry_date")
+                    line_mrp = item_entry.get("mrp")
+
+                parsed_expiry = None
+                if line_expiry_str:
+                    try:
+                        from cbpos.core.services.batch_service import BatchService
+
+                        parsed_expiry = BatchService.parse_mmyy_to_month_end(line_expiry_str)
+                    except ValueError:
+                        QMessageBox.warning(
+                            self,
+                            _t("common.validation_error"),
+                            _t("errors.invalid_expiry_format"),
+                        )
+                        return
+
+                if getattr(product, "tracks_batches", False):
+                    if not line_batch_no and parsed_expiry is None:
+                        p_name = getattr(product, "name_en", str(prod_id))
+                        QMessageBox.warning(
+                            self,
+                            _t("common.validation_error"),
+                            _t("errors.batch_or_expiry_required", name=p_name),
+                        )
+                        return
+
                 items_data.append(
                     {
                         "product_id": prod_id,
@@ -1276,6 +1422,9 @@ class PurchaseView(QWidget, Activatable):
                         "purchase_unit_id": snap_p_unit_id,
                         "purchase_factor": snap_factor,
                         "expected_unit_conversion_on": snap_conv_on,
+                        "batch_no": line_batch_no,
+                        "expiry_date": parsed_expiry,
+                        "mrp": line_mrp,
                     }
                 )
                 grn_lines.append(
@@ -1288,6 +1437,9 @@ class PurchaseView(QWidget, Activatable):
                         purchase_unit_id=snap_p_unit_id,
                         purchase_factor=snap_factor,
                         expected_unit_conversion_on=snap_conv_on,
+                        batch_no=line_batch_no,
+                        expiry_date=parsed_expiry,
+                        mrp=line_mrp,
                     )
                 )
 
@@ -1928,10 +2080,21 @@ class PurchaseView(QWidget, Activatable):
             logger.warning("Failed to record supplier balance adjustment: %s", e)
             QMessageBox.warning(self, _t("common.error"), translate_error(str(e)))
 
-    def _rebuild_grn_table(self, is_unit_conv: bool) -> None:
-        """Rebuild GRN table structure, columns, delegates, and headers on feature toggle (#937)."""
+    def _rebuild_grn_table(self, is_unit_conv: bool, is_batches: bool | None = None) -> None:
+        """Rebuild GRN table structure, columns, delegates, and headers on feature toggle (#937, #926)."""
         self._is_unit_conv = is_unit_conv
-        cols = 7 if is_unit_conv else 5
+        if is_batches is None:
+            is_batches = feature_visible(Features.BATCHES) or feature_visible(Features.EXPIRY_DATES)
+        self._is_batches = is_batches
+
+        if is_unit_conv and is_batches:
+            cols = 10
+        elif is_unit_conv and not is_batches:
+            cols = 7
+        elif not is_unit_conv and is_batches:
+            cols = 8
+        else:
+            cols = 5
 
         self.grn_model.blockSignals(True)
         try:
@@ -1941,60 +2104,127 @@ class PurchaseView(QWidget, Activatable):
         finally:
             self.grn_model.blockSignals(False)
 
+        for c in range(10):
+            self.grn_table.setItemDelegateForColumn(c, None)
+
+        self.grn_numeric_delegate = GrnNumericDelegate(self.grn_table)
+
         if is_unit_conv:
-            configure_table_columns(
-                self.grn_table.horizontalHeader(),
-                {
-                    0: QHeaderView.ResizeMode.ResizeToContents,
-                    1: QHeaderView.ResizeMode.Stretch,
-                    2: QHeaderView.ResizeMode.ResizeToContents,
-                    3: QHeaderView.ResizeMode.ResizeToContents,
-                    4: QHeaderView.ResizeMode.ResizeToContents,
-                    5: QHeaderView.ResizeMode.ResizeToContents,
-                    6: QHeaderView.ResizeMode.ResizeToContents,
-                },
-            )
-            self.grn_numeric_delegate = GrnNumericDelegate(self.grn_table)
-            self.grn_table.setItemDelegateForColumn(2, self.grn_numeric_delegate)
-            self.grn_table.setItemDelegateForColumn(3, None)
-            self.grn_table.setItemDelegateForColumn(5, self.grn_numeric_delegate)
-            self.grn_model.setHorizontalHeaderLabels(
-                [
-                    _t("purchase.grn_header_id"),
-                    _t("purchase.grn_header_product"),
-                    _t("purchase.grn_header_purchase_qty"),
-                    _t("purchase.grn_header_purchase_unit"),
-                    _t("purchase.grn_header_base_qty"),
-                    _t("purchase.grn_header_purchase_cost"),
-                    _t("purchase.grn_header_total"),
-                ]
-            )
-            align_numeric_headers(self.grn_table, [2, 4, 5, 6])
+            if is_batches:
+                configure_table_columns(
+                    self.grn_table.horizontalHeader(),
+                    {
+                        0: QHeaderView.ResizeMode.ResizeToContents,
+                        1: QHeaderView.ResizeMode.Stretch,
+                        2: QHeaderView.ResizeMode.ResizeToContents,
+                        3: QHeaderView.ResizeMode.ResizeToContents,
+                        4: QHeaderView.ResizeMode.ResizeToContents,
+                        5: QHeaderView.ResizeMode.ResizeToContents,
+                        6: QHeaderView.ResizeMode.ResizeToContents,
+                        7: QHeaderView.ResizeMode.ResizeToContents,
+                        8: QHeaderView.ResizeMode.ResizeToContents,
+                        9: QHeaderView.ResizeMode.ResizeToContents,
+                    },
+                )
+                self.grn_table.setItemDelegateForColumn(2, self.grn_numeric_delegate)
+                self.grn_table.setItemDelegateForColumn(5, self.grn_numeric_delegate)
+                self.grn_table.setItemDelegateForColumn(8, self.grn_numeric_delegate)
+                self.grn_model.setHorizontalHeaderLabels(
+                    [
+                        _t("purchase.grn_header_id"),
+                        _t("purchase.grn_header_product"),
+                        _t("purchase.grn_header_purchase_qty"),
+                        _t("purchase.grn_header_purchase_unit"),
+                        _t("purchase.grn_header_base_qty"),
+                        _t("purchase.grn_header_purchase_cost"),
+                        _t("purchase.grn_header_batch_no", default="Batch No"),
+                        _t("purchase.grn_header_expiry", default="Expiry (MM/YY)"),
+                        _t("purchase.grn_header_mrp", default="MRP"),
+                        _t("purchase.grn_header_total"),
+                    ]
+                )
+                align_numeric_headers(self.grn_table, [2, 4, 5, 8, 9])
+            else:
+                configure_table_columns(
+                    self.grn_table.horizontalHeader(),
+                    {
+                        0: QHeaderView.ResizeMode.ResizeToContents,
+                        1: QHeaderView.ResizeMode.Stretch,
+                        2: QHeaderView.ResizeMode.ResizeToContents,
+                        3: QHeaderView.ResizeMode.ResizeToContents,
+                        4: QHeaderView.ResizeMode.ResizeToContents,
+                        5: QHeaderView.ResizeMode.ResizeToContents,
+                        6: QHeaderView.ResizeMode.ResizeToContents,
+                    },
+                )
+                self.grn_table.setItemDelegateForColumn(2, self.grn_numeric_delegate)
+                self.grn_table.setItemDelegateForColumn(5, self.grn_numeric_delegate)
+                self.grn_model.setHorizontalHeaderLabels(
+                    [
+                        _t("purchase.grn_header_id"),
+                        _t("purchase.grn_header_product"),
+                        _t("purchase.grn_header_purchase_qty"),
+                        _t("purchase.grn_header_purchase_unit"),
+                        _t("purchase.grn_header_base_qty"),
+                        _t("purchase.grn_header_purchase_cost"),
+                        _t("purchase.grn_header_total"),
+                    ]
+                )
+                align_numeric_headers(self.grn_table, [2, 4, 5, 6])
         else:
-            configure_table_columns(
-                self.grn_table.horizontalHeader(),
-                {
-                    0: QHeaderView.ResizeMode.ResizeToContents,
-                    1: QHeaderView.ResizeMode.Stretch,
-                    2: QHeaderView.ResizeMode.ResizeToContents,
-                    3: QHeaderView.ResizeMode.ResizeToContents,
-                    4: QHeaderView.ResizeMode.ResizeToContents,
-                },
-            )
-            self.grn_numeric_delegate = GrnNumericDelegate(self.grn_table)
-            self.grn_table.setItemDelegateForColumn(2, self.grn_numeric_delegate)
-            self.grn_table.setItemDelegateForColumn(3, self.grn_numeric_delegate)
-            self.grn_table.setItemDelegateForColumn(5, None)
-            self.grn_model.setHorizontalHeaderLabels(
-                [
-                    _t("purchase.grn_header_id"),
-                    _t("purchase.grn_header_product"),
-                    _t("purchase.grn_header_qty"),
-                    _t("purchase.grn_header_cost"),
-                    _t("purchase.grn_header_total"),
-                ]
-            )
-            align_numeric_headers(self.grn_table, [2, 3, 4])
+            if is_batches:
+                configure_table_columns(
+                    self.grn_table.horizontalHeader(),
+                    {
+                        0: QHeaderView.ResizeMode.ResizeToContents,
+                        1: QHeaderView.ResizeMode.Stretch,
+                        2: QHeaderView.ResizeMode.ResizeToContents,
+                        3: QHeaderView.ResizeMode.ResizeToContents,
+                        4: QHeaderView.ResizeMode.ResizeToContents,
+                        5: QHeaderView.ResizeMode.ResizeToContents,
+                        6: QHeaderView.ResizeMode.ResizeToContents,
+                        7: QHeaderView.ResizeMode.ResizeToContents,
+                    },
+                )
+                self.grn_table.setItemDelegateForColumn(2, self.grn_numeric_delegate)
+                self.grn_table.setItemDelegateForColumn(3, self.grn_numeric_delegate)
+                self.grn_table.setItemDelegateForColumn(6, self.grn_numeric_delegate)
+                self.grn_model.setHorizontalHeaderLabels(
+                    [
+                        _t("purchase.grn_header_id"),
+                        _t("purchase.grn_header_product"),
+                        _t("purchase.grn_header_qty"),
+                        _t("purchase.grn_header_cost"),
+                        _t("purchase.grn_header_batch_no", default="Batch No"),
+                        _t("purchase.grn_header_expiry", default="Expiry (MM/YY)"),
+                        _t("purchase.grn_header_mrp", default="MRP"),
+                        _t("purchase.grn_header_total"),
+                    ]
+                )
+                align_numeric_headers(self.grn_table, [2, 3, 6, 7])
+            else:
+                configure_table_columns(
+                    self.grn_table.horizontalHeader(),
+                    {
+                        0: QHeaderView.ResizeMode.ResizeToContents,
+                        1: QHeaderView.ResizeMode.Stretch,
+                        2: QHeaderView.ResizeMode.ResizeToContents,
+                        3: QHeaderView.ResizeMode.ResizeToContents,
+                        4: QHeaderView.ResizeMode.ResizeToContents,
+                    },
+                )
+                self.grn_table.setItemDelegateForColumn(2, self.grn_numeric_delegate)
+                self.grn_table.setItemDelegateForColumn(3, self.grn_numeric_delegate)
+                self.grn_model.setHorizontalHeaderLabels(
+                    [
+                        _t("purchase.grn_header_id"),
+                        _t("purchase.grn_header_product"),
+                        _t("purchase.grn_header_qty"),
+                        _t("purchase.grn_header_cost"),
+                        _t("purchase.grn_header_total"),
+                    ]
+                )
+                align_numeric_headers(self.grn_table, [2, 3, 4])
 
         if hasattr(self, "total_label"):
             self.total_label.setText(f"{_t('purchase.total_cost_label')}: 0.00")
@@ -2002,13 +2232,14 @@ class PurchaseView(QWidget, Activatable):
             self.empty_grn_label.setVisible(True)
 
     def _check_unit_conversion_mode(self) -> None:
-        """Check if UNIT_CONVERSION feature state changed and refresh GRN grid accordingly (#937)."""
-        live_flag = feature_visible(Features.UNIT_CONVERSION)
-        if live_flag == getattr(self, "_is_unit_conv", False):
+        """Check if UNIT_CONVERSION or BATCH_TRACKING feature state changed and refresh GRN grid accordingly (#937, #926)."""
+        live_conv = feature_visible(Features.UNIT_CONVERSION)
+        live_batches = feature_visible(Features.BATCHES) or feature_visible(Features.EXPIRY_DATES)
+        if live_conv == getattr(self, "_is_unit_conv", False) and live_batches == getattr(self, "_is_batches", False):
             return
 
         if self.grn_model.rowCount() == 0:
-            self._rebuild_grn_table(live_flag)
+            self._rebuild_grn_table(live_conv, live_batches)
         else:
             reply = QMessageBox.question(
                 self,
@@ -2017,7 +2248,7 @@ class PurchaseView(QWidget, Activatable):
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             )
             if reply == QMessageBox.StandardButton.Yes:
-                self._rebuild_grn_table(live_flag)
+                self._rebuild_grn_table(live_conv, live_batches)
 
     def _on_tab_changed(self, _index: int) -> None:
         self.on_activated()

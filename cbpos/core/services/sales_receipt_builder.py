@@ -243,7 +243,12 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
                             commands.append({"type": "text", "val": f"   {sn_text}", "align": "left"})
 
             # Batch and expiry sub-line (#926)
-            batch_obj = getattr(item, "batch", None)
+            batch_obj = None
+            if getattr(item, "batch_id", None):
+                try:
+                    batch_obj = getattr(item, "batch", None)
+                except Exception:
+                    batch_obj = None
             if batch_obj:
                 b_parts = []
                 if getattr(batch_obj, "batch_no", None):

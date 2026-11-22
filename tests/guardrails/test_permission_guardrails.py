@@ -7,9 +7,7 @@ from cbpos.core.constants.permissions import Permissions
 
 # Temporary allow-list for tracked permission codes whose enforcement is implemented
 # in subsequent issues within Batch 5.1. Each entry MUST be removed in that issue's commit.
-_ALLOW_UNREFERENCED: dict[str, str] = {
-    "SALES_OVERRIDE_EXPIRED_BATCH": "Issue #926: Implemented across subsequent layers (checkout & UI)",
-}
+_ALLOW_UNREFERENCED: dict[str, str] = {}
 
 
 def _get_all_permission_attributes() -> dict[str, str]:

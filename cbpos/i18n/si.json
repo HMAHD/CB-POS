@@ -208,6 +208,17 @@
     "transaction_failed": "විකිණීම සටහන් වුණේ නැහැ. බඩු දෙන්න එපා. {reason} නැවත උත්සාහ කරන්න, නැත්නම් බිල රඳවන්න (F6).",
     "calculator_tooltip": "ගණක යන්ත්‍රය (Ctrl+Alt+C)"
   },
+  "batch_picker": {
+    "title": "කාණ්ඩය තෝරන්න",
+    "prompt": "'{name}' සඳහා විකිණිය යුතු කාණ්ඩය තෝරන්න:",
+    "search_placeholder": "කාණ්ඩ සොයන්න...",
+    "col_batch_no": "කාණ්ඩ අංකය",
+    "col_expiry": "කල් ඉකුත්වීම",
+    "col_mrp": "උපරිම සිල්ලර මිල",
+    "col_qty": "තිබෙන ප්‍රමාණය",
+    "expiring_soon_badge": "ළඟදීම කල් ඉකුත් වේ",
+    "expired_badge": "කල් ඉකුත් වී ඇත"
+  },
   "cart": {
     "price_change_not_allowed": "මේ අයිතමයේ මිල වෙනස් කරන්න බැහැ.",
     "header_item": "අයිතමය",
@@ -612,6 +623,8 @@
     "price_change_hint": "ස්ථාවර/නියාමිත මිල අයිතම සඳහා මෙය off කරන්න — අවසර තිබුණත් කිසිම කැෂියර්කුට වෙනස් කරන්න බැහැ",
     "price_changes_often": "නිතර මිල වෙනස් වේ (මිල පුවරුව)",
     "price_changes_often_hint": "වේගවත් දෛනික මිල යාවත්කාලීන කිරීම සඳහා දෛනික මිල පුවරුවට (F11) ඇතුළත් කරන්න",
+    "tracks_batches": "කාණ්ඩ සහ කල් ඉකුත්වීම සටහන් කරන්න",
+    "tracks_batches_hint": "මෙම භාණ්ඩය සඳහා කාණ්ඩ අනුව කල් ඉකුත්වීම්, කාණ්ඩ අංක සහ උපරිම සිල්ලර මිල (MRP) සටහන් කරන්න",
     "age_restricted": "වයස් සීමා අයිතමය",
     "age_restricted_hint": "ගෙවීමේදී කැෂියර් වයස තහවුරු කළ යුතුයි (උදා: මත්පැන්, දුම්කොළ)",
     "stock_qty": "තොග ප්‍රමාණය:",
@@ -718,7 +731,9 @@
     "reason_correction": "ගණන් කිරීමේ නිවැරදි කිරීම",
     "reason_other": "වෙනත් (සටහනක් ලියන්න)",
     "note_required": "කරුණාකර 'වෙනත්' සඳහා සටහනක් ලියන්න.",
-    "negative_blocked": "මෙයින් තොගය බිංදුවට වඩා අඩුවේ, එය Settings වල ඉඩ දී නැත."
+    "negative_blocked": "මෙයින් තොගය බිංදුවට වඩා අඩුවේ, එය Settings වල ඉඩ දී නැත.",
+    "batch": "කාණ්ඩය",
+    "no_batch_selected": "සියල්ල / සඳහන් කර නැත"
   },
   "stock_adjustment": {
     "title": "තොග සකසීම: {product_name}",
@@ -1026,6 +1041,9 @@
     "grn_header_purchase_unit": "මිලදී ගැනීමේ ඒකකය",
     "grn_header_base_qty": "මූලික තොග ප්‍රමාණය",
     "grn_header_purchase_cost": "මිලදී ගත් මිල",
+    "grn_header_batch_no": "කාණ්ඩ අංකය",
+    "grn_header_expiry": "කල් ඉකුත්වීම (MM/YY)",
+    "grn_header_mrp": "උපරිම සිල්ලර මිල",
     "history_header_grn": "GRN #",
     "history_header_date": "දිනය",
     "history_header_supplier": "සැපයුම්කරු",
@@ -2670,7 +2688,9 @@
     "access_denied": "ඇතුල් වෙන්න බැහැ",
     "invalid_pin": "වලංගු නොවන PIN",
     "invalid_pin_msg": "වැරදි PIN. කරුණාකර නැවත උත්සාහ කරන්න.",
-    "no_permission": "අවසර නැත"
+    "no_permission": "අවසර නැත",
+    "expired_batch_warning": "අවධානයට: මෙම කාණ්ඩය {date} දින කල් ඉකුත් වී ඇත. බලයලත් කළමනාකරු අනුමැතියකින් තොරව කල් ඉකුත් වූ භාණ්ඩ විකිණීම නීතියෙන් තහනම්ය.",
+    "mrp_override_warning": "අවධානයට: කළමනාකරුගේ අනුමැතියකින් තොරව විකුණුම් මිල {mrp} වන උපරිම සිල්ලර මිල ඉක්මවිය නොහැක."
   },
   "permission": {
     "title": "අවසර කළමනාකරණය",
@@ -3428,7 +3448,10 @@
     "duplicate_serial_in_cart": "කරත්තයේ අනුක්‍රමික අංකය දෙවරක් යොදා ඇත: '{serial}'",
     "serial_requires_warranty_policy": "අනුක්‍රමික අංක ලුහුබැඳීම සඳහා සක්‍රිය වගකීම් ප්‍රතිපත්තියක් අවශ්‍ය වේ",
     "serial_weighted_disallowed": "බර මනින භාණ්ඩ සඳහා අනුක්‍රමික අංක ලුහුබැඳීම කළ නොහැක",
-    "discard_failed": "ස්වයංක්‍රීයව සුරකින ලද බිල ඉවත් කිරීමට නොහැකි විය. කරුණාකර නැවත උත්සාහ කරන්න."
+    "discard_failed": "ස්වයංක්‍රීයව සුරකින ලද බිල ඉවත් කිරීමට නොහැකි විය. කරුණාකර නැවත උත්සාහ කරන්න.",
+    "batch_or_expiry_required": "කාණ්ඩ සටහන් කරන '{name}' භාණ්ඩය සඳහා කාණ්ඩ අංකය හෝ කල් ඉකුත්වන දිනය අනිවාර්යයි",
+    "invalid_expiry_format": "කල් ඉකුත්වන දිනය MM/YY ආකෘතියෙන් තිබිය යුතුයි (උදා: 05/27)",
+    "batch_expired": "'{batch}' කාණ්ඩය {date} දින කල් ඉකුත් වී ඇත"
   },
   "backup_password": {
     "title_set": "බැකප් මුරපදය සෙට් කරන්න",

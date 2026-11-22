@@ -208,6 +208,17 @@
     "transaction_failed": "The sale was NOT saved. Don't hand over the goods. {reason} Try again, or hold the bill (F6).",
     "calculator_tooltip": "Calculator (Ctrl+Alt+C)"
   },
+  "batch_picker": {
+    "title": "Select Batch / Lot",
+    "prompt": "Select the batch to sell for '{name}':",
+    "search_placeholder": "Filter batches...",
+    "col_batch_no": "Batch No",
+    "col_expiry": "Expiry",
+    "col_mrp": "MRP",
+    "col_qty": "Available Qty",
+    "expiring_soon_badge": "Expiring Soon",
+    "expired_badge": "Expired"
+  },
   "cart": {
     "price_change_not_allowed": "This product's price cannot be changed.",
     "header_item": "Item",
@@ -612,6 +623,8 @@
     "price_change_hint": "Turn off for fixed/regulated-price items — no cashier can override, even with permission",
     "price_changes_often": "Price Changes Often (Daily Price Board)",
     "price_changes_often_hint": "Include this item on the daily Price Board (F11) for fast daily price updates",
+    "tracks_batches": "Track Batches & Expiry",
+    "tracks_batches_hint": "Track per-batch expiry dates, lot numbers, and MRPs for this product",
     "age_restricted": "Age-Restricted Item",
     "age_restricted_hint": "Cashier must confirm age at checkout (e.g. alcohol, tobacco)",
     "stock_qty": "Stock Qty",
@@ -718,7 +731,9 @@
     "reason_correction": "Count correction",
     "reason_other": "Other (write a note)",
     "note_required": "Please write a note for 'Other'.",
-    "negative_blocked": "This would make stock below zero, which isn't allowed in Settings."
+    "negative_blocked": "This would make stock below zero, which isn't allowed in Settings.",
+    "batch": "Batch / Lot",
+    "no_batch_selected": "All / Unspecified"
   },
   "stock_adjustment": {
     "title": "Adjust Stock: {product_name}",
@@ -1063,6 +1078,9 @@
     "grn_header_purchase_unit": "Purchase Unit",
     "grn_header_base_qty": "Base Stock Qty",
     "grn_header_purchase_cost": "Purchase Cost",
+    "grn_header_batch_no": "Batch No",
+    "grn_header_expiry": "Expiry (MM/YY)",
+    "grn_header_mrp": "MRP",
     "history_header_grn": "GRN #",
     "history_header_date": "Date",
     "history_header_supplier": "Supplier",
@@ -2707,7 +2725,9 @@
     "access_denied": "Access Denied",
     "invalid_pin": "Invalid PIN",
     "invalid_pin_msg": "The PIN entered is incorrect.",
-    "no_permission": "This user does not have the required permission."
+    "no_permission": "This user does not have the required permission.",
+    "expired_batch_warning": "Warning: This batch expired on {date}. Selling expired goods is prohibited by law without authorized clearance override.",
+    "mrp_override_warning": "Warning: Selling price cannot exceed the maximum retail price (MRP) of {mrp} without manager override."
   },
   "permission": {
     "title": "Manage Permissions",
@@ -3428,7 +3448,10 @@
     "duplicate_serial_in_cart": "Duplicate serial number '{serial}' in cart",
     "serial_requires_warranty_policy": "Serial tracking requires an active warranty policy",
     "serial_weighted_disallowed": "Weighted products cannot have serial tracking",
-    "discard_failed": "Failed to discard autosaved bill. Please try again."
+    "discard_failed": "Failed to discard autosaved bill. Please try again.",
+    "batch_or_expiry_required": "Batch number or expiry date is required for tracked product '{name}'",
+    "invalid_expiry_format": "Expiry date must be in MM/YY format (e.g. 05/27)",
+    "batch_expired": "Batch '{batch}' has expired on {date}"
   },
   "backup_password": {
     "title_set": "Set Backup Password",

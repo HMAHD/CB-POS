@@ -923,7 +923,32 @@
     "warranty_claims_title": "වගකීම් හිමිකම්",
     "open_claims": "විවෘත හිමිකම්",
     "ready_for_pickup": "භාරදීමට සූදානම්",
-    "overdue_supplier": "සැපයුම්කරු ළඟ (දින 14ට වැඩි)"
+    "overdue_supplier": "සැපයුම්කරු ළඟ (දින 14ට වැඩි)",
+    "expiring_batches_title": "ළඟදීම ඉකුත් වේ",
+    "card_expiring_soon": "ළඟදීම ඉකුත් වේ",
+    "card_expired": "කල් ඉකුත් වූ",
+    "btn_view_expiring": "කාණ්ඩ බලන්න"
+  },
+  "expiring_batches": {
+    "title": "කල් ඉකුත්වන සහ ඉකුත් වූ කාණ්ඩ",
+    "tab_30_days": "දින 30 ට අඩු",
+    "tab_60_days": "දින 60 ට අඩු",
+    "tab_90_days": "දින 90 ට අඩු",
+    "tab_expired": "කල් ඉකුත් වූ",
+    "col_product": "භාණ්ඩය",
+    "col_batch_no": "කාණ්ඩ අංකය",
+    "col_expiry": "කල් ඉකුත්වන දිනය",
+    "col_mrp": "උපරිම සිල්ලර මිල",
+    "col_qty": "දැනට ඇති ප්‍රමාණය",
+    "col_status": "තත්ත්වය",
+    "badge_expired": "කල් ඉකුත් වූ",
+    "badge_expiring": "ළඟදීම ඉකුත් වේ",
+    "badge_active": "ක්‍රියාකාරී",
+    "btn_write_off": "ඉවත් කිරීම / කල් ඉකුත් වූ ලෙස සටහන් කිරීම",
+    "btn_clearance": "වට්ටම් / නිෂ්කාශනය",
+    "btn_supplier_return": "සැපයුම්කරුට ආපසු යැවීම",
+    "supplier_return_tooltip": "සැපයුම්කරු වෙත ආපසු යැවීම ඉදිරි යාවත්කාලීනයේදී ලබාගත හැක (#930)",
+    "no_batches_found": "මෙම කාලසීමාවේ කල් ඉකුත්වන කාණ්ඩ කිසිවක් නැත"
   },
   "catalog": {
     "read_only_banner": "මෙම කවුන්ටරය Main PC එකෙහි භාණ්ඩ ලැයිස්තුව භාවිතා කරයි. භාණ්ඩ, මිල ගණන්, සැපයුම්කරුවන් සහ පරිශීලකයින් Main PC එකෙන් එක් කරන්න හෝ වෙනස් කරන්න; එම වෙනස්කම් මෙහි ස්වයංක්‍රීයව යාවත්කාලීන වේ.",

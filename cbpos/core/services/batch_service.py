@@ -10,7 +10,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from sqlalchemy import case
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from cbpos.core.database import Database
 from cbpos.core.models import Product, ProductBatch
@@ -337,6 +337,81 @@ class BatchService:
                 )
                 .all()
             )
+
+        if session is not None:
+            return _query(session)
+        with Database().get_session() as s:
+            return _query(s)
+
+    @staticmethod
+    def get_expiring_batches_summary(session: Session | None = None) -> dict[str, int]:
+        """Return counts of batches that are expired, or expiring within 30, 60, 90 days (#926)."""
+
+        def _query(s: Session) -> dict[str, int]:
+            today = date.today()
+            cutoff_30 = today + timedelta(days=30)
+            cutoff_60 = today + timedelta(days=60)
+            cutoff_90 = today + timedelta(days=90)
+
+            active_q = s.query(ProductBatch).filter(
+                ProductBatch.is_active.is_(True),
+                ProductBatch.qty_on_hand > 0,
+                ProductBatch.expiry_date.is_not(None),
+            )
+            expired = active_q.filter(ProductBatch.expiry_date < today).count()
+            in_30 = active_q.filter(ProductBatch.expiry_date >= today, ProductBatch.expiry_date <= cutoff_30).count()
+            in_60 = active_q.filter(ProductBatch.expiry_date >= today, ProductBatch.expiry_date <= cutoff_60).count()
+            in_90 = active_q.filter(ProductBatch.expiry_date >= today, ProductBatch.expiry_date <= cutoff_90).count()
+
+            return {
+                "expired": expired,
+                "expiring_30": in_30,
+                "expiring_60": in_60,
+                "expiring_90": in_90,
+                "total_actionable": expired + in_30,
+            }
+
+        if session is not None:
+            return _query(session)
+        with Database().get_session() as s:
+            return _query(s)
+
+    @staticmethod
+    def get_expiring_batches_by_filter(
+        filter_mode: str = "30",
+        session: Session | None = None,
+    ) -> list[ProductBatch]:
+        """Fetch active batches filtered by horizon: '30', '60', '90', or 'expired' (#926)."""
+
+        def _query(s: Session) -> list[ProductBatch]:
+            today = date.today()
+            q = (
+                s.query(ProductBatch)
+                .options(joinedload(ProductBatch.product))
+                .filter(
+                    ProductBatch.is_active.is_(True),
+                    ProductBatch.qty_on_hand > 0,
+                    ProductBatch.expiry_date.is_not(None),
+                )
+            )
+            if filter_mode == "expired":
+                q = q.filter(ProductBatch.expiry_date < today)
+            elif filter_mode == "60":
+                cutoff = today + timedelta(days=60)
+                q = q.filter(ProductBatch.expiry_date >= today, ProductBatch.expiry_date <= cutoff)
+            elif filter_mode == "90":
+                cutoff = today + timedelta(days=90)
+                q = q.filter(ProductBatch.expiry_date >= today, ProductBatch.expiry_date <= cutoff)
+            else:  # "30" or default
+                cutoff = today + timedelta(days=30)
+                q = q.filter(ProductBatch.expiry_date >= today, ProductBatch.expiry_date <= cutoff)
+
+            batches = q.order_by(ProductBatch.expiry_date.asc(), ProductBatch.qty_on_hand.desc()).all()
+            if session is None:
+                for b in batches:
+                    _ = b.product
+                    s.expunge(b)
+            return batches
 
         if session is not None:
             return _query(session)

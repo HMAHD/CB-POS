@@ -129,7 +129,14 @@ class StockCountItemModel(QAbstractTableModel):
             if col == 0:
                 return item.product.barcode if item.product else ""
             if col == 1:
-                return item.product.display_name if item.product else _t("stock_take.unknown_product")
+                name = item.product.display_name if item.product else _t("stock_take.unknown_product")
+                if getattr(item, "batch_id", None) and getattr(item, "batch", None):
+                    b = item.batch
+                    b_str = b.batch_no or "-"
+                    exp_str = f"Exp: {b.expiry_date.strftime('%Y-%m-%d')}" if b.expiry_date else ""
+                    tag = f" [{b_str} {exp_str}]".strip()
+                    name = f"{name} ({tag})"
+                return name
             if col == 2:
                 return _format_count(item.expected_qty, item.product)
             if col == 3:

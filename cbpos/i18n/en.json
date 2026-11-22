@@ -923,7 +923,32 @@
     "warranty_claims_title": "Warranty Claims",
     "open_claims": "Open Claims",
     "ready_for_pickup": "Ready for Pickup",
-    "overdue_supplier": "At Supplier (> 14 days)"
+    "overdue_supplier": "At Supplier (> 14 days)",
+    "expiring_batches_title": "Expiring Soon",
+    "card_expiring_soon": "Expiring Soon",
+    "card_expired": "Expired",
+    "btn_view_expiring": "View Batches"
+  },
+  "expiring_batches": {
+    "title": "Expiring & Expired Batches",
+    "tab_30_days": "< 30 Days",
+    "tab_60_days": "< 60 Days",
+    "tab_90_days": "< 90 Days",
+    "tab_expired": "Expired",
+    "col_product": "Product",
+    "col_batch_no": "Batch No",
+    "col_expiry": "Expiry Date",
+    "col_mrp": "MRP",
+    "col_qty": "Qty on Hand",
+    "col_status": "Status",
+    "badge_expired": "Expired",
+    "badge_expiring": "Expiring Soon",
+    "badge_active": "Active",
+    "btn_write_off": "Write-off / Mark Expired",
+    "btn_clearance": "Discount / Clearance",
+    "btn_supplier_return": "Return to Supplier",
+    "supplier_return_tooltip": "Supplier Returns will be available in an upcoming update (#930)",
+    "no_batches_found": "No expiring batches found in this range"
   },
   "history": {
     "search_placeholder": "Search by Receipt# or Customer...",

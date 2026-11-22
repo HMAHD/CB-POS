@@ -1,6 +1,6 @@
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from PyQt6.QtCore import Qt
@@ -10,8 +10,10 @@ from cbpos.core.constants.features import Features
 from cbpos.core.constants.permissions import Permissions
 from cbpos.core.models import Permission, Product, ProductBatch, Role, Supplier, User
 from cbpos.ui.dialogs.batch_picker import BatchPickerModal
+from cbpos.ui.dialogs.expiring_batches_dialog import ExpiringBatchesDialog
 from cbpos.ui.dialogs.product_editor import ProductEditor
 from cbpos.ui.dialogs.stock_adjustment_dialog import StockAdjustmentDialog
+from cbpos.ui.views.dashboard_view import DashboardView
 from cbpos.ui.views.purchase_view import PurchaseView
 
 pytestmark = pytest.mark.usefixtures("qapp")
@@ -251,3 +253,67 @@ def test_issue_926_product_editor_tracks_batches(qtbot, db_session):
         editor._update_batch_tracking_enabled()
         assert not editor.chk_tracks_batches.isEnabled()
         assert not editor.chk_tracks_batches.isChecked()
+
+
+def test_issue_926_dashboard_expiring_batches_actions(qtbot, db_session):
+    """ExpiringBatchesDialog displays filtered batches, handles write-off, and disables supplier returns."""
+    prod = Product(
+        name_en="Expiring Cream",
+        barcode="BAR-CREAM-99",
+        price=Decimal("250.00"),
+        stock_qty=Decimal("10.000"),
+        tracks_batches=True,
+    )
+    db_session.add(prod)
+    db_session.flush()
+
+    today = date.today()
+    b = ProductBatch(
+        product_id=prod.id,
+        batch_no="CR-01",
+        expiry_date=today + timedelta(days=10),
+        mrp=Decimal("250.00"),
+        cost=Decimal("180.00"),
+        qty_on_hand=Decimal("10.000"),
+        is_active=True,
+    )
+    db_session.add(b)
+    db_session.commit()
+
+    dialog = ExpiringBatchesDialog()
+    qtbot.addWidget(dialog)
+
+    assert dialog.table.rowCount() == 1
+    assert dialog.btn_write_off.isEnabled()
+    # Supplier return button is disabled with informational tooltip (#930)
+    assert not dialog.btn_supplier_return.isEnabled()
+    assert "#930" in dialog.btn_supplier_return.toolTip()
+
+    # Test write-off launches StockAdjustmentDialog
+    with (
+        patch("cbpos.ui.dialogs.expiring_batches_dialog.StockAdjustmentDialog") as mock_adj_cls,
+    ):
+        mock_instance = MagicMock()
+        mock_instance.exec.return_value = False
+        mock_adj_cls.return_value = mock_instance
+
+        dialog.btn_write_off.click()
+        mock_adj_cls.assert_called_once()
+        _, kwargs = mock_adj_cls.call_args
+        assert kwargs.get("batch_id") == b.id
+        assert kwargs.get("default_reason") == "EXPIRED"
+
+
+def test_issue_926_dashboard_expiring_tile_integration(qtbot, db_session):
+    """DashboardView displays Expiring Soon tile and loads counts via background worker."""
+    with patch("cbpos.core.services.feature_flags.feature_visible", return_value=True):
+        view = DashboardView()
+        qtbot.addWidget(view)
+
+        assert hasattr(view, "expiring_batches_panel")
+        assert not view.expiring_batches_panel.isHidden()
+
+        # Simulate worker data ready
+        view._on_expiring_batches_tile_ready({"expiring_30": 4, "expired": 2})
+        assert view.lbl_expiring_soon_val.text() == "4"
+        assert view.lbl_expired_val.text() == "2"

@@ -1,0 +1,2659 @@
+{
+  "schema_version": 1,
+  "baseline_sha": "69fd64a",
+  "root": "cbpos/ui",
+  "summary": {
+    "python_files": 165,
+    "class_bearing_files": 143,
+    "helper_only_files": 22,
+    "top_level_classes": 206,
+    "roles": {
+      "dialog": 75,
+      "reusable-widget": 27,
+      "settings-page": 10,
+      "shared-component": 2,
+      "shell": 1,
+      "ui-infrastructure": 19,
+      "view": 31
+    },
+    "class_bearing_roles": {
+      "dialog": 74,
+      "reusable-widget": 25,
+      "settings-page": 10,
+      "shared-component": 1,
+      "shell": 1,
+      "ui-infrastructure": 3,
+      "view": 29
+    }
+  },
+  "files": [
+    {
+      "path": "cbpos/ui/__init__.py",
+      "role": "ui-infrastructure",
+      "line_count": 0,
+      "classes": [],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/app_restart.py",
+      "role": "ui-infrastructure",
+      "line_count": 77,
+      "classes": [],
+      "core_service_imports": [
+        "scheduler_service"
+      ],
+      "direct_database_import": true,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 1
+    },
+    {
+      "path": "cbpos/ui/assets/__init__.py",
+      "role": "ui-infrastructure",
+      "line_count": 0,
+      "classes": [],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/components/__init__.py",
+      "role": "shared-component",
+      "line_count": 5,
+      "classes": [],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/components/activation.py",
+      "role": "shared-component",
+      "line_count": 32,
+      "classes": [
+        "Activatable"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/constants.py",
+      "role": "ui-infrastructure",
+      "line_count": 42,
+      "classes": [],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/__init__.py",
+      "role": "dialog",
+      "line_count": 23,
+      "classes": [],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/about_dialog.py",
+      "role": "dialog",
+      "line_count": 319,
+      "classes": [
+        "AboutDialog"
+      ],
+      "core_service_imports": [
+        "theme_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/adjust_balance_dialog.py",
+      "role": "dialog",
+      "line_count": 295,
+      "classes": [
+        "AdjustBalanceDialog"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "customer_credit_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 2
+    },
+    {
+      "path": "cbpos/ui/dialogs/adjust_points_dialog.py",
+      "role": "dialog",
+      "line_count": 311,
+      "classes": [
+        "AdjustPointsDialog"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "loyalty_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 2
+    },
+    {
+      "path": "cbpos/ui/dialogs/admin_pin_dialog.py",
+      "role": "dialog",
+      "line_count": 124,
+      "classes": [
+        "AdminPinDialog"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 1
+    },
+    {
+      "path": "cbpos/ui/dialogs/advanced_search_dialog.py",
+      "role": "dialog",
+      "line_count": 286,
+      "classes": [
+        "AdvancedSearchDialog"
+      ],
+      "core_service_imports": [
+        "category_service",
+        "product_service",
+        "supplier_service",
+        "theme_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 2
+    },
+    {
+      "path": "cbpos/ui/dialogs/autosave_recovery_dialog.py",
+      "role": "dialog",
+      "line_count": 148,
+      "classes": [
+        "AutosaveAction",
+        "AutosaveRecoveryDialog"
+      ],
+      "core_service_imports": [
+        "cart_autosave_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 1
+    },
+    {
+      "path": "cbpos/ui/dialogs/backup_password_dialog.py",
+      "role": "dialog",
+      "line_count": 152,
+      "classes": [
+        "BackupPasswordDialog"
+      ],
+      "core_service_imports": [
+        "config_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 1
+    },
+    {
+      "path": "cbpos/ui/dialogs/bill_discount_dialog.py",
+      "role": "dialog",
+      "line_count": 250,
+      "classes": [
+        "BillDiscountDialog"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 1
+    },
+    {
+      "path": "cbpos/ui/dialogs/bulk_price_adjust_dialog.py",
+      "role": "dialog",
+      "line_count": 481,
+      "classes": [
+        "BulkPriceAdjustDialog"
+      ],
+      "core_service_imports": [
+        "price_list_service",
+        "product_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 3
+    },
+    {
+      "path": "cbpos/ui/dialogs/buyer_details_dialog.py",
+      "role": "dialog",
+      "line_count": 145,
+      "classes": [
+        "BuyerDetailsDialog"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 1,
+      "hex_literals": 2
+    },
+    {
+      "path": "cbpos/ui/dialogs/cash_movement_dialog.py",
+      "role": "dialog",
+      "line_count": 101,
+      "classes": [
+        "CashMovementDialog"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/category_dialog.py",
+      "role": "dialog",
+      "line_count": 162,
+      "classes": [
+        "CategoryDialog"
+      ],
+      "core_service_imports": [
+        "category_service",
+        "warranty_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 1
+    },
+    {
+      "path": "cbpos/ui/dialogs/category_manager.py",
+      "role": "dialog",
+      "line_count": 394,
+      "classes": [
+        "CategoryManagerDialog"
+      ],
+      "core_service_imports": [
+        "category_service",
+        "config_service",
+        "warranty_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 6
+    },
+    {
+      "path": "cbpos/ui/dialogs/category_tree_dialog.py",
+      "role": "dialog",
+      "line_count": 239,
+      "classes": [
+        "CategoryTreeDialog"
+      ],
+      "core_service_imports": [
+        "category_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/csv_import_dialog.py",
+      "role": "dialog",
+      "line_count": 408,
+      "classes": [
+        "CsvImportDialog"
+      ],
+      "core_service_imports": [
+        "import_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/customer_editor.py",
+      "role": "dialog",
+      "line_count": 756,
+      "classes": [
+        "CustomerEditor"
+      ],
+      "core_service_imports": [
+        "config_service",
+        "customer_service",
+        "loyalty_service",
+        "price_list_service",
+        "tax_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 6
+    },
+    {
+      "path": "cbpos/ui/dialogs/customer_quick_add.py",
+      "role": "dialog",
+      "line_count": 73,
+      "classes": [
+        "CustomerQuickAddDialog"
+      ],
+      "core_service_imports": [
+        "customer_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/customer_selection_dialog.py",
+      "role": "dialog",
+      "line_count": 194,
+      "classes": [
+        "CustomerSelectionDialog"
+      ],
+      "core_service_imports": [
+        "customer_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/customer_statement_dialog.py",
+      "role": "dialog",
+      "line_count": 411,
+      "classes": [
+        "CustomerStatementDialog"
+      ],
+      "core_service_imports": [
+        "customer_credit_service",
+        "receipt_builder",
+        "statement_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 4
+    },
+    {
+      "path": "cbpos/ui/dialogs/data_export_dialog.py",
+      "role": "dialog",
+      "line_count": 231,
+      "classes": [
+        "DataExportDialog"
+      ],
+      "core_service_imports": [
+        "data_export_service",
+        "export_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/database_setup_dialog.py",
+      "role": "dialog",
+      "line_count": 143,
+      "classes": [
+        "DatabaseSetupDialog"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/discount_dialog.py",
+      "role": "dialog",
+      "line_count": 243,
+      "classes": [
+        "DiscountDialog"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/force_close_shift_dialog.py",
+      "role": "dialog",
+      "line_count": 166,
+      "classes": [
+        "ForceCloseShiftDialog"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "shift_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 1
+    },
+    {
+      "path": "cbpos/ui/dialogs/grn_detail_dialog.py",
+      "role": "dialog",
+      "line_count": 145,
+      "classes": [
+        "GRNDetailDialog"
+      ],
+      "core_service_imports": [
+        "purchase_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/guide_dialog.py",
+      "role": "dialog",
+      "line_count": 215,
+      "classes": [
+        "GuideDialog"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/label_preview_dialog.py",
+      "role": "dialog",
+      "line_count": 200,
+      "classes": [
+        "LabelCard",
+        "LabelPreviewDialog"
+      ],
+      "core_service_imports": [
+        "label_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 9
+    },
+    {
+      "path": "cbpos/ui/dialogs/label_print_dialog.py",
+      "role": "dialog",
+      "line_count": 765,
+      "classes": [
+        "_QtyDelegate",
+        "LabelPrintDialog"
+      ],
+      "core_service_imports": [
+        "config_service",
+        "label_service",
+        "product_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 2,
+      "hex_literals": 3
+    },
+    {
+      "path": "cbpos/ui/dialogs/log_detail_dialog.py",
+      "role": "dialog",
+      "line_count": 164,
+      "classes": [
+        "LogDetailDialog"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/manager_override_dialog.py",
+      "role": "dialog",
+      "line_count": 125,
+      "classes": [
+        "ManagerOverrideDialog"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "permission_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/payment_dialog.py",
+      "role": "dialog",
+      "line_count": 996,
+      "classes": [
+        "PaymentDialog"
+      ],
+      "core_service_imports": [
+        "config_service",
+        "customer_service",
+        "loyalty_service",
+        "payment_service",
+        "tax_invoice_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 2
+    },
+    {
+      "path": "cbpos/ui/dialogs/payment_method_dialog.py",
+      "role": "dialog",
+      "line_count": 260,
+      "classes": [
+        "PaymentMethodDialog"
+      ],
+      "core_service_imports": [
+        "payment_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 2
+    },
+    {
+      "path": "cbpos/ui/dialogs/permission_dialog.py",
+      "role": "dialog",
+      "line_count": 309,
+      "classes": [
+        "_RoleCheckDelegate",
+        "PermissionDialog"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "permission_service",
+        "user_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/plan_covered_item_chooser_dialog.py",
+      "role": "dialog",
+      "line_count": 112,
+      "classes": [
+        "PlanCoveredItemChooserDialog"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 1
+    },
+    {
+      "path": "cbpos/ui/dialogs/price_board_dialog.py",
+      "role": "dialog",
+      "line_count": 590,
+      "classes": [
+        "PriceBoardLoaderWorker",
+        "PriceBoardSaveWorker",
+        "PriceBoardItemDelegate",
+        "PriceBoardDialog"
+      ],
+      "core_service_imports": [
+        "price_board_service",
+        "theme_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [
+        "PriceBoardLoaderWorker",
+        "PriceBoardSaveWorker"
+      ],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 2
+    },
+    {
+      "path": "cbpos/ui/dialogs/price_list_dialog.py",
+      "role": "dialog",
+      "line_count": 122,
+      "classes": [
+        "PriceListDialog"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/product_editor.py",
+      "role": "dialog",
+      "line_count": 1287,
+      "classes": [
+        "ProductEditor"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "category_service",
+        "config_service",
+        "feature_flags",
+        "inventory_service",
+        "permission_service",
+        "supplier_service",
+        "unit_service",
+        "warranty_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 4
+    },
+    {
+      "path": "cbpos/ui/dialogs/profile_dialog.py",
+      "role": "dialog",
+      "line_count": 165,
+      "classes": [
+        "ProfileDialog"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "user_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/proforma_dialog.py",
+      "role": "dialog",
+      "line_count": 366,
+      "classes": [
+        "ProformaDialog"
+      ],
+      "core_service_imports": [
+        "customer_service",
+        "product_service",
+        "proforma_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/promotion_dialog.py",
+      "role": "dialog",
+      "line_count": 335,
+      "classes": [
+        "PromotionDialog"
+      ],
+      "core_service_imports": [
+        "category_service",
+        "config_service",
+        "promotion_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/quantity_dialog.py",
+      "role": "dialog",
+      "line_count": 124,
+      "classes": [
+        "QuantityDialog"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/receipt_options_dialog.py",
+      "role": "dialog",
+      "line_count": 406,
+      "classes": [
+        "ReceiptOptionsDialog"
+      ],
+      "core_service_imports": [
+        "email_service",
+        "invoice_service",
+        "printer_service",
+        "receipt_builder",
+        "theme_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 6
+    },
+    {
+      "path": "cbpos/ui/dialogs/receipt_preview_dialog.py",
+      "role": "dialog",
+      "line_count": 51,
+      "classes": [
+        "ReceiptPreviewDialog"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/receipt_reprint_dialog.py",
+      "role": "dialog",
+      "line_count": 641,
+      "classes": [
+        "ReceiptReprintDialog"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "config_service",
+        "receipt_builder",
+        "receipt_reprint_service",
+        "sale_query_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 3
+    },
+    {
+      "path": "cbpos/ui/dialogs/receive_payment_dialog.py",
+      "role": "dialog",
+      "line_count": 273,
+      "classes": [
+        "ReceivePaymentDialog"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "customer_credit_service",
+        "customer_service",
+        "payment_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/refund_dialog.py",
+      "role": "dialog",
+      "line_count": 707,
+      "classes": [
+        "RefundTenderOverrideDialog",
+        "RefundDialog"
+      ],
+      "core_service_imports": [
+        "product_service",
+        "refund_breakdown",
+        "refund_service",
+        "sale_query_service",
+        "transaction_service",
+        "warranty_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 2
+    },
+    {
+      "path": "cbpos/ui/dialogs/role_manager.py",
+      "role": "dialog",
+      "line_count": 263,
+      "classes": [
+        "RoleManagerDialog"
+      ],
+      "core_service_imports": [
+        "role_service",
+        "user_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 2
+    },
+    {
+      "path": "cbpos/ui/dialogs/sale_history_dialog.py",
+      "role": "dialog",
+      "line_count": 968,
+      "classes": [
+        "SaleHistoryDialog"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "receipt_builder",
+        "receipt_reprint_service",
+        "refund_service",
+        "sale_query_service",
+        "transaction_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 1,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/serial_entry_dialog.py",
+      "role": "dialog",
+      "line_count": 337,
+      "classes": [
+        "SerialEntryDialog"
+      ],
+      "core_service_imports": [
+        "product_service",
+        "warranty_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 2,
+      "hex_literals": 3
+    },
+    {
+      "path": "cbpos/ui/dialogs/serial_refund_selection_dialog.py",
+      "role": "dialog",
+      "line_count": 129,
+      "classes": [
+        "SerialRefundSelectionDialog"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 2
+    },
+    {
+      "path": "cbpos/ui/dialogs/set_item_price_dialog.py",
+      "role": "dialog",
+      "line_count": 92,
+      "classes": [
+        "SetItemPriceDialog"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/setup_wizard.py",
+      "role": "dialog",
+      "line_count": 473,
+      "classes": [
+        "SetupWizard"
+      ],
+      "core_service_imports": [
+        "config_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/shift_closing_dialog.py",
+      "role": "dialog",
+      "line_count": 301,
+      "classes": [
+        "ShiftClosingDialog"
+      ],
+      "core_service_imports": [
+        "backup_service",
+        "printer_service",
+        "shift_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/shift_management_dialog.py",
+      "role": "dialog",
+      "line_count": 350,
+      "classes": [
+        "ShiftManagementDialog"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "config_service",
+        "permission_service",
+        "printer_service",
+        "shift_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 5
+    },
+    {
+      "path": "cbpos/ui/dialogs/shortcuts_help_dialog.py",
+      "role": "dialog",
+      "line_count": 110,
+      "classes": [
+        "ShortcutsHelpDialog"
+      ],
+      "core_service_imports": [
+        "feature_flags"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/stale_shifts_dialog.py",
+      "role": "dialog",
+      "line_count": 126,
+      "classes": [
+        "StaleShiftsDialog"
+      ],
+      "core_service_imports": [
+        "shift_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 1
+    },
+    {
+      "path": "cbpos/ui/dialogs/start_shift_dialog.py",
+      "role": "dialog",
+      "line_count": 76,
+      "classes": [
+        "StartShiftDialog"
+      ],
+      "core_service_imports": [
+        "shift_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/stock_adjustment_dialog.py",
+      "role": "dialog",
+      "line_count": 222,
+      "classes": [
+        "StockAdjustmentDialog"
+      ],
+      "core_service_imports": [
+        "config_service",
+        "inventory_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 3,
+      "hex_literals": 1
+    },
+    {
+      "path": "cbpos/ui/dialogs/stock_count_report_dialog.py",
+      "role": "dialog",
+      "line_count": 222,
+      "classes": [
+        "StockCountReportDialog"
+      ],
+      "core_service_imports": [
+        "stock_count_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 1
+    },
+    {
+      "path": "cbpos/ui/dialogs/stock_history_dialog.py",
+      "role": "dialog",
+      "line_count": 148,
+      "classes": [
+        "StockHistoryDialog"
+      ],
+      "core_service_imports": [
+        "stock_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/supplier_dialog.py",
+      "role": "dialog",
+      "line_count": 138,
+      "classes": [
+        "SupplierDialog"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 1
+    },
+    {
+      "path": "cbpos/ui/dialogs/supplier_payment_dialog.py",
+      "role": "dialog",
+      "line_count": 205,
+      "classes": [
+        "SupplierPaymentDialog"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "payment_service",
+        "supplier_payable_service",
+        "supplier_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/sync_pairing_dialog.py",
+      "role": "dialog",
+      "line_count": 269,
+      "classes": [
+        "FetchCertWorker",
+        "SyncPairingDialog"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "config_service",
+        "logging_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [
+        "FetchCertWorker"
+      ],
+      "inline_stylesheet_calls": 4,
+      "hex_literals": 5
+    },
+    {
+      "path": "cbpos/ui/dialogs/text_viewer_dialog.py",
+      "role": "dialog",
+      "line_count": 103,
+      "classes": [
+        "TextViewerDialog"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/unit_manager.py",
+      "role": "dialog",
+      "line_count": 266,
+      "classes": [
+        "UnitManagerDialog"
+      ],
+      "core_service_imports": [
+        "unit_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/update_dialog.py",
+      "role": "dialog",
+      "line_count": 339,
+      "classes": [
+        "_DownloadThread",
+        "_CheckThread",
+        "UpdateDialog"
+      ],
+      "core_service_imports": [
+        "update_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [
+        "_DownloadThread",
+        "_CheckThread"
+      ],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/user_dialog.py",
+      "role": "dialog",
+      "line_count": 191,
+      "classes": [
+        "UserDialog"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "user_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/dialogs/valuation_dialog.py",
+      "role": "dialog",
+      "line_count": 203,
+      "classes": [
+        "ValuationDialog"
+      ],
+      "core_service_imports": [
+        "report_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 3
+    },
+    {
+      "path": "cbpos/ui/dialogs/void_reason_dialog.py",
+      "role": "dialog",
+      "line_count": 100,
+      "classes": [
+        "VoidReasonDialog"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 1
+    },
+    {
+      "path": "cbpos/ui/dialogs/warranty_claim_intake_dialog.py",
+      "role": "dialog",
+      "line_count": 209,
+      "classes": [
+        "WarrantyClaimIntakeDialog"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "warranty_claim_receipt_builder",
+        "warranty_claim_service",
+        "warranty_dto"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 1,
+      "hex_literals": 3
+    },
+    {
+      "path": "cbpos/ui/dialogs/warranty_claim_resolve_dialog.py",
+      "role": "dialog",
+      "line_count": 258,
+      "classes": [
+        "WarrantyClaimResolveDialog"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "product_service",
+        "warranty_claim_service",
+        "warranty_dto"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 1,
+      "hex_literals": 3
+    },
+    {
+      "path": "cbpos/ui/dialogs/warranty_correction_dialog.py",
+      "role": "dialog",
+      "line_count": 155,
+      "classes": [
+        "WarrantyCorrectionDialog"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "warranty_dto",
+        "warranty_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 1,
+      "hex_literals": 2
+    },
+    {
+      "path": "cbpos/ui/dialogs/warranty_lookup_dialog.py",
+      "role": "dialog",
+      "line_count": 547,
+      "classes": [
+        "WarrantyLookupDialog"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "permission_service",
+        "warranty_dto",
+        "warranty_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 9,
+      "hex_literals": 13
+    },
+    {
+      "path": "cbpos/ui/dialogs/warranty_policy_dialog.py",
+      "role": "dialog",
+      "line_count": 247,
+      "classes": [
+        "WarrantyPolicyDialog"
+      ],
+      "core_service_imports": [
+        "warranty_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 1
+    },
+    {
+      "path": "cbpos/ui/dialogs/warranty_supplier_dialogs.py",
+      "role": "dialog",
+      "line_count": 485,
+      "classes": [
+        "WarrantySupplierDispatchDialog",
+        "WarrantySupplierReceiveDialog",
+        "WarrantySupplierOutcomeDialog"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "supplier_service",
+        "warranty_claim_receipt_builder",
+        "warranty_claim_service",
+        "warranty_dto"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 3,
+      "hex_literals": 5
+    },
+    {
+      "path": "cbpos/ui/hardware_test_feedback.py",
+      "role": "ui-infrastructure",
+      "line_count": 68,
+      "classes": [],
+      "core_service_imports": [
+        "hardware_test_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 1
+    },
+    {
+      "path": "cbpos/ui/main_window.py",
+      "role": "shell",
+      "line_count": 477,
+      "classes": [
+        "MainWindow"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "backup_service",
+        "config_service",
+        "customer_service",
+        "shift_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 6
+    },
+    {
+      "path": "cbpos/ui/network_schema_gate.py",
+      "role": "ui-infrastructure",
+      "line_count": 232,
+      "classes": [
+        "GateAction",
+        "UpgradeWorker",
+        "NetworkSchemaGate"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "config_service",
+        "schema_migration_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [
+        "UpgradeWorker"
+      ],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 1
+    },
+    {
+      "path": "cbpos/ui/refund_messages.py",
+      "role": "ui-infrastructure",
+      "line_count": 107,
+      "classes": [],
+      "core_service_imports": [
+        "refund_breakdown"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 2
+    },
+    {
+      "path": "cbpos/ui/resources/__init__.py",
+      "role": "ui-infrastructure",
+      "line_count": 0,
+      "classes": [],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/resources/icons.py",
+      "role": "ui-infrastructure",
+      "line_count": 91,
+      "classes": [
+        "Icons"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/resources/status_colors.py",
+      "role": "ui-infrastructure",
+      "line_count": 69,
+      "classes": [],
+      "core_service_imports": [
+        "theme_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 14
+    },
+    {
+      "path": "cbpos/ui/startup_splash.py",
+      "role": "ui-infrastructure",
+      "line_count": 88,
+      "classes": [],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 5
+    },
+    {
+      "path": "cbpos/ui/styles/__init__.py",
+      "role": "ui-infrastructure",
+      "line_count": 5,
+      "classes": [],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/styles/style_helpers.py",
+      "role": "ui-infrastructure",
+      "line_count": 5,
+      "classes": [],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/styles/tokens.py",
+      "role": "ui-infrastructure",
+      "line_count": 71,
+      "classes": [],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 42
+    },
+    {
+      "path": "cbpos/ui/utils/__init__.py",
+      "role": "ui-infrastructure",
+      "line_count": 5,
+      "classes": [],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/utils/layout_helpers.py",
+      "role": "ui-infrastructure",
+      "line_count": 57,
+      "classes": [],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/utils/style_helpers.py",
+      "role": "ui-infrastructure",
+      "line_count": 33,
+      "classes": [],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/utils/table_helpers.py",
+      "role": "ui-infrastructure",
+      "line_count": 25,
+      "classes": [],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/views/__init__.py",
+      "role": "view",
+      "line_count": 0,
+      "classes": [],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/views/admin_tools_view.py",
+      "role": "view",
+      "line_count": 1116,
+      "classes": [
+        "AdminToolsView"
+      ],
+      "core_service_imports": [
+        "config_service",
+        "error_log_service",
+        "hardware_test_service",
+        "maintenance_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 2,
+      "hex_literals": 8
+    },
+    {
+      "path": "cbpos/ui/views/credit_book_view.py",
+      "role": "view",
+      "line_count": 1187,
+      "classes": [
+        "CreditBookView"
+      ],
+      "core_service_imports": [
+        "config_service",
+        "customer_credit_service",
+        "customer_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 14
+    },
+    {
+      "path": "cbpos/ui/views/dashboard_view.py",
+      "role": "view",
+      "line_count": 877,
+      "classes": [
+        "_DashboardWheelForwarder",
+        "_YearlyWorker",
+        "_PeriodicWorker",
+        "_WarrantyTileWorker",
+        "DashboardView"
+      ],
+      "core_service_imports": [
+        "config_service",
+        "dashboard_service",
+        "tax_service",
+        "warranty_claim_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [
+        "_YearlyWorker",
+        "_PeriodicWorker",
+        "_WarrantyTileWorker"
+      ],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 6
+    },
+    {
+      "path": "cbpos/ui/views/data_safety/__init__.py",
+      "role": "view",
+      "line_count": 5,
+      "classes": [],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 1
+    },
+    {
+      "path": "cbpos/ui/views/data_safety/backup_tab.py",
+      "role": "view",
+      "line_count": 463,
+      "classes": [
+        "BackupTabWidget"
+      ],
+      "core_service_imports": [
+        "backup_service",
+        "config_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 4
+    },
+    {
+      "path": "cbpos/ui/views/data_safety/export_tab.py",
+      "role": "view",
+      "line_count": 221,
+      "classes": [
+        "ExportContext",
+        "ExportTabWidget"
+      ],
+      "core_service_imports": [
+        "export_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 1
+    },
+    {
+      "path": "cbpos/ui/views/data_safety/export_types.py",
+      "role": "view",
+      "line_count": 77,
+      "classes": [
+        "ExportType",
+        "ExportFormat"
+      ],
+      "core_service_imports": [
+        "data_export_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 3
+    },
+    {
+      "path": "cbpos/ui/views/data_safety/maintenance_tab.py",
+      "role": "view",
+      "line_count": 282,
+      "classes": [
+        "MaintenanceTabWidget"
+      ],
+      "core_service_imports": [
+        "backup_service",
+        "maintenance_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 5,
+      "hex_literals": 3
+    },
+    {
+      "path": "cbpos/ui/views/data_safety/network_notice.py",
+      "role": "view",
+      "line_count": 58,
+      "classes": [
+        "NetworkModeNoticeCard"
+      ],
+      "core_service_imports": [
+        "backup_service",
+        "theme_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 1,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/views/data_safety/restore_tab.py",
+      "role": "view",
+      "line_count": 328,
+      "classes": [
+        "RestoreTabWidget"
+      ],
+      "core_service_imports": [
+        "backup_service",
+        "config_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/views/data_safety_view.py",
+      "role": "view",
+      "line_count": 91,
+      "classes": [
+        "DataSafetyView"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 1
+    },
+    {
+      "path": "cbpos/ui/views/document_view.py",
+      "role": "view",
+      "line_count": 1215,
+      "classes": [
+        "DocumentBrowserView"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "config_service",
+        "document_browser_service",
+        "proforma_service",
+        "receipt_builder",
+        "receipt_reprint_service",
+        "refund_service",
+        "sale_query_service",
+        "tax_service",
+        "transaction_service",
+        "user_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 7
+    },
+    {
+      "path": "cbpos/ui/views/history_view.py",
+      "role": "view",
+      "line_count": 658,
+      "classes": [
+        "HistoryView"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "printer_service",
+        "refund_service",
+        "sale_query_service",
+        "tax_invoice_service",
+        "transaction_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 1
+    },
+    {
+      "path": "cbpos/ui/views/inventory_view.py",
+      "role": "view",
+      "line_count": 453,
+      "classes": [
+        "InventoryModel",
+        "InventoryView"
+      ],
+      "core_service_imports": [
+        "import_service",
+        "inventory_service",
+        "theme_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/views/login_view.py",
+      "role": "view",
+      "line_count": 514,
+      "classes": [
+        "_PinPanel",
+        "LoginView"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "theme_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 7
+    },
+    {
+      "path": "cbpos/ui/views/management_view.py",
+      "role": "view",
+      "line_count": 429,
+      "classes": [
+        "ManagementView"
+      ],
+      "core_service_imports": [
+        "config_service",
+        "permission_service",
+        "theme_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 7
+    },
+    {
+      "path": "cbpos/ui/views/payment_methods_view.py",
+      "role": "view",
+      "line_count": 393,
+      "classes": [
+        "_MethodCard",
+        "PaymentMethodsView"
+      ],
+      "core_service_imports": [
+        "payment_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 2
+    },
+    {
+      "path": "cbpos/ui/views/pricelist_view.py",
+      "role": "view",
+      "line_count": 722,
+      "classes": [
+        "PriceListView"
+      ],
+      "core_service_imports": [
+        "price_list_service",
+        "product_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 2
+    },
+    {
+      "path": "cbpos/ui/views/promotion_view.py",
+      "role": "view",
+      "line_count": 327,
+      "classes": [
+        "PromotionView"
+      ],
+      "core_service_imports": [
+        "category_service",
+        "promotion_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/views/purchase_view.py",
+      "role": "view",
+      "line_count": 2038,
+      "classes": [
+        "SupplierTableModel",
+        "PurchaseHistoryModel",
+        "GrnNumericDelegate",
+        "PurchaseView"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "feature_flags",
+        "inventory_service",
+        "product_service",
+        "purchase_order_service",
+        "purchase_service",
+        "supplier_payable_service",
+        "supplier_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 14
+    },
+    {
+      "path": "cbpos/ui/views/reorder_view.py",
+      "role": "view",
+      "line_count": 300,
+      "classes": [
+        "ReorderView"
+      ],
+      "core_service_imports": [
+        "purchase_order_service",
+        "stock_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 2
+    },
+    {
+      "path": "cbpos/ui/views/reports/filter_widget.py",
+      "role": "view",
+      "line_count": 275,
+      "classes": [
+        "FilterWidget"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/views/reports/pandas_model.py",
+      "role": "view",
+      "line_count": 189,
+      "classes": [
+        "PandasModel"
+      ],
+      "core_service_imports": [
+        "theme_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 4
+    },
+    {
+      "path": "cbpos/ui/views/reports/report_viewer.py",
+      "role": "view",
+      "line_count": 822,
+      "classes": [
+        "ReportWorker",
+        "ReportViewer"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "config_service",
+        "export_service",
+        "report_service",
+        "tax_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [
+        "ReportWorker"
+      ],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 13
+    },
+    {
+      "path": "cbpos/ui/views/sales_view.py",
+      "role": "view",
+      "line_count": 2530,
+      "classes": [
+        "SalesView"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "cart_audit_service",
+        "cart_autosave_service",
+        "cart_service",
+        "cash_drawer_service",
+        "config_service",
+        "customer_service",
+        "feature_flags",
+        "logging_service",
+        "payment_service",
+        "printer_service",
+        "product_service",
+        "proforma_service",
+        "sales_receipt_builder",
+        "scale_service",
+        "shift_service",
+        "sound_service",
+        "suspended_transaction_service",
+        "tax_invoice_service",
+        "tax_service",
+        "theme_service",
+        "transaction_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 28
+    },
+    {
+      "path": "cbpos/ui/views/settings_pages/__init__.py",
+      "role": "settings-page",
+      "line_count": 63,
+      "classes": [
+        "_SettingsPagesPackage"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/views/settings_pages/base.py",
+      "role": "settings-page",
+      "line_count": 268,
+      "classes": [
+        "SettingsPage"
+      ],
+      "core_service_imports": [
+        "config_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 5
+    },
+    {
+      "path": "cbpos/ui/views/settings_pages/document.py",
+      "role": "settings-page",
+      "line_count": 178,
+      "classes": [
+        "DocumentPage"
+      ],
+      "core_service_imports": [
+        "document_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/views/settings_pages/features.py",
+      "role": "settings-page",
+      "line_count": 171,
+      "classes": [
+        "FeaturesPage"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "feature_flags"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 1
+    },
+    {
+      "path": "cbpos/ui/views/settings_pages/hardware.py",
+      "role": "settings-page",
+      "line_count": 481,
+      "classes": [
+        "HardwarePage"
+      ],
+      "core_service_imports": [
+        "hardware_test_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/views/settings_pages/network.py",
+      "role": "settings-page",
+      "line_count": 1579,
+      "classes": [
+        "NetworkPage"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "config_service",
+        "database_setup_service",
+        "migration_service",
+        "schema_migration_service",
+        "sync_terminal_service",
+        "theme_service"
+      ],
+      "direct_database_import": true,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 7,
+      "hex_literals": 10
+    },
+    {
+      "path": "cbpos/ui/views/settings_pages/receipt.py",
+      "role": "settings-page",
+      "line_count": 834,
+      "classes": [
+        "ReceiptPage"
+      ],
+      "core_service_imports": [
+        "config_service",
+        "receipt_builder",
+        "receipt_font_service",
+        "receipt_logo_service",
+        "warranty_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 2
+    },
+    {
+      "path": "cbpos/ui/views/settings_pages/sales_tax.py",
+      "role": "settings-page",
+      "line_count": 466,
+      "classes": [
+        "SalesTaxPage"
+      ],
+      "core_service_imports": [
+        "config_service",
+        "tax_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 2
+    },
+    {
+      "path": "cbpos/ui/views/settings_pages/shop_info.py",
+      "role": "settings-page",
+      "line_count": 311,
+      "classes": [
+        "ShopInfoPage"
+      ],
+      "core_service_imports": [
+        "language_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/views/settings_pages/system.py",
+      "role": "settings-page",
+      "line_count": 281,
+      "classes": [
+        "SystemPage"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/views/settings_view.py",
+      "role": "view",
+      "line_count": 640,
+      "classes": [
+        "SettingsView"
+      ],
+      "core_service_imports": [
+        "config_service",
+        "permission_service",
+        "scheduler_service",
+        "settings_audit_service",
+        "theme_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 4
+    },
+    {
+      "path": "cbpos/ui/views/stock_take_view.py",
+      "role": "view",
+      "line_count": 1219,
+      "classes": [
+        "StockCountItemModel",
+        "CountedDelegate",
+        "StockTakeView"
+      ],
+      "core_service_imports": [
+        "category_service",
+        "product_service",
+        "stock_count_service",
+        "theme_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 12
+    },
+    {
+      "path": "cbpos/ui/views/user_view.py",
+      "role": "view",
+      "line_count": 489,
+      "classes": [
+        "UserView"
+      ],
+      "core_service_imports": [
+        "user_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 6
+    },
+    {
+      "path": "cbpos/ui/views/warranty_claims_board_view.py",
+      "role": "view",
+      "line_count": 1001,
+      "classes": [
+        "WarrantyClaimsBoardView",
+        "WarrantyClaimsBoardDialog"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "warranty_claim_receipt_builder",
+        "warranty_claim_service",
+        "warranty_dto"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 15,
+      "hex_literals": 21
+    },
+    {
+      "path": "cbpos/ui/views/warranty_policies_view.py",
+      "role": "view",
+      "line_count": 351,
+      "classes": [
+        "WarrantyPoliciesView"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "permission_service",
+        "warranty_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 2
+    },
+    {
+      "path": "cbpos/ui/widgets/__init__.py",
+      "role": "reusable-widget",
+      "line_count": 66,
+      "classes": [],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/widgets/action_panel.py",
+      "role": "reusable-widget",
+      "line_count": 462,
+      "classes": [
+        "ActionBtn",
+        "SectionLabel",
+        "ActionPanel"
+      ],
+      "core_service_imports": [
+        "theme_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 10
+    },
+    {
+      "path": "cbpos/ui/widgets/charts.py",
+      "role": "reusable-widget",
+      "line_count": 478,
+      "classes": [
+        "VerticalBarChart",
+        "DonutChart",
+        "HorizontalBarChart"
+      ],
+      "core_service_imports": [
+        "theme_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 39
+    },
+    {
+      "path": "cbpos/ui/widgets/collapsible_sidebar.py",
+      "role": "reusable-widget",
+      "line_count": 387,
+      "classes": [
+        "CollapsibleSidebar"
+      ],
+      "core_service_imports": [
+        "config_service",
+        "theme_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 3
+    },
+    {
+      "path": "cbpos/ui/widgets/custom_widgets.py",
+      "role": "reusable-widget",
+      "line_count": 124,
+      "classes": [
+        "SidebarButton"
+      ],
+      "core_service_imports": [
+        "theme_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 4
+    },
+    {
+      "path": "cbpos/ui/widgets/date_range_picker.py",
+      "role": "reusable-widget",
+      "line_count": 264,
+      "classes": [
+        "DateRangePicker"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/widgets/decimal_line_edit.py",
+      "role": "reusable-widget",
+      "line_count": 56,
+      "classes": [
+        "DecimalLineEdit"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/widgets/denomination_widget.py",
+      "role": "reusable-widget",
+      "line_count": 119,
+      "classes": [
+        "DenominationWidget"
+      ],
+      "core_service_imports": [
+        "config_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/widgets/dialog_footer.py",
+      "role": "reusable-widget",
+      "line_count": 96,
+      "classes": [],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/widgets/elided_label.py",
+      "role": "reusable-widget",
+      "line_count": 49,
+      "classes": [
+        "ElidedLabel"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/widgets/empty_state_widget.py",
+      "role": "reusable-widget",
+      "line_count": 98,
+      "classes": [
+        "EmptyStateWidget"
+      ],
+      "core_service_imports": [
+        "theme_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 3
+    },
+    {
+      "path": "cbpos/ui/widgets/flow_layout.py",
+      "role": "reusable-widget",
+      "line_count": 117,
+      "classes": [
+        "FlowLayout"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 1
+    },
+    {
+      "path": "cbpos/ui/widgets/form_card.py",
+      "role": "reusable-widget",
+      "line_count": 56,
+      "classes": [
+        "FormCard"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/widgets/help_icon_button.py",
+      "role": "reusable-widget",
+      "line_count": 57,
+      "classes": [
+        "HelpIconButton"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 1
+    },
+    {
+      "path": "cbpos/ui/widgets/info_card.py",
+      "role": "reusable-widget",
+      "line_count": 84,
+      "classes": [
+        "InfoCard"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 3
+    },
+    {
+      "path": "cbpos/ui/widgets/loading_overlay.py",
+      "role": "reusable-widget",
+      "line_count": 109,
+      "classes": [
+        "LoadingOverlay"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 1
+    },
+    {
+      "path": "cbpos/ui/widgets/modal_dimmer.py",
+      "role": "reusable-widget",
+      "line_count": 285,
+      "classes": [
+        "ModalDimmer",
+        "_IdKeyedDict",
+        "ModalDimmerManager"
+      ],
+      "core_service_imports": [
+        "theme_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 1
+    },
+    {
+      "path": "cbpos/ui/widgets/order_bar.py",
+      "role": "reusable-widget",
+      "line_count": 135,
+      "classes": [
+        "OrderBar"
+      ],
+      "core_service_imports": [
+        "suspended_transaction_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/widgets/page_header.py",
+      "role": "reusable-widget",
+      "line_count": 68,
+      "classes": [
+        "PageHeader"
+      ],
+      "core_service_imports": [
+        "theme_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 1
+    },
+    {
+      "path": "cbpos/ui/widgets/pagination_widget.py",
+      "role": "reusable-widget",
+      "line_count": 175,
+      "classes": [
+        "PaginationWidget"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 0
+    },
+    {
+      "path": "cbpos/ui/widgets/read_only_banner.py",
+      "role": "reusable-widget",
+      "line_count": 44,
+      "classes": [
+        "ReadOnlyBanner"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 2
+    },
+    {
+      "path": "cbpos/ui/widgets/receipt_preview_widget.py",
+      "role": "reusable-widget",
+      "line_count": 426,
+      "classes": [
+        "ReceiptPreviewWidget"
+      ],
+      "core_service_imports": [
+        "receipt_font_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 16
+    },
+    {
+      "path": "cbpos/ui/widgets/side_menu.py",
+      "role": "reusable-widget",
+      "line_count": 514,
+      "classes": [
+        "NavTile",
+        "IconButton",
+        "SideMenu"
+      ],
+      "core_service_imports": [
+        "permission_service",
+        "theme_service",
+        "warranty_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 8
+    },
+    {
+      "path": "cbpos/ui/widgets/status_pill_delegate.py",
+      "role": "reusable-widget",
+      "line_count": 94,
+      "classes": [
+        "StatusPillDelegate"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 2
+    },
+    {
+      "path": "cbpos/ui/widgets/sync_status_widget.py",
+      "role": "reusable-widget",
+      "line_count": 395,
+      "classes": [
+        "SyncDetailsDialog",
+        "SyncStatusWidget"
+      ],
+      "core_service_imports": [
+        "config_service",
+        "sync_terminal_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 14
+    },
+    {
+      "path": "cbpos/ui/widgets/table_helpers.py",
+      "role": "reusable-widget",
+      "line_count": 304,
+      "classes": [
+        "_ColumnModeKeeper",
+        "RelativeTimeTableWidgetItem"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 1
+    },
+    {
+      "path": "cbpos/ui/widgets/wheel_guard.py",
+      "role": "reusable-widget",
+      "line_count": 65,
+      "classes": [
+        "_WheelGuard"
+      ],
+      "core_service_imports": [],
+      "direct_database_import": false,
+      "worker_classes": [],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 1
+    },
+    {
+      "path": "cbpos/ui/workers.py",
+      "role": "ui-infrastructure",
+      "line_count": 1084,
+      "classes": [
+        "_BackgroundJobs",
+        "CsvImportWorker",
+        "BackupWorker",
+        "BackupListWorker",
+        "RestoreWorker",
+        "VerifyBackupWorker",
+        "VacuumWorker",
+        "PrinterTestWorker",
+        "DrawerTestWorker",
+        "IntegrityCheckWorker",
+        "ExportWorker",
+        "AutocompleteLoadWorker",
+        "LabelProductLoaderWorker",
+        "ReportPrintWorker",
+        "ReportEmailWorker",
+        "SyncTestWorker",
+        "ReloadCatalogWorker",
+        "PinCheckWorker",
+        "TaxInvoiceArtifactWorker",
+        "WarrantyCardPdfWorker",
+        "WarrantyReprintWorker",
+        "WarrantyExportPdfWorker",
+        "CartAutosaveWorker"
+      ],
+      "core_service_imports": [
+        "auth_service",
+        "backup_service",
+        "cart_autosave_service",
+        "config_service",
+        "email_service",
+        "export_service",
+        "hardware_test_service",
+        "maintenance_service",
+        "receipt_reprint_service",
+        "tax_invoice_service",
+        "warranty_card_builder",
+        "warranty_service"
+      ],
+      "direct_database_import": false,
+      "worker_classes": [
+        "CsvImportWorker",
+        "BackupWorker",
+        "BackupListWorker",
+        "RestoreWorker",
+        "VerifyBackupWorker",
+        "VacuumWorker",
+        "PrinterTestWorker",
+        "DrawerTestWorker",
+        "IntegrityCheckWorker",
+        "ExportWorker",
+        "AutocompleteLoadWorker",
+        "LabelProductLoaderWorker",
+        "ReportPrintWorker",
+        "ReportEmailWorker",
+        "SyncTestWorker",
+        "ReloadCatalogWorker",
+        "PinCheckWorker",
+        "TaxInvoiceArtifactWorker",
+        "WarrantyCardPdfWorker",
+        "WarrantyReprintWorker",
+        "WarrantyExportPdfWorker",
+        "CartAutosaveWorker"
+      ],
+      "inline_stylesheet_calls": 0,
+      "hex_literals": 17
+    }
+  ]
+}

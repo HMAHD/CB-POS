@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: U · Batch: Phase U record restoration (pre-U.0) · Branch: docs/phase-u-record · PR: #1038 · Last session: 2026-11-22
+- Phase: U · Batch: U.0 discovery and re-baselining (#1041) · Branch: docs/phase-u-u0 · PR: #1042 (draft) · Last session: 2026-11-22
 
 ## Issues
 
@@ -137,7 +137,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #896 | Committing a GRN has no permission check (purchase.create_grn is defined but … | medium | 5.1 | done | #998 | 8e4ed10 · Enforce purchase.create_grn on GRN commit, add suppliers.manage and migration |
 | #809 | Settings encryption key is derived from hostname when missing (predictable) | medium | 5.2 | done | #999 | e8d78e6 · Random Fernet key, DPAPI/raw protection at rest, atomic legacy migration, unwrap quarantine |
 | #898 | Excel export writes text cells starting with "=" as live formulas (CSV/formul… | medium | 5.2 | done | #999 | e8d78e6 · Prevent formula injection via XLSX_WRITER_OPTIONS and csv_safe escaping |
-| #911 | Reprint prints voided sales and credit notes as ordinary "Cash Receipt" dupli… | low | 5.3 | done | #1000 | d9bf172 · ReceiptReprintService, sales.reprint permission & migration, refund document receipt truth, part-refunded note, void disable & tooltip (⚠️ Windows print pending) |
+| #911 | Reprint prints voided sales and credit notes as ordinary "Cash Receipt" dupli… | low | 5.3 | blocked (ready-for-human) | #1000 | d9bf172 · ReceiptReprintService, sales.reprint permission & migration, refund document receipt truth, part-refunded note, void disable & tooltip (⚠️ Windows print pending) |
 | #917 | PIN login runs one bcrypt check per active user on the UI thread, freezing th… | low | 5.4 | done | #1001 | e83346c · PinCheckWorker off UI thread for login/override/profile, disable UI with checking label, generation counter, no duplicate runs |
 | #918 | Three places use the segfault-prone `destroyed` pattern that CLAUDE.md forbid… | low | 5.4 | done | #1001 | e83346c · Eliminated destroyed.connect outside destroy_hooks, call_on_destroyed with ID dict in ModalDimmerManager, AST guardrails |
 
@@ -188,11 +188,11 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #808 | Update check: cannot be disabled, min_version ignored, release changelog alwa… | medium | 8.1 | done | #1015, #1016 | 2de4530, c116d3b · auto_update_check setting on System tab 5, packaging Version comparison for min_version required dialog, changelog_section.py and release workflow, plain text changelog |
 | #881 | Exports to USB / another drive refused ("Export path outside allowed director… | medium | 8.1 | done | #1015, #1016 | 37f4601, c116d3b · ensure_writable_target helper in cbpos/core/utils/paths.py, parent existence/W_OK check, format_export_error translated notice |
 | #882 | Auto-report email resent every minute while a send is in progress or failing | medium | 8.1 | done | #1015, #1016 | cd523ee, c116d3b, 2f565b2 · AutoReportWorker off UI thread, 15m stuck recovery, 2^n*5m backoff capped at 6h, max 5 daily failures, Management notice for admin, receiver QueuedConnection, email callback delegation |
-| #814 | Tax invoice compliance features listed in CHANGELOG are missing (serial forma… | high | 8.2 | done | #1017 | d09688f, 0702157 · research note, 814 design, TaxInvoice / TaxInvoiceLine / TaxCreditNote models & migration, TaxInvoiceService serial generator YYMMM_QQQQ_XXXXX, ReportLab TaxInvoicePDFBuilder ORIGINAL/COPY ONLY, BuyerDetailsDialog, PaymentDialog & HistoryView integration |
+| #814 | Tax invoice compliance features listed in CHANGELOG are missing (serial forma… | high | 8.2 | blocked (ready-for-human) | #1017 | d09688f, 0702157 · research note, 814 design, TaxInvoice / TaxInvoiceLine / TaxCreditNote models & migration, TaxInvoiceService serial generator YYMMM_QQQQ_XXXXX, ReportLab TaxInvoicePDFBuilder ORIGINAL/COPY ONLY, BuyerDetailsDialog, PaymentDialog & HistoryView integration; final statutory/owner verification pending |
 | #816 | Add About dialog and help/report-issue links (CB POS website branding) | low | 8.3 | done | #1018 | 482f4e0, b2f6de6 · AboutDialog, SideMenu Help tile, links.py safe URL opener, QUrl validation, trilingual support, TextViewerDialog, focus chain & Esc close |
 | #817 | Add EULA, privacy notice and third-party licence notices before public release | high | 8.3 | in-progress (ready-for-human) | #1018 | 251a37e, 395e647 · Decision D27 (GPLv3), LICENSE, PRIVACY.md, THIRD_PARTY_NOTICES.txt generator with complete shipped texts, release workflow tag & count check, legal research note; open pending final lawyer/owner review |
 | #818 | Fix documentation drift found in the pre-release audit | medium | 8.4 | done | #1020 | Aligned documentation drift across README, CLAUDE.md, TAX.md, PROJECT_OVERVIEW.md, Roadmap.md, CHANGELOG.md, SECURITY.md, PRODUCT.md, CONTEXT.md, create_installer.py, shortcuts dialog, and CBPOS_FACTS.md |
-| #819 | Product labels: English-only names, fake barcode in preview, no label size se… | low | 8.4 | done (ready-for-human: ⚠️ Verify on Windows) | #1020 | d5d3e5c, 8839ead · LabelOptions/LabelLayout models, python-barcode real CODE128/EAN13, ProductService.display_name for si/ta/bilingual, missing local name fallback warning, 50x30/40x25/58mm/custom presets & validation, live preview panel; physical print verification pending on Windows hardware |
+| #819 | Product labels: English-only names, fake barcode in preview, no label size se… | low | 8.4 | blocked (ready-for-human) | #1020 | d5d3e5c, 8839ead · LabelOptions/LabelLayout models, python-barcode real CODE128/EAN13, ProductService.display_name for si/ta/bilingual, missing local name fallback warning, 50x30/40x25/58mm/custom presets & validation, live preview panel; physical print verification pending on Windows hardware |
 
 ### Phase 9 — [spec](phases/phase-09-warranty.md)
 
@@ -201,7 +201,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #821 | Warranty W1: Warranty policies and assignment to products and categories | — | 9.1 | done | #1021 | d787378 · Decisions D28/D29; WarrantyPolicy model, migration, WarrantyService, product/category assignment, feature gating, UI dialogs & views |
 | #822 | Warranty W2: Register a warranty per sold unit and cascade on void or refund | — | 9.2 | done | #1022 | 62498f3 · Decision D30; Warranty model, migration, per-unit registration at checkout, whole-unit guard, void/refund cascades, LAN sync 1.4 |
 | #823 | Warranty W3: Optional serial/IMEI capture at checkout | — | 9.3 | done | #1023 | 0aedb47, 03ed8de · Serial/IMEI capture at checkout, IMEI Luhn validator, cart serial bookkeeping, held bill persistence, checkout guard, serial-aware partial refunds, SerialEntryDialog |
-| #824 | Warranty W4: Print the warranty on the receipt, the A4 invoice and a standalo… | — | 9.3 | done (ready-for-human: ⚠️ Verify on Windows) | #1023 | 0aedb47, 03ed8de · Sales receipt warranty blocks & terms, A4 invoice warranty lines, standalone thermal cards (58/80mm) with cut, A5/A4 PDF cards, reprint workflows, audit logging; pending physical printer & statutory text verification |
+| #824 | Warranty W4: Print the warranty on the receipt, the A4 invoice and a standalo… | — | 9.3 | blocked (ready-for-human) | #1023 | 0aedb47, 03ed8de · Sales receipt warranty blocks & terms, A4 invoice warranty lines, standalone thermal cards (58/80mm) with cut, A5/A4 PDF cards, reprint workflows, audit logging; pending physical printer & statutory text verification |
 | #825 | Warranty W5: Warranty lookup by receipt, serial, phone or customer | — | 9.4 | done | #1026 | ae95ea2 · WarrantyDTO, WarrantyService.search, calculate_effective_status, update_warranty_admin with audit logging, WarrantyLookupDialog, WarrantyCorrectionDialog, F9 shortcut |
 | #826 | Warranty W6: Warranty claims: intake, inspection, resolution and collection | — | 9.4 | done | #1026 | e6e9e9b · WarrantyClaim & WarrantyClaimEvent models, migration, WarrantyClaimService state machine, replacement warranty creation, refund/void claim guards, WarrantyClaimReceiptBuilder thermal slips, WarrantyClaimIntakeDialog, WarrantyClaimResolveDialog, WarrantyClaimsBoardView, sync protocol 1.5 |
 | #827 | Warranty W7: Claim replacement and refund with correct stock movements | — | 9.5 | done | #1027 | 1bce4ea · MovementType.WARRANTY stock deduction, atomic replacement with fresh/remaining term, refund claim integration with stock neutralization and audit logging, SQLite/PostgreSQL migration |
@@ -254,7 +254,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 | # | Title | Owner | Item | Status | PR | Notes |
 |---|---|---|---|---|---|---|
-| — | Discovery and re-baselining | Claude | U.0 | todo | | create the Phase U parent epic and U.0 issue after this record merges; provisional baseline `69fd64a`; Phase 10B exit/final-SHA delta re-baseline and retrospective audit required |
+| #1041 | Discovery, integrity audit, and final re-baselining | Claude | U.0 | in-progress | #1042 (draft) | parent #1040; provisional product-code baseline `69fd64a`, record baseline `504df7f`; mechanical inventory plus shell/Help/update/hardware ownership trace recorded; R2=4, R3=1; Phase 10B exit/final-SHA deltas and owner approval still required |
 | #963 | DataTable + ContextMenu builder | Claude | UF-1 | todo | | provisional; needs U.0 reconciliation |
 | #964 | PageHeader + DetailHeader | Claude | UF-2 | todo | | provisional; needs U.0 reconciliation |
 | #965 | FormDialog | Claude | UF-3 | todo | | provisional; needs U.0 reconciliation |
@@ -276,6 +276,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #832 | Pre-release audit: fixes required before the first public build | all audit children (#791–#819, #831) and #922 closed |
 | #922 | Pre-release bug hunt: 89 verified defects (2026-10-21) | all of #833–#921 closed |
 | #820 | EPIC: Product warranty and repairs (policies, per-unit warranties, cla | #821–#830 closed |
+| #1040 | EPIC: Phase U — UI/UX and UI architecture | #1041 and the owner-approved post-U.0 implementation map reach their approved dispositions |
 | #944 | EPIC: Feature & printing backlog (researched, not scheduled) | its children closed or explicitly parked in #943 |
 
 ## Open questions (Stop & Ask, §0.5)
@@ -330,10 +331,11 @@ Phase 10B.0–10B.3 are merged and verified closed:
 - #931 Price Board: PR #1035 (`967a5b3`).
 - #937 purchase-unit conversion: PR #1037, merge `69fd64a`; post-merge main CI run `44994304427` passed all jobs.
 
-Phase U record restoration is starting under D37–D42; U.0 has not started yet:
-- Restore `PHASE_U_DISCOVERY_BRIEF.md`, the discovery-first Phase U spec, D37–D38, and the keyboard-first/mouse-friendly instruction through the docs-only branch `docs/phase-u-record`.
-- After this record merges, create one Phase U parent epic and one U.0 issue, then mark U.0 in progress.
-- U.0 is documentation/evidence work only. Do not refactor UI or expand #963–#975 before the Phase 10B exit/final-SHA delta re-baseline, retrospective integrity audit, and owner-approved evidence map are complete.
-- Baseline provisional discovery against `main` at `69fd64a`; the final implementation gate uses the exact final Phase 10B `main` SHA and green post-merge CI.
-- Gemini may continue #926, #930, #933, #936, or #941 only after that issue’s owner gate passes and its D-number is recorded. The local convenience playbook is `/Users/akash/Documents/CB-POS_PHASE_10B_PHASE_U_GEMINI_PLAYBOOK.md`; it is non-normative, and the reviewed repository documents remain the source of truth. Phase 10C remains deferred.
+Phase U record restoration merged in PR #1038 (`504df7f`); post-merge main CI run `45034798273` and Documentation run `45034798256` passed. Phase U parent #1040 and U.0 child #1041 are open.
+
+U.0 is now in progress on `docs/phase-u-u0`:
+- Documentation/evidence work only; do not refactor UI or expand #963–#975 before the final Phase 10B re-baseline, retrospective integrity audit, and owner-approved evidence map.
+- Provisional product-code baseline: `69fd64a`; record baseline: `504df7f`.
+- Start with the complete surface/navigation inventory and architecture ownership map, then journey, visual, and measured-performance evidence.
+- Gemini may continue #926, #930, #933, #936, or #941 only after that issue’s owner gate passes and its D-number is recorded. The local convenience playbook is non-normative; repository documents remain the source of truth. Phase 10C remains deferred.
 

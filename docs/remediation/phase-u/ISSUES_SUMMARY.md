@@ -7,7 +7,7 @@
 
 | Area | Status | Evidence |
 |---|---|---|
-| Surface/navigation inventory | in progress | `UI_SURFACE_INVENTORY.md` — 143 class-bearing UI files, 12 helper-only modules; shell reachability traced |
+| Surface/navigation inventory | in progress | `UI_SURFACE_INVENTORY.md` + `evidence/ui_inventory.json` — reproducible AST baseline of 165 Python modules (143 class-bearing, 22 helper/package-only, 206 top-level classes); shell reachability traced |
 | Architecture/ownership map | in progress | `UI_ARCHITECTURE_MAP.md` — top-level shell, permissions, lifecycle, Help/About, updates, and hardware |
 | Journey audit | todo | — |
 | Dark/light + EN/SI/TA visual audit | todo | — |
@@ -18,7 +18,7 @@
 
 ## Findings
 
-Two evidence-backed findings are recorded. File length remains an inventory signal only.
+Five evidence-backed findings are recorded. File length remains an inventory signal only.
 
 | Severity | Count |
 |---|---:|
